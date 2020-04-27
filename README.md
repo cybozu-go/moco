@@ -9,7 +9,8 @@ MySO
 
 MySO is a MySQL operator to construct and manage lossless semi-sync replicated MySQL instances using binary logs.
 
-MySO is designed to  the following properties:
+MySO is designed to the following properties:
+
 - Integrity
     - Do not lose any data under a given degree of faults (double or triple).
 - Availability
