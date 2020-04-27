@@ -1,8 +1,8 @@
--[![GitHub release](https://img.shields.io/github/release/cybozu-go/myso.svg?maxAge=60)][releases]
--[![CircleCI](https://circleci.com/gh/cybozu-go/myso.svg?style=svg)](https://circleci.com/gh/cybozu-go/myso)
--[![GoDoc](https://godoc.org/github.com/cybozu-go/myso?status.svg)][godoc]
--[![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/myso)](https://goreportcard.com/report/github.com/cybozu-go/myso)
--[![Docker Repository on Quay](https://quay.io/repository/cybozu/myso/status "Docker Repository on Quay")](https://quay.io/repository/cybozu/myso)
+[![GitHub release](https://img.shields.io/github/release/cybozu-go/myso.svg?maxAge=60)][releases]
+[![CircleCI](https://circleci.com/gh/cybozu-go/myso.svg?style=svg)](https://circleci.com/gh/cybozu-go/myso)
+[![GoDoc](https://godoc.org/github.com/cybozu-go/myso?status.svg)][godoc]
+[![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/myso)](https://goreportcard.com/report/github.com/cybozu-go/myso)
+[![Docker Repository on Quay](https://quay.io/repository/cybozu/myso/status "Docker Repository on Quay")](https://quay.io/repository/cybozu/myso)
 
 MySO
 ====
@@ -36,4 +36,5 @@ License
 -------
 SQL Operator is licensed under MIT license.
 
--[releases]: https://github.com/cybozu-go/myso/releases
+[releases]: https://github.com/cybozu-go/myso/releases
+[godoc]: https://godoc.org/github.com/cybozu-go/myso
