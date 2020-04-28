@@ -35,11 +35,11 @@ Components
 
 ### Custom Resource Definitions
 
-- [`MySQLCluster`](mysql_cluster.md) defines a MySQL cluster.
+- [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
   In this context, MySQL cluster means a cluster of MySQL servers which are replicated by `mysqlbinlog` and `mysqlpump` without group replication such as InnoDB cluster.
-- [`MySQLUser`](mysql_user.md) defines a login user in MySQL server.
-- [`MySQLDump`](mysql_dump.md) represents a dump file.
-- [`MySQLBinlog`](mysql_binlog.md) represents a binary log file.
+- [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
+- [`MySQLDump`](crd_mysql_dump.md) represents a dump file.
+- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binary log file.
 
 ### External components
 
@@ -93,15 +93,14 @@ When the master fails, the cluster is recovered in the following process:
 ### How to make a backup
 
 Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLCluster` CR. The configurable settings are:
-- `dumpInterval`: The backup interval of full dumps
-- `binlogInterval`: The backup interval of binary logs
+- `dumpSchedule`: The backup interval of full dumps
+- `binlogSchedule`: The backup interval of binary logs
 - `objectStorageEndpoint`: The URL of object storage where the operator makes backups
 
 ### How to execute master switchover
 
-Users can execute master switchover via `MySQLCluster` CR using the following fields:
-- `preferredMaster`: The array of indexes which instance is preferred as master
-- `switchOverAt`: The time when a switchover is performed
+Users can execute master switchover via `MySQLCluster` CR using the following field:
+- `preferredMasterIndexes`: The array of indexes which instance is preferred as master
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
@@ -122,3 +121,5 @@ When the `MySQLCluster` with `spec.restore` is created, the operator starts depl
 
 Packaging and deployment
 ------------------------
+
+TBD
