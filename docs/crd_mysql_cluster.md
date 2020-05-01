@@ -20,9 +20,6 @@ MySQLClusterSpec
 | Field                    | Type                        | Description                                                               |
 | ------------------------ | --------------------------- | ------------------------------------------------------------------------- |
 | `preferredMasterIndexes` | []int                       | List of `StatefulSet` indexes. Former is more preferable for master.      |
-| `dumpSchedule`           | string                      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `binlogSchedule`         | string                      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `objectStorageEndpoint`  | string                      | URL of object storage where the operator makes backups.                   |
 | `restore`                | [RestoreSpec](#RestoreSpec) | Configuration for Point-in-Time-Recovery(PiTR).                           |
 
 MySQLClusterStatus

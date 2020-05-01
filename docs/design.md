@@ -38,8 +38,9 @@ Components
 - [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
   In this context, MySQL cluster means a cluster of MySQL servers which are replicated by `mysqlbinlog` and `mysqlpump` without group replication such as InnoDB cluster.
 - [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
-- [`MySQLDump`](crd_mysql_dump.md) represents a dump file, which is created with `mysqlpump`.
-- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binary log file, which is created with `mysqlbinlog`.
+- [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
+- [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
+- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog writing job and contains the file path.
 
 ### External components
 
@@ -92,6 +93,8 @@ When the master fails, the cluster is recovered in the following process:
 
 ### How to make a backup
 
+TBD
+
 Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLCluster` CR. The configurable settings are:
 - `dumpSchedule`: The backup interval of full dumps
 - `binlogSchedule`: The backup interval of binary logs
@@ -103,6 +106,8 @@ Users can execute master switchover via `MySQLCluster` CR using the following fi
 - `preferredMasterIndexes`: The array of indexes which instance is preferred as master
 
 ### How to perform Point-in-Time-Recovery(PiTR)
+
+TBD
 
 A backup job has the responsibility as follows:
 
