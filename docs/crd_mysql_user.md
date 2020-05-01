@@ -9,8 +9,8 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 | `apiVersion` | string                              | APIVersion.                                                           |
 | `kind`       | string                              | Kind.                                                                 |
 | `metadata`   | [ObjectMeta]                        | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of desired behavior of the cluster.                     |
-| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the cluster.                         |
+| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of the user.                                            |
+| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the user.                            |
 
 MySQLUserSpec
 -------------
@@ -36,6 +36,8 @@ UserResourceOption
 MySQLUserStatus
 ---------------
 
-TBD
+| Field   | Type   | Description                           |
+| ------- | ------ | ------------------------------------- |
+| `phase` | string | The phase of user creation or update. |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta

@@ -38,8 +38,8 @@ Components
 - [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
   In this context, MySQL cluster means a cluster of MySQL servers which are replicated by `mysqlbinlog` and `mysqlpump` without group replication such as InnoDB cluster.
 - [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
-- [`MySQLDump`](crd_mysql_dump.md) represents a dump file.
-- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binary log file.
+- [`MySQLDump`](crd_mysql_dump.md) represents a dump file, which is created with `mysqlpump`.
+- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binary log file, which is created with `mysqlbinlog`.
 
 ### External components
 
