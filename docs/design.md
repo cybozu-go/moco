@@ -93,12 +93,12 @@ When the master fails, the cluster is recovered in the following process:
 
 ### How to make a backup
 
-TBD
+Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLDump` and `MySQLBinlog` CRs. 
 
-Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLCluster` CR. The configurable settings are:
-- `dumpSchedule`: The backup interval of full dumps
-- `binlogSchedule`: The backup interval of binary logs
-- `objectStorageEndpoint`: The URL of object storage where the operator makes backups
+- If you create `MySQLDump` CR, it triggers full dump backup and store it in a S3-compatible object storage.
+- If you create `MySQLBinlog` CR, it triggers to upload binlog file to the object storage.
+
+If you want to make backups periodically, use `MySQLBackupSchedule` CR.
 
 ### How to execute master switchover
 
@@ -107,22 +107,15 @@ Users can execute master switchover via `MySQLCluster` CR using the following fi
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
-TBD
-
-A backup job has the responsibility as follows:
-
-- Upload full-dump files to object storage and create `MySQLDump` resources.
-- Upload binary logs to object storage and create `MySQLBinlog` resources.
-
-The operator executes the Job periodically by creating CronJob for each `MySQLCluster`.
+If you want to perform PiTR, you need to download a full dump backup file and subsequent binlog files.
 
 When the `MySQLCluster` with `spec.restore` is created, the operator starts deploying a MySQL cluster as follows.
 
 1. The operator bootstrap the MySQL servers as same as [this procedure](#How-to-deploy-MySQL-servers).
-1. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
-1. The operator create backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
-1. The operator fetches dump files and binary logs from object storage.
-1. The operator restores the MySQL servers at `MySQLCluster.spec.restore.pointInTime`.
+2. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
+3. The operator create backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
+4. The operator fetches dump files and binary logs from object storage.
+5. The operator restores the MySQL servers at `MySQLCluster.spec.restore.pointInTime`.
 
 Packaging and deployment
 ------------------------

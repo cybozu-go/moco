@@ -25,10 +25,10 @@ MySQLBackupSceduleSpec
 ScheduleSpec
 ------------
 
-| Field                         | Type                                    | Description                                                               |
-| ----------------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
-| `schedule`                    | string                                  | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `objectStorageBucketEndpoint` | [ObjectStorageSpec](#ObjectStorageSpec) | Specification of S3 compatible object storage.                            |
+| Field                   | Type                                    | Description                                                               |
+| ----------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
+| `schedule`              | string                                  | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
+| `objectStorageEndpoint` | [ObjectStorageSpec](#ObjectStorageSpec) | Specification of S3 compatible object storage.                            |
 
 ObjectStorageSpec
 -----------------
