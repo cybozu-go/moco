@@ -17,10 +17,12 @@ such as InnoDB cluster.
 MySQLClusterSpec
 ----------------
 
-| Field                    | Type                        | Description                                                               |
-| ------------------------ | --------------------------- | ------------------------------------------------------------------------- |
-| `preferredMasterIndexes` | []int                       | List of `StatefulSet` indexes. Former is more preferable for master.      |
-| `restore`                | [RestoreSpec](#RestoreSpec) | Configuration for Point-in-Time-Recovery(PiTR).                           |
+| Field                    | Type                        | Description                                                          |
+| ------------------------ | --------------------------- | -------------------------------------------------------------------- |
+| `rootPasswordSecretName` | string                      | Secret name for root user.                                           |
+| `preferredMasterIndexes` | []int                       | List of `StatefulSet` indexes. Former is more preferable for master. |
+| `restore`                | [RestoreSpec](#RestoreSpec) | Configuration for Point-in-Time-Recovery(PiTR).                      |
+| `volumeClaimTemplate`    | \[\][PersistentVolumeClaim] | List of `PersistentVolumeClaim` for MySQL server pod.                |
 
 MySQLClusterStatus
 ------------------
@@ -50,3 +52,4 @@ RestoreStatus
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta
+[PersistentVolumeClaim]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaim-v1-core

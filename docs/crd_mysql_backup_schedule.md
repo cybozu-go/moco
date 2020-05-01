@@ -16,10 +16,11 @@ The one creates `MySQLDump` and the other creates `MySQLBinlog`.
 MySQLBackupSceduleSpec
 ----------------------
 
-| Field    | Type                          | Description                        |
-| -------- | ----------------------------- | ---------------------------------- |
-| `dump`   | [ScheduleSpec](#ScheduleSpec) | Schedule of invoking `mysqlpump`   |
-| `binlog` | [ScheduleSpec](#ScheduleSpec) | Schedule of invoking `mysqlbinlog` |
+| Field     | Type                          | Description                        |
+| --------- | ----------------------------- | ---------------------------------- |
+| `cluster` | string                        | Name of `MySQLCluster`             |
+| `dump`    | [ScheduleSpec](#ScheduleSpec) | Schedule of invoking `mysqlpump`   |
+| `binlog`  | [ScheduleSpec](#ScheduleSpec) | Schedule of invoking `mysqlbinlog` |
 
 ScheduleSpec
 ------------
