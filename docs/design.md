@@ -41,6 +41,7 @@ Components
 - [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
 - [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
 - [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog writing job and contains the file path.
+- [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
 
 ### External components
 
@@ -106,6 +107,8 @@ Users can execute master switchover via `MySQLCluster` CR using the following fi
 - `preferredMasterIndexes`: The array of indexes which instance is preferred as master
 
 ### How to perform Point-in-Time-Recovery(PiTR)
+
+TBD
 
 If you want to perform PiTR, you need to download a full dump backup file and subsequent binlog files.
 

@@ -21,7 +21,6 @@ MySQLClusterSpec
 | ------------------------ | --------------------------- | -------------------------------------------------------------------- |
 | `rootPasswordSecretName` | string                      | Secret name for root user.                                           |
 | `preferredMasterIndexes` | []int                       | List of `StatefulSet` indexes. Former is more preferable for master. |
-| `restore`                | [RestoreSpec](#RestoreSpec) | Configuration for Point-in-Time-Recovery(PiTR).                      |
 | `volumeClaimTemplate`    | \[\][PersistentVolumeClaim] | List of `PersistentVolumeClaim` for MySQL server pod.                |
 
 MySQLClusterStatus
@@ -33,21 +32,6 @@ MySQLClusterStatus
 | `health`             | string | The health of the cluster.                                  |
 | `currentMasterName`  | string | Current master name.                                        |
 | `availableInstances` | int    | Number of available instances.                              |
-
-RestoreSpec
-------------
-
-| Field          | Type            | Description                                                                                   |
-| -------------- | --------------- | --------------------------------------------------------------------------------------------- |
-| `pointInTime`  | [Time]          | Point in time of the state which the cluster is restored to                                   |
-| `fromSelector` | [LabelSelector] | Label selector for [`MySQLDump`](crd_mysql_dump.md) and [`MySQLBinlog`](crd_mysql_binlog.md). |
-
-RestoreStatus
--------------
-
-| Field   | Type   | Description                                                     |
-| ------- | ------ | --------------------------------------------------------------- |
-| `phase` | string | The phase in the [restoration lifecycle](cluster_lifecycle.md). |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
