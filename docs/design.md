@@ -111,13 +111,8 @@ If you want to perform PiTR, you need to download a full dump backup file and su
 
 When the `MySQLCluster` with `spec.restore` is created, the operator starts deploying a MySQL cluster as follows.
 
-1. The operator bootstrap the MySQL servers as same as [this procedure](#How-to-deploy-MySQL-servers).
+1. The operator bootstraps the MySQL servers as same as [this procedure](#How-to-deploy-MySQL-servers).
 2. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
-3. The operator create backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
+3. The operator creates backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
 4. The operator fetches dump files and binary logs from object storage.
 5. The operator restores the MySQL servers at `MySQLCluster.spec.restore.pointInTime`.
-
-Packaging and deployment
-------------------------
-
-TBD
