@@ -5,7 +5,7 @@ MySQLBinlog
 the location of a MySQL binlog file.
 
 | Field        | Type                                    | Description                                                           |
-| ------------ | --------------------------------------- | --------------------------------------------------------------------- |
+|--------------|-----------------------------------------|-----------------------------------------------------------------------|
 | `apiVersion` | string                                  | APIVersion.                                                           |
 | `kind`       | string                                  | Kind.                                                                 |
 | `metadata`   | [ObjectMeta]                            | Standard object's metadata with a special annotation described below. |
@@ -15,23 +15,32 @@ the location of a MySQL binlog file.
 MySQLBinlogSpec
 ---------------
 
-| Field                   | Type                                                                | Description                                    |
-| ----------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
-| `cluster`               | string                                                              | Name of `MySQLCluster`                         |
-| `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage. |
+| Field                   | Type                                                                | Description                                       |
+|-------------------------|---------------------------------------------------------------------|---------------------------------------------------|
+| `clusterName`           | string                                                              | Name of `MySQLCluster`                            |
+| `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage.    |
+| `lastTransactionTime`   | [Time]                                                              | Time for the last transaction in the binlog file  |
+| `firstTransactionTime`  | [Time]                                                              | Time for the first transaction in the binlog file |
+
 
 MySQLBinlogStatus
 -----------------
 
-| Field         | Type   | Description                                         |
-| ------------- | ------ | --------------------------------------------------- |
-| `phase`       | string | pending, running, succeeded, failed                 |
-| `phaseReason` | string | Reason for entering current phase                   |
-| `gtidFrom`    | string | Initial GTID in the binlog file                     |
-| `gtidTo`      | string | Last GTID in the binlog file                        |
-| `timeFrom`    | [Time] | Time for the initial transaction in the binlog file |
-| `timeTo`      | [Time] | Time for the last transaction in the binlog file    |
-| `bytes`       | int    | Binlog file size                                    |
+| Field        | Type                                    | Description              |
+|--------------|-----------------------------------------|--------------------------|
+| `bytes`      | int                                     | Binlog file size         |
+| `conditions` | [][`BinlogCondition`](#BinlogCondition) | The array of conditions. |
+
+BinlogCondition
+---------------
+
+| Field                | Type   | Description                                                      |
+|----------------------|--------|------------------------------------------------------------------|
+| `type`               | string | The type of condition.                                           |
+| `status`             | string | The status of the condition, one of True, False, Unknown         |
+| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
+| `message`            | string | Human-readable message indicating details about last transition. |
+| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

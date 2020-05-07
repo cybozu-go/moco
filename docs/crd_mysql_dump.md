@@ -5,7 +5,7 @@ MySQLDump
 the location of a MySQL dump file.
 
 | Field        | Type                                | Description                                                           |
-| ------------ | ----------------------------------- | --------------------------------------------------------------------- |
+|--------------|-------------------------------------|-----------------------------------------------------------------------|
 | `apiVersion` | string                              | APIVersion.                                                           |
 | `kind`       | string                              | Kind.                                                                 |
 | `metadata`   | [ObjectMeta]                        | Standard object's metadata with a special annotation described below. |
@@ -16,19 +16,29 @@ MySQLDumpSpec
 -------------
 
 | Field                   | Type                                                                | Description                                    |
-| ----------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
-| `cluster`               | string                                                              | Name of `MySQLCluster`                         |
+|-------------------------|---------------------------------------------------------------------|------------------------------------------------|
+| `clusterName`           | string                                                              | Name of `MySQLCluster`                         |
 | `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage. |
+
 
 MySQLDumpStatus
 ---------------
 
-| Field         | Type   | Description                         |
-| ------------- | ------ | ----------------------------------- |
-| `phase`       | string | pending, running, succeeded, failed |
-| `phaseReason` | string | Reason for entering current phase   |
-| `snappedAt`   | [Time] | Start time for dump process         |
-| `bytes`       | int    | Dump file size                      |
+| Field        | Type                                | Description              |
+|--------------|-------------------------------------|--------------------------|
+| `bytes`      | int                                 | Dump file size           |
+| `conditions` | [][`DumpCondition`](#DumpCondition) | The array of conditions. |
+
+DumpCondition
+-------------
+
+| Field                | Type   | Description                                                      |
+|----------------------|--------|------------------------------------------------------------------|
+| `type`               | string | The type of condition.                                           |
+| `status`             | string | The status of the condition, one of True, False, Unknown         |
+| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
+| `message`            | string | Human-readable message indicating details about last transition. |
+| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

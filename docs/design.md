@@ -93,12 +93,12 @@ When the master fails, the cluster is recovered in the following process:
 
 ### How to make a backup
 
-Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLDump` and `MySQLBinlog` CRs. 
+Users can declare the settings of full dump backup with `mysqldump` and binary log backup with `mysqlbinlog` via `MySQLBackupSchedule` CRs. 
 
-- If you create `MySQLDump` CR, it triggers full dump backup and store it in a S3-compatible object storage.
-- If you create `MySQLBinlog` CR, it triggers to upload binlog file to the object storage.
+- If you create `MySQLBackupSchedule` CR, it creates `CronJob` to make full dump backup and store it in a S3-compatible object storage.
+- If you create `MySQLBackupSchedule` CR, it creates `CronJob` to make binlog file to the object storage.
 
-If you want to make backups periodically, use `MySQLBackupSchedule` CR.
+If you want to make backups at once, set `MySQLBackupSchedule.spec.schedules` as run at once.
 
 ### How to execute master switchover
 
@@ -112,7 +112,7 @@ If you want to perform PiTR, you need to download a full dump backup file and su
 When the `MySQLCluster` with `spec.restore` is created, the operator starts deploying a MySQL cluster as follows.
 
 1. The operator bootstraps the MySQL servers as same as [this procedure](#How-to-deploy-MySQL-servers).
-2. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
-3. The operator creates backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
+2. The operator creates backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
+3. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
 4. The operator fetches dump files and binary logs from object storage.
 5. The operator restores the MySQL servers at `MySQLCluster.spec.restore.pointInTime`.
