@@ -13,7 +13,7 @@ The one creates `MySQLDump` and the other creates `MySQLBinlog`.
 | `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                                          |
 | `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs.                  |
 
-MySQLBackupSceduleSpec
+MySQLBackupScheduleSpec
 ----------------------
 
 | Field     | Type                          | Description                        |
