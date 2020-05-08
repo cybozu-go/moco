@@ -14,12 +14,15 @@ MySQLRestoreJob
 RestoreJobSpec
 --------------
 
-| Field               | Type            | Description                                                  |
-| ------------------- | --------------- | ------------------------------------------------------------ |
-| `targetClusterName` | string          | Target [`MySQLCluster`](crd_mysql_cluster.md) name.          |
-| `pointInTime`       | [Time]          | Point-in-time of the state which the cluster is restored to. |
-| `dumpSelector`      | [LabelSelector] | Label selector for [`MySQLDump`](crd_mysql_dump.md).         |
-| `binlogSelector`    | [LabelSelector] | Label selector for [`MySQLBinlog`](crd_mysql_binlog.md).     |
+| Field               | Type   | Description                                                  |
+| ------------------- | ------ | ------------------------------------------------------------ |
+| `targetClusterName` | string | Target [`MySQLCluster`](crd_mysql_cluster.md) name.          |
+| `sourceClusterName` | string | Source [`MySQLCluster`](crd_mysql_cluster.md) name.          |
+| `pointInTime`       | [Time] | Point-in-time of the state which the cluster is restored to. |
+
+### TBD
+
+- how to restore when binlog is lost?
 
 RestoreJobStatus
 ----------------

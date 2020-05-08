@@ -12,16 +12,21 @@ MySO is a MySQL operator to construct and manage lossless semi-sync replicated M
 MySO is designed to the following properties:
 
 - Integrity
-    - Do not lose any data under a given degree of faults (double or triple).
+    - Do not lose any data under a given degree of faults.
 - Availability
-    - Keep the MySQL cluster available under a given degree of faults (single or double).
+    - Keep the MySQL cluster available under a given degree of faults.
 - Serviceability
-    - Even if a large-scale failure (e.g. data center blackout) occurs, MySO performs a quick recovery by combining full backup and binary logs.
+    - MySO performs a quick recovery by combining full backup and binary logs.
 
 Features
 --------
 
 TBD
+
+Supported MySQL versions
+------------------------
+
+>=8.0.20
 
 Documentation
 --------------

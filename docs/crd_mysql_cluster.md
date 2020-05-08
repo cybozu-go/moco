@@ -17,21 +17,30 @@ such as InnoDB cluster.
 MySQLClusterSpec
 ----------------
 
-| Field                    | Type                        | Description                                                          |
-| ------------------------ | --------------------------- | -------------------------------------------------------------------- |
-| `rootPasswordSecretName` | string                      | Secret name for root user.                                           |
-| `preferredMasterIndexes` | []int                       | List of `StatefulSet` indexes. Former is more preferable for master. |
-| `volumeClaimTemplate`    | \[\][PersistentVolumeClaim] | List of `PersistentVolumeClaim` for MySQL server pod.                |
+| Field                    | Type                    | Description                                                          |
+| ------------------------ | ----------------------- | -------------------------------------------------------------------- |
+| `rootPasswordSecretName` | string                  | Secret name for root user.                                           |
+| `preferredMasterIndexes` | []int                   | List of `StatefulSet` indexes. Former is more preferable for master. |
+| `volumeClaimTemplate`    | [PersistentVolumeClaim] | `PersistentVolumeClaim` for MySQL server container.                  |
+| `size`                   | int                     | The number of instances. Available values are 1, 3, and 5.           |
+
+### TBD
+
+- is preferredMasterIndexes needed?
+- service template
+- pod template
+- more templates for other resources
+- customize my.cnf, merge/validate with MySO's my.cnf
 
 MySQLClusterStatus
 ------------------
 
-| Field                | Type                                                                | Description                    |
-| -------------------- | ------------------------------------------------------------------- | ------------------------------ |
-| `conditions`         | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | The array of conditions.       |
-| `ready`              | boolean                                                             | The health of the cluster.     |
-| `currentMasterName`  | string                                                              | Current master name.           |
-| `availableInstances` | int                                                                 | Number of available instances. |
+| Field               | Type                                                                | Description                 |
+| ------------------- | ------------------------------------------------------------------- | --------------------------- |
+| `conditions`        | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | The array of conditions.    |
+| `ready`             | boolean                                                             | The health of the cluster.  |
+| `currentMasterName` | string                                                              | Current master name.        |
+| `syncedReplicas`    | int                                                                 | Number of synced instances. |
 
 MySQLClusterStatusConditions
 ----------------------------

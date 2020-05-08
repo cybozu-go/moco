@@ -9,15 +9,29 @@ Automate operations of binlog-based replication on MySQL.
 Reason for why we choose semi-sync replication and don't use InnoDB cluster is InnoDB cluster does not allow large (>2GB) transactions.
 
 These softwares provide operator functionality over MySQL, but they are designed on different motivation.
-- https://github.com/oracle/mysql-operator
-- https://github.com/presslabs/mysql-operator
 
+- https://github.com/oracle/mysql-operator
+  - Lack of binlog-based replication.
+- https://github.com/presslabs/mysql-operator
+  - TBD
+  
 Goals
 -----
 
-- Use Custom Resource Definition to automate construction of MySQL database using replication.
-- Provide functionality for stabilizing distributed systems that MySQL replication does not provide.
+- Use Custom Resource Definition to automate construction of MySQL database using replication on Kubernetes.
+- Provide operation functions, such as automatic master selection.
 - While keeping consistency, automating configuration of cluster as much as possible including fail-over situation.
+- Support automatic upgrading.
+- Support multiple MySQL version.
+- Absorb the difference between MySQL versions.
+- TBD: Add more goals based on https://github.com/cybozu-go/neco/issues/720
+
+### Non-goals
+
+- InnoDB cluster
+- Non-stop upgrading
+- node fencing
+- TBD
 
 Components
 ----------
@@ -31,12 +45,12 @@ Components
 
 ### Client
 
-- `mysoctl`: Utility tool to manipulate MySQL from external location (e.g. change master manually).
+- `kubectl-myso`: Utility tool to manipulate MySQL from external location (e.g. change master manually).
 
 ### Custom Resource Definitions
 
 - [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
-  In this context, MySQL cluster means a cluster of MySQL servers which are replicated by `mysqlbinlog` and `mysqlpump` without group replication such as InnoDB cluster.
+  In this context, MySQL cluster means a cluster of MySQL servers which are constructed by `mysqlpump` and `mysqlbinlog` without group replication such as InnoDB cluster.
 - [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
 - [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
 - [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
@@ -122,3 +136,8 @@ PiTR is performed with the following procedure.
 8.  If PiTR finishes successfully, `MySQLRestoreJob.status.succeeded` and `MySQLCluster.status.ready` are set `true`.
     Otherwise, the operator sets `MySQLRestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
     If the recovery succeeds, the operator sets `MySQLCluster.status.ready` as `true`.
+
+### TBD
+
+- version upgrade
+- switch over

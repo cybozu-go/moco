@@ -22,6 +22,7 @@ MySQLUserSpec
 | `resources` | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].                                          |
 | `comment`   | string                                    | Comment for the user.                                                                      |
 | `attribute` | string                                    | Attribute for the user. It should be a valid JSON.                                         |
+| `privLevel` | []string                                  | A set of [priv_level](https://dev.mysql.com/doc/refman/8.0/en/grant.html) to access data.  |
 
 UserResourceOption
 ------------------

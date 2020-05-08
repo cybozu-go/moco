@@ -13,6 +13,10 @@ The one creates `MySQLDump` and the other creates `MySQLBinlog`.
 | `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                                          |
 | `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs.                  |
 
+### TBD
+
+- life time of backup files.
+
 MySQLBackupScheduleSpec
 -----------------------
 
@@ -27,20 +31,28 @@ ScheduleSpec
 
 | Field      | Type   | Description                                                               |
 | ---------- | ------ | ------------------------------------------------------------------------- |
-| `name`     | string | The name of backup schedule.                                              |
+| `name`     | string | The unique name of backup schedule.                                       |
 | `schedule` | string | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
 | `type`     | string | The type of backup. Allowed values are `Dump` and `Binlog`.               |
+
+### TBD
+
+- it is prefer to get dump and binlog at once, so type field might not be needed.
+- the life time of backup
 
 ObjectStorageSpec
 -----------------
 
 | Field                  | Type            | Description                                                           |
 | ---------------------- | --------------- | --------------------------------------------------------------------- |
-| `name`                 | string          | The name of object storage.                                           |
 | `endpoint`             | [Value](#Value) | Endpoint of object storage.                                           |
 | `region`               | [Value](#Value) | Region of object storage.                                             |
 | `bucket`               | [Value](#Value) | Bucket name.                                                          |
 | `credentialSecretName` | string          | Secret name created by the controller. This contains credential info. |
+
+### TBD
+
+- prefix of object names.
 
 Value
 -----
@@ -56,7 +68,9 @@ Source
 | ----------------- | ------------------------ | ----------------------------- |
 | `configMapKeyRef` | [`ConfigMapKeySelector`] | Selects a key of a ConfigMap. |
 
+### TBD
 
+- Add verify process(nice to have)
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [`ConfigMapKeySelector`]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#configmapkeyselector-v1-core
