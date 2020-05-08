@@ -25,8 +25,8 @@ Components
 ### Workloads
 
 - Operator: Custom controller which automates MySQL management using MySQL CR and User CR.
-- Backup job: CronJob which uploads logical full-backup and binary logs onto object storage.
-- MySQL servers: StatefulSet which works as master/slave.
+- Backup job: `CronJob` which uploads logical full-backup and binary logs onto object storage.
+- MySQL servers: `StatefulSet` which works as master/slave.
 - [cert-manager](https://cert-manager.io/): Automate to provide client certification and master-slave certification.
 
 ### Client
@@ -108,14 +108,15 @@ Users can execute master switchover via `MySQLCluster` CR using the following fi
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
-TBD
+PiTR is performed with the following procedure.
 
-If you want to perform PiTR, you need to download a full dump backup file and subsequent binlog files.
-
-When the `MySQLCluster` with `spec.restore` is created, the operator starts deploying a MySQL cluster as follows.
-
-1. The operator bootstraps the MySQL servers as same as [this procedure](#How-to-deploy-MySQL-servers).
-2. The operator creates backup job if `MySQLCluster.spec.restore.pointInTime` is within today.
-3. The operator lists `MySQLDump` and `MySQLBinlog` based on `MySQLCluster.spec.restore.fromSelector`.
-4. The operator fetches dump files and binary logs from object storage.
-5. The operator restores the MySQL servers at `MySQLCluster.spec.restore.pointInTime`.
+1. When we want to perform PiTR, we should create `MySQLRestoreJob` with appropriate settings.
+2. The operator sets `MySQLCluster.status.ready` as `false` and makes the MySQL cluster block incoming transactions.
+3. The operator makes the MySQL cluster flush binlogs. This binlog is used for recovery if the PiTR fails.
+4. The operator lists `MySQLDump` and `MySQLBinlog` candidates based on `MySQLRestoreJob.spec.dumpSelector` and `MySQLRestoreJob.spec.binlogSelector`.
+5. The operator selects the `MySQLDump` and `MySQLBinlog` CRs based on `MySQLRestoreJob.spec.pointInTime`.
+6.  The operator downloads the dump files and the binlogs from the object storage.
+7.  The operator restores the MySQL servers to the state at `MySQLRestoreJob.spec.pointInTime`.
+8.  If PiTR finishes successfully, `MySQLRestoreJob.status.succeeded` and `MySQLCluster.status.ready` are set `true`.
+    Otherwise, the operator sets `MySQLRestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
+    If the recovery succeeds, the operator sets `MySQLCluster.status.ready` as `true`.

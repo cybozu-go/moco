@@ -26,12 +26,14 @@ MySQLClusterSpec
 MySQLClusterStatus
 ------------------
 
-| Field                | Type   | Description                                                 |
-| -------------------- | ------ | ----------------------------------------------------------- |
-| `phase`              | string | The phase in the [cluster lifecycle](cluster_lifecycle.md). |
-| `health`             | string | The health of the cluster.                                  |
-| `currentMasterName`  | string | Current master name.                                        |
-| `availableInstances` | int    | Number of available instances.                              |
+TBD
+
+| Field                | Type    | Description                                                 |
+| -------------------- | ------- | ----------------------------------------------------------- |
+| `phase`              | string  | The phase in the [cluster lifecycle](cluster_lifecycle.md). |
+| `ready`              | boolean | The health of the cluster.                                  |
+| `currentMasterName`  | string  | Current master name.                                        |
+| `availableInstances` | int     | Number of available instances.                              |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
