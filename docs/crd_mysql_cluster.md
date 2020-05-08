@@ -26,14 +26,24 @@ MySQLClusterSpec
 MySQLClusterStatus
 ------------------
 
-TBD
+| Field                | Type                                                                | Description                    |
+| -------------------- | ------------------------------------------------------------------- | ------------------------------ |
+| `conditions`         | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | The array of conditions.       |
+| `ready`              | boolean                                                             | The health of the cluster.     |
+| `currentMasterName`  | string                                                              | Current master name.           |
+| `availableInstances` | int                                                                 | Number of available instances. |
 
-| Field                | Type    | Description                                                 |
-| -------------------- | ------- | ----------------------------------------------------------- |
-| `phase`              | string  | The phase in the [cluster lifecycle](cluster_lifecycle.md). |
-| `ready`              | boolean | The health of the cluster.                                  |
-| `currentMasterName`  | string  | Current master name.                                        |
-| `availableInstances` | int     | Number of available instances.                              |
+MySQLClusterStatusConditions
+----------------------------
+
+| Field                | Type   | Description                                                      |
+| -------------------- | ------ | ---------------------------------------------------------------- |
+| `type`               | string | The type of condition.                                           |
+| `status`             | string | The status of the condition, one of True, False, Unknown         |
+| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
+| `message`            | string | Human-readable message indicating details about last transition. |
+| `lastHeartbeatTime`  | Time   | The last time we got an update on a given condition.             |
+| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

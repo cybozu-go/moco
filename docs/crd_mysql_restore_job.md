@@ -24,10 +24,22 @@ RestoreJobSpec
 RestoreJobStatus
 ----------------
 
-| Field            | Type    | Description                                    |
-| ---------------- | ------- | ---------------------------------------------- |
-| `completionTime` | [Time]  | The completion time of restore.                |
-| `succeeded`      | boolean | `true` when the job is completed successfully. |
+| Field            | Type                                                | Description                                    |
+| ---------------- | --------------------------------------------------- | ---------------------------------------------- |
+| `completionTime` | [Time]                                              | The completion time of restore.                |
+| `succeeded`      | boolean                                             | `true` when the job is completed successfully. |
+| `conditions`     | \[\][`RestoreJobConditions`](#RestoreJobConditions) | The array of conditions.                       |
+
+RestoreJobConditions
+--------------------
+
+| Field                | Type   | Description                                                      |
+| -------------------- | ------ | ---------------------------------------------------------------- |
+| `type`               | string | The type of condition.                                           |
+| `status`             | string | The status of the condition, one of True, False, Unknown         |
+| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
+| `message`            | string | Human-readable message indicating details about last transition. |
+| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
