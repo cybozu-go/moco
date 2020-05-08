@@ -49,7 +49,9 @@ Components
 
 ### Diagram
 
-TBD
+Overview of components. This figure is just a draft.
+
+![overview](./images/overview.png)
 
 Behaviors
 ---------

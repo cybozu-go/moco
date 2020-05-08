@@ -28,11 +28,6 @@ Documentation
 
 [docs](docs/) directory contains documents about designs and specifications.
 
-Components
-----------
-
-TBD
-
 License
 -------
 SQL Operator is licensed under MIT license.
