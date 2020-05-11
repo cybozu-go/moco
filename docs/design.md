@@ -8,16 +8,18 @@ This Kubernetes operator automates operations for the binlog-based replication o
 
 InnoDB cluster is widely used for the replication purpose, but we choose not to use InnoDB clusetr because it does not allow large (>2GB) transactions.
 
-There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they cannot support the point-in-time-recovery(PiTR) feature.
+There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the point-in-time-recovery(PiTR) feature.
+
 - [oracle/mysql-operator](https://github.com/oracle/mysql-operator) takes backups only with `mysqldump`
 - [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired point-in-time
 
-This operator deploys a group of MySQL servers which replicates data with semi-synchronously and takes backups with both `mysqlpump` and `mysqlbinlog`.
+This operator deploys a group of MySQL servers which replicates data semi-synchronously to the slaves and takes backups with both `mysqlpump` and `mysqlbinlog`.
 
 In this context, we call the group of MySQL servers as MySQL cluster.
 
 Goals
 -----
+
 - Do not lose any data under a given degree of faults.
 - Keep the MySQL cluster available under a given degree of faults.
 - Perform a quick recovery by combining full backup and binary logs.
@@ -38,12 +40,13 @@ Goals
 - `CREATE / DROP TEMPORARY TABLE` during a transaction.
 - Use Custom Resource Definition(CRD) to automate construction of MySQL database using replication on Kubernetes.
 
-### Non-goals
+Non-goals
+---------
 
-- Support for InnoDB cluster
-- Zero downtime upgrade
-- Node fencing
-- Asynchronous replication between remote data centers
+- Support for InnoDB cluster.
+- Zero downtime upgrade.
+- Node fencing.
+- Asynchronous replication between remote data centers.
 
 Components
 ----------
