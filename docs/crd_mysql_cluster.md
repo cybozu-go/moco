@@ -1,10 +1,10 @@
 MySQLCluster
 ============
 
-`MySQLCluster` is a custom resource definition (CRD) that represents
-a MySQL cluster. In this context, MySQL cluster means a cluster of MySQL servers
-which are replicated by `mysqlbinlog` and `mysqlpump` without group replication
-such as InnoDB cluster.
+`MySQLCluster` is a custom resource definition (CRD) that represents 
+a MySQL cluster. In this context, MySQL cluster means a group of 
+MySQL servers which replicates data semi-synchronously to the slaves
+without group replication used in InnoDB cluster.
 
 | Field        | Type                                      | Description                                                           |
 | ------------ | ----------------------------------------- | --------------------------------------------------------------------- |

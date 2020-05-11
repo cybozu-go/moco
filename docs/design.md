@@ -6,7 +6,7 @@ Motivation
 
 This Kubernetes operator automates operations for the binlog-based replication on MySQL.
 
-InnoDB cluster is widely used for the replication purpose, but we choose not to use InnoDB clusetr because it does not allow large (>2GB) transactions.
+InnoDB cluster is widely used for the replication purpose, but we choose not to use InnoDB cluster because it does not allow large (>2GB) transactions.
 
 There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the point-in-time-recovery(PiTR) feature.
 
@@ -37,7 +37,7 @@ Goals
   - The amount of backing storage for each MySQL instance.
   - The number of replicas in the MySQL cluster.
   - Custom configuration parameters.
-- `CREATE / DROP TEMPORARY TABLE` during a transaction.
+- Allow `CREATE / DROP TEMPORARY TABLE` during a transaction.
 - Use Custom Resource Definition(CRD) to automate construction of MySQL database using replication on Kubernetes.
 
 Non-goals
@@ -60,6 +60,7 @@ Components
     - [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
     - [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog writing job and contains the file path.
   - [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
+  - [`MySQLSwitchOverJob`](crd_mysql_switch_over_job.md) represents a switch over job.
 - [cert-manager](https://cert-manager.io/): Automate providing client certifications and master-slave certifications.
 
 ### External components
@@ -68,7 +69,11 @@ Components
 
 ### Tools
 
-- `kubectl-myso`: CLI to manipulate MySQL cluster (e.g. change master manually).
+- `kubectl-myso`: CLI to manipulate MySQL cluster. It provides functionalities such as:
+  - Change master manually.
+  - Port-forward to MySQL servers.
+  - Execute SQL like `mysql -u -p` without credential files.
+  - Fetch a credential file to local environment.
 
 ### Diagram
 
@@ -146,8 +151,21 @@ PiTR is performed with the following procedure.
     Otherwise, the operator sets `MySQLRestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
     If the recovery succeeds, the operator sets `MySQLCluster.status.ready` as `true`.
 
-### TBD
+### How to upgrade MySQL version
 
-- version upgrade
-- switch over
-- backup files verification
+MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.
+In this section, the name of `StatefulSet` is assumed to be `mysql`.
+
+1. Switch master to the pod `mysql-0` if the current master is not `mysql-0`.
+2. Update and apply `StatefulSet` manifest for `mysql`, to trigger upgrading the slaves:
+  - Set `.spec.updateStrategy.rollingUpdate.partition` as one.
+  - Set new image version in `.spec.template.spec.containers`.
+3. Wait for all the slaves to be upgraded.
+4. Switch master to `mysql-1`.
+5. Update and apply `StatefulSet` manifest to trigger upgrading `mysql-0`:
+  - Remove `.spec.updateStrategy.rollingUpdate.partition`.
+6. Wait for the server to be upgraded.
+
+### Candidates of additional features
+
+- Backup files verification

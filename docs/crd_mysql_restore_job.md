@@ -3,13 +3,15 @@ MySQLRestoreJob
 
 `MySQLRestoreJob` is a custom resource definition (CRD) that represents a Point-in-Time Recovery (PiTR) job that targets a given [`MySQLCluster`](crd_mysql_cluster.md).
 
-| Field        | Type                                       | Description                                                           |
-| ------------ | ------------------------------------------ | --------------------------------------------------------------------- |
-| `apiVersion` | string                                     | APIVersion.                                                           |
-| `kind`       | string                                     | Kind.                                                                 |
-| `metadata`   | [ObjectMeta]                               | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLRestoreJobSpec](#RestoreJobSpec)     | Configuration for PiTR.                                               |
-| `status`     | [MySQLRestoreJobStatus](#RestoreJobStatus) | Most recently observed status of the PiTR.                            |
+Restoration fails if appropriate dump or binlog files are lost, and the operator does nothing.
+
+| Field        | Type                                  | Description                                                           |
+| ------------ | ------------------------------------- | --------------------------------------------------------------------- |
+| `apiVersion` | string                                | APIVersion.                                                           |
+| `kind`       | string                                | Kind.                                                                 |
+| `metadata`   | [ObjectMeta]                          | Standard object's metadata with a special annotation described below. |
+| `spec`       | [RestoreJobSpec](#RestoreJobSpec)     | Configuration for PiTR.                                               |
+| `status`     | [RestoreJobStatus](#RestoreJobStatus) | Most recently observed status of the PiTR.                            |
 
 RestoreJobSpec
 --------------
@@ -19,10 +21,6 @@ RestoreJobSpec
 | `targetClusterName` | string | Target [`MySQLCluster`](crd_mysql_cluster.md) name.          |
 | `sourceClusterName` | string | Source [`MySQLCluster`](crd_mysql_cluster.md) name.          |
 | `pointInTime`       | [Time] | Point-in-time of the state which the cluster is restored to. |
-
-### TBD
-
-- how to restore when binlog is lost?
 
 RestoreJobStatus
 ----------------
