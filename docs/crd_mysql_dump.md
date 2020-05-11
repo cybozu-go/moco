@@ -4,6 +4,8 @@ MySQLDump
 `MySQLDump` is a custom resource definition (CRD) that represents
 the location of a MySQL dump file.
 
+**TODO**: How to cleanup zombie files?
+
 | Field        | Type                                | Description                                                           |
 | ------------ | ----------------------------------- | --------------------------------------------------------------------- |
 | `apiVersion` | string                              | APIVersion.                                                           |
@@ -20,11 +22,7 @@ MySQLDumpSpec
 | `clusterName`           | string                                                              | Name of `MySQLCluster`                         |
 | `fileName`              | string                                                              | Name of backup file stored in bucket.          |
 | `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage. |
-
-### TBD
-
-- timestamp when dumped
-- how to cleanup zombie files
+| `timestamp`             | [Time]                                                              | Timestamp of backup file                       |
 
 MySQLDumpStatus
 ---------------

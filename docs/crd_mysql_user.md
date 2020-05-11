@@ -4,8 +4,8 @@ MySQLUser
 `MySQLUser` is a custom resource definition (CRD) that represents a MySQL user.
 See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) for the details.
 
-| Field        | Type                                | Description                                                           |
-|--------------|-------------------------------------|-----------------------------------------------------------------------|
+|    Field     |                Type                 |                              Description                              |
+| ------------ | ----------------------------------- | --------------------------------------------------------------------- |
 | `apiVersion` | string                              | APIVersion.                                                           |
 | `kind`       | string                              | Kind.                                                                 |
 | `metadata`   | [ObjectMeta]                        | Standard object's metadata with a special annotation described below. |
@@ -15,21 +15,29 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 MySQLUserSpec
 -------------
 
-| Field         | Type                                      | Description                                                                                |
-|---------------|-------------------------------------------|--------------------------------------------------------------------------------------------|
-| `clusterName` | string                                    | Name of `MySQLCluster`                                                                     |
-| `roles`       | []string                                  | A set of [MySQL roles](https://dev.mysql.com/doc/refman/8.0/en/roles.html) to access data. |
-| `tls`         | boolean                                   | Use TLS if `true`. Default is `false`.                                                     |
-| `resources`   | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].                                          |
-| `comment`     | string                                    | Comment for the user.                                                                      |
-| `attribute`   | string                                    | Attribute for the user. It should be a valid JSON.                                         |
-| `privLevel`   | []string                                  | A set of [priv_level](https://dev.mysql.com/doc/refman/8.0/en/grant.html) to access data.  |
+|      Field       |                   Type                    |                    Description                     |
+| ---------------- | ----------------------------------------- | -------------------------------------------------- |
+| `clusterName`    | string                                    | Name of `MySQLCluster`                             |
+| `tls`            | boolean                                   | Require TLS connection if `true`. Default is `false`.             |
+| `resources`      | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].  |
+| `comment`        | string                                    | Comment for the user.                              |
+| `attribute`      | string                                    | Attribute for the user. It should be a valid JSON. |
+| `privilegeRules` | \[\][PrivilegeRule](#PrivilegeRule)       | A list of privilege rules.                         |
+
+PrivilegeRule
+-------------
+
+|      Field       |   Type   |                           Description                            |
+| ---------------- | -------- | ---------------------------------------------------------------- |
+| `name`           | string   | Name of `PrivilegeRule`.                                         |
+| `privilegeType`  | []string | See [Privileges Supported by MySQL][GRANT Statement].            |
+| `privilegeLevel` | string   | Target database and/or table (e.g. db_name.*, db_name.tbl_name). |
 
 UserResourceOption
 ------------------
 
-| Field                   | Type | Description                                                                                      |
-|-------------------------|------|--------------------------------------------------------------------------------------------------|
+|          Field          | Type |                                           Description                                            |
+| ----------------------- | ---- | ------------------------------------------------------------------------------------------------ |
 | `maxQueriesPerHour`     | int  | The number of queries an account can issue per hour. Default is zero (no limits).                |
 | `maxUpdatesPerHour`     | int  | The number of updates an account can issue per hour. Default is zero (no limits).                |
 | `maxConnectionsPerHour` | int  | The number of times an account can connect to the server per hour. Default is zero (no limits).  |
@@ -38,8 +46,8 @@ UserResourceOption
 MySQLUserStatus
 ---------------
 
-| Field        | Type                                      | Description                                            |
-|--------------|-------------------------------------------|--------------------------------------------------------|
+|    Field     |                   Type                    |                      Description                       |
+| ------------ | ----------------------------------------- | ------------------------------------------------------ |
 | `roles`      | []string                                  | The user has been updated or not.                      |
 | `tls`        | boolean                                   | TLS is enabled or not.                                 |
 | `resources`  | [UserResourceStatus](#UserResourceStatus) | The [MySQL account resource limits] applied currently. |
@@ -50,8 +58,8 @@ MySQLUserStatus
 UserResourceStatus
 ------------------
 
-| Field                   | Type | Description                                                                                      |
-|-------------------------|------|--------------------------------------------------------------------------------------------------|
+|          Field          | Type |                                           Description                                            |
+| ----------------------- | ---- | ------------------------------------------------------------------------------------------------ |
 | `maxQueriesPerHour`     | int  | The number of queries an account can issue per hour. Default is zero (no limits).                |
 | `maxUpdatesPerHour`     | int  | The number of updates an account can issue per hour. Default is zero (no limits).                |
 | `maxConnectionsPerHour` | int  | The number of times an account can connect to the server per hour. Default is zero (no limits).  |
@@ -60,8 +68,8 @@ UserResourceStatus
 UserCondition
 -------------
 
-| Field                | Type   | Description                                                      |
-|----------------------|--------|------------------------------------------------------------------|
+|        Field         |  Type  |                           Description                            |
+| -------------------- | ------ | ---------------------------------------------------------------- |
 | `type`               | string | The type of condition.                                           |
 | `status`             | string | The status of the condition, one of True, False, Unknown         |
 | `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
@@ -70,3 +78,4 @@ UserCondition
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [MySQL account resource limits]: https://dev.mysql.com/doc/refman/8.0/en/user-resources.html
+[GRANT Statement](https://dev.mysql.com/doc/refman/8.0/en/grant.html)

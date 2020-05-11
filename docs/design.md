@@ -20,14 +20,14 @@ In this context, we call the group of MySQL servers as MySQL cluster.
 Goals
 -----
 
-- Do not lose any data under a given degree of faults.
+- Avoid losing any data under a given degree of faults.
 - Keep the MySQL cluster available under a given degree of faults.
 - Perform a quick recovery by combining full backup and binary logs.
 - Support all four transaction isolation levels.
 - Avoid split-brain.
 - Accept large transactions.
 - Support multiple MySQL versions and automatic upgrading.
-- Support automatic master selection.
+- Support automatic master selection and switchover.
 - Support automatic failover.
 - Support backups at least once in a day.
 - Tenant users can specify the following parameters:
@@ -53,7 +53,7 @@ Components
 
 ### Workloads
 
-- Operator: Custom controller which automates MySQL management with the following custom resources:
+- Operator: Custom controller which automates MySQL management with the following custom namespaced resources:
   - [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
   - [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
   - [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
@@ -150,3 +150,4 @@ PiTR is performed with the following procedure.
 
 - version upgrade
 - switch over
+- backup files verification

@@ -13,18 +13,15 @@ The one creates `MySQLDump` and the other creates `MySQLBinlog`.
 | `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                                          |
 | `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs.                  |
 
-### TBD
-
-- life time of backup files.
-
 MySQLBackupScheduleSpec
 -----------------------
 
-| Field                   | Type                                    | Description                                    |
-| ----------------------- | --------------------------------------- | ---------------------------------------------- |
-| `clusterName`           | string                                  | Name of `MySQLCluster`                         |
-| `schedules`             | \[\][ScheduleSpec](#ScheduleSpec)       | Schedules to get full-dump or binlog.          |
-| `objectStorageEndpoint` | [ObjectStorageSpec](#ObjectStorageSpec) | Specification of S3 compatible object storage. |
+| Field                    | Type                                    | Description                                    |
+| ------------------------ | --------------------------------------- | ---------------------------------------------- |
+| `clusterName`            | string                                  | Name of `MySQLCluster`                         |
+| `schedules`              | \[\][ScheduleSpec](#ScheduleSpec)       | Schedules to get full-dump or binlog.          |
+| `objectStorageEndpoint`  | [ObjectStorageSpec](#ObjectStorageSpec) | Specification of S3 compatible object storage. |
+| `retentionPeriodSeconds` | int                                     | Retention period of each backup file.          |
 
 ScheduleSpec
 ------------
@@ -33,12 +30,6 @@ ScheduleSpec
 | ---------- | ------ | ------------------------------------------------------------------------- |
 | `name`     | string | The unique name of backup schedule.                                       |
 | `schedule` | string | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `type`     | string | The type of backup. Allowed values are `Dump` and `Binlog`.               |
-
-### TBD
-
-- it is prefer to get dump and binlog at once, so type field might not be needed.
-- the life time of backup
 
 ObjectStorageSpec
 -----------------
@@ -48,11 +39,8 @@ ObjectStorageSpec
 | `endpoint`             | [Value](#Value) | Endpoint of object storage.                                           |
 | `region`               | [Value](#Value) | Region of object storage.                                             |
 | `bucket`               | [Value](#Value) | Bucket name.                                                          |
+| `objectPrefix`         | string          | Object prefix.                                                        |
 | `credentialSecretName` | string          | Secret name created by the controller. This contains credential info. |
-
-### TBD
-
-- prefix of object names.
 
 Value
 -----
