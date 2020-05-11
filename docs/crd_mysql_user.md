@@ -15,14 +15,15 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 MySQLUserSpec
 -------------
 
-| Field       | Type                                      | Description                                                                                |
-|-------------|-------------------------------------------|--------------------------------------------------------------------------------------------|
-| `roles`     | []string                                  | A set of [MySQL roles](https://dev.mysql.com/doc/refman/8.0/en/roles.html) to access data. |
-| `tls`       | boolean                                   | Use TLS if `true`. Default is `false`.                                                     |
-| `resources` | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].                                          |
-| `comment`   | string                                    | Comment for the user.                                                                      |
-| `attribute` | string                                    | Attribute for the user. It should be a valid JSON.                                         |
-| `privLevel` | []string                                  | A set of [priv_level](https://dev.mysql.com/doc/refman/8.0/en/grant.html) to access data.  |
+| Field         | Type                                      | Description                                                                                |
+|---------------|-------------------------------------------|--------------------------------------------------------------------------------------------|
+| `clusterName` | string                                    | Name of `MySQLCluster`                                                                     |
+| `roles`       | []string                                  | A set of [MySQL roles](https://dev.mysql.com/doc/refman/8.0/en/roles.html) to access data. |
+| `tls`         | boolean                                   | Use TLS if `true`. Default is `false`.                                                     |
+| `resources`   | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].                                          |
+| `comment`     | string                                    | Comment for the user.                                                                      |
+| `attribute`   | string                                    | Attribute for the user. It should be a valid JSON.                                         |
+| `privLevel`   | []string                                  | A set of [priv_level](https://dev.mysql.com/doc/refman/8.0/en/grant.html) to access data.  |
 
 UserResourceOption
 ------------------

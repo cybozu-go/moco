@@ -16,7 +16,7 @@ MySO is designed to the following properties:
 - Availability
     - Keep the MySQL cluster available under a given degree of faults.
 - Serviceability
-    - MySO performs a quick recovery by combining full backup and binary logs.
+    - Perform a quick recovery by combining full backup and binary logs.
 
 Features
 --------

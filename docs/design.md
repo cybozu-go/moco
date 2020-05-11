@@ -4,62 +4,68 @@ Design notes
 Motivation
 ----------
 
-Automate operations of binlog-based replication on MySQL.
+This Kubernetes operator automates operations for the binlog-based replication on MySQL.
 
-Reason for why we choose semi-sync replication and don't use InnoDB cluster is InnoDB cluster does not allow large (>2GB) transactions.
+InnoDB cluster is widely used for the replication purpose, but we choose not to use InnoDB clusetr because it does not allow large (>2GB) transactions.
 
-These softwares provide operator functionality over MySQL, but they are designed on different motivation.
+There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they cannot support the point-in-time-recovery(PiTR) feature.
+- [oracle/mysql-operator](https://github.com/oracle/mysql-operator) takes backups only with `mysqldump`
+- [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired point-in-time
 
-- https://github.com/oracle/mysql-operator
-  - Lack of binlog-based replication.
-- https://github.com/presslabs/mysql-operator
-  - TBD
-  
+This operator deploys a group of MySQL servers which replicates data with semi-synchronously and takes backups with both `mysqlpump` and `mysqlbinlog`.
+
+In this context, we call the group of MySQL servers as MySQL cluster.
+
 Goals
 -----
-
-- Use Custom Resource Definition to automate construction of MySQL database using replication on Kubernetes.
-- Provide operation functions, such as automatic master selection.
-- While keeping consistency, automating configuration of cluster as much as possible including fail-over situation.
-- Support automatic upgrading.
-- Support multiple MySQL version.
-- Absorb the difference between MySQL versions.
-- TBD: Add more goals based on https://github.com/cybozu-go/neco/issues/720
+- Do not lose any data under a given degree of faults.
+- Keep the MySQL cluster available under a given degree of faults.
+- Perform a quick recovery by combining full backup and binary logs.
+- Support all four transaction isolation levels.
+- Avoid split-brain.
+- Accept large transactions.
+- Support multiple MySQL versions and automatic upgrading.
+- Support automatic master selection.
+- Support automatic failover.
+- Support backups at least once in a day.
+- Tenant users can specify the following parameters:
+  - The version of MySQL instances.
+  - The number of processor cores for each MySQL instance.
+  - The amount of memory for each MySQL instance.
+  - The amount of backing storage for each MySQL instance.
+  - The number of replicas in the MySQL cluster.
+  - Custom configuration parameters.
+- `CREATE / DROP TEMPORARY TABLE` during a transaction.
+- Use Custom Resource Definition(CRD) to automate construction of MySQL database using replication on Kubernetes.
 
 ### Non-goals
 
-- InnoDB cluster
-- Non-stop upgrading
-- node fencing
-- TBD
+- Support for InnoDB cluster
+- Zero downtime upgrade
+- Node fencing
+- Asynchronous replication between remote data centers
 
 Components
 ----------
 
 ### Workloads
 
-- Operator: Custom controller which automates MySQL management using MySQL CR and User CR.
-- Backup job: `CronJob` which uploads logical full-backup and binary logs onto object storage.
-- MySQL servers: `StatefulSet` which works as master/slave.
-- [cert-manager](https://cert-manager.io/): Automate to provide client certification and master-slave certification.
-
-### Client
-
-- `kubectl-myso`: Utility tool to manipulate MySQL from external location (e.g. change master manually).
-
-### Custom Resource Definitions
-
-- [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
-  In this context, MySQL cluster means a cluster of MySQL servers which are constructed by `mysqlpump` and `mysqlbinlog` without group replication such as InnoDB cluster.
-- [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
-- [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
-- [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
-- [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog writing job and contains the file path.
-- [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
+- Operator: Custom controller which automates MySQL management with the following custom resources:
+  - [`MySQLCluster`](crd_mysql_cluster.md) defines a MySQL cluster.
+  - [`MySQLUser`](crd_mysql_user.md) defines a login user in MySQL server.
+  - [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binary schedule.
+    - [`MySQLDump`](crd_mysql_dump.md) represents a full dump job and contains the file path.
+    - [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog writing job and contains the file path.
+  - [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
+- [cert-manager](https://cert-manager.io/): Automate providing client certifications and master-slave certifications.
 
 ### External components
 
 - Object storage: Store logical backups and binary logs. It must have Amazon S3 compatible APIs (e.g. Ceph RGW).
+
+### Tools
+
+- `kubectl-myso`: CLI to manipulate MySQL cluster (e.g. change master manually).
 
 ### Diagram
 
