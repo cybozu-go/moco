@@ -30,12 +30,12 @@ MySQLClusterSpec
 MySQLClusterStatus
 ------------------
 
-| Field               | Type                                                                | Description                 |
-| ------------------- | ------------------------------------------------------------------- | --------------------------- |
-| `conditions`        | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | The array of conditions.    |
-| `ready`             | boolean                                                             | The health of the cluster.  |
-| `currentMasterName` | string                                                              | Current master name.        |
-| `syncedReplicas`    | int                                                                 | Number of synced instances. |
+| Field                | Type                                                                | Description                                |
+| -------------------- | ------------------------------------------------------------------- | ------------------------------------------ |
+| `conditions`         | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | The array of conditions.                   |
+| `ready`              | boolean                                                             | The health of the cluster.                 |
+| `currentMasterIndex` | string                                                              | `StatefulSet` index of the current master. |
+| `syncedReplicas`     | int                                                                 | Number of synced instances.                |
 
 MySQLClusterStatusConditions
 ----------------------------

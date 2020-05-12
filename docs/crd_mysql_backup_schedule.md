@@ -56,9 +56,5 @@ Source
 | ----------------- | ------------------------ | ----------------------------- |
 | `configMapKeyRef` | [`ConfigMapKeySelector`] | Selects a key of a ConfigMap. |
 
-### TBD
-
-- Add verify process(nice to have)
-
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [`ConfigMapKeySelector`]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#configmapkeyselector-v1-core

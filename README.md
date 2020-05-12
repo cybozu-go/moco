@@ -7,16 +7,16 @@
 MySO
 ====
 
-MySO is a MySQL operator to construct and manage lossless semi-sync replicated MySQL instances using binary logs.
+MySO is a MySQL operator to construct and manage lossless semi-synchronous replicated MySQL servers using binary logs.
 
-MySO is designed to the following properties:
+MySO is designed for the following properties:
 
 - Integrity
-    - Do not lose any data under a given degree of faults.
+  - Do not lose any data under a given degree of faults.
 - Availability
-    - Keep the MySQL cluster available under a given degree of faults.
+  - Keep the MySQL cluster available under a given degree of faults.
 - Serviceability
-    - Perform a quick recovery by combining full backup and binary logs.
+  - Perform a quick recovery by combining full backup and binary logs.
 
 Features
 --------
@@ -26,7 +26,7 @@ TBD
 Supported MySQL versions
 ------------------------
 
->=8.0.20
+\>=8.0.20
 
 Documentation
 --------------
@@ -35,7 +35,8 @@ Documentation
 
 License
 -------
-SQL Operator is licensed under MIT license.
+
+MySO is licensed under MIT license.
 
 [releases]: https://github.com/cybozu-go/myso/releases
 [godoc]: https://godoc.org/github.com/cybozu-go/myso

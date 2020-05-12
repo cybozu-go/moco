@@ -22,7 +22,6 @@ MySQLBinlogSpec
 | `lastTransactionTime`   | [Time]                                                              | Time for the last transaction in the binlog file  |
 | `firstTransactionTime`  | [Time]                                                              | Time for the first transaction in the binlog file |
 
-
 MySQLBinlogStatus
 -----------------
 
