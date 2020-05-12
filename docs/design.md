@@ -156,6 +156,10 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
   - Remove `.spec.updateStrategy.rollingUpdate.partition`.
 6. Wait for `mysql-0` to be upgraded.
 
+### TBD
+
+- Write merge strategy of `my.cnf`.
+
 ### Candidates of additional features
 
 - Backup files verification.
