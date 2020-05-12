@@ -151,6 +151,8 @@ PiTR is performed with the following procedure.
     Otherwise, the operator sets `MySQLRestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
     If the recovery succeeds, the operator sets `MySQLCluster.status.ready` as `true`.
 
+Note that `MySQLUser` CRs are not restored automatically. If you want the operator to recognize the existing users, `MySQLUser` CRs must be applied again manually (TBD: detail of behavior about consistency between `MySQLUser` and actual user on MySQL).
+
 ### How to upgrade MySQL version
 
 MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.

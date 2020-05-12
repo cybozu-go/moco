@@ -17,14 +17,15 @@ without group replication used in InnoDB cluster.
 MySQLClusterSpec
 ----------------
 
-| Field                    | Type                    | Description                                                               |
-| ------------------------ | ----------------------- | ------------------------------------------------------------------------- |
-| `rootPasswordSecretName` | string                  | Secret name for root user.                                                |
-| `volumeClaimTemplate`    | [PersistentVolumeClaim] | `PersistentVolumeClaim` for MySQL server container.                       |
-| `size`                   | int                     | The number of instances. Available values are 1, 3, and 5.                |
-| `podTemplate`            | [PodSpec]               | `Pod` template for MySQL server container.                                |
-| `serviceTemplate`        | [ServiceSpec]           | `Service` template for endpoints of MySQL server containers.              |
-| `mySQLConfigName`        | string                  | `ConfigMap` name of MySQL config. ToDO:  write merge strategy of `my.cnf` |
+| Field                    | Type                    | Description                                                                                                                                                                                                         |
+| ------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rootPasswordSecretName` | string                  | Secret name for root user.                                                                                                                                                                                          |
+| `volumeClaimTemplate`    | [PersistentVolumeClaim] | `PersistentVolumeClaim` for MySQL server container.                                                                                                                                                                 |
+| `size`                   | int                     | The number of instances. Available values are 1, 3, and 5.                                                                                                                                                          |
+| `podTemplate`            | [PodSpec]               | `Pod` template for MySQL server container.                                                                                                                                                                          |
+| `serviceTemplate`        | [ServiceSpec]           | `Service` template for endpoints of MySQL server containers.                                                                                                                                                        |
+| `mySQLConfigName`        | string                  | `ConfigMap` name of MySQL config. ToDO:  write merge strategy of `my.cnf`                                                                                                                                           |
+| `replicationSource`      | [SecretReference]       | Configuration of replication source. Keys must appear in [options](https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html).<br/> If this field is given, the `MySQLCluster` works as an intermediate master. |
 
 MySQLClusterStatus
 ------------------
@@ -53,3 +54,4 @@ MySQLClusterStatusConditions
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta
 [PersistentVolumeClaim]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaim-v1-core
 [PodSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podspec-v1-core
+[SecretReference]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretreference-v1-core
