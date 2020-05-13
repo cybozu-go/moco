@@ -1,7 +1,7 @@
-MySQLSwitchoverJob
-==================
+SwitchoverJob
+=============
 
-`MySQLSwitchoverJob` is a custom resource definition (CRD) that represents switchover job.
+`SwitchoverJob` is a custom resource definition (CRD) that represents switchover job.
 
 | Field        | Type                                        | Description                                      |
 | ------------ | ------------------------------------------- | ------------------------------------------------ |
@@ -16,7 +16,7 @@ SwitchoverJobSpec
 
 | Field         | Type   | Description                                                      |
 | ------------- | ------ | ---------------------------------------------------------------- |
-| `clusterName` | string | Target [`MySQLCluster`](crd_mysql_cluster.md) name.              |
+| `clusterName` | string | Target [`Cluster`](crd_mysql_cluster.md) name.              |
 | `masterIndex` | int    | Ordinal of the new master in `StatefulSet` after the switchover. |
 
 SwitchoverJobStatus

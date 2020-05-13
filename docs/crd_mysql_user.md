@@ -1,9 +1,9 @@
-MySQLUser
-=========
+User
+====
 
 ** NOTE "": This custom resource is currently not used.
 
-`MySQLUser` is a custom resource definition (CRD) that represents a MySQL user.
+`User` is a custom resource definition (CRD) that represents a MySQL user.
 See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) for the details.
 
 | Field        | Type                                | Description                                |
@@ -11,15 +11,15 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 | `apiVersion` | string                              | APIVersion.                                |
 | `kind`       | string                              | Kind.                                      |
 | `metadata`   | [ObjectMeta]                        | Standard object's metadata.                |
-| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of the user.                 |
-| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the user. |
+| `spec`       | [UserSpec](#UserSpec)     | Specification of the user.                 |
+| `status`     | [UserStatus](#UserStatus) | Most recently observed status of the user. |
 
-MySQLUserSpec
--------------
+UserSpec
+--------
 
 | Field            | Type                                      | Description                                           |
 | ---------------- | ----------------------------------------- | ----------------------------------------------------- |
-| `clusterName`    | string                                    | Name of `MySQLCluster`                                |
+| `clusterName`    | string                                    | Name of `Cluster`                                |
 | `tls`            | boolean                                   | Require TLS connection if `true`. Default is `false`. |
 | `resources`      | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].     |
 | `comment`        | string                                    | Comment for the user.                                 |
@@ -45,8 +45,8 @@ UserResourceOption
 | `maxConnectionsPerHour` | int  | The number of times an account can connect to the server per hour. Default is zero (no limits).  |
 | `maxUserConnections`    | int  | The number of simultaneous connections to the server by an account. Default is zero (no limits). |
 
-MySQLUserStatus
----------------
+UserStatus
+----------
 
 |    Field     |                   Type                    |                      Description                       |
 | ------------ | ----------------------------------------- | ------------------------------------------------------ |

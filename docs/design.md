@@ -53,12 +53,12 @@ Components
 ### Workloads
 
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
-  - [`MySQLCluster`](crd_mysql_cluster.md) represents a MySQL cluster.
-  - [`MySQLBackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
-    - [`MySQLDump`](crd_mysql_dump.md) represents a full dump file information.
-    - [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog file information.
-  - [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
-  - [`MySQLSwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
+  - [`Cluster`](crd_mysql_cluster.md) represents a MySQL cluster.
+  - [`BackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
+    - [`Dump`](crd_mysql_dump.md) represents a full dump file information.
+    - [`Binlog`](crd_mysql_binlog.md) represents a binlog file information.
+  - [`RestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
+  - [`SwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
 - [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
 
 ### External components
@@ -88,12 +88,12 @@ MySO is implemented as a custom controller, so it includes custom resource defin
 
 The operator has the responsibility to create master-slave configuration of MySQL clusters.
 
-When the `MySQLCluster` is created, the operator starts deploying a new MySQL cluster as follows.
-In this section, the name of `MySQLCluster` is assumed to be `mysql`.
+When the `Cluster` is created, the operator starts deploying a new MySQL cluster as follows.
+In this section, the name of `Cluster` is assumed to be `mysql`.
 
 1. The operator creates `StatefulSet` which has `N`(`N`=3 or 5) `Pod`s and its headless `Service`.
 1. The operator sets `mysql-0` as master and the other `Pod`s as slave.
-   The index of the current master is managed under `MySQLCluster.status.currentMasterIndex`.
+   The index of the current master is managed under `Cluster.status.currentMasterIndex`.
 1. The operator creates some k8s resources.
   - `Service` for accessing master.
   - `Service` for accessing slaves.
@@ -106,7 +106,7 @@ When the master fails, the cluster is recovered in the following process:
 
 1. Stop the `IO_THREAD` of all slaves.
 2. Select and configure new master.
-3. Update `MySQLCluster.status.currentMasterIndex` with the new master name.
+3. Update `Cluster.status.currentMasterIndex` with the new master name.
 4. Turn off read-only mode on the new master
 
 In the process, the operator configures the old master as slave if the server is ready.
@@ -117,33 +117,33 @@ When a slave fails once and it restarts afterwards, the operator configures it t
 
 ### How to execute switchover
 
-Users can execute master switchover by applying `MySQLSwitchoverJob` CR which contains the master index to be switched to.
+Users can execute master switchover by applying `SwitchoverJob` CR which contains the master index to be switched to.
 
 ### How to make a backup
 
-When you create `MySQLBackupSchedule` CR, it creates two `CronJob`s:
+When you create `BackupSchedule` CR, it creates two `CronJob`s:
   - To get full dump backup and store it in a object storage.
   - To get binlog file and store it in a object storage.
 
-If we want to make backups only once, set `MySQLBackupSchedule.spec.schedules` to run once.
+If we want to make backups only once, set `BackupSchedule.spec.schedules` to run once.
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
-When we create a `MySQLRestoreJob`, PiTR is performed with the following procedure.
+When we create a `RestoreJob`, PiTR is performed with the following procedure.
 
-1. The operator sets `MySQLCluster.status.ready` as `false` and make the MySQL cluster block incoming transactions.
+1. The operator sets `Cluster.status.ready` as `false` and make the MySQL cluster block incoming transactions.
 1. The operator makes the MySQL cluster flush binlogs. This binlog is used for recovery if the PiTR fails.
-1. The operator lists `MySQLDump` and `MySQLBinlog` candidates based on `MySQLRestoreJob.spec.sourceClusterName`.
-1. The operator selects the corresponding `MySQLDump` and `MySQLBinlog` CRs  `MySQLRestoreJob.spec.pointInTime`.
+1. The operator lists `Dump` and `Binlog` candidates based on `RestoreJob.spec.sourceClusterName`.
+1. The operator selects the corresponding `Dump` and `Binlog` CRs  `RestoreJob.spec.pointInTime`.
 1. The operator downloads the dump file and the binlogs from the object storage.
-1. The operator restores the MySQL servers to the state at `MySQLRestoreJob.spec.pointInTime`.
-1. If PiTR finishes successfully, `MySQLRestoreJob.status.succeeded` and `MySQLCluster.status.ready` are set `true`.
-   Otherwise, the operator sets `MySQLRestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
-   If the recovery succeeds, the operator sets `MySQLCluster.status.ready` as `true`.
+1. The operator restores the MySQL servers to the state at `RestoreJob.spec.pointInTime`.
+1. If PiTR finishes successfully, `RestoreJob.status.succeeded` and `Cluster.status.ready` are set `true`.
+   Otherwise, the operator sets `RestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
+   If the recovery succeeds, the operator sets `Cluster.status.ready` as `true`.
 
 ### How to upgrade MySQL version of master and slaves
 
-MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.
+MySQL software upgrade is triggered by changing container image specified in `Cluster.spec.podTemplate`.
 In this section, the name of `StatefulSet` is assumed to be `mysql`.
 
 1. Switch master to the pod `mysql-0` if the current master is not `mysql-0`.
@@ -164,4 +164,4 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
 ### Candidates of additional features
 
 - Backup files verification.
-- Manage MySQL users with [`MySQLUser`](crd_mysql_user.md).
+- Manage MySQL users with [`User`](crd_mysql_user.md).

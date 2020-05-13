@@ -1,29 +1,29 @@
-MySQLDump
-=========
+Dump
+====
 
-`MySQLDump` is a custom resource definition (CRD) that represents
+`Dump` is a custom resource definition (CRD) that represents
 the location of a MySQL dump file.
 
-| Field        | Type                                | Description                                  |
-| ------------ | ----------------------------------- | -------------------------------------------- |
-| `apiVersion` | string                              | APIVersion.                                  |
-| `kind`       | string                              | Kind.                                        |
-| `metadata`   | [ObjectMeta]                        | Standard object's metadata.                  |
-| `spec`       | [MySQLDumpSpec](#MySQLDumpSpec)     | Specification of desired state of full dump. |
-| `status`     | [MySQLDumpStatus](#MySQLDumpStatus) | Most recently observed status of full dump.  |
+| Field        | Type                      | Description                                  |
+| ------------ | ------------------------- | -------------------------------------------- |
+| `apiVersion` | string                    | APIVersion.                                  |
+| `kind`       | string                    | Kind.                                        |
+| `metadata`   | [ObjectMeta]              | Standard object's metadata.                  |
+| `spec`       | [DumpSpec](#DumpSpec)     | Specification of desired state of full dump. |
+| `status`     | [DumpStatus](#DumpStatus) | Most recently observed status of full dump.  |
 
-MySQLDumpSpec
--------------
+DumpSpec
+--------
 
 | Field                   | Type                                                                | Description                                    |
 | ----------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
-| `clusterName`           | string                                                              | Name of [`MySQLCluster`](crd_mysql_cluster.md) |
+| `clusterName`           | string                                                              | Name of [`Cluster`](crd_mysql_cluster.md)      |
 | `fileName`              | string                                                              | Name of dump file stored in bucket.            |
 | `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage. |
 | `dumpedTime`            | [Time]                                                              | Timestamp when dump is executed.               |
 
-MySQLDumpStatus
----------------
+DumpStatus
+----------
 
 | Field   | Type | Description    |
 | ------- | ---- | -------------- |

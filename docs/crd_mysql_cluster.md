@@ -1,34 +1,34 @@
-MySQLCluster
-============
+Cluster
+=======
 
-`MySQLCluster` is a custom resource definition (CRD) that represents 
-a MySQL cluster. In this context, MySQL cluster means a group of 
+`Cluster` is a custom resource definition (CRD) that represents
+a MySQL cluster. In this context, MySQL cluster means a group of
 MySQL servers which replicates data semi-synchronously,
 without group replication used in InnoDB cluster, to the slaves.
 
-| Field        | Type                                      | Description                                       |
-| ------------ | ----------------------------------------- | ------------------------------------------------- |
-| `apiVersion` | string                                    | APIVersion.                                       |
-| `kind`       | string                                    | Kind.                                             |
-| `metadata`   | [ObjectMeta]                              | Standard object's metadata.                       |
-| `spec`       | [MySQLClusterSpec](#MySQLClusterSpec)     | Specification of desired behavior of the cluster. |
-| `status`     | [MySQLClusterStatus](#MySQLClusterStatus) | Most recently observed status of the cluster.     |
+| Field        | Type                            | Description                                       |
+| ------------ | ------------------------------- | ------------------------------------------------- |
+| `apiVersion` | string                          | APIVersion.                                       |
+| `kind`       | string                          | Kind.                                             |
+| `metadata`   | [ObjectMeta]                    | Standard object's metadata.                       |
+| `spec`       | [ClusterSpec](#ClusterSpec)     | Specification of desired behavior of the cluster. |
+| `status`     | [ClusterStatus](#ClusterStatus) | Most recently observed status of the cluster.     |
 
-MySQLClusterSpec
-----------------
+ClusterSpec
+-----------
 
-| Field                         | Type                    | Description                                                                                                                                                                                                                          |
-| ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `size`                        | int                     | The number of instances. Available values are 1, 3, and 5.                                                                                                                                                                           |
-| `podTemplate`                 | [PodSpec]               | `Pod` template for MySQL server container.                                                                                                                                                                                           |
-| `volumeClaimTemplate`         | [PersistentVolumeClaim] | `PersistentVolumeClaim` template for MySQL server container.                                                                                                                                                                         |
-| `serviceTemplate`             | [ServiceSpec]           | `Service` template for endpoints of MySQL server containers.                                                                                                                                                                         |
-| `mySQLConfigMapName`          | string                  | `ConfigMap` name of MySQL config.                                                                                                                                                                                                    |
-| `rootPasswordSecretName`      | string                  | `Secret` name for root user.                                                                                                                                                                                                         |
-| `replicationSourceSecretName` | string                  | `Secret` name which contains replication source info. Keys must appear in [options](https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html).<br/> If this field is given, the `MySQLCluster` works as an intermediate master. |
+| Field                         | Type                    | Description                                                                                                                                                                                                                     |
+| ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `size`                        | int                     | The number of instances. Available values are 1, 3, and 5.                                                                                                                                                                      |
+| `podTemplate`                 | [PodSpec]               | `Pod` template for MySQL server container.                                                                                                                                                                                      |
+| `volumeClaimTemplate`         | [PersistentVolumeClaim] | `PersistentVolumeClaim` template for MySQL server container.                                                                                                                                                                    |
+| `serviceTemplate`             | [ServiceSpec]           | `Service` template for endpoints of MySQL server containers.                                                                                                                                                                    |
+| `mySQLConfigMapName`          | string                  | `ConfigMap` name of MySQL config.                                                                                                                                                                                               |
+| `rootPasswordSecretName`      | string                  | `Secret` name for root user.                                                                                                                                                                                                    |
+| `replicationSourceSecretName` | string                  | `Secret` name which contains replication source info. Keys must appear in [options](https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html).<br/> If this field is given, the `Cluster` works as an intermediate master. |
 
-MySQLClusterStatus
-------------------
+ClusterStatus
+-------------
 
 | Field                | Type                                      | Description                                                           |
 | -------------------- | ----------------------------------------- | --------------------------------------------------------------------- |

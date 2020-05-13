@@ -1,8 +1,8 @@
-MySQLRestoreJob
-===============
+RestoreJob
+==========
 
-`MySQLRestoreJob` is a custom resource definition (CRD) that representsa Point-in-Time Recovery (PiTR)
-job that targets a given [`MySQLCluster`](crd_mysql_cluster.md).
+`RestoreJob` is a custom resource definition (CRD) that representsa Point-in-Time Recovery (PiTR)
+job that targets a given [`Cluster`](crd_mysql_cluster.md).
 
 Restoration fails if the appropriate dump or binlog file is lost, and the operator does nothing.
 
@@ -19,8 +19,8 @@ RestoreJobSpec
 
 | Field               | Type   | Description                                                  |
 | ------------------- | ------ | ------------------------------------------------------------ |
-| `targetClusterName` | string | Target [`MySQLCluster`](crd_mysql_cluster.md) name.          |
-| `sourceClusterName` | string | Source [`MySQLCluster`](crd_mysql_cluster.md) name.          |
+| `targetClusterName` | string | Target [`Cluster`](crd_mysql_cluster.md) name.               |
+| `sourceClusterName` | string | Source [`Cluster`](crd_mysql_cluster.md) name.               |
 | `pointInTime`       | [Time] | Point-in-time of the state which the cluster is restored to. |
 
 RestoreJobStatus
@@ -33,7 +33,7 @@ RestoreJobStatus
 | `conditions`     | [][`RestoreJobCondition`](#RestoreJobCondition) | Array of conditions.                           |
 
 RestoreJobCondition
---------------------
+-------------------
 
 | Field                | Type   | Description                                                      |
 | -------------------- | ------ | ---------------------------------------------------------------- |

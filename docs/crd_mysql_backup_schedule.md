@@ -1,35 +1,35 @@
-MySQLBackupSchedule
-===================
+BackupSchedule
+==============
 
-`MySQLBackupSchedule` is a custom resource definition (CRD) that represents
+`BackupSchedule` is a custom resource definition (CRD) that represents
 a full dump & binlog scheduling. This CR creates two `CronJob`s.
-The one is for `MySQLDump` and the other is for `MySQLBinlog`.
+The one is for `Dump` and the other is for `Binlog`.
 
-| Field        | Type                                                    | Description                                          |
-| ------------ | ------------------------------------------------------- | ---------------------------------------------------- |
-| `apiVersion` | string                                                  | APIVersion.                                          |
-| `kind`       | string                                                  | Kind.                                                |
-| `metadata`   | [ObjectMeta]                                            | Standard object's metadata.                          |
-| `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                         |
-| `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
+| Field        | Type                                          | Description                                          |
+| ------------ | --------------------------------------------- | ---------------------------------------------------- |
+| `apiVersion` | string                                        | APIVersion.                                          |
+| `kind`       | string                                        | Kind.                                                |
+| `metadata`   | [ObjectMeta]                                  | Standard object's metadata.                          |
+| `spec`       | [BackupScheduleSpec](#BackupScheduleSpec)     | Specification of scheduling.                         |
+| `status`     | [BackupScheduleStatus](#BackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
 
-MySQLBackupScheduleSpec
------------------------
+BackupScheduleSpec
+------------------
 
 | Field                    | Type                                    | Description                                                               |
 | ------------------------ | --------------------------------------- | ------------------------------------------------------------------------- |
-| `clusterName`            | string                                  | Name of [`MySQLCluster`](crd_mysql_cluster.md)                            |
+| `clusterName`            | string                                  | Name of [`Cluster`](crd_mysql_cluster.md)                                 |
 | `schedule`               | string                                  | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
 | `objectStorageEndpoint`  | [ObjectStorageSpec](#ObjectStorageSpec) | Specification of S3 compatible object storage.                            |
 | `retentionPeriodSeconds` | int                                     | Retention period of each backup file.                                     |
 
-MySQLBackupScheduleStatus
--------------------------
+BackupScheduleStatus
+--------------------
 
-| Field                | Type                                                      | Description                                    |
-| -------------------- | --------------------------------------------------------- | ---------------------------------------------- |
-| `lastCompletionTime` | [Time]                                                    | Completion time of the last backup.            |
-| `succeeded`          | boolean                                                   | `True` when the job is completed successfully. |
+| Field                | Type                                                    | Description                                    |
+| -------------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `lastCompletionTime` | [Time]                                                  | Completion time of the last backup.            |
+| `succeeded`          | boolean                                                 | `True` when the job is completed successfully. |
 | `conditions`         | [][`BackupScheduleCondition`](#BackupScheduleCondition) | The array of conditions.                       |
 
 ObjectStorageSpec
@@ -59,7 +59,7 @@ Source
 | `configMapKeyRef` | [`ConfigMapKeySelector`] | Selects a key of a ConfigMap. |
 
 BackupScheduleCondition
-------------------------
+-----------------------
 
 | Field                | Type   | Description                                                      |
 | -------------------- | ------ | ---------------------------------------------------------------- |
