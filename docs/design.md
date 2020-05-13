@@ -58,7 +58,7 @@ Components
     - [`MySQLDump`](crd_mysql_dump.md) represents a full dump file information.
     - [`MySQLBinlog`](crd_mysql_binlog.md) represents a binlog file information.
   - [`MySQLRestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
-  - [`MySQLSwitchOverJob`](crd_mysql_switch_over_job.md) represents a switch over job.
+  - [`MySQLSwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
 - [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
 
 ### External components
@@ -117,7 +117,7 @@ When a slave fails once and it restarts afterwards, the operator configures it t
 
 ### How to execute switchover
 
-Users can execute master switchover by applying `MySQLSwitchOverJob` CR which contains the master index to be switched to.
+Users can execute master switchover by applying `MySQLSwitchoverJob` CR which contains the master index to be switched to.
 
 ### How to make a backup
 
