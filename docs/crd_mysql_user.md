@@ -1,28 +1,30 @@
 MySQLUser
 =========
 
+** NOTE "": This custom resource is currently not used.
+
 `MySQLUser` is a custom resource definition (CRD) that represents a MySQL user.
 See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) for the details.
 
-|    Field     |                Type                 |                              Description                              |
-| ------------ | ----------------------------------- | --------------------------------------------------------------------- |
-| `apiVersion` | string                              | APIVersion.                                                           |
-| `kind`       | string                              | Kind.                                                                 |
-| `metadata`   | [ObjectMeta]                        | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of the user.                                            |
-| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the user.                            |
+| Field        | Type                                | Description                                |
+| ------------ | ----------------------------------- | ------------------------------------------ |
+| `apiVersion` | string                              | APIVersion.                                |
+| `kind`       | string                              | Kind.                                      |
+| `metadata`   | [ObjectMeta]                        | Standard object's metadata.                |
+| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of the user.                 |
+| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the user. |
 
 MySQLUserSpec
 -------------
 
-|      Field       |                   Type                    |                    Description                     |
-| ---------------- | ----------------------------------------- | -------------------------------------------------- |
-| `clusterName`    | string                                    | Name of `MySQLCluster`                             |
-| `tls`            | boolean                                   | Require TLS connection if `true`. Default is `false`.             |
-| `resources`      | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].  |
-| `comment`        | string                                    | Comment for the user.                              |
-| `attribute`      | string                                    | Attribute for the user. It should be a valid JSON. |
-| `privilegeRules` | \[\][PrivilegeRule](#PrivilegeRule)       | A list of privilege rules.                         |
+| Field            | Type                                      | Description                                           |
+| ---------------- | ----------------------------------------- | ----------------------------------------------------- |
+| `clusterName`    | string                                    | Name of `MySQLCluster`                                |
+| `tls`            | boolean                                   | Require TLS connection if `true`. Default is `false`. |
+| `resources`      | [UserResourceOption](#UserResourceOption) | Specification of [MySQL account resource limits].     |
+| `comment`        | string                                    | Comment for the user.                                 |
+| `attribute`      | string                                    | Attribute for the user. It should be a valid JSON.    |
+| `privilegeRules` | \[\][PrivilegeRule](#PrivilegeRule)       | A list of privilege rules.                            |
 
 PrivilegeRule
 -------------

@@ -4,44 +4,30 @@ MySQLDump
 `MySQLDump` is a custom resource definition (CRD) that represents
 the location of a MySQL dump file.
 
-**TODO**: How to cleanup zombie files?
-
-| Field        | Type                                | Description                                                           |
-| ------------ | ----------------------------------- | --------------------------------------------------------------------- |
-| `apiVersion` | string                              | APIVersion.                                                           |
-| `kind`       | string                              | Kind.                                                                 |
-| `metadata`   | [ObjectMeta]                        | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLDumpSpec](#MySQLDumpSpec)     | Specification of `MySQLDump`.                                         |
-| `status`     | [MySQLDumpStatus](#MySQLDumpStatus) | Most recently observed status of the `MySQLDump`.                     |
+| Field        | Type                                | Description                                  |
+| ------------ | ----------------------------------- | -------------------------------------------- |
+| `apiVersion` | string                              | APIVersion.                                  |
+| `kind`       | string                              | Kind.                                        |
+| `metadata`   | [ObjectMeta]                        | Standard object's metadata.                  |
+| `spec`       | [MySQLDumpSpec](#MySQLDumpSpec)     | Specification of desired state of full dump. |
+| `status`     | [MySQLDumpStatus](#MySQLDumpStatus) | Most recently observed status of full dump.  |
 
 MySQLDumpSpec
 -------------
 
 | Field                   | Type                                                                | Description                                    |
 | ----------------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
-| `clusterName`           | string                                                              | Name of `MySQLCluster`                         |
-| `fileName`              | string                                                              | Name of backup file stored in bucket.          |
+| `clusterName`           | string                                                              | Name of [`MySQLCluster`](crd_mysql_cluster.md) |
+| `fileName`              | string                                                              | Name of dump file stored in bucket.            |
 | `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage. |
-| `timestamp`             | [Time]                                                              | Timestamp of backup file                       |
+| `dumpedTime`            | [Time]                                                              | Timestamp when dump is executed.               |
 
 MySQLDumpStatus
 ---------------
 
-| Field        | Type                                | Description              |
-| ------------ | ----------------------------------- | ------------------------ |
-| `bytes`      | int                                 | Dump file size           |
-| `conditions` | [][`DumpCondition`](#DumpCondition) | The array of conditions. |
-
-DumpCondition
--------------
-
-| Field                | Type   | Description                                                      |
-| -------------------- | ------ | ---------------------------------------------------------------- |
-| `type`               | string | The type of condition.                                           |
-| `status`             | string | The status of the condition, one of True, False, Unknown         |
-| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
-| `message`            | string | Human-readable message indicating details about last transition. |
-| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
+| Field   | Type | Description    |
+| ------- | ---- | -------------- |
+| `bytes` | int  | Dump file size |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

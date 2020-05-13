@@ -6,13 +6,13 @@ a MySQL cluster. In this context, MySQL cluster means a group of
 MySQL servers which replicates data semi-synchronously,
 without group replication used in InnoDB cluster, to the slaves.
 
-| Field        | Type                                      | Description                                                           |
-| ------------ | ----------------------------------------- | --------------------------------------------------------------------- |
-| `apiVersion` | string                                    | APIVersion.                                                           |
-| `kind`       | string                                    | Kind.                                                                 |
-| `metadata`   | [ObjectMeta]                              | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLClusterSpec](#MySQLClusterSpec)     | Specification of desired behavior of the cluster.                     |
-| `status`     | [MySQLClusterStatus](#MySQLClusterStatus) | Most recently observed status of the cluster.                         |
+| Field        | Type                                      | Description                                       |
+| ------------ | ----------------------------------------- | ------------------------------------------------- |
+| `apiVersion` | string                                    | APIVersion.                                       |
+| `kind`       | string                                    | Kind.                                             |
+| `metadata`   | [ObjectMeta]                              | Standard object's metadata.                       |
+| `spec`       | [MySQLClusterSpec](#MySQLClusterSpec)     | Specification of desired behavior of the cluster. |
+| `status`     | [MySQLClusterStatus](#MySQLClusterStatus) | Most recently observed status of the cluster.     |
 
 MySQLClusterSpec
 ----------------
@@ -30,16 +30,16 @@ MySQLClusterSpec
 MySQLClusterStatus
 ------------------
 
-| Field                | Type                                                                | Description                                                           |
-| -------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `conditions`         | \[\][`MySQLClusterStatusConditions`](#MySQLClusterStatusConditions) | Array of conditions.                                                  |
-| `ready`              | boolean                                                             | `True` if the cluster is ready.                                       |
-| `readOnly`           | boolean                                                             | `True` if the cluster is read-only (e.g. the master is intermediate). |
-| `currentMasterIndex` | int                                                                 | Ordinal of the current master in `StatefulSet`.                       |
-| `syncedReplicas`     | int                                                                 | Number of synced instances.                                           |
+| Field                | Type                                      | Description                                                           |
+| -------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| `conditions`         | [][`ClusterCondition`](#ClusterCondition) | Array of conditions.                                                  |
+| `ready`              | boolean                                   | `True` if the cluster is ready.                                       |
+| `readOnly`           | boolean                                   | `True` if the cluster is read-only (e.g. the master is intermediate). |
+| `currentMasterIndex` | int                                       | Ordinal of the current master in `StatefulSet`.                       |
+| `syncedReplicas`     | int                                       | Number of synced instances.                                           |
 
-MySQLClusterStatusConditions
-----------------------------
+ClusterCondition
+----------------
 
 | Field                | Type   | Description                                                      |
 | -------------------- | ------ | ---------------------------------------------------------------- |
@@ -47,7 +47,7 @@ MySQLClusterStatusConditions
 | `status`             | string | Status of the condition. One of `True`, `False`, `Unknown`.      |
 | `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
 | `message`            | string | Human-readable message indicating details about last transition. |
-| `lastTransitionTime` | Time   | Last time the condition transits from one status to another.     |
+| `lastTransitionTime` | Time   | The last time the condition transits from one status to another. |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

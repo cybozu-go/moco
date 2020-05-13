@@ -159,6 +159,7 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
 ### TBD
 
 - Write merge strategy of `my.cnf`.
+- How to clean up zombie backup files on a object storage which does not exist in Kubernetes.
 
 ### Candidates of additional features
 

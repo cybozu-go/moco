@@ -5,13 +5,13 @@ MySQLBackupSchedule
 a full dump & binlog scheduling. This CR creates two `CronJob`s.
 The one is for `MySQLDump` and the other is for `MySQLBinlog`.
 
-| Field        | Type                                                    | Description                                                           |
-| ------------ | ------------------------------------------------------- | --------------------------------------------------------------------- |
-| `apiVersion` | string                                                  | APIVersion.                                                           |
-| `kind`       | string                                                  | Kind.                                                                 |
-| `metadata`   | [ObjectMeta]                                            | Standard object's metadata with a special annotation described below. |
-| `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                                          |
-| `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs.                  |
+| Field        | Type                                                    | Description                                          |
+| ------------ | ------------------------------------------------------- | ---------------------------------------------------- |
+| `apiVersion` | string                                                  | APIVersion.                                          |
+| `kind`       | string                                                  | Kind.                                                |
+| `metadata`   | [ObjectMeta]                                            | Standard object's metadata.                          |
+| `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                         |
+| `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
 
 MySQLBackupScheduleSpec
 -----------------------
@@ -26,11 +26,11 @@ MySQLBackupScheduleSpec
 MySQLBackupScheduleStatus
 -------------------------
 
-| Field                | Type    | Description                                    |
-| -------------------- | ------- | ---------------------------------------------- |
-| `lastCompletionTime` | [Time]  | Completion time of the last backup.            |
-| `succeeded`          | boolean | `True` when the job is completed successfully. |
-| `message`            | string  | Reason for the result.                         |
+| Field                | Type                                                      | Description                                    |
+| -------------------- | --------------------------------------------------------- | ---------------------------------------------- |
+| `lastCompletionTime` | [Time]                                                    | Completion time of the last backup.            |
+| `succeeded`          | boolean                                                   | `True` when the job is completed successfully. |
+| `conditions`         | [][`BackupScheduleCondition`](#BackupScheduleCondition) | The array of conditions.                       |
 
 ObjectStorageSpec
 -----------------
@@ -40,7 +40,7 @@ ObjectStorageSpec
 | `endpoint`             | [Value](#Value) | Endpoint of object storage.                                           |
 | `region`               | [Value](#Value) | Region of object storage.                                             |
 | `bucket`               | [Value](#Value) | Bucket name.                                                          |
-| `directory`            | string          | Directory.                                                            |
+| `prefix`               | string          | File name prefix.                                                     |
 | `credentialSecretName` | string          | Secret name created by the controller. This contains credential info. |
 
 Value
@@ -57,6 +57,17 @@ Source
 | Field             | Type                     | Description                   |
 | ----------------- | ------------------------ | ----------------------------- |
 | `configMapKeyRef` | [`ConfigMapKeySelector`] | Selects a key of a ConfigMap. |
+
+BackupScheduleCondition
+------------------------
+
+| Field                | Type   | Description                                                      |
+| -------------------- | ------ | ---------------------------------------------------------------- |
+| `type`               | string | The type of condition.                                           |
+| `status`             | string | The status of the condition, one of True, False, Unknown         |
+| `reason`             | string | One-word CamelCase reason for the condition's last transition.   |
+| `message`            | string | Human-readable message indicating details about last transition. |
+| `lastTransitionTime` | Time   | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
