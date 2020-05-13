@@ -75,16 +75,7 @@ Components
 
 ### Diagram
 
-Overview of components. This figure is just a draft.
-
-![overview](./images/overview.png)
-
-Behaviors
----------
-
-MySO is implemented as a custom controller, so it includes custom resource definitions(CRD).
-
-### How to bootstrap multiple MySQL servers
+![design_architecture](http://www.plantuml.com/plantuml/png/ZLFBRjim4BppAnRk9JaOgALRKHH1b5EGD6w982XY7oXfOwkcI9MaqXf5_hsardh8jf1U37DcEBExMbvP9uohIyb4vhI1Huk6FNCqhqM6A_NYeL9OXsODma9fYJXIM2bUqJOAsogOqZd2L__pCU2p9srsQ6Rmbm5K8jk93SBDig5ki99wNw9oH0Cybtkhrmrvl-SFC_Zm0wNKlptvnju6tejMy-qExfiwBoZeSfp4EIcv4mvVQibnbFLBvWkAeyDqO3G8vA7jnLHWz4vWz7-1yN5WD1KOlnCOJmVsDiaj3IhHwbQddKDQAAatQsWuEamxHESSyhgi3lV3tvE6S-54AYp2CtVQU2EgTgLModUMwR8IhaYbtxY7z2Tc3Wwo8F1cTyLcwwvbZJwl7P-lm1ajbr8ef988W0QXohhOcQYAiBjencvKVIBhxX7C3eUBvFkbrouBjIFHjPz0NV5iYtajaRHZxEJAu6kHVW2CX8bfncb9rPuw2SqmF5wOpxzqxnG-WT-R7hSJ-A4Z3oS6XSEU6TVV2y83FRhw95os9UBqvYa_wFICRTjXJmtrd-VpyAJFOD4PB6QTMm3yYXy34GixIMNHMZ5QyY7aItcif1OvQyTBB5zuPcdqdpspOoAQ8c9sXSf7ody0)
 
 The operator has the responsibility to create master-slave configuration of MySQL clusters.
 
@@ -99,6 +90,11 @@ In this section, the name of `Cluster` is assumed to be `mysql`.
   - `Service` for accessing slaves.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
+
+Behaviors
+---------
+
+MySO is implemented as a custom controller, so it includes custom resource definitions(CRD).
 
 ### How to execute failover when the master fails
 
