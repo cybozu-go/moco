@@ -17,7 +17,7 @@ a full dump & binlog scheduling.
 
 | Field                    | Type                                    | Required | Description                                                               |
 | ------------------------ | --------------------------------------- | -------- | ------------------------------------------------------------------------- |
-| `clusterName`            | string                                  | Yes      | Name of [`Cluster`](crd_mysql_cluster.md)                                 |
+| `clusterName`            | string                                  | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md)                            |
 | `schedule`               | string                                  | Yes      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
 | `objectStorageEndpoint`  | [ObjectStorageSpec](#ObjectStorageSpec) | Yes      | Specification of S3 compatible object storage.                            |
 | `retentionPeriodSeconds` | int                                     | Yes      | Retention period of each backup file.                                     |

@@ -6,7 +6,7 @@ Motivation
 
 This Kubernetes operator automates operations for the binlog-based replication on MySQL.
 
-InnoDB cluster is widely used for the replication purpose, but we choose not to use InnoDB cluster because it does not allow large (>2GB) transactions.
+InnoDB cluster can be used for the replication purpose, but we choose not to use InnoDB cluster because it does not allow large (>2GB) transactions.
 
 There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the point-in-time-recovery(PiTR) feature.
 
@@ -46,6 +46,7 @@ Non-goals
 - Support for InnoDB cluster.
 - Zero downtime upgrade.
 - Node fencing.
+  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, MySO will restore the cluster appropriately.
 
 Components
 ----------
@@ -53,11 +54,12 @@ Components
 ### Workloads
 
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
-  - [`Cluster`](crd_mysql_cluster.md) represents a MySQL cluster.
+  - [`MySQLCluster`](crd_mysql_cluster.md) represents a MySQL cluster.
   - [`BackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
     - [`Dump`](crd_mysql_dump.md) represents a full dump file information.
     - [`Binlog`](crd_mysql_binlog.md) represents a binlog file information.
   - [`SwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
+- Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
 - [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
 
 ### External components
@@ -74,16 +76,16 @@ Components
 
 ### Diagram
 
-![design_architecture](http://www.plantuml.com/plantuml/png/ZLFBRjim4BppAnRk9JaOgALRKHH1b5EGD6w982XY7oXfOwkcI9MaqXf5_hsardh8jf1U37DcEBExMbvP9uohIyb4vhI1Huk6FNCqhqM6A_NYeL9OXsODma9fYJXIM2bUqJOAsogOqZd2L__pCU2p9srsQ6Rmbm5K8jk93SBDig5ki99wNw9oH0Cybtkhrmrvl-SFC_Zm0wNKlptvnju6tejMy-qExfiwBoZeSfp4EIcv4mvVQibnbFLBvWkAeyDqO3G8vA7jnLHWz4vWz7-1yN5WD1KOlnCOJmVsDiaj3IhHwbQddKDQAAatQsWuEamxHESSyhgi3lV3tvE6S-54AYp2CtVQU2EgTgLModUMwR8IhaYbtxY7z2Tc3Wwo8F1cTyLcwwvbZJwl7P-lm1ajbr8ef988W0QXohhOcQYAiBjencvKVIBhxX7C3eUBvFkbrouBjIFHjPz0NV5iYtajaRHZxEJAu6kHVW2CX8bfncb9rPuw2SqmF5wOpxzqxnG-WT-R7hSJ-A4Z3oS6XSEU6TVV2y83FRhw95os9UBqvYa_wFICRTjXJmtrd-VpyAJFOD4PB6QTMm3yYXy34GixIMNHMZ5QyY7aItcif1OvQyTBB5zuPcdqdpspOoAQ8c9sXSf7ody0)
+![design_architecture](http://www.plantuml.com/plantuml/png/ZPC_Rzim4CLtVeg3koI3WLhQYg88ean6qhWLWg2mF53InLPDaIf9fJMAVFTIF5b_R0lfOe3lFTtlZZxU6CkrhKl1U6QLXYU3cgrZrAz5XebySLB9ZKMz0MwWD6IS98pWhsXymXmJJAeSuQlx-TZeisUbzwXdy9S1L3pRyot2tSfRTrW9TIXHMh81rkN1g8qt7mxnumm-_40Xr6zdlh6tGUt5CVFj7XvydrS4kXwJufYIiUKMNseHuuZrI-GBmj5X6XWCW74pzc8A6Bm33FuF69u2WobW-0umd0RsPQAb3qLABbNQ5KYTMrSRy5vQIA6sYSphiZhhE-UMfzmWh6EhjAj8q4GcqZMOgRBYjaW59l8n_OcPXJRM15on-sAxixUYHaS-teBhnMebLe9BfEP80AzGZnrsngkYMK7KuseqHoJgRfTdxU4g-dxjigj2xYbqwuUDintcjK3AZhMpJmQNJlc1C0f6sbyiXTf35w0RR5uWpETVkiS6dy3z-Rrk9lHs7YT76Xs-TyRTzu7cbPry-injjYFZ_CjpVp3dfR8qOEyCuv_dy-PPNj222rh8scB-72qPhQIZ73V8KPugeNZEkejpReDmpaghFmTcnaOmPOJi1flr5ly0)
 
 The operator has the responsibility to create master-slave configuration of MySQL clusters.
 
-When the `Cluster` is created, the operator starts deploying a new MySQL cluster as follows.
-In this section, the name of `Cluster` is assumed to be `mysql`.
+When the `MySQLCluster` is created, the operator starts deploying a new MySQL cluster as follows.
+In this section, the name of `MySQLCluster` is assumed to be `mysql`.
 
 1. The operator creates `StatefulSet` which has `N`(`N`=3 or 5) `Pod`s and its headless `Service`.
 1. The operator sets `mysql-0` as master and the other `Pod`s as slave.
-   The index of the current master is managed under `Cluster.status.currentMasterIndex`.
+   The index of the current master is managed under `MySQLCluster.status.currentMasterIndex`.
 1. The operator creates some k8s resources.
   - `Service` for accessing master.
   - `Service` for accessing slaves.
@@ -101,7 +103,7 @@ When the master fails, the cluster is recovered in the following process:
 
 1. Stop the `IO_THREAD` of all slaves.
 2. Select and configure new master.
-3. Update `Cluster.status.currentMasterIndex` with the new master name.
+3. Update `MySQLCluster.status.currentMasterIndex` with the new master name.
 4. Turn off read-only mode on the new master
 
 In the process, the operator configures the old master as slave if the server is ready.
@@ -114,29 +116,31 @@ When a slave fails once and it restarts afterwards, the operator configures it t
 
 Users can execute master switchover by applying `SwitchoverJob` CR which contains the master index to be switched to.
 
+Note that while any `SwitchoverJob` is running, another `SwitchoverJob` can be created but the operator waits for the completion of running jobs.
+
 ### How to make a backup
 
 When you create `BackupSchedule` CR, it creates two `CronJob`s:
-  - To get full dump backup and store it in a object storage.
-  - To get binlog file and store it in a object storage.
+  - To get full dump backup and store it in an object storage.
+  - To get binlog file and store it in an object storage.
 
 If we want to make backups only once, set `BackupSchedule.spec.schedules` to run once.
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
-When we create a `Cluster` with `.spec.restore` specified, the operator performs PiTR with the following procedure.
+When we create a `MySQLCluster` with `.spec.restore` specified, the operator performs PiTR with the following procedure.
 
 1. The operator sets the source cluster's `.status.ready` as `False` and make the MySQL cluster block incoming transactions.
-2. The operator makes the MySQL cluster flush binlogs from the source Cluster. This binlog is used for recovery if the PiTR fails.
-3. The operator lists `Dump` and `Binlog` candidates based on `Cluster.spec.restore.sourceClusterName`.
-4. The operator selects the corresponding `Dump` and `Binlog` CRs  `Cluster.spec.restore.pointInTime`.
+2. The operator makes the MySQL cluster flush binlogs from the source `MySQLCluster`. This binlog is used for recovery if the PiTR fails.
+3. The operator lists `Dump` and `Binlog` candidates based on MySQL.spec.restore.sourceClusterName`.
+4. The operator selects the corresponding `Dump` and `Binlog` CRs  `MySQLCluster.spec.restore.pointInTime`.
 5. The operator downloads the dump file and the binlogs from the object storage.
-6. The operator restores the MySQL servers to the state at `Cluster.spec.restore.pointInTime`.
+6. The operator restores the MySQL servers to the state at `MySQLCluster.spec.restore.pointInTime`.
 7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
 
 ### How to upgrade MySQL version of master and slaves
 
-MySQL software upgrade is triggered by changing container image specified in `Cluster.spec.podTemplate`.
+MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.
 In this section, the name of `StatefulSet` is assumed to be `mysql`.
 
 1. Switch master to the pod `mysql-0` if the current master is not `mysql-0`.

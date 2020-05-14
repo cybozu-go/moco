@@ -18,7 +18,7 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 
 | Field            | Type                                      | Required | Description                                           |
 | ---------------- | ----------------------------------------- | -------- | ----------------------------------------------------- |
-| `clusterName`    | string                                    | Yes      | Name of `Cluster`.                                    |
+| `clusterName`    | string                                    | Yes      | Name of `MySQLCluster`.                               |
 | `tls`            | boolean                                   | No       | Require TLS connection if `true`. Default is `false`. |
 | `resources`      | [UserResourceOption](#UserResourceOption) | No       | Specification of [MySQL account resource limits].     |
 | `comment`        | string                                    | No       | Comment for the user.                                 |

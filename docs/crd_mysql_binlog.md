@@ -15,7 +15,7 @@ the location of a MySQL binlog file.
 
 | Field                  | Type                                                         | Required | Description                                       |
 | ---------------------- | ------------------------------------------------------------ | -------- | ------------------------------------------------- |
-| `clusterName`          | string                                                       | Yes      | Name of [`Cluster`](crd_mysql_cluster.md).        |
+| `clusterName`          | string                                                       | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md).   |
 | `fileName`             | string                                                       | Yes      | Name of binlog file stored in bucket.             |
 | `objectStorageRef`     | [ObjectStorageSpec](crd_object_storage.md#ObjectStorageSpec) | Yes      | Reference of `ObjectStorage`.                     |
 | `lastTransactionTime`  | [Time]                                                       | Yes      | Time for the last transaction in the binlog file  |
