@@ -4,37 +4,32 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/myso)](https://goreportcard.com/report/github.com/cybozu-go/myso)
 [![Docker Repository on Quay](https://quay.io/repository/cybozu/myso/status "Docker Repository on Quay")](https://quay.io/repository/cybozu/myso)
 
-MySO
-====
+# MySO
 
 MySO is a MySQL operator to construct and manage lossless semi-synchronous replicated MySQL servers using binary logs.
 
 MySO is designed for the following properties:
 
-- Integrity
+- Durability
   - Do not lose any data under a given degree of faults.
 - Availability
   - Keep the MySQL cluster available under a given degree of faults.
-- Serviceability
-  - Perform a quick recovery by combining full backup and binary logs.
+- Business Continuity
+  - Perform a quick recovery if some failure is occurred.
 
-Features
---------
+## Features
 
 TBD
 
-Supported MySQL versions
-------------------------
+## Supported MySQL versions
 
 \>=8.0.20
 
-Documentation
---------------
+## Documentation
 
 [docs](docs/) directory contains documents about designs and specifications.
 
-License
--------
+## License
 
 MySO is licensed under MIT license.
 

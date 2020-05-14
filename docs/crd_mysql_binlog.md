@@ -1,5 +1,4 @@
-Binlog
-======
+# Binlog
 
 `Binlog` is a custom resource definition (CRD) that represents
 the location of a MySQL binlog file.
@@ -12,23 +11,16 @@ the location of a MySQL binlog file.
 | `spec`       | [BinlogSpec](#BinlogSpec)     | Specification of desired state of binlog. |
 | `status`     | [BinlogStatus](#BinlogStatus) | Most recently observed status of binlog.  |
 
-BinlogSpec
-----------
+## BinlogSpec
 
-| Field                   | Type                                                                | Description                                       |
-| ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------- |
-| `clusterName`           | string                                                              | Name of [`Cluster`](crd_mysql_cluster.md).        |
-| `fileName`              | string                                                              | Name of binlog file stored in bucket.             |
-| `objectStorageEndpoint` | [ObjectStorageSpec](crd_mysql_backup_schedule.md#ObjectStorageSpec) | Specification of S3 compatible object storage.    |
-| `lastTransactionTime`   | [Time]                                                              | Time for the last transaction in the binlog file  |
-| `firstTransactionTime`  | [Time]                                                              | Time for the first transaction in the binlog file |
+| Field                  | Type                                                         | Required | Description                                       |
+| ---------------------- | ------------------------------------------------------------ | -------- | ------------------------------------------------- |
+| `clusterName`          | string                                                       | Yes      | Name of [`Cluster`](crd_mysql_cluster.md).        |
+| `fileName`             | string                                                       | Yes      | Name of binlog file stored in bucket.             |
+| `objectStorageRef`     | [ObjectStorageSpec](crd_object_storage.md#ObjectStorageSpec) | Yes      | Reference of `ObjectStorage`.                     |
+| `lastTransactionTime`  | [Time]                                                       | Yes      | Time for the last transaction in the binlog file  |
+| `firstTransactionTime` | [Time]                                                       | Yes      | Time for the first transaction in the binlog file |
+| `bytes`                | int                                                          | Yes      | Binlog file size                                  |
 
-BinlogStatus
-------------
-
-| Field   | Type | Description      |
-| ------- | ---- | ---------------- |
-| `bytes` | int  | Binlog file size |
-
-[ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
-[Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
+[objectmeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
+[time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

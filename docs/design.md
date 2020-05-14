@@ -57,7 +57,6 @@ Components
   - [`BackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
     - [`Dump`](crd_mysql_dump.md) represents a full dump file information.
     - [`Binlog`](crd_mysql_binlog.md) represents a binlog file information.
-  - [`RestoreJob`](crd_mysql_restore_job.md) represents a Point-in-Time Recovery (PiTR) job.
   - [`SwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
 - [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
 
@@ -125,17 +124,15 @@ If we want to make backups only once, set `BackupSchedule.spec.schedules` to run
 
 ### How to perform Point-in-Time-Recovery(PiTR)
 
-When we create a `RestoreJob`, PiTR is performed with the following procedure.
+When we create a `Cluster` with `.spec.restore` specified, the operator performs PiTR with the following procedure.
 
-1. The operator sets `Cluster.status.ready` as `false` and make the MySQL cluster block incoming transactions.
-1. The operator makes the MySQL cluster flush binlogs. This binlog is used for recovery if the PiTR fails.
-1. The operator lists `Dump` and `Binlog` candidates based on `RestoreJob.spec.sourceClusterName`.
-1. The operator selects the corresponding `Dump` and `Binlog` CRs  `RestoreJob.spec.pointInTime`.
-1. The operator downloads the dump file and the binlogs from the object storage.
-1. The operator restores the MySQL servers to the state at `RestoreJob.spec.pointInTime`.
-1. If PiTR finishes successfully, `RestoreJob.status.succeeded` and `Cluster.status.ready` are set `true`.
-   Otherwise, the operator sets `RestoreJob.status.succeeded` as `false` and tries to recover the state before PiTR.
-   If the recovery succeeds, the operator sets `Cluster.status.ready` as `true`.
+1. The operator sets the source cluster's `.status.ready` as `False` and make the MySQL cluster block incoming transactions.
+2. The operator makes the MySQL cluster flush binlogs from the source Cluster. This binlog is used for recovery if the PiTR fails.
+3. The operator lists `Dump` and `Binlog` candidates based on `Cluster.spec.restore.sourceClusterName`.
+4. The operator selects the corresponding `Dump` and `Binlog` CRs  `Cluster.spec.restore.pointInTime`.
+5. The operator downloads the dump file and the binlogs from the object storage.
+6. The operator restores the MySQL servers to the state at `Cluster.spec.restore.pointInTime`.
+7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
 
 ### How to upgrade MySQL version of master and slaves
 
