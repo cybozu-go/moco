@@ -1,10 +1,7 @@
 Cluster
 =======
 
-`Cluster` is a custom resource definition (CRD) that represents
-a MySQL cluster. In this context, MySQL cluster means a group of
-MySQL servers which replicates data semi-synchronously,
-without group replication used in InnoDB cluster, to the slaves.
+`Cluster` is a custom resource definition (CRD) that represents a cluster of MySQL servers synchronizing data using binlog-based replication.  The cluster does not mean [NDB cluster](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster.html) nor [InnoDB cluster](https://dev.mysql.com/doc/refman/8.0/en/mysql-innodb-cluster-userguide.html)`.
 
 | Field        | Type                            | Description                                       |
 | ------------ | ------------------------------- | ------------------------------------------------- |
