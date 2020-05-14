@@ -1,7 +1,7 @@
 User
 ====
 
-** NOTE "": This custom resource is currently not used.
+**NOTE**: This custom resource will not be implemented soon.
 
 `User` is a custom resource definition (CRD) that represents a MySQL user.
 See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) for the details.
