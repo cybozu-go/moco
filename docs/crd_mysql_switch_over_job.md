@@ -14,10 +14,11 @@ SwitchoverJob
 SwitchoverJobSpec
 -----------------
 
-| Field         | Type   | Required | Description                                                      |
-| ------------- | ------ | -------- | ---------------------------------------------------------------- |
-| `clusterName` | string | Yes      | Target [MySQLCluster](crd_mysql_cluster.md) name.                |
-| `masterIndex` | int    | Yes      | Ordinal of the new master in `StatefulSet` after the switchover. |
+| Field                     | Type   | Required | Description                                                                                                                                                                                                  |
+| ------------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `clusterName`             | string | Yes      | Target [MySQLCluster](crd_mysql_cluster.md) name.                                                                                                                                                            |
+| `masterIndex`             | int    | Yes      | Ordinal of the new master in `StatefulSet` after the switchover.                                                                                                                                             |
+| `ttlSecondsAfterFinished` | int    | No       | Limits the lifetime of a Job that has finished execution (either Complete or Failed).<br />If this field is set, ttlSecondsAfterFinished after the SwitchoverJob finishes, it is eligible to be automatically deleted.|
 
 SwitchoverJobStatus
 -------------------
