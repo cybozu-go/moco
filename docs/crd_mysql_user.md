@@ -1,20 +1,21 @@
-User
-====
+MySQLUser
+=========
 
 **NOTE**: This custom resource will not be implemented soon.
 
-`User` is a custom resource definition (CRD) that represents a MySQL user.
+`MySQLUser` is a custom resource definition (CRD) that represents a MySQL user.
 See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) for the details.
 
-| Field        | Type                      | Description                                |
-| ------------ | ------------------------- | ------------------------------------------ |
-| `apiVersion` | string                    | APIVersion.                                |
-| `kind`       | string                    | Kind.                                      |
-| `metadata`   | [ObjectMeta]              | Standard object's metadata.                |
-| `spec`       | [UserSpec](#UserSpec)     | Specification of the user.                 |
-| `status`     | [UserStatus](#UserStatus) | Most recently observed status of the user. |
+| Field        | Type                                | Description                                |
+| ------------ | ----------------------------------- | ------------------------------------------ |
+| `apiVersion` | string                              | APIVersion.                                |
+| `kind`       | string                              | Kind.                                      |
+| `metadata`   | [ObjectMeta]                        | Standard object's metadata.                |
+| `spec`       | [MySQLUserSpec](#MySQLUserSpec)     | Specification of the user.                 |
+| `status`     | [MySQLUserStatus](#MySQLUserStatus) | Most recently observed status of the user. |
 
-## UserSpec
+MySQLUserSpec
+-------------
 
 | Field            | Type                                      | Required | Description                                           |
 | ---------------- | ----------------------------------------- | -------- | ----------------------------------------------------- |
@@ -25,7 +26,8 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 | `attribute`      | string                                    | No       | Attribute for the user. It should be a valid JSON.    |
 | `privilegeRules` | \[\][PrivilegeRule](#PrivilegeRule)       | No       | A list of privilege rules.                            |
 
-## PrivilegeRule
+PrivilegeRule
+-------------
 
 | Field            | Type     | Required | Description                                                       |
 | ---------------- | -------- | -------- | ----------------------------------------------------------------- |
@@ -33,7 +35,8 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 | `privilegeType`  | []string | Yes      | See [Privileges Supported by MySQL][GRANT statement].             |
 | `privilegeLevel` | string   | Yes      | Target database and/or table (e.g. db_name.\*, db_name.tbl_name). |
 
-## UserResourceOption
+UserResourceOption
+------------------
 
 | Field                   | Type | Required | Description                                                                                      |
 | ----------------------- | ---- | -------- | ------------------------------------------------------------------------------------------------ |
@@ -42,16 +45,17 @@ See [MySQL document](https://dev.mysql.com/doc/refman/8.0/en/create-user.html) f
 | `maxConnectionsPerHour` | int  | No       | The number of times an account can connect to the server per hour. Default is zero (no limits).  |
 | `maxUserConnections`    | int  | No       | The number of simultaneous connections to the server by an account. Default is zero (no limits). |
 
-## UserStatus
+MySQLUserStatus
+---------------
 
-| Field        | Type                                      | Description                                            |
-| ------------ | ----------------------------------------- | ------------------------------------------------------ |
-| `roles`      | []string                                  | The user has been updated or not.                      |
-| `tls`        | boolean                                   | TLS is enabled or not.                                 |
-| `resources`  | [UserResourceStatus](#UserResourceStatus) | The [MySQL account resource limits] applied currently. |
-| `comment`    | string                                    | The comment applied currently.                         |
-| `attribute`  | string                                    | The attribute applied currently.                       |
-| `conditions` | \[\][UserCondition](#UserCondition)       | The array of conditions.                               |
+| Field        | Type                                          | Description                                            |
+| ------------ | --------------------------------------------- | ------------------------------------------------------ |
+| `roles`      | []string                                      | The user has been updated or not.                      |
+| `tls`        | boolean                                       | TLS is enabled or not.                                 |
+| `resources`  | [UserResourceStatus](#UserResourceStatus)     | The [MySQL account resource limits] applied currently. |
+| `comment`    | string                                        | The comment applied currently.                         |
+| `attribute`  | string                                        | The attribute applied currently.                       |
+| `conditions` | \[\][MySQLUserCondition](#MySQLUserCondition) | The array of conditions.                               |
 
 UserResourceStatus
 ------------------
@@ -63,8 +67,8 @@ UserResourceStatus
 | `maxConnectionsPerHour` | int  | The number of times an account can connect to the server per hour. Default is zero (no limits).  |
 | `maxUserConnections`    | int  | The number of simultaneous connections to the server by an account. Default is zero (no limits). |
 
-UserCondition
--------------
+MySQLUserCondition
+------------------
 
 | Field                | Type   | Required | Description                                                      |
 | -------------------- | ------ | -------- | ---------------------------------------------------------------- |
@@ -76,4 +80,4 @@ UserCondition
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
 [MySQL account resource limits]: https://dev.mysql.com/doc/refman/8.0/en/user-resources.html
-[GRANT Statement](https://dev.mysql.com/doc/refman/8.0/en/grant.html)
+[GRANT Statement]: https://dev.mysql.com/doc/refman/8.0/en/grant.html

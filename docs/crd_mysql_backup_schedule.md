@@ -1,40 +1,40 @@
-BackupSchedule
-==============
+MySQLBackupSchedule
+===================
 
-`BackupSchedule` is a custom resource definition (CRD) that represents
+`MySQLBackupSchedule` is a custom resource definition (CRD) that represents
 a full dump & binlog scheduling.
 
-`BackupSchedule` creates `CronJob` which collects binlog and then rotate dump.
+`MySQLBackupSchedule` creates `CronJob` which collects binlog and then rotate dump.
 
-| Field        | Type                                          | Description                                          |
-| ------------ | --------------------------------------------- | ---------------------------------------------------- |
-| `apiVersion` | string                                        | APIVersion.                                          |
-| `kind`       | string                                        | Kind.                                                |
-| `metadata`   | [ObjectMeta]                                  | Standard object's metadata.                          |
-| `spec`       | [BackupScheduleSpec](#BackupScheduleSpec)     | Specification of scheduling.                         |
-| `status`     | [BackupScheduleStatus](#BackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
+| Field        | Type                                                    | Description                                          |
+| ------------ | ------------------------------------------------------- | ---------------------------------------------------- |
+| `apiVersion` | string                                                  | APIVersion.                                          |
+| `kind`       | string                                                  | Kind.                                                |
+| `metadata`   | [ObjectMeta]                                            | Standard object's metadata.                          |
+| `spec`       | [MySQLBackupScheduleSpec](#MySQLBackupScheduleSpec)     | Specification of scheduling.                         |
+| `status`     | [MySQLBackupScheduleStatus](#MySQLBackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
 
-BackupScheduleSpec
------------------
+MySQLBackupScheduleSpec
+-----------------------
 
 | Field               | Type       | Required | Description                                                               |
 | ------------------- | ---------- | -------- | ------------------------------------------------------------------------- |
-| `clusterName`       | string     | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md).                           |
+| `clusterName`       | string     | Yes      | Name of [MySQLCluster](crd_mysql_cluster.md).                             |
 | `schedule`          | string     | Yes      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `objectStorageName` | string     | Yes      | Name of [`ObjectStorage`](crd_object_storage.md).                         |
+| `objectStorageName` | string     | Yes      | Name of [ObjectStorage](crd_object_storage.md).                           |
 | `retentionPeriod`   | [Duration] | Yes      | Retention period of each backup file.                                     |
 
-BackupScheduleStatus
--------------------
+MySQLBackupScheduleStatus
+-------------------------
 
-| Field                | Type                                                    | Description                                    |
-| -------------------- | ------------------------------------------------------- | ---------------------------------------------- |
-| `lastCompletionTime` | [Time]                                                  | Completion time of the last backup.            |
-| `succeeded`          | boolean                                                 | `True` when the job is completed successfully. |
-| `conditions`         | [][`BackupScheduleCondition`](#BackupScheduleCondition) | The array of conditions.                       |
+| Field                | Type                                                              | Description                                    |
+| -------------------- | ----------------------------------------------------------------- | ---------------------------------------------- |
+| `lastCompletionTime` | [Time]                                                            | Completion time of the last backup.            |
+| `succeeded`          | boolean                                                           | `true` when the job is completed successfully. |
+| `conditions`         | \[\][MySQLBackupScheduleCondition](#MySQLBackupScheduleCondition) | The array of conditions.                       |
 
-BackupScheduleCondition
-----------------------
+MySQLBackupScheduleCondition
+----------------------------
 
 | Field                | Type   | Required | Description                                                      |
 | -------------------- | ------ | -------- | ---------------------------------------------------------------- |
