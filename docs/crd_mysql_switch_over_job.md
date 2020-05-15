@@ -29,7 +29,7 @@
 
 | Field                | Type   | Required | Description                                                      |
 | -------------------- | ------ | -------- | ---------------------------------------------------------------- |
-| `type`               | string | Yes      | The type of condition.                                           |
+| `type`               | Enum   | Yes      | The type of condition. Possible values are (TBD).                |
 | `status`             | Enum   | Yes      | Status of the condition. One of `True`, `False`, `Unknown`.      |
 | `reason`             | string | No       | One-word CamelCase reason for the condition's last transition.   |
 | `message`            | string | No       | Human-readable message indicating details about last transition. |

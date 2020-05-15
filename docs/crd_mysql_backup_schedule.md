@@ -1,4 +1,5 @@
-# BackupSchedule
+BackupSchedule
+==============
 
 `BackupSchedule` is a custom resource definition (CRD) that represents
 a full dump & binlog scheduling.
@@ -13,16 +14,18 @@ a full dump & binlog scheduling.
 | `spec`       | [BackupScheduleSpec](#BackupScheduleSpec)     | Specification of scheduling.                         |
 | `status`     | [BackupScheduleStatus](#BackupScheduleStatus) | Most recently observed status of the scheduled jobs. |
 
-## BackupScheduleSpec
+BackupScheduleSpec
+-----------------
 
-| Field                    | Type                                    | Required | Description                                                               |
-| ------------------------ | --------------------------------------- | -------- | ------------------------------------------------------------------------- |
-| `clusterName`            | string                                  | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md)                            |
-| `schedule`               | string                                  | Yes      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
-| `objectStorageEndpoint`  | [ObjectStorageSpec](#ObjectStorageSpec) | Yes      | Specification of S3 compatible object storage.                            |
-| `retentionPeriodSeconds` | int                                     | Yes      | Retention period of each backup file.                                     |
+| Field               | Type       | Required | Description                                                               |
+| ------------------- | ---------- | -------- | ------------------------------------------------------------------------- |
+| `clusterName`       | string     | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md).                           |
+| `schedule`          | string     | Yes      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
+| `objectStorageName` | string     | Yes      | Name of [`ObjectStorage`](crd_object_storage.md).                         |
+| `retentionPeriod`   | [Duration] | Yes      | Retention period of each backup file.                                     |
 
-## BackupScheduleStatus
+BackupScheduleStatus
+-------------------
 
 | Field                | Type                                                    | Description                                    |
 | -------------------- | ------------------------------------------------------- | ---------------------------------------------- |
@@ -30,15 +33,17 @@ a full dump & binlog scheduling.
 | `succeeded`          | boolean                                                 | `True` when the job is completed successfully. |
 | `conditions`         | [][`BackupScheduleCondition`](#BackupScheduleCondition) | The array of conditions.                       |
 
-## BackupScheduleCondition
+BackupScheduleCondition
+----------------------
 
 | Field                | Type   | Required | Description                                                      |
 | -------------------- | ------ | -------- | ---------------------------------------------------------------- |
-| `type`               | string | Yes      | The type of condition.                                           |
+| `type`               | Enum   | Yes      | The type of condition. Possible values are (TBD).                |
 | `status`             | Enum   | Yes      | Status of the condition. One of `True`, `False`, `Unknown`.      |
 | `reason`             | string | No       | One-word CamelCase reason for the condition's last transition.   |
 | `message`            | string | No       | Human-readable message indicating details about last transition. |
 | `lastTransitionTime` | [Time] | Yes      | The last time the condition transit from one status to another.  |
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
+[Duration]: https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1?tab=doc#Duration
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta

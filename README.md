@@ -6,7 +6,8 @@
 
 # MySO
 
-MySO is a MySQL operator to construct and manage lossless semi-synchronous replicated MySQL servers using binary logs.
+MySO is a Kubernetes operator for MySQL.
+Its primary function is to manage a cluster of MySQL using binlog-based, semi-synchronous replication.
 
 MySO is designed for the following properties:
 

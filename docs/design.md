@@ -87,8 +87,8 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
 1. The operator sets `mysql-0` as master and the other `Pod`s as slave.
    The index of the current master is managed under `MySQLCluster.status.currentMasterIndex`.
 1. The operator creates some k8s resources.
-  - `Service` for accessing master.
-  - `Service` for accessing slaves.
+  - `Service` for accessing master, both for MySQL protocol and X protocol.
+  - `Service` for accessing slaves, both for MySQL protocol and X protocol.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
 
