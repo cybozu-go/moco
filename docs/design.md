@@ -8,10 +8,10 @@ This Kubernetes operator automates operations for the binlog-based replication o
 
 InnoDB cluster can be used for the replication purpose, but we choose not to use InnoDB cluster because it does not allow large (>2GB) transactions.
 
-There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the point-in-time-recovery(PiTR) feature.
+There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the Point-in-Time-Recovery(PiTR) feature.
 
 - [oracle/mysql-operator](https://github.com/oracle/mysql-operator) takes backups only with `mysqldump`
-- [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired point-in-time
+- [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired Point-in-Time
 
 This operator deploys a group of MySQL servers which replicates data semi-synchronously to the slaves and takes backups with both `mysqlpump` and `mysqlbinlog`.
 
@@ -54,17 +54,12 @@ Components
 ### Workloads
 
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
-  - [`MySQLCluster`](crd_mysql_cluster.md) represents a MySQL cluster.
-  - [`BackupSchedule`](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
-    - [`Dump`](crd_mysql_dump.md) represents a full dump file information.
-    - [`Binlog`](crd_mysql_binlog.md) represents a binlog file information.
-  - [`SwitchoverJob`](crd_mysql_switch_over_job.md) represents a switchover job.
+  - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
+  - [ObjectStorage] represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
+  - [MySQLBackupSchedule](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
+  - [SwitchoverJob](crd_mysql_switch_over_job.md) represents a switchover job.
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
 - [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
-
-### External components
-
-- Object storage: Store logical backups. It must have Amazon S3 compatible APIs (e.g. Ceph RGW).
 
 ### Tools
 
@@ -76,7 +71,7 @@ Components
 
 ### Diagram
 
-![design_architecture](http://www.plantuml.com/plantuml/png/ZPC_Rzim4CLtVeg3koI3WLhQYg88ean6qhWLWg2mF53InLPDaIf9fJMAVFTIF5b_R0lfOe3lFTtlZZxU6CkrhKl1U6QLXYU3cgrZrAz5XebySLB9ZKMz0MwWD6IS98pWhsXymXmJJAeSuQlx-TZeisUbzwXdy9S1L3pRyot2tSfRTrW9TIXHMh81rkN1g8qt7mxnumm-_40Xr6zdlh6tGUt5CVFj7XvydrS4kXwJufYIiUKMNseHuuZrI-GBmj5X6XWCW74pzc8A6Bm33FuF69u2WobW-0umd0RsPQAb3qLABbNQ5KYTMrSRy5vQIA6sYSphiZhhE-UMfzmWh6EhjAj8q4GcqZMOgRBYjaW59l8n_OcPXJRM15on-sAxixUYHaS-teBhnMebLe9BfEP80AzGZnrsngkYMK7KuseqHoJgRfTdxU4g-dxjigj2xYbqwuUDintcjK3AZhMpJmQNJlc1C0f6sbyiXTf35w0RR5uWpETVkiS6dy3z-Rrk9lHs7YT76Xs-TyRTzu7cbPry-injjYFZ_CjpVp3dfR8qOEyCuv_dy-PPNj222rh8scB-72qPhQIZ73V8KPugeNZEkejpReDmpaghFmTcnaOmPOJi1flr5ly0)
+![design_architecture](http://www.plantuml.com/plantuml/png/ZLEnRjim4Dtv5GTdIGS3jRmLHH54cOoaSKi4GM5xeAIBhPeYLP9AQmJvzrAaB96nXMGHmFSUxzqz7Q-qOSeq5ISiDrB1WqP5LXJLSvdZMZnPg6BQeDe0qr1fJxnHQCwUKJk5FYg8a0N2T_lvtEAJHwdsg2RmGW1gbk_P5k5cwQWRhBayL2YCfm5MrK7BZIFl3lH-0XU_a7FvrvAlv3MeFJjgVjp2dUlpqXjzYfqezKfgcC6dXbEClFxmOkRj_67SC0aCQJlsRCmmUSSm-PZX_ArXCcOuVyTmFcuub4aNJfGgAHOowojabcxg3GmLib9mkLqBTwYRgZuPeM26PKmZhAYHoXRt_ckn5hRNN5OrCsN6SItkiz-O6-XahS0MkostEtFD6uINFf1K2gCaNt8cqFVf0N28xxQtdR2wRBSHLLpDJ-GIJNdJx_OaH2xJdpRVYsKfzbv-xGAW-GwBXdUJnDZ9bU1FU7q0HC8kx4sS_23mlNetBmg0oDO7txvXc4w_zSyLle3L3xWUmSC4B9SgP0O7Efvt4BIFzTpzHsRotS36rq_v89upjRjS1YQKVvrEsoT-1alEO7FI5NFdT47yTbkNumfQbuUQIrQGFaB7qfbbbah-En0T4yaOCPXDLRk35Wp-7hb2KJGL_my0)
 
 The operator has the responsibility to create master-slave configuration of MySQL clusters.
 
@@ -94,8 +89,6 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
 
 Behaviors
 ---------
-
-MySO is implemented as a custom controller, so it includes custom resource definitions(CRD).
 
 ### How to execute failover when the master fails
 
@@ -120,21 +113,21 @@ Note that while any `SwitchoverJob` is running, another `SwitchoverJob` can be c
 
 ### How to make a backup
 
-When you create `BackupSchedule` CR, it creates two `CronJob`s:
-  - To get full dump backup and store it in an object storage.
-  - To get binlog file and store it in an object storage.
+When you create `MySQLBackupSchedule` CR, it creates `CronJob` which stores dump and binlog to an object storage:
 
-If we want to make backups only once, set `BackupSchedule.spec.schedules` to run once.
+If we want to make backups only once, set `MySQLBackupSchedule.spec.schedules` to run once.
 
-### How to perform Point-in-Time-Recovery(PiTR)
+### How to perform PiTR
 
 When we create a `MySQLCluster` with `.spec.restore` specified, the operator performs PiTR with the following procedure.
 
+`.spec.restore` is unable to be updated, so PiTR can be executed only when the cluster is being creating.
+
 1. The operator sets the source cluster's `.status.ready` as `False` and make the MySQL cluster block incoming transactions.
 2. The operator makes the MySQL cluster flush binlogs from the source `MySQLCluster`. This binlog is used for recovery if the PiTR fails.
-3. The operator lists `Dump` and `Binlog` candidates based on MySQL.spec.restore.sourceClusterName`.
-4. The operator selects the corresponding `Dump` and `Binlog` CRs  `MySQLCluster.spec.restore.pointInTime`.
-5. The operator downloads the dump file and the binlogs from the object storage.
+3. The operator lists `MySQLBackup` candidates based on `MySQLCluster.spec.restore.sourceClusterName`.
+4. The operator selects the corresponding `MySQLBackup` CRs  `MySQLCluster.spec.restore.pointInTime`.
+5. The operator downloads the dump file and the binlogs from the object storage specified at `MySQLCluster.spec.restore.pointInTime`.
 6. The operator restores the MySQL servers to the state at `MySQLCluster.spec.restore.pointInTime`.
 7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
 
@@ -161,4 +154,4 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
 ### Candidates of additional features
 
 - Backup files verification.
-- Manage MySQL users with [`User`](crd_mysql_user.md).
+- Manage MySQL users with [MySQLUser](crd_mysql_user.md).
