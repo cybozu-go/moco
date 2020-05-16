@@ -4,7 +4,7 @@ MySQLBackupSchedule
 `MySQLBackupSchedule` is a custom resource definition (CRD) that represents
 a full dump & binlog scheduling.
 
-`MySQLBackupSchedule` creates `CronJob` which collects binlog and then rotate dump.
+`MySQLBackupSchedule` creates `CronJob` that rotates binlog and then creates a full dump of the database.
 
 | Field        | Type                                                    | Description                                          |
 | ------------ | ------------------------------------------------------- | ---------------------------------------------------- |
