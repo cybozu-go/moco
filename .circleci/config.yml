@@ -7,7 +7,6 @@ jobs:
     working_directory: /work
     steps:
     - checkout
-    - run: make test
 
 workflows:
   version: 2
