@@ -30,7 +30,6 @@ type MySQLClusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Replicas is a number of instances. Available values are 1, 3, and 5.
-	// +kubebuilder:default=1
 	// +kubebuilder:validation:Enum=1;3;5
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`

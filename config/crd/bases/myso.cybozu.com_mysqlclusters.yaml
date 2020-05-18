@@ -5817,7 +5817,6 @@ spec:
                   type: object
               type: object
             replicas:
-              default: 1
               description: Replicas is a number of instances. Available values are
                 1, 3, and 5.
               enum:
