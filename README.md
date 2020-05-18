@@ -2,7 +2,6 @@
 [![CircleCI](https://circleci.com/gh/cybozu-go/myso.svg?style=svg)](https://circleci.com/gh/cybozu-go/myso)
 [![GoDoc](https://godoc.org/github.com/cybozu-go/myso?status.svg)][godoc]
 [![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/myso)](https://goreportcard.com/report/github.com/cybozu-go/myso)
-[![Docker Repository on Quay](https://quay.io/repository/cybozu/myso/status "Docker Repository on Quay")](https://quay.io/repository/cybozu/myso)
 
 # MySO
 
@@ -29,6 +28,10 @@ TBD
 ## Documentation
 
 [docs](docs/) directory contains documents about designs and specifications.
+
+## Docker images
+
+Docker images are available on [Quay.io](https://quay.io/repository/cybozu/myso)
 
 ## License
 
