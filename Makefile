@@ -1,5 +1,3 @@
-
-
 # For Go
 GO111MODULE = on
 GOOS := $(shell go env GOOS)
