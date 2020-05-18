@@ -64,6 +64,7 @@ Components
 ### Tools
 
 - `kubectl-myso`: CLI to manipulate MySQL cluster. It provides functionalities such as:
+  - Change master manually.
   - Port-forward to MySQL servers.
   - Execute SQL like `mysql -u -p` without a credential file on a local environment.
   - Fetch a credential file to a local environment.
