@@ -22,7 +22,7 @@ MySQLBackupScheduleSpec
 | `clusterName`         | string | Yes      | Name of [MySQLCluster](crd_mysql_cluster.md).                             |
 | `schedule`            | string | Yes      | Schedule in Cron format, this value is passed to `CronJob.spec.schedule`. |
 | `objectStorageName`   | string | Yes      | Name of [ObjectStorage](crd_object_storage.md).                           |
-| `retentionPeriodDays` | int    | No       | Retention period of each backup file. Default is 0(=infinity).            |
+| `retentionPeriodDays` | int    | No       | Retention period of each MySQLBackup. Default is 0(=infinity).            |
 
 MySQLBackupScheduleStatus
 -------------------------
