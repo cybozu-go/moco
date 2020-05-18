@@ -15,12 +15,13 @@ This includes information about the binlog file and the dump file.
 MySQLBackupSpec
 ---------------
 
-| Field               | Type                      | Required | Description                                       |
-| ------------------- | ------------------------- | -------- | ------------------------------------------------- |
-| `clusterName`       | string                    | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md).   |
-| `objectStorageName` | string                    | Yes      | Name of [`ObjectStorage`](crd_object_storage.md). |
-| `binlog`            | [BinlogSpec](#BinlogSpec) | Yes      | Specification of the binlog file.                 |
-| `dump`              | [DumpSpec](#DumpSpec)     | Yes      | Specification of the dump file.                   |
+| Field                 | Type                      | Required | Description                                                    |
+| --------------------- | ------------------------- | -------- | -------------------------------------------------------------- |
+| `clusterName`         | string                    | Yes      | Name of [`MySQLCluster`](crd_mysql_cluster.md).                |
+| `objectStorageName`   | string                    | Yes      | Name of [`ObjectStorage`](crd_object_storage.md).              |
+| `binlog`              | [BinlogSpec](#BinlogSpec) | Yes      | Specification of the binlog file.                              |
+| `dump`                | [DumpSpec](#DumpSpec)     | Yes      | Specification of the dump file.                                |
+| `retentionPeriodDays` | int                       | No       | Retention period of each backup file. Default is 0(=infinity). |
 
 BinlogSpec
 ----------

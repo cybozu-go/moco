@@ -55,7 +55,7 @@ Components
 
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
   - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
-  - [ObjectStorage] represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
+  - [ObjectStorage](crd_object_storage.md) represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
   - [MySQLBackupSchedule](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
   - [SwitchoverJob](crd_mysql_switch_over_job.md) represents a switchover job.
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
