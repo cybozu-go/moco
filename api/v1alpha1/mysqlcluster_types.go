@@ -32,7 +32,8 @@ type MySQLClusterSpec struct {
 	// Replicas is a number of instances. Available values are 1, 3, and 5.
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Enum=1;3;5
-	Replicas int `json:"replicas"`
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// PodTemplate is a `Pod` template for MySQL serer container.
 	// +kubebuilder:validation:Required
