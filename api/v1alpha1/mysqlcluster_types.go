@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,8 +29,56 @@ type MySQLClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of MySQLCluster. Edit MySQLCluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Replicas is a number of instances. Available values are 1, 3, and 5.
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Enum=1;3;5
+	Replicas int `json:"replicas"`
+
+	// PodTemplate is a `Pod` template for MySQL serer container.
+	// +kubebuilder:validation:Required
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate"`
+
+	// VolumeClaimTemplate is a `PersistentVolumeClaim` template for MySQL serer container.
+	// +kubebuilder:validation:Required
+	VolumeClaimTemplate corev1.PersistentVolumeClaim `json:"volumeClaimTemplate"`
+
+	// ServiceTemplate is a `Service` template for both master and slaves.
+	// +optional
+	ServiceTemplate *corev1.ServiceSpec `json:"serviceTemplate,omitempty"`
+
+	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
+	// +optional
+	MySQLConfigMapName *string `json:"mySQLConfigMapName,omitempty"`
+
+	// RootPasswordSecretName is a `Secret` name for root user config.
+	// +kubebuilder:validation:Required
+	RootPasswordSecretName string `json:"rootPasswordSecretName"`
+
+	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
+	// Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.
+	// If this field is given, the `MySQLCluster` works as an intermediate master.
+	// +optional
+	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
+
+	// Restore is a Specification to perform Point-in-Time-Recovery from existing cluster.
+	// If this field is filled, start restoring. This field is unable to be updated.
+	// +optional
+	Restore *RestoreSpec `json:"restore,omitempty"`
+}
+
+// RestoreSpec defines the desired spec of Point-in-Time-Recovery
+type RestoreSpec struct {
+	// SourceClusterName is a source `MySQLCluster` name.
+	// +kubebuilder:validation:Required
+	SourceClusterName string `json:"restore"`
+
+	// PointInTime is a point-in-time of the state which the cluster is restored to.
+	// +kubebuilder:validation:Required
+	PointInTime metav1.Time `json:"pointInTime"`
+
+	// ObjectStorageName is a name of `ObjectStorage`.
+	// +kubebuilder:validation:Required
+	ObjectStorageName string `json:"objectStorageName"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
@@ -39,6 +88,7 @@ type MySQLClusterStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {
