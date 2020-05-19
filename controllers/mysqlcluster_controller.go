@@ -53,6 +53,7 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services/status,verbs=get;update;patch
 
+// Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("mysqlcluster", req.NamespacedName)
@@ -71,7 +72,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			log.Error(err, "unable to get Secret")
 			return ctrl.Result{}, err
 		}
-		err = r.CreateRootPasswordSecret(ctx, cluster)
+		err = r.createRootPasswordSecret(ctx, cluster)
 		if err != nil {
 			log.Error(err, "unable to create cluster")
 			return ctrl.Result{}, err
@@ -99,12 +100,13 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		log.Error(err, "unable to create-or-update StatefulSet")
 		return ctrl.Result{}, err
 	}
+	log.Info("reconcile successfully", op)
 
 	// CreateOrUpdate headless Service corresponding to StatefulSet
 	headless := &corev1.Service{}
 	headless.SetNamespace(req.Namespace)
 	headless.SetName(req.Name)
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
+	op, err = ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		headless.Labels = map[string]string{
 			appNameKey:      appName,
 			instanceNameKey: cluster.Name,
@@ -120,15 +122,18 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		log.Error(err, "unable to create-or-update headless Service")
 		return ctrl.Result{}, err
 	}
-
 	log.Info("reconcile successfully", op)
+
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager sets up the controller for reconciliation.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mysov1alpha1.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.Secret{}).
 		Complete(r)
 }
 
@@ -178,7 +183,7 @@ OUTER:
 		candidate := "init-" + strconv.Itoa(i)
 		for _, c := range template.Spec.InitContainers {
 			if c.Name == candidate {
-				i += 1
+				i++
 				continue OUTER
 			}
 		}
@@ -186,7 +191,7 @@ OUTER:
 	}
 }
 
-func (r *MySQLClusterReconciler) CreateRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
 	//TBD
 	return nil
 }

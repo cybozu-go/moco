@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myso-controller-manager
+  namespace: myso-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        image: controller:dev
+        imagePullPolicy: Never

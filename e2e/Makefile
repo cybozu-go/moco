@@ -22,20 +22,23 @@ launch-kind:
 shutdown-kind:
 	kind delete cluster || true
 
-test: docker-build
-	kustomize build --load_restrictor='none' ../config/default | kubectl apply -f -
-	kubectl apply -f manifests
-	$(SUDO) env $(GINKGO) --failFast -v .
+test: myso.img
+	kind load image-archive myso.img
+	kustomize build --load_restrictor='none' . | kubectl apply -f -
+	$(GINKGO) --failFast -v .
+
+myso.img: docker-build
+	docker save -o $@ controller:dev
 
 docker-build:
-	docker build .. -t controller:latest
+	docker build .. -t controller:dev
 
 $(KUBECTL):
 	$(SUDO) curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
 	$(SUDO) chmod 755 $(KUBECTL)
 
 setup: $(KUBECTL)
-	GO111MODULE=off go install github.com/onsi/ginkgo/ginkgo
+	GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
 	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar xzf - > kustomize
 	$(SUDO) mv kustomize $(KUSTOMIZE)
 	cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION)
