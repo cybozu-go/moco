@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"strconv"
 
 	mysov1alpha1 "github.com/cybozu-go/myso/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -53,36 +54,35 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Create root password secret if does not exist
+	secret := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			log.Error(err, "unable to get Secret")
+			return ctrl.Result{}, err
+		}
+		err = r.CreateRootPasswordSecret(ctx, cluster)
+		if err != nil {
+			log.Error(err, "unable to create cluster")
+			return ctrl.Result{}, err
+		}
+	}
+
 	// CreateOrUpdate MySQL StatefulSet
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(req.Namespace)
 	sts.SetName(req.Name)
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		sts.Spec.Replicas = cluster.Spec.Replicas
-		sts.Spec.Template = cluster.Spec.PodTemplate
-		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{cluster.Spec.VolumeClaimTemplate}
-		return nil
+		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
+		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update StatefulSet")
 		return ctrl.Result{}, err
 	} else {
 		log.Info("reconcile successfully", op)
-	}
-
-	// Initialize MySQL if the corresponding Secret does not exist
-	secret := &corev1.Secret{}
-	err = r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			log.Error(err, "unable to get Secret")
-			return ctrl.Result{}, err
-		}
-		err = r.SetupMySQLCluster(ctx, req)
-		if err != nil {
-			log.Error(err, "unable to setup cluster")
-			return ctrl.Result{}, err
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -95,7 +95,47 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *MySQLClusterReconciler) SetupMySQLCluster(ctx context.Context, req ctrl.Request) error {
+func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+	c := corev1.Container{}
+	c.Name = r.uniqueInitContainerName(template)
+
+	//TBD
+	c.Image = "quay.io/cybozu/mysql:latest"
+
+	c.Command = []string{
+		//TBD: just a example
+		"entrypoint",
+		"--server_id=$(SERVER_ID)",
+		"--user=mysql",
+		"--relay-log=$(SERVER_ID)-relay-bin",
+		"--report-host=$(SERVER_ID).$(STS_NAME)",
+	}
+	c.EnvFrom = []corev1.EnvFromSource{{
+		SecretRef: &corev1.SecretEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{Name: cluster.Spec.RootPasswordSecretName},
+		}},
+	}
+
+	template.Spec.InitContainers = append(template.Spec.InitContainers, c)
+	return template
+}
+
+func (r *MySQLClusterReconciler) uniqueInitContainerName(template corev1.PodTemplateSpec) string {
+	i := 0
+OUTER:
+	for {
+		candidate := "init-" + strconv.Itoa(i)
+		for _, c := range template.Spec.InitContainers {
+			if c.Name == candidate {
+				i += 1
+				continue OUTER
+			}
+		}
+		return candidate
+	}
+}
+
+func (r *MySQLClusterReconciler) CreateRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
 	//TBD
 	return nil
 }
