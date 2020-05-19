@@ -26,8 +26,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	appNameKey      = "app.kubernetes.io/name"
+	appName         = "myso"
+	instanceNameKey = "app.kubernetes.io/instance"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -43,6 +50,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services/status,verbs=get;update;patch
 
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -74,17 +83,45 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	sts.SetNamespace(req.Namespace)
 	sts.SetName(req.Name)
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
+		sts.Labels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
 		sts.Spec.Replicas = cluster.Spec.Replicas
+		sts.Spec.Selector.MatchLabels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
 		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update StatefulSet")
 		return ctrl.Result{}, err
-	} else {
-		log.Info("reconcile successfully", op)
 	}
 
+	// CreateOrUpdate headless Service corresponding to StatefulSet
+	headless := &corev1.Service{}
+	headless.SetNamespace(req.Namespace)
+	headless.SetName(req.Name)
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
+		headless.Labels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		headless.Spec.ClusterIP = corev1.ClusterIPNone
+		headless.Spec.Selector = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update headless Service")
+		return ctrl.Result{}, err
+	}
+
+	log.Info("reconcile successfully", op)
 	return ctrl.Result{}, nil
 }
 
@@ -96,6 +133,20 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+	log := r.Log.WithValues("mysqlcluster", types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace})
+
+	if template.Labels == nil {
+		template.Labels = make(map[string]string)
+	}
+	if v, ok := template.Labels[appNameKey]; ok && v != appName {
+		log.Info("overwriting Pod template's label", "label", appNameKey)
+	}
+	template.Labels[appNameKey] = appName
+	if v, ok := template.Labels[instanceNameKey]; ok && v != cluster.Name {
+		log.Info("overwriting Pod template's label", "label", instanceNameKey)
+	}
+	template.Labels[instanceNameKey] = cluster.Name
+
 	c := corev1.Container{}
 	c.Name = r.uniqueInitContainerName(template)
 
