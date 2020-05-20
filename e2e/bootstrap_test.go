@@ -16,23 +16,39 @@ func testBootstrap() {
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		By("getting StatefulSet")
-		var stsJSON []byte
 		Eventually(func() error {
 			stdout, stderr, err := kubectl("get", "statefulsets/mysqlcluster", "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
-			stsJSON = stdout
+
+			var sts appsv1.StatefulSet
+			err = json.Unmarshal(stdout, &sts)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal StatefulSet. stdout: %s, err: %v", stdout, err)
+			}
+
+			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 1 {
+				return fmt.Errorf("replicas should be 1: %v", sts.Spec.Replicas)
+			}
+
+			if len(sts.Spec.Template.Spec.InitContainers) != 1 {
+				return fmt.Errorf("number of initContainers should be 1: %d", len(sts.Spec.Template.Spec.InitContainers))
+			}
+
+			initContainerName := "init-0"
+			if sts.Spec.Template.Spec.InitContainers[0].Name != initContainerName {
+				return fmt.Errorf(
+					"name of first initContainer should be  %s: %s",
+					initContainerName,
+					sts.Spec.Template.Spec.InitContainers[0].Name,
+				)
+			}
+
+			if sts.Status.ReadyReplicas != 1 {
+				return fmt.Errorf("readyReplicas should be 1: %v", sts.Status.ReadyReplicas)
+			}
 			return nil
 		}).Should(Succeed())
-
-		var sts appsv1.StatefulSet
-		err = json.Unmarshal(stsJSON, &sts)
-		Expect(err).ShouldNot(HaveOccurred(), "stsJSON=%s", stsJSON)
-
-		Expect(sts.Spec.Replicas).ShouldNot(BeNil())
-		Expect(int(*sts.Spec.Replicas)).Should(Equal(1))
-		Expect(sts.Spec.Template.Spec.InitContainers).Should(HaveLen(1))
-		Expect(sts.Spec.Template.Spec.InitContainers[0].Name).Should(Equal("init-0"))
 	})
 }

@@ -96,6 +96,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			instanceNameKey: cluster.Name,
 		}
 		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
+		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{cluster.Spec.VolumeClaimTemplate}
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
@@ -160,14 +161,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec,
 	//TBD
 	c.Image = "mysql:latest"
 
-	c.Command = []string{
-		//TBD: just a example
-		"entrypoint",
-		"--server_id=$(SERVER_ID)",
-		"--user=mysql",
-		"--relay-log=$(SERVER_ID)-relay-bin",
-		"--report-host=$(SERVER_ID).$(STS_NAME)",
-	}
+	c.Command = []string{"echo", "init"}
 	template.Spec.InitContainers = append(template.Spec.InitContainers, c)
 	return template
 }
