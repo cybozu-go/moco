@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:latest
+        image: mysql:8.0.20
         ports:
         - containerPort: 3306
           protocol: TCP

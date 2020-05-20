@@ -158,7 +158,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec,
 	c.Name = r.uniqueInitContainerName(template)
 
 	//TBD
-	c.Image = "quay.io/cybozu/mysql:latest"
+	c.Image = "mysql:latest"
 
 	c.Command = []string{
 		//TBD: just a example
@@ -168,12 +168,6 @@ func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec,
 		"--relay-log=$(SERVER_ID)-relay-bin",
 		"--report-host=$(SERVER_ID).$(STS_NAME)",
 	}
-	c.EnvFrom = []corev1.EnvFromSource{{
-		SecretRef: &corev1.SecretEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: cluster.Spec.RootPasswordSecretName},
-		}},
-	}
-
 	template.Spec.InitContainers = append(template.Spec.InitContainers, c)
 	return template
 }
