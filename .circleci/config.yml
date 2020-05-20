@@ -45,9 +45,6 @@ jobs:
       - run: make test
       - run: mkdir -p build
       - run: make manager
-      - persist_to_workspace:
-          root: build
-          paths: ["*"]
   image:
     docker:
       - image: docker:stable

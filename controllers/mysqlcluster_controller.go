@@ -61,7 +61,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 	cluster := &mysov1alpha1.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
-		log.Error(err, "unable to fetch MySQLCluster")
+		log.Error(err, "unable to fetch MySQLCluster", "name", req.NamespacedName)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
