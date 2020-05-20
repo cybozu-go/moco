@@ -30,7 +30,8 @@ func testBootstrap() {
 		err = json.Unmarshal(stsJSON, &sts)
 		Expect(err).ShouldNot(HaveOccurred(), "stsJSON=%s", stsJSON)
 
-		Expect(sts.Spec.Replicas).Should(Equal(1))
+		Expect(sts.Spec.Replicas).ShouldNot(BeNil())
+		Expect(int(*sts.Spec.Replicas)).Should(Equal(1))
 		Expect(sts.Spec.Template.Spec.InitContainers).Should(HaveLen(1))
 		Expect(sts.Spec.Template.Spec.InitContainers[0].Name).Should(Equal("init-0"))
 	})

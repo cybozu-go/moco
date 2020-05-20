@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -89,6 +90,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			instanceNameKey: cluster.Name,
 		}
 		sts.Spec.Replicas = cluster.Spec.Replicas
+		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
 			appNameKey:      appName,
 			instanceNameKey: cluster.Name,
