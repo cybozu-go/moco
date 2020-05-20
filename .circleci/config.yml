@@ -19,9 +19,9 @@ commands:
       - run:
           name: Setup
           command: |
-            make setup SUDO=""
+            make setup
             cd e2e
-            make setup SUDO=""
+            make setup
       - run:
           name: Run test
           command: |
