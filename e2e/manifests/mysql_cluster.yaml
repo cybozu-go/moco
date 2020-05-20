@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: mysql:8.0.20
+        image: quay.io/cybozu/mysql:8.0.18
         ports:
         - containerPort: 3306
           protocol: TCP
@@ -22,11 +22,16 @@ spec:
             command: ["/healthcheck.sh"]
           initialDelaySeconds: 10
           periodSeconds: 5
-  volumeClaimTemplate:
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+        volumeMounts:
+          - name: mysql-data
+            mountPath: /var/mysql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
   mySQLConfigMapName: mycnf
   rootPasswordSecretName: root-password

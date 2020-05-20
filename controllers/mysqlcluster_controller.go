@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"strconv"
 
 	mysov1alpha1 "github.com/cybozu-go/myso/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -96,14 +95,17 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			instanceNameKey: cluster.Name,
 		}
 		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
-		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{cluster.Spec.VolumeClaimTemplate}
+		log.Info("debug", "cluster.Spec.VolumeClaimTemplates", cluster.Spec.VolumeClaimTemplates)
+		log.Info("debug", "cluster.Spec.VolumeClaimTemplates[0]", cluster.Spec.VolumeClaimTemplates[0])
+		sts.Spec.VolumeClaimTemplates = r.getVolumeClaimTemplates(cluster.Spec.VolumeClaimTemplates, cluster)
+		log.Info("debug", "sts.Spec.VolumeClaimTemplates", sts.Spec.VolumeClaimTemplates)
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update StatefulSet")
 		return ctrl.Result{}, err
 	}
-	log.Info("reconcile successfully", op)
+	log.Info("reconcile successfully", "op", op)
 
 	// CreateOrUpdate headless Service corresponding to StatefulSet
 	headless := &corev1.Service{}
@@ -125,7 +127,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		log.Error(err, "unable to create-or-update headless Service")
 		return ctrl.Result{}, err
 	}
-	log.Info("reconcile successfully", op)
+	log.Info("reconcile successfully", "op", op)
 
 	return ctrl.Result{}, nil
 }
@@ -140,45 +142,54 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *MySQLClusterReconciler) getPodTemplate(template corev1.PodTemplateSpec, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplateSpec, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
 	log := r.Log.WithValues("mysqlcluster", types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace})
 
-	if template.Labels == nil {
-		template.Labels = make(map[string]string)
+	newTemplate := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            template.Name,
+			GenerateName:    template.GenerateName,
+			Namespace:       cluster.Namespace,
+			Labels:          template.Labels,
+			Annotations:     template.Annotations,
+			OwnerReferences: template.OwnerReferences,
+		},
+		Spec: template.Spec,
 	}
-	if v, ok := template.Labels[appNameKey]; ok && v != appName {
+
+	if newTemplate.Labels == nil {
+		newTemplate.Labels = make(map[string]string)
+	}
+	if v, ok := newTemplate.Labels[appNameKey]; ok && v != appName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	template.Labels[appNameKey] = appName
-	if v, ok := template.Labels[instanceNameKey]; ok && v != cluster.Name {
+	newTemplate.Labels[appNameKey] = appName
+	if v, ok := newTemplate.Labels[instanceNameKey]; ok && v != cluster.Name {
 		log.Info("overwriting Pod template's label", "label", instanceNameKey)
 	}
-	template.Labels[instanceNameKey] = cluster.Name
+	newTemplate.Labels[instanceNameKey] = cluster.Name
 
-	c := corev1.Container{}
-	c.Name = r.uniqueInitContainerName(template)
-
-	//TBD
-	c.Image = "mysql:latest"
-
-	c.Command = []string{"echo", "init"}
-	template.Spec.InitContainers = append(template.Spec.InitContainers, c)
-	return template
+	return newTemplate
 }
 
-func (r *MySQLClusterReconciler) uniqueInitContainerName(template corev1.PodTemplateSpec) string {
-	i := 0
-OUTER:
-	for {
-		candidate := "init-" + strconv.Itoa(i)
-		for _, c := range template.Spec.InitContainers {
-			if c.Name == candidate {
-				i++
-				continue OUTER
-			}
+func (r *MySQLClusterReconciler) getVolumeClaimTemplates(templates []mysov1alpha1.PersistentVolumeClaim, cluster *mysov1alpha1.MySQLCluster) []corev1.PersistentVolumeClaim {
+	newTemplates := make([]corev1.PersistentVolumeClaim, len(templates))
+
+	for i, template := range templates {
+		newTemplates[i] = corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            template.Name,
+				GenerateName:    template.GenerateName,
+				Namespace:       cluster.Namespace,
+				Labels:          template.Labels,
+				Annotations:     template.Annotations,
+				OwnerReferences: template.OwnerReferences,
+			},
+			Spec: template.Spec,
 		}
-		return candidate
 	}
+
+	return newTemplates
 }
 
 func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
