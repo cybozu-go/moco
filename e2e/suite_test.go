@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +10,10 @@ import (
 )
 
 func TestE2E(t *testing.T) {
+	if os.Getenv("E2ETEST") == "" {
+		t.Skip("Run under e2e/")
+	}
+
 	RegisterFailHandler(Fail)
 
 	SetDefaultEventuallyPollingInterval(time.Second)

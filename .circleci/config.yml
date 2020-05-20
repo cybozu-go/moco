@@ -43,6 +43,7 @@ jobs:
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
       - run: make test
+      - run: mkdir -p build
       - run: make manager
       - persist_to_workspace:
           root: build

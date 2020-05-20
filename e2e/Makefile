@@ -25,7 +25,7 @@ shutdown-kind:
 test: myso.img
 	kind load image-archive myso.img
 	kustomize build --load_restrictor='none' . | kubectl apply -f -
-	$(GINKGO) --failFast -v .
+	env E2ETEST=1 $(GINKGO) --failFast -v .
 
 myso.img: docker-build
 	docker save -o $@ controller:dev
