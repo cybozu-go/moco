@@ -19,18 +19,23 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+KUBEBUILDER_VERSION := 2.3.1
+CTRLTOOLS_VERSION := 0.2.9
+
 all: manager
 
 # Run tests
-test: generate fmt vet manifests
+test: generate manifests
+	cd /tmp; GO111MODULE=on GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker
 	test -z "$$(gofmt -s -l . | grep -v '^vendor' | tee /dev/stderr)"
 	test -z "$$(golint $$(go list -mod=vendor ./... | grep -v /vendor/) | tee /dev/stderr)"
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
-	test -z "$$(restrictpkg -packages=html/template,log ./... 2>&1 | tee /dev/stderr)"
+	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... | grep -v /vendor/ ) 2>&1 | tee /dev/stderr)"
+	ineffassign .
 	go build -mod=vendor ./...
 	go test -race -v -coverprofile cover.out ./...
 	go vet ./...
-	ineffassign .
+	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
 
 # Build manager binary
 manager: generate fmt
