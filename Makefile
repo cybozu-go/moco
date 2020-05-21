@@ -99,6 +99,9 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+bin/entrypoint:
+	go build -o $@ ./cmd/entrypoint
+
 mod:
 	go mod tidy
 	go mod vendor

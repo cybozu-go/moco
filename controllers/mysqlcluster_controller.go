@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"crypto/rand"
 
 	mysov1alpha1 "github.com/cybozu-go/myso/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -35,6 +36,14 @@ const (
 	appNameKey      = "app.kubernetes.io/name"
 	appName         = "myso"
 	instanceNameKey = "app.kubernetes.io/instance"
+
+	containerName     = "mysqld"
+	initContainerName = "myso-init"
+
+	mysqlDataVolumeName = "mysql-data"
+	varrunVolumeName    = "varrun"
+	varlogVolumeName    = "varlog"
+	tmpVolumeName       = "tmp"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -95,10 +104,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			instanceNameKey: cluster.Name,
 		}
 		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
-		log.Info("debug", "cluster.Spec.VolumeClaimTemplates", cluster.Spec.VolumeClaimTemplates)
-		log.Info("debug", "cluster.Spec.VolumeClaimTemplates[0]", cluster.Spec.VolumeClaimTemplates[0])
 		sts.Spec.VolumeClaimTemplates = r.getVolumeClaimTemplates(cluster.Spec.VolumeClaimTemplates, cluster)
-		log.Info("debug", "sts.Spec.VolumeClaimTemplates", sts.Spec.VolumeClaimTemplates)
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
@@ -169,6 +175,122 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 	}
 	newTemplate.Labels[instanceNameKey] = cluster.Name
 
+	newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes,
+		corev1.Volume{
+			Name: varrunVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		corev1.Volume{
+			Name: varlogVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		corev1.Volume{
+			Name: tmpVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	)
+
+	for i := range newTemplate.Spec.Containers {
+		c := &newTemplate.Spec.Containers[i]
+		if c.Name != containerName {
+			continue
+		}
+
+		c.Env = append(c.Env,
+			corev1.EnvVar{
+				Name: "MYSQL_ROOT_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cluster.Spec.RootPasswordSecretName,
+						},
+						Key: "MYSQL_ROOT_PASSWORD",
+					},
+				},
+			},
+			corev1.EnvVar{
+				Name: "MYSQL_ROOT_HOST",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		)
+		c.VolumeMounts = append(c.VolumeMounts,
+			corev1.VolumeMount{
+				MountPath: "/var/lib/mysql",
+				Name:      mysqlDataVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: "/tmp",
+				Name:      tmpVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: "/var/run/mysqld",
+				Name:      varrunVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: "/var/log",
+				Name:      varlogVolumeName,
+			},
+		)
+	}
+
+	c := corev1.Container{}
+	c.Name = initContainerName
+	c.Image = "mysql:dev"
+	c.Command = []string{"/entrypoint", "init"}
+	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
+		SecretRef: &corev1.SecretEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{Name: cluster.Spec.RootPasswordSecretName},
+		},
+	})
+	// MYSQL_ROOT_HOST is used in setup script.
+	c.Env = append(c.Env,
+		corev1.EnvVar{
+			Name: "MYSQL_ROOT_HOST",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+		corev1.EnvVar{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	)
+	c.VolumeMounts = append(c.VolumeMounts,
+		corev1.VolumeMount{
+			MountPath: "/var/lib/mysql",
+			Name:      mysqlDataVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: "/tmp",
+			Name:      tmpVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: "/var/run/mysqld",
+			Name:      varrunVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: "/var/log",
+			Name:      varlogVolumeName,
+		},
+	)
+
+	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers, c)
 	return newTemplate
 }
 
@@ -193,6 +315,68 @@ func (r *MySQLClusterReconciler) getVolumeClaimTemplates(templates []mysov1alpha
 }
 
 func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
-	//TBD
-	return nil
+	secret := &corev1.Secret{}
+	secret.SetNamespace(cluster.Namespace)
+	secret.SetName(cluster.Spec.RootPasswordSecretName)
+
+	secret.Labels = map[string]string{
+		appNameKey:      appName,
+		instanceNameKey: cluster.Name,
+	}
+	rootPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	operatorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	replicatorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	donorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	secret.Data = map[string][]byte{
+		"MYSQL_ROOT_PASSWORD":        []byte(rootPass),
+		"MYSQL_CLUSTER_DOMAIN":       []byte(cluster.Name + "." + cluster.Namespace),
+		"MYSQL_OPERATOR_USER":        []byte("myso"),
+		"MYSQL_OPERATOR_PASSWORD":    []byte(operatorPass),
+		"MYSQL_REPLICATION_USER":     []byte("myso-repl"),
+		"MYSQL_REPLICATION_PASSWORD": []byte(replicatorPass),
+		"MYSQL_CLONE_DONOR_USER":     []byte("myso-clone"),
+		"MYSQL_CLONE_DONOR_PASSWORD": []byte(donorPass),
+	}
+
+	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	return r.Client.Create(ctx, secret)
+}
+
+func generateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func generateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes, err := generateRandomBytes(n)
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
 }

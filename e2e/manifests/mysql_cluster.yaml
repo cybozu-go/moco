@@ -8,23 +8,24 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.18
+        image: mysql:dev
         ports:
         - containerPort: 3306
           protocol: TCP
         livenessProbe:
           exec:
-            command: ["/healthcheck.sh"]
+            command: ["/ping.sh"]
           initialDelaySeconds: 5
           periodSeconds: 5
         readinessProbe:
           exec:
-            command: ["/healthcheck.sh"]
+            command: ["/ping.sh"]
           initialDelaySeconds: 10
           periodSeconds: 5
-        volumeMounts:
-          - name: mysql-data
-            mountPath: /var/mysql/data
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
   volumeClaimTemplates:
     - metadata:
         name: mysql-data

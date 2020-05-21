@@ -22,16 +22,23 @@ launch-kind:
 shutdown-kind:
 	kind delete cluster || true
 
-test: myso.img
-	kind load image-archive myso.img
+test:
+	-kubectl delete -n e2e-test mysqlcluster --all
+	-kubectl delete -n e2e-test pvc --all
+	kubectl delete crd --all
 	kustomize build --load_restrictor='none' . | kubectl apply -f -
+	kubectl delete -n myso-system pod --all
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
-myso.img: docker-build
-	docker save -o $@ controller:dev
-
-docker-build:
+myso.img:
 	docker build .. -t controller:dev
+	docker save -o $@ controller:dev
+	kind load image-archive myso.img
+
+mysql.img:
+	docker build .. -f mysql/Dockerfile -t mysql:dev
+	docker save -o $@ mysql:dev
+	kind load image-archive mysql.img
 
 $(KUBECTL):
 	$(SUDO) curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
@@ -43,4 +50,7 @@ setup: $(KUBECTL)
 	$(SUDO) mv kustomize $(KUSTOMIZE)
 	cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION)
 
-.PHONY: launch-kind shutdown-kind test docker-build setup
+clean:
+	rm -f myso.img mysql.img
+
+.PHONY: launch-kind shutdown-kind test setup clean

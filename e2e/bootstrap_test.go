@@ -7,17 +7,35 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func testBootstrap() {
 	It("should create StatefulSet", func() {
 		By("registering MySQLCluster")
-		stdout, stderr, err := kubectl("apply", "-f", "manifests/mysql_cluster.yaml")
+		kubectl("create", "ns", "e2e-test") // ignore error
+		stdout, stderr, err := kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+
+		By("getting Secret which contains root password")
+		Eventually(func() error {
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "secret/root-password", "-o", "json")
+			if err != nil {
+				return fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+
+			var secret corev1.Secret
+			err = json.Unmarshal(stdout, &secret)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal Secret stdout: %s, err: %v", stdout, err)
+			}
+
+			return nil
+		}).Should(Succeed())
 
 		By("getting StatefulSet")
 		Eventually(func() error {
-			stdout, stderr, err := kubectl("get", "statefulsets/mysqlcluster", "-o", "json")
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "statefulsets/mysqlcluster", "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
@@ -30,19 +48,6 @@ func testBootstrap() {
 
 			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 1 {
 				return fmt.Errorf("replicas should be 1: %v", sts.Spec.Replicas)
-			}
-
-			if len(sts.Spec.Template.Spec.InitContainers) != 1 {
-				return fmt.Errorf("number of initContainers should be 1: %d", len(sts.Spec.Template.Spec.InitContainers))
-			}
-
-			initContainerName := "init-0"
-			if sts.Spec.Template.Spec.InitContainers[0].Name != initContainerName {
-				return fmt.Errorf(
-					"name of first initContainer should be  %s: %s",
-					initContainerName,
-					sts.Spec.Template.Spec.InitContainers[0].Name,
-				)
 			}
 
 			if sts.Status.ReadyReplicas != 1 {
