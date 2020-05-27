@@ -30,7 +30,8 @@ const (
 
 	timeoutSeconds = 30
 
-	operatorUser = "myso"
+	operatorUser     = "myso"
+	operatorRootUser = "myso-root"
 )
 
 var initOnceCompletedPath = filepath.Join(dataDir, "init-once-completed")
@@ -104,8 +105,8 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
-	log.Info("setup myso user", nil)
-	err = initializeOperatorUser(ctx, viper.GetString(operatorPasswordFlag))
+	log.Info("setup myso users", nil)
+	err = initializeOperatorUsers(ctx, viper.GetString(operatorPasswordFlag), viper.GetString(operatorPasswordFlag))
 	if err != nil {
 		return err
 	}
@@ -211,8 +212,9 @@ password="%s"
 	return ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
 }
 
-func initializeOperatorUser(ctx context.Context, password string) error {
-	t := template.Must(template.New("sql").Parse(`
+func initializeOperatorUsers(ctx context.Context, operatorPassword, rootPassword string) error {
+	{
+		t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
     SELECT,
@@ -235,15 +237,52 @@ REVOKE
   ON mysql.* FROM '{{ .User }}'@'%' ;
 `))
 
-	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
-		User     string
-		Password string
-	}{operatorUser, password})
+		sql := new(bytes.Buffer)
+		t.Execute(sql, struct {
+			User     string
+			Password string
+		}{operatorUser, operatorPassword})
 
-	stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
-	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+		if err != nil {
+			return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		}
+	}
+
+	{
+		t := template.Must(template.New("sql").Parse(`
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+    SELECT,
+    SHOW VIEW,
+    TRIGGER,
+    LOCK TABLES,
+    REPLICATION CLIENT,
+    BACKUP_ADMIN,
+    BINLOG_ADMIN,
+    SYSTEM_VARIABLES_ADMIN,
+    REPLICATION_SLAVE_ADMIN,
+    SERVICE_CONNECTION_ADMIN
+  ON *.* TO '{{ .User }}'@'%' ;
+SET GLOBAL partial_revokes=on ;
+REVOKE
+    SHOW VIEW,
+    TRIGGER,
+    LOCK TABLES,
+    REPLICATION CLIENT
+  ON mysql.* FROM '{{ .User }}'@'%' ;
+`))
+
+		sql := new(bytes.Buffer)
+		t.Execute(sql, struct {
+			User     string
+			Password string
+		}{operatorRootUser, rootPassword})
+
+		stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+		if err != nil {
+			return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		}
 	}
 	return nil
 }
