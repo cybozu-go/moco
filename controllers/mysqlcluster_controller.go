@@ -41,6 +41,7 @@ const (
 	initContainerName = "myso-init"
 
 	mysqlDataVolumeName = "mysql-data"
+	mysqlConfVolumeName = "mysql-conf"
 	varrunVolumeName    = "varrun"
 	varlogVolumeName    = "varlog"
 	tmpVolumeName       = "tmp"
@@ -177,6 +178,12 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 
 	newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes,
 		corev1.Volume{
+			Name: mysqlConfVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		corev1.Volume{
 			Name: varrunVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -215,7 +222,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 				},
 			},
 			corev1.EnvVar{
-				Name: "MYSQL_ROOT_HOST",
+				Name: "MYSQL_POD_IP",
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: "status.podIP",
@@ -227,6 +234,10 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 			corev1.VolumeMount{
 				MountPath: "/var/lib/mysql",
 				Name:      mysqlDataVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: "/etc/mysql/conf.d",
+				Name:      mysqlConfVolumeName,
 			},
 			corev1.VolumeMount{
 				MountPath: "/tmp",
@@ -252,10 +263,9 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 			LocalObjectReference: corev1.LocalObjectReference{Name: cluster.Spec.RootPasswordSecretName},
 		},
 	})
-	// MYSQL_ROOT_HOST is used in setup script.
 	c.Env = append(c.Env,
 		corev1.EnvVar{
-			Name: "MYSQL_ROOT_HOST",
+			Name: "MYSQL_POD_IP",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "status.podIP",
@@ -275,6 +285,10 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 		corev1.VolumeMount{
 			MountPath: "/var/lib/mysql",
 			Name:      mysqlDataVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: "/etc/mysql/conf.d",
+			Name:      mysqlConfVolumeName,
 		},
 		corev1.VolumeMount{
 			MountPath: "/tmp",

@@ -14,13 +14,19 @@ import (
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
+	podIPFlag            = "pod-ip"
+	rootPasswordFlag     = "root-password"
+	operatorPasswordFlag = "operator-password"
+
 	socketPath       = "/var/run/mysqld/mysqld.sock"
 	passwordFilePath = "/tmp/myso-root-password"
 	pingConfPath     = "/tmp/ping.cnf"
 	dataDir          = "/var/lib/mysql"
+	confDir          = "/etc/mysql/conf.d"
 
 	timeoutSeconds = 30
 
@@ -44,14 +50,14 @@ var initCmd = &cobra.Command{
 				return err
 			}
 
-			log.Info("shutdown instance", nil)
-			err = shutdownInstance(ctx)
+			log.Info("create config file for ping user", nil)
+			err = confPingUser(ctx)
 			if err != nil {
 				return err
 			}
 
-			log.Info("create config file for ping user", nil)
-			err = confPingUser(ctx)
+			log.Info("create config file for admin interface", nil)
+			err = confAdminInterface(ctx, viper.GetString(podIPFlag))
 			if err != nil {
 				return err
 			}
@@ -93,13 +99,13 @@ func initializeOnce(ctx context.Context) error {
 	}
 
 	log.Info("setup root user", nil)
-	err = initializeSystemUser(ctx, mysqlRootPassword, mysqlRootHost)
+	err = initializeSystemUser(ctx, viper.GetString(rootPasswordFlag), viper.GetString(podIPFlag))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup myso user", nil)
-	err = initializeOperatorUser(ctx, mysqlOperatorPassword)
+	err = initializeOperatorUser(ctx, viper.GetString(operatorPasswordFlag))
 	if err != nil {
 		return err
 	}
@@ -118,6 +124,12 @@ func initializeOnce(ctx context.Context) error {
 
 	log.Info("install plugins", nil)
 	err = installPlugins(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Info("shutdown instance", nil)
+	err = shutdownInstance(ctx)
 	if err != nil {
 		return err
 	}
@@ -274,6 +286,14 @@ func shutdownInstance(ctx context.Context) error {
 	return nil
 }
 
+func confAdminInterface(ctx context.Context, podIP string) error {
+	conf := `
+[mysqld]
+admin-address=%s
+`
+	return ioutil.WriteFile(filepath.Join(confDir, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
+}
+
 func touchInitOnceCompleted(ctx context.Context) error {
 	f, err := os.Create(initOnceCompletedPath)
 	if err != nil {
@@ -307,4 +327,14 @@ func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, []
 		args = append(args, databaseName)
 	}
 	return doExec(ctx, input, "mysql", args...)
+}
+
+func init() {
+	initCmd.Flags().String(podIPFlag, "", "Pod IP address")
+	initCmd.Flags().String(rootPasswordFlag, "", "Password for root user")
+	initCmd.Flags().String(operatorPasswordFlag, "", "Password for operator user")
+	err := viper.BindPFlags(initCmd.Flags())
+	if err != nil {
+		panic(err)
+	}
 }

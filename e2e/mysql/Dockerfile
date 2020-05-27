@@ -43,11 +43,10 @@ VOLUME /var/lib/mysql
 
 COPY e2e/mysql/ping.sh /ping.sh
 COPY e2e/mysql/config/my.cnf /etc/my.cnf
-COPY e2e/mysql/config/conf.d /etc/mysql/conf.d
 COPY --from=builder /workspace/entrypoint /entrypoint
 
 ENTRYPOINT ["mysqld"]
 HEALTHCHECK CMD /ping.sh
-EXPOSE 3306 33060
+EXPOSE 3306 33060 33062
 
 USER 10000:10000

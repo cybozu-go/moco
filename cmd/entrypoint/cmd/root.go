@@ -1,16 +1,13 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	podIP                 string
-	mysqlRootHost         string
-	mysqlRootPassword     string
-	mysqlOperatorPassword string
-
 	rootCmd = &cobra.Command{
 		Use:   "entrypoint",
 		Short: "Entrypoint for MySQL instances managed by MySO",
@@ -24,12 +21,13 @@ func Execute() error {
 }
 
 func init() {
-	viper.AutomaticEnv()
+	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&podIP, "pod-ip", "", "IP address of the Pod")
-	rootCmd.PersistentFlags().StringVar(&mysqlRootHost, "mysql-root-host", "", "Root host of MySQL instance")
-	rootCmd.PersistentFlags().StringVar(&mysqlRootPassword, "mysql-root-password", "", "Password for root user")
-	//rootCmd.MarkPersistentFlagRequired("mysql-root-password")
-	rootCmd.PersistentFlags().StringVar(&mysqlOperatorPassword, "mysql-operator-password", "", "Password for operator user")
 	rootCmd.AddCommand(initCmd)
+}
+
+func initConfig() {
+	viper.SetEnvPrefix("mysql")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
 }
