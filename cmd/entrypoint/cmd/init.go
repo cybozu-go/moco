@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 )
 
 const (
+	podNameFlag          = "pod-name"
 	podIPFlag            = "pod-ip"
 	rootPasswordFlag     = "root-password"
 	operatorPasswordFlag = "operator-password"
@@ -59,6 +62,12 @@ var initCmd = &cobra.Command{
 
 			log.Info("create config file for admin interface", nil)
 			err = confAdminInterface(ctx, viper.GetString(podIPFlag))
+			if err != nil {
+				return err
+			}
+
+			log.Info("create config file for server-id", nil)
+			err = confServerID(ctx, viper.GetString(podNameFlag))
 			if err != nil {
 				return err
 			}
@@ -333,6 +342,27 @@ admin-address=%s
 	return ioutil.WriteFile(filepath.Join(confDir, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
 }
 
+func confServerID(ctx context.Context, podNameWithOrdinal string) error {
+	// ordinal should be increased by 1000 because the case server-id is 0 is not suitable for the replication purpose
+	const ordinalOffset = 1000
+
+	s := strings.Split(podNameWithOrdinal, "-")
+	if len(s) < 2 {
+		return errors.New("podName should contain an ordinal which dash, like 'podname-0', at the end: " + podNameWithOrdinal)
+	}
+
+	ordinal, err := strconv.Atoi(s[len(s)-1])
+	if err != nil {
+		return err
+	}
+
+	conf := `
+[mysqld]
+server-id=%d
+`
+	return ioutil.WriteFile(filepath.Join(confDir, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
+}
+
 func touchInitOnceCompleted(ctx context.Context) error {
 	f, err := os.Create(initOnceCompletedPath)
 	if err != nil {
@@ -369,6 +399,7 @@ func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, []
 }
 
 func init() {
+	initCmd.Flags().String(podNameFlag, "", "Pod Name created by StatefulSet")
 	initCmd.Flags().String(podIPFlag, "", "Pod IP address")
 	initCmd.Flags().String(rootPasswordFlag, "", "Password for root user")
 	initCmd.Flags().String(operatorPasswordFlag, "", "Password for operator user")

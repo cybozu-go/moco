@@ -273,7 +273,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 			},
 		},
 		corev1.EnvVar{
-			Name: "POD_NAME",
+			Name: "MYSQL_POD_NAME",
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "metadata.name",
