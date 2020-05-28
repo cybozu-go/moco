@@ -54,7 +54,8 @@ jobs:
           at: /tmp/workspace
       - run: cp -a /tmp/workspace build
       - setup_remote_docker
-      - run: docker build -t quay.io/cybozu/myso:latest .
+      - run: docker build . -f ./docker/myso/Dockerfile -t quay.io/cybozu/myso:latest
+      - run: docker build . -f ./docker/mysql/Dockerfile -t quay.io/cybozu/mysql:latest
       - run:
           name: Push docker image to Quay.io
           command: |
