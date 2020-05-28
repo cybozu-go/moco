@@ -31,12 +31,12 @@ test:
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
 myso.img:
-	docker build .. -t controller:dev
+	cd ..; $(MAKE) docker-build IMG=controller:dev
 	docker save -o $@ controller:dev
 	kind load image-archive myso.img
 
 mysql.img:
-	docker build .. -f mysql/Dockerfile -t mysql:dev
+	docker build .. -f ../docker/mysql/Dockerfile -t mysql:dev
 	docker save -o $@ mysql:dev
 	kind load image-archive mysql.img
 

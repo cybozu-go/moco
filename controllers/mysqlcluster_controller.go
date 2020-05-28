@@ -203,11 +203,14 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 		},
 	)
 
+	var mysqldContainer *corev1.Container
 	for i := range newTemplate.Spec.Containers {
 		c := &newTemplate.Spec.Containers[i]
 		if c.Name != containerName {
 			continue
 		}
+
+		mysqldContainer = c
 
 		c.Env = append(c.Env,
 			corev1.EnvVar{
@@ -256,7 +259,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 
 	c := corev1.Container{}
 	c.Name = initContainerName
-	c.Image = "mysql:dev"
+	c.Image = mysqldContainer.Image
 	c.Command = []string{"/entrypoint", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{

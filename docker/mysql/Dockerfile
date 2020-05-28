@@ -10,6 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o entrypoi
 FROM ubuntu:18.04
 
 ENV MYSQL_VERSION 8.0.20-1ubuntu18.04
+ENV MYSQL_MINOR_VERSION 8.0
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
       curl \
@@ -21,10 +22,10 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
       tzdata \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-common_${MYSQL_VERSION}_amd64.deb \
-  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-server-core_${MYSQL_VERSION}_amd64.deb \
-  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-client-core_${MYSQL_VERSION}_amd64.deb \
-  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-community-client_${MYSQL_VERSION}_amd64.deb \
+RUN curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-${MYSQL_MINOR_VERSION}/mysql-common_${MYSQL_VERSION}_amd64.deb \
+  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-${MYSQL_MINOR_VERSION}/mysql-community-server-core_${MYSQL_VERSION}_amd64.deb \
+  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-${MYSQL_MINOR_VERSION}/mysql-community-client-core_${MYSQL_VERSION}_amd64.deb \
+  && curl -sSLO https://dev.mysql.com/get/Downloads/MySQL-${MYSQL_MINOR_VERSION}/mysql-community-client_${MYSQL_VERSION}_amd64.deb \
   && dpkg -i mysql-common_${MYSQL_VERSION}_amd64.deb \
   && dpkg -i mysql-community-server-core_${MYSQL_VERSION}_amd64.deb \
   && dpkg -i mysql-community-client-core_${MYSQL_VERSION}_amd64.deb \
@@ -41,8 +42,8 @@ RUN groupadd -r mysql \
 
 VOLUME /var/lib/mysql
 
-COPY e2e/mysql/ping.sh /ping.sh
-COPY e2e/mysql/config/my.cnf /etc/my.cnf
+COPY docker/mysql/ping.sh /ping.sh
+COPY docker/mysql/config/my.cnf /etc/my.cnf
 COPY --from=builder /workspace/entrypoint /entrypoint
 
 ENTRYPOINT ["mysqld"]

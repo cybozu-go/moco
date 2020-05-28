@@ -348,7 +348,7 @@ func confServerID(ctx context.Context, podNameWithOrdinal string) error {
 
 	s := strings.Split(podNameWithOrdinal, "-")
 	if len(s) < 2 {
-		return errors.New("podName should contain an ordinal which dash, like 'podname-0', at the end: " + podNameWithOrdinal)
+		return errors.New("podName should contain an ordinal with dash, like 'podname-0', at the end: " + podNameWithOrdinal)
 	}
 
 	ordinal, err := strconv.Atoi(s[len(s)-1])

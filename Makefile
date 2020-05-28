@@ -76,7 +76,7 @@ generate: controller-gen
 
 # Build the docker image
 docker-build: test
-	docker build . -t ${IMG}
+	docker build . -f docker/myso/Dockerfile -t ${IMG}
 
 # Push the docker image
 docker-push:
