@@ -5,6 +5,7 @@ const (
 	OperatorUser = "myso"
 
 	// OperatorAdminUser is a name of MySO operator-admin user in the MySQL context.
+	// This user is a super user especially for creating and granting privileges to other users.
 	OperatorAdminUser = "myso-admin"
 
 	// ReplicatorUser is a name of MySO replicator user in the MySQL context.

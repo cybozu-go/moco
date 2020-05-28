@@ -14,7 +14,6 @@ KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
 
 launch-kind:
-	$(SUDO) rm -rf /tmp/topolvm/controller /tmp/topolvm/worker*
 	sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
 		-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster.yaml > /tmp/kind-cluster.yaml
 	kind create cluster --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION)
@@ -22,7 +21,7 @@ launch-kind:
 shutdown-kind:
 	kind delete cluster || true
 
-test:
+test: myso.img mysql.img
 	-kubectl delete -n e2e-test mysqlcluster --all
 	-kubectl delete -n e2e-test pvc --all
 	kubectl delete crd --all
@@ -31,14 +30,16 @@ test:
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
 myso.img:
-	cd ..; $(MAKE) docker-build IMG=controller:dev
+	docker build .. -f ../docker/myso/Dockerfile -t controller:dev
 	docker save -o $@ controller:dev
 	kind load image-archive myso.img
+	rm -f $@
 
 mysql.img:
 	docker build .. -f ../docker/mysql/Dockerfile -t mysql:dev
 	docker save -o $@ mysql:dev
 	kind load image-archive mysql.img
+	rm -f $@
 
 $(KUBECTL):
 	$(SUDO) curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
