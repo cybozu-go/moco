@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -42,9 +43,20 @@ const (
 
 	mysqlDataVolumeName = "mysql-data"
 	mysqlConfVolumeName = "mysql-conf"
-	varrunVolumeName    = "varrun"
-	varlogVolumeName    = "varlog"
+	varRunVolumeName    = "var-run"
+	varLogVolumeName    = "var-log"
 	tmpVolumeName       = "tmp"
+
+	mysqlDataPath = "/var/lib/mysql"
+	mysqlConfPath = "/etc/mysql/conf.d"
+	varRunPath    = "/var/run/mysqld"
+	varLogPath    = "/var/log"
+	tmpPath       = "/tmp"
+
+	// these names must correspond to options in entrypoint/init.go
+	rootPasswordEnvName = "MYSQL_ROOT_PASSWORD"
+	podIPEnvName        = "MYSQL_POD_IP"
+	podNameEnvName      = "MYSQL_POD_NAME"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -74,67 +86,21 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Create root password secret if does not exist
-	secret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
+	// Create root password secret if not exist
+	err := r.createSecret(ctx, log, cluster)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			log.Error(err, "unable to get Secret")
-			return ctrl.Result{}, err
-		}
-		err = r.createRootPasswordSecret(ctx, cluster)
-		if err != nil {
-			log.Error(err, "unable to create cluster")
-			return ctrl.Result{}, err
-		}
-	}
-
-	// CreateOrUpdate MySQL StatefulSet
-	sts := &appsv1.StatefulSet{}
-	sts.SetNamespace(req.Namespace)
-	sts.SetName(req.Name)
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		sts.Labels = map[string]string{
-			appNameKey:      appName,
-			instanceNameKey: cluster.Name,
-		}
-		sts.Spec.Replicas = cluster.Spec.Replicas
-		sts.Spec.Selector = &metav1.LabelSelector{}
-		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey:      appName,
-			instanceNameKey: cluster.Name,
-		}
-		sts.Spec.Template = r.getPodTemplate(cluster.Spec.PodTemplate, cluster)
-		sts.Spec.VolumeClaimTemplates = r.getVolumeClaimTemplates(cluster.Spec.VolumeClaimTemplates, cluster)
-		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
-	})
-	if err != nil {
-		log.Error(err, "unable to create-or-update StatefulSet")
 		return ctrl.Result{}, err
 	}
-	log.Info("reconcile successfully", "op", op)
 
-	// CreateOrUpdate headless Service corresponding to StatefulSet
-	headless := &corev1.Service{}
-	headless.SetNamespace(req.Namespace)
-	headless.SetName(req.Name)
-	op, err = ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
-		headless.Labels = map[string]string{
-			appNameKey:      appName,
-			instanceNameKey: cluster.Name,
-		}
-		headless.Spec.ClusterIP = corev1.ClusterIPNone
-		headless.Spec.Selector = map[string]string{
-			appNameKey:      appName,
-			instanceNameKey: cluster.Name,
-		}
-		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
-	})
+	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
 	if err != nil {
-		log.Error(err, "unable to create-or-update headless Service")
 		return ctrl.Result{}, err
 	}
-	log.Info("reconcile successfully", "op", op)
+
+	err = r.createOrUpdateHeadlessService(ctx, log, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -149,7 +115,86 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplateSpec, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+func (r *MySQLClusterReconciler) createSecret(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+	secret := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
+	if err == nil {
+		return nil
+	}
+	if !errors.IsNotFound(err) {
+		log.Error(err, "unable to get Secret")
+		return err
+	}
+
+	err = r.createRootPasswordSecret(ctx, cluster)
+	if err != nil {
+		log.Error(err, "unable to create Secret")
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+	sts := &appsv1.StatefulSet{}
+	sts.SetNamespace(cluster.Namespace)
+	sts.SetName(cluster.Name)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
+		sts.Labels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		sts.Spec.Replicas = cluster.Spec.Replicas
+		sts.Spec.Selector = &metav1.LabelSelector{}
+		sts.Spec.Selector.MatchLabels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		sts.Spec.Template = r.makePodTemplate(cluster)
+		sts.Spec.VolumeClaimTemplates = r.getVolumeClaimTemplates(cluster.Spec.VolumeClaimTemplates, cluster)
+		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update StatefulSet")
+		return err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile StatefulSet successfully", "op", op)
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+	headless := &corev1.Service{}
+	headless.SetNamespace(cluster.Namespace)
+	headless.SetName(cluster.Name)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
+		headless.Labels = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		headless.Spec.ClusterIP = corev1.ClusterIPNone
+		headless.Spec.Selector = map[string]string{
+			appNameKey:      appName,
+			instanceNameKey: cluster.Name,
+		}
+		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update headless Service")
+		return err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile headless Service successfully", "op", op)
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+	template := cluster.Spec.PodTemplate
 	log := r.Log.WithValues("mysqlcluster", types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace})
 
 	newTemplate := corev1.PodTemplateSpec{
@@ -164,6 +209,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 		Spec: template.Spec,
 	}
 
+	// add labels to describe application
 	if newTemplate.Labels == nil {
 		newTemplate.Labels = make(map[string]string)
 	}
@@ -176,6 +222,8 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 	}
 	newTemplate.Labels[instanceNameKey] = cluster.Name
 
+	// add volumes to Pod
+	// If the original template contains volumes with the same names as below, CreateOrUpdate fails.
 	newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes,
 		corev1.Volume{
 			Name: mysqlConfVolumeName,
@@ -184,13 +232,13 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 			},
 		},
 		corev1.Volume{
-			Name: varrunVolumeName,
+			Name: varRunVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 		corev1.Volume{
-			Name: varlogVolumeName,
+			Name: varLogVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -203,6 +251,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 		},
 	)
 
+	// find "mysqld" container and update it
 	var mysqldContainer *corev1.Container
 	for i := range newTemplate.Spec.Containers {
 		c := &newTemplate.Spec.Containers[i]
@@ -214,7 +263,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 
 		c.Env = append(c.Env,
 			corev1.EnvVar{
-				Name: "MYSQL_ROOT_PASSWORD",
+				Name: rootPasswordEnvName,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -225,7 +274,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 				},
 			},
 			corev1.EnvVar{
-				Name: "MYSQL_POD_IP",
+				Name: podIPEnvName,
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: "status.podIP",
@@ -235,40 +284,43 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 		)
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
-				MountPath: "/var/lib/mysql",
+				MountPath: mysqlDataPath,
 				Name:      mysqlDataVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: "/etc/mysql/conf.d",
+				MountPath: mysqlConfPath,
 				Name:      mysqlConfVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: "/tmp",
+				MountPath: varRunPath,
+				Name:      varRunVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: varLogPath,
+				Name:      varLogVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: tmpPath,
 				Name:      tmpVolumeName,
-			},
-			corev1.VolumeMount{
-				MountPath: "/var/run/mysqld",
-				Name:      varrunVolumeName,
-			},
-			corev1.VolumeMount{
-				MountPath: "/var/log",
-				Name:      varlogVolumeName,
 			},
 		)
 	}
 
+	// create init container and append it to Pod
 	c := corev1.Container{}
 	c.Name = initContainerName
 	c.Image = mysqldContainer.Image
 	c.Command = []string{"/entrypoint", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: cluster.Spec.RootPasswordSecretName},
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cluster.Spec.RootPasswordSecretName,
+			},
 		},
 	})
 	c.Env = append(c.Env,
 		corev1.EnvVar{
-			Name: "MYSQL_POD_IP",
+			Name: podIPEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "status.podIP",
@@ -276,7 +328,7 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 			},
 		},
 		corev1.EnvVar{
-			Name: "MYSQL_POD_NAME",
+			Name: podNameEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "metadata.name",
@@ -286,28 +338,28 @@ func (r *MySQLClusterReconciler) getPodTemplate(template mysov1alpha1.PodTemplat
 	)
 	c.VolumeMounts = append(c.VolumeMounts,
 		corev1.VolumeMount{
-			MountPath: "/var/lib/mysql",
+			MountPath: mysqlDataPath,
 			Name:      mysqlDataVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: "/etc/mysql/conf.d",
+			MountPath: mysqlConfPath,
 			Name:      mysqlConfVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: "/tmp",
+			MountPath: varRunPath,
+			Name:      varRunVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: varLogPath,
+			Name:      varLogVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: tmpPath,
 			Name:      tmpVolumeName,
 		},
-		corev1.VolumeMount{
-			MountPath: "/var/run/mysqld",
-			Name:      varrunVolumeName,
-		},
-		corev1.VolumeMount{
-			MountPath: "/var/log",
-			Name:      varlogVolumeName,
-		},
 	)
-
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers, c)
+
 	return newTemplate
 }
 
