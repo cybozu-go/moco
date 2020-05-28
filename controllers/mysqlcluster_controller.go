@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/rand"
 
+	"github.com/cybozu-go/myso"
 	mysov1alpha1 "github.com/cybozu-go/myso/api/v1alpha1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,15 +28,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
-	appNameKey      = "app.kubernetes.io/name"
 	appName         = "myso"
+	appNameKey      = "app.kubernetes.io/name"
 	instanceNameKey = "app.kubernetes.io/instance"
 
 	containerName     = "mysqld"
@@ -46,17 +46,6 @@ const (
 	varRunVolumeName    = "var-run"
 	varLogVolumeName    = "var-log"
 	tmpVolumeName       = "tmp"
-
-	mysqlDataPath = "/var/lib/mysql"
-	mysqlConfPath = "/etc/mysql/conf.d"
-	varRunPath    = "/var/run/mysqld"
-	varLogPath    = "/var/log"
-	tmpPath       = "/tmp"
-
-	// these names must correspond to options in entrypoint/init.go
-	rootPasswordEnvName = "MYSQL_ROOT_PASSWORD"
-	podIPEnvName        = "MYSQL_POD_IP"
-	podNameEnvName      = "MYSQL_POD_NAME"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -134,6 +123,61 @@ func (r *MySQLClusterReconciler) createSecret(ctx context.Context, log logr.Logg
 	return nil
 }
 
+func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
+	secret := &corev1.Secret{}
+	secret.SetNamespace(cluster.Namespace)
+	secret.SetName(cluster.Spec.RootPasswordSecretName)
+
+	secret.Labels = map[string]string{
+		appNameKey:      appName,
+		instanceNameKey: cluster.Name,
+	}
+	rootPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	operatorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	replicatorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+	donorPass, err := generateRandomString(10)
+	if err != nil {
+		return err
+	}
+
+	secret.Data = map[string][]byte{
+		myso.RootPasswordKey:        []byte(rootPass),
+		myso.OperatorPasswordKey:    []byte(operatorPass),
+		myso.ReplicationPasswordKey: []byte(replicatorPass),
+		myso.DonorPasswordKey:       []byte(donorPass),
+	}
+
+	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	return r.Client.Create(ctx, secret)
+}
+
+func generateRandomString(n int) (string, error) {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
+	bytes := make([]byte, n)
+	_, err := rand.Read(bytes)
+	// Note that err == nil only if we read len(bytes) bytes.
+	if err != nil {
+		return "", err
+	}
+	for i, b := range bytes {
+		bytes[i] = letters[b%byte(len(letters))]
+	}
+	return string(bytes), nil
+}
+
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(cluster.Namespace)
@@ -150,8 +194,8 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 			appNameKey:      appName,
 			instanceNameKey: cluster.Name,
 		}
-		sts.Spec.Template = r.makePodTemplate(cluster)
-		sts.Spec.VolumeClaimTemplates = r.getVolumeClaimTemplates(cluster.Spec.VolumeClaimTemplates, cluster)
+		sts.Spec.Template = r.makePodTemplate(log, cluster)
+		sts.Spec.VolumeClaimTemplates = r.makeVolumeClaimTemplates(cluster)
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
@@ -193,10 +237,8 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	return nil
 }
 
-func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
 	template := cluster.Spec.PodTemplate
-	log := r.Log.WithValues("mysqlcluster", types.NamespacedName{Name: cluster.Name, Namespace: cluster.Namespace})
-
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            template.Name,
@@ -263,7 +305,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 
 		c.Env = append(c.Env,
 			corev1.EnvVar{
-				Name: rootPasswordEnvName,
+				Name: myso.RootPasswordEnvName,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -274,7 +316,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 				},
 			},
 			corev1.EnvVar{
-				Name: podIPEnvName,
+				Name: myso.PodIPEnvName,
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: "status.podIP",
@@ -284,23 +326,23 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 		)
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
-				MountPath: mysqlDataPath,
+				MountPath: myso.MySQLDataPath,
 				Name:      mysqlDataVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: mysqlConfPath,
+				MountPath: myso.MySQLConfPath,
 				Name:      mysqlConfVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: varRunPath,
+				MountPath: myso.VarRunPath,
 				Name:      varRunVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: varLogPath,
+				MountPath: myso.VarLogPath,
 				Name:      varLogVolumeName,
 			},
 			corev1.VolumeMount{
-				MountPath: tmpPath,
+				MountPath: myso.TmpPath,
 				Name:      tmpVolumeName,
 			},
 		)
@@ -309,7 +351,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 	// create init container and append it to Pod
 	c := corev1.Container{}
 	c.Name = initContainerName
+
+	// use the same image with the 'mysqld' container
 	c.Image = mysqldContainer.Image
+
 	c.Command = []string{"/entrypoint", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
@@ -320,7 +365,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 	})
 	c.Env = append(c.Env,
 		corev1.EnvVar{
-			Name: podIPEnvName,
+			Name: myso.PodIPEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "status.podIP",
@@ -328,7 +373,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 			},
 		},
 		corev1.EnvVar{
-			Name: podNameEnvName,
+			Name: myso.PodNameEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "metadata.name",
@@ -338,23 +383,23 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 	)
 	c.VolumeMounts = append(c.VolumeMounts,
 		corev1.VolumeMount{
-			MountPath: mysqlDataPath,
+			MountPath: myso.MySQLDataPath,
 			Name:      mysqlDataVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: mysqlConfPath,
+			MountPath: myso.MySQLConfPath,
 			Name:      mysqlConfVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: varRunPath,
+			MountPath: myso.VarRunPath,
 			Name:      varRunVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: varLogPath,
+			MountPath: myso.VarLogPath,
 			Name:      varLogVolumeName,
 		},
 		corev1.VolumeMount{
-			MountPath: tmpPath,
+			MountPath: myso.TmpPath,
 			Name:      tmpVolumeName,
 		},
 	)
@@ -363,7 +408,8 @@ func (r *MySQLClusterReconciler) makePodTemplate(cluster *mysov1alpha1.MySQLClus
 	return newTemplate
 }
 
-func (r *MySQLClusterReconciler) getVolumeClaimTemplates(templates []mysov1alpha1.PersistentVolumeClaim, cluster *mysov1alpha1.MySQLCluster) []corev1.PersistentVolumeClaim {
+func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mysov1alpha1.MySQLCluster) []corev1.PersistentVolumeClaim {
+	templates := cluster.Spec.VolumeClaimTemplates
 	newTemplates := make([]corev1.PersistentVolumeClaim, len(templates))
 
 	for i, template := range templates {
@@ -381,71 +427,4 @@ func (r *MySQLClusterReconciler) getVolumeClaimTemplates(templates []mysov1alpha
 	}
 
 	return newTemplates
-}
-
-func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
-	secret := &corev1.Secret{}
-	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(cluster.Spec.RootPasswordSecretName)
-
-	secret.Labels = map[string]string{
-		appNameKey:      appName,
-		instanceNameKey: cluster.Name,
-	}
-	rootPass, err := generateRandomString(10)
-	if err != nil {
-		return err
-	}
-	operatorPass, err := generateRandomString(10)
-	if err != nil {
-		return err
-	}
-	replicatorPass, err := generateRandomString(10)
-	if err != nil {
-		return err
-	}
-	donorPass, err := generateRandomString(10)
-	if err != nil {
-		return err
-	}
-	secret.Data = map[string][]byte{
-		"MYSQL_ROOT_PASSWORD":        []byte(rootPass),
-		"MYSQL_CLUSTER_DOMAIN":       []byte(cluster.Name + "." + cluster.Namespace),
-		"MYSQL_OPERATOR_USER":        []byte("myso"),
-		"MYSQL_OPERATOR_PASSWORD":    []byte(operatorPass),
-		"MYSQL_REPLICATION_USER":     []byte("myso-repl"),
-		"MYSQL_REPLICATION_PASSWORD": []byte(replicatorPass),
-		"MYSQL_CLONE_DONOR_USER":     []byte("myso-clone"),
-		"MYSQL_CLONE_DONOR_PASSWORD": []byte(donorPass),
-	}
-
-	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
-	if err != nil {
-		return err
-	}
-
-	return r.Client.Create(ctx, secret)
-}
-
-func generateRandomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-func generateRandomString(n int) (string, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	bytes, err := generateRandomBytes(n)
-	if err != nil {
-		return "", err
-	}
-	for i, b := range bytes {
-		bytes[i] = letters[b%byte(len(letters))]
-	}
-	return string(bytes), nil
 }

@@ -5,6 +5,7 @@ COPY go.mod go.mod
 RUN go mod download
 
 COPY cmd/ cmd/
+COPY constants.go constants.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o entrypoint ./cmd/entrypoint
 
 FROM ubuntu:18.04

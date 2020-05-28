@@ -14,30 +14,20 @@ import (
 	"time"
 
 	"github.com/cybozu-go/log"
+	"github.com/cybozu-go/myso"
 	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-const (
-	podNameFlag          = "pod-name"
-	podIPFlag            = "pod-ip"
-	rootPasswordFlag     = "root-password"
-	operatorPasswordFlag = "operator-password"
+const timeoutSeconds = 30
 
-	socketPath       = "/var/run/mysqld/mysqld.sock"
-	passwordFilePath = "/tmp/myso-root-password"
-	pingConfPath     = "/tmp/ping.cnf"
-	dataDir          = "/var/lib/mysql"
-	confDir          = "/etc/mysql/conf.d"
-
-	timeoutSeconds = 30
-
-	operatorUser     = "myso"
-	operatorRootUser = "myso-root"
+var (
+	initOnceCompletedPath = filepath.Join(myso.MySQLDataPath, "init-once-completed")
+	socketPath            = filepath.Join(myso.VarRunPath, "mysqld.sock")
+	passwordFilePath      = filepath.Join(myso.TmpPath, "myso-root-password")
+	pingConfPath          = filepath.Join(myso.TmpPath, "ping.cnf")
 )
-
-var initOnceCompletedPath = filepath.Join(dataDir, "init-once-completed")
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -61,13 +51,13 @@ var initCmd = &cobra.Command{
 			}
 
 			log.Info("create config file for admin interface", nil)
-			err = confAdminInterface(ctx, viper.GetString(podIPFlag))
+			err = confAdminInterface(ctx, viper.GetString(myso.PodIPFlag))
 			if err != nil {
 				return err
 			}
 
 			log.Info("create config file for server-id", nil)
-			err = confServerID(ctx, viper.GetString(podNameFlag))
+			err = confServerID(ctx, viper.GetString(myso.PodNameFlag))
 			if err != nil {
 				return err
 			}
@@ -109,13 +99,14 @@ func initializeOnce(ctx context.Context) error {
 	}
 
 	log.Info("setup root user", nil)
-	err = initializeSystemUser(ctx, viper.GetString(rootPasswordFlag), viper.GetString(podIPFlag))
+	err = initializeRootUser(ctx, viper.GetString(myso.RootPasswordFlag), viper.GetString(myso.PodIPFlag))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup myso users", nil)
-	err = initializeOperatorUsers(ctx, viper.GetString(operatorPasswordFlag), viper.GetString(operatorPasswordFlag))
+	// use the password for an operator-admin user which is the same with the one for operator user
+	err = initializeOperatorUsers(ctx, viper.GetString(myso.OperatorPasswordFlag), viper.GetString(myso.OperatorPasswordFlag))
 	if err != nil {
 		return err
 	}
@@ -189,7 +180,7 @@ func importTimeZoneFromHost(ctx context.Context) error {
 	return nil
 }
 
-func initializeSystemUser(ctx context.Context, rootPassword, rootHost string) error {
+func initializeRootUser(ctx context.Context, rootPassword, rootHost string) error {
 	err := ioutil.WriteFile(passwordFilePath, nil, 0600)
 	if err != nil {
 		return err
@@ -221,7 +212,7 @@ password="%s"
 	return ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
 }
 
-func initializeOperatorUsers(ctx context.Context, operatorPassword, rootPassword string) error {
+func initializeOperatorUsers(ctx context.Context, operatorPassword, adminPassword string) error {
 	{
 		t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
@@ -250,7 +241,7 @@ REVOKE
 		t.Execute(sql, struct {
 			User     string
 			Password string
-		}{operatorUser, operatorPassword})
+		}{myso.OperatorUser, operatorPassword})
 
 		stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
 		if err != nil {
@@ -286,7 +277,7 @@ REVOKE
 		t.Execute(sql, struct {
 			User     string
 			Password string
-		}{operatorRootUser, rootPassword})
+		}{myso.OperatorAdminUser, adminPassword})
 
 		stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
 		if err != nil {
@@ -339,7 +330,7 @@ func confAdminInterface(ctx context.Context, podIP string) error {
 [mysqld]
 admin-address=%s
 `
-	return ioutil.WriteFile(filepath.Join(confDir, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
+	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
 }
 
 func confServerID(ctx context.Context, podNameWithOrdinal string) error {
@@ -360,7 +351,7 @@ func confServerID(ctx context.Context, podNameWithOrdinal string) error {
 [mysqld]
 server-id=%d
 `
-	return ioutil.WriteFile(filepath.Join(confDir, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
+	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
 }
 
 func touchInitOnceCompleted(ctx context.Context) error {
@@ -399,10 +390,10 @@ func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, []
 }
 
 func init() {
-	initCmd.Flags().String(podNameFlag, "", "Pod Name created by StatefulSet")
-	initCmd.Flags().String(podIPFlag, "", "Pod IP address")
-	initCmd.Flags().String(rootPasswordFlag, "", "Password for root user")
-	initCmd.Flags().String(operatorPasswordFlag, "", "Password for operator user")
+	initCmd.Flags().String(myso.PodNameFlag, "", "Pod Name created by StatefulSet")
+	initCmd.Flags().String(myso.PodIPFlag, "", "Pod IP address")
+	initCmd.Flags().String(myso.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")
+	initCmd.Flags().String(myso.RootPasswordFlag, "", "Password for root user")
 	err := viper.BindPFlags(initCmd.Flags())
 	if err != nil {
 		panic(err)

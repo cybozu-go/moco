@@ -39,7 +39,7 @@ test: generate manifests
 
 # Build manager binary
 manager: generate fmt
-	go build -o bin/manager main.go
+	go build -o bin/manager ./cmd/manager/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
