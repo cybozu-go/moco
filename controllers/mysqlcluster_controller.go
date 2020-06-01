@@ -241,12 +241,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 	template := cluster.Spec.PodTemplate
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            template.Name,
-			GenerateName:    template.GenerateName,
-			Namespace:       cluster.Namespace,
-			Labels:          template.Labels,
-			Annotations:     template.Annotations,
-			OwnerReferences: template.OwnerReferences,
+			Name:        template.Name,
+			Namespace:   cluster.Namespace,
+			Labels:      template.Labels,
+			Annotations: template.Annotations,
 		},
 		Spec: template.Spec,
 	}
@@ -311,7 +309,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: cluster.Spec.RootPasswordSecretName,
 						},
-						Key: "MYSQL_ROOT_PASSWORD",
+						Key: myso.RootPasswordKey,
 					},
 				},
 			},
@@ -415,12 +413,10 @@ func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mysov1alpha1.
 	for i, template := range templates {
 		newTemplates[i] = corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            template.Name,
-				GenerateName:    template.GenerateName,
-				Namespace:       cluster.Namespace,
-				Labels:          template.Labels,
-				Annotations:     template.Annotations,
-				OwnerReferences: template.OwnerReferences,
+				Name:        template.Name,
+				Namespace:   cluster.Namespace,
+				Labels:      template.Labels,
+				Annotations: template.Annotations,
 			},
 			Spec: template.Spec,
 		}

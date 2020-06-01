@@ -22,7 +22,6 @@ package v1alpha1
 
 import (
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -163,13 +162,6 @@ func (in *ObjectMeta) DeepCopyInto(out *ObjectMeta) {
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
-		}
-	}
-	if in.OwnerReferences != nil {
-		in, out := &in.OwnerReferences, &out.OwnerReferences
-		*out = make([]metav1.OwnerReference, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }

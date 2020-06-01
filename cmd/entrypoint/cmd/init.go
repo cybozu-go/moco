@@ -256,31 +256,22 @@ REVOKE
 }
 
 func initializeOperatorAdminUser(ctx context.Context, password string) error {
-	{
-		t := template.Must(template.New("sql").Parse(`
+	t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
 	ALL
   ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
-SET GLOBAL partial_revokes=on ;
-REVOKE
-    SHOW VIEW,
-    TRIGGER,
-    LOCK TABLES,
-    REPLICATION CLIENT
-  ON mysql.* FROM '{{ .User }}'@'%' ;
 `))
 
-		sql := new(bytes.Buffer)
-		t.Execute(sql, struct {
-			User     string
-			Password string
-		}{myso.OperatorAdminUser, password})
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		User     string
+		Password string
+	}{myso.OperatorAdminUser, password})
 
-		stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
-		if err != nil {
-			return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
-		}
+	stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
 	}
 	return nil
 }
