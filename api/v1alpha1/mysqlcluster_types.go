@@ -164,7 +164,57 @@ type RestoreSpec struct {
 type MySQLClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Conditions is an array of conditions.
+	// +optional
+	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
+
+	// Ready represents the status of readiness.
+	// +kubebuilder:validation:Required
+	Ready MySQLClusterReady `json:"ready"`
+
+	// ReadOnly is true when the cluster is read-only, e.g. when the master is intermediate.
+	// +kubebuilder:validation:Required
+	ReadOnly bool `json:"readOnly"`
+
+	// CurrentMasterIndex is the ordinal of the current master in StatefulSet.
+	// +kubebuilder:validation:Required
+	CurrentMasterIndex int `json:"currentMasterIndex"`
+
+	// SyncedReplicas is the number of synced instances.
+	// +kubebuilder:validation:Required
+	SyncedReplicas int `json:"syncedReplicas"`
 }
+
+// MySQLClusterCondition defines the condition of MySQLCluster.
+type MySQLClusterCondition struct {
+	// Type is the type of condition.
+	// +kubebuilder:validation:Required
+	Type MySQLClusterConditionType `json:"type"`
+
+	// Status is the status of the condition.
+	// +kubebuilder:validation:Required
+	Status metav1.ConditionStatus `json:"status"`
+
+	// Reason is a one-word CamelCase reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+
+	// Message is a human-readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+
+	// LastTransitionTime is the last time the condition transits from one status to another.
+	// +kubebuilder:validation:Required
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+}
+
+// MySQLClusterConditionType is the type of MySQLCluster condition.
+type MySQLClusterConditionType string
+
+// MySQLClusterReady represents the status of readiness.
+// +kubebuilder:validation:Enum=True;False;Unknown
+type MySQLClusterReady string
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status

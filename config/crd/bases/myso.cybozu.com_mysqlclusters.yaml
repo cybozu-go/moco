@@ -6457,6 +6457,60 @@ spec:
             type: object
           status:
             description: MySQLClusterStatus defines the observed state of MySQLCluster
+            properties:
+              conditions:
+                description: Conditions is an array of conditions.
+                items:
+                  description: MySQLClusterCondition defines the condition of MySQLCluster.
+                  properties:
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time the condition
+                        transits from one status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Message is a human-readable message indicating
+                        details about last transition.
+                      type: string
+                    reason:
+                      description: Reason is a one-word CamelCase reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: Status is the status of the condition.
+                      type: string
+                    type:
+                      description: Type is the type of condition.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - status
+                  - type
+                  type: object
+                type: array
+              currentMasterIndex:
+                description: CurrentMasterIndex is the ordinal of the current master
+                  in StatefulSet.
+                type: integer
+              readOnly:
+                description: ReadOnly is true when the cluster is read-only, e.g.
+                  when the master is intermediate.
+                type: boolean
+              ready:
+                description: Ready represents the status of readiness.
+                enum:
+                - "True"
+                - "False"
+                - Unknown
+                type: string
+              syncedReplicas:
+                description: SyncedReplicas is the number of synced instances.
+                type: integer
+            required:
+            - currentMasterIndex
+            - readOnly
+            - ready
+            - syncedReplicas
             type: object
         type: object
     served: true
