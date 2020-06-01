@@ -146,6 +146,21 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
   - Remove `.spec.updateStrategy.rollingUpdate.partition`.
 6. Wait for `mysql-0` to be upgraded.
 
+### How to manage recovery from blackouts
+
+In the scenario of the recovery from data center blackouts, all members of the MySQL cluster perform cold boots.
+
+The operator waits for all members to boot up again.
+It automatically recovers the cluster only after all members come back, not just after the quorum come back.
+This is to prevent the data loss even in corner cases.
+
+If a part of the cluster never finishes boot-up, users must intervene the recovery process.
+1. Confirm that the quorum of the cluster are up and running, and waiting to be configured for the cluster.
+2. Stop the operator.
+3. Delete the non-running Pods and/or PVCs and/or Nodes, according to the level of the disruption.
+4. Configure the cluster with the remaining nodes.
+5. Resume the operator.
+
 ### TBD
 
 - Write merge strategy of `my.cnf`.
