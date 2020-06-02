@@ -155,11 +155,15 @@ It automatically recovers the cluster only after all members come back, not just
 This is to prevent the data loss even in corner cases.
 
 If a part of the cluster never finishes boot-up, users must intervene the recovery process.
-1. Confirm that the quorum of the cluster are up and running, and waiting to be configured for the cluster.
-2. Stop the operator.
-3. Delete the non-running Pods and/or PVCs and/or Nodes, according to the level of the disruption.
-4. Configure the cluster with the remaining nodes.
-5. Resume the operator.
+The process is as follows.
+1. Users delete the problematic Pods and/or PVCs.  (or they might have been deleted already)
+   - Users need to delete PVCs before Pods if they want to delete both due to the [Storage Object in Use Protection](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection).
+   - [The StatefulSet controller may recreate Pods improperly](https://github.com/kubernetes/kubernetes/issues/74374).
+     Users may need to delete the Nodes in this case.
+2. The StatefulSet controller creates new blank Pods and/or PVCs.
+3. The operator tries to select the master of the cluster only after all members are up and running, and the quorum of the cluster has data.
+   - If the quorum of the cluster does not have data, users need to recover the cluster from a backup.
+4. The operator initializes the new blank Pods as new slaves.
 
 ### TBD
 
