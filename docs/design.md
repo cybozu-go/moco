@@ -24,6 +24,7 @@ Goals
 - Support all the four transaction isolation levels.
 - Avoid split-brain.
 - Accept large transactions.
+- Upgrade this operator without restarting MySQL `Pod`s.
 - Support multiple MySQL versions and automatic upgrading.
 - Support automatic master selection and switchover.
 - Support automatic failover.
@@ -103,7 +104,19 @@ In the process, the operator configures the old master as slave if the server is
 
 ### How to execute failover when a slave fails
 
-When a slave fails once and it restarts afterwards, the operator configures it to follow the master.
+When a slave fails once and it restarts afterwards, the operator basically configures it to follow the master.
+
+#### How to handle the case a slave continues to fail and restart
+
+If one of the slaves fails again after restarting, the `StatefulSet` controller restarts the slave again.
+This means that the slave may continue to fail and restart again and again.
+This loop can occur, for example, in the case that the data in the slave is corrupted.
+Users must handle this failure manually by deleting the `Pod` or/and `PersistentVolumeClaim`.
+Then, the slave `Pod` is scheduled again onto a different node and the operator configures it to follow the master automatically.
+
+Users can keep the data with a [`VolumeSnapshot`](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) and
+create `PersistentVolumeClaim` from the snapshot even after this failure happens.
+This feature is available only if the underlying `StorageClass` supports it.
 
 ### How to execute switchover
 
