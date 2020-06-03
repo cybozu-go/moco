@@ -146,6 +146,25 @@ In this section, the name of `StatefulSet` is assumed to be `mysql`.
   - Remove `.spec.updateStrategy.rollingUpdate.partition`.
 6. Wait for `mysql-0` to be upgraded.
 
+### How to manage recovery from blackouts
+
+In the scenario of the recovery from data center blackouts, all members of the MySQL cluster perform cold boots.
+
+The operator waits for all members to boot up again.
+It automatically recovers the cluster only after all members come back, not just after the quorum come back.
+This is to prevent the data loss even in corner cases.
+
+If a part of the cluster never finishes boot-up, users must intervene the recovery process.
+The process is as follows.
+1. Users delete the problematic Pods and/or PVCs.  (or they might have been deleted already)
+   - Users need to delete PVCs before Pods if they want to delete both due to the [Storage Object in Use Protection](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection).
+   - [The StatefulSet controller may recreate Pods improperly](https://github.com/kubernetes/kubernetes/issues/74374).
+     Users may need to delete the Nodes in this case.
+2. The StatefulSet controller creates new blank Pods and/or PVCs.
+3. The operator tries to select the master of the cluster only after all members are up and running, and the quorum of the cluster has data.
+   - If the quorum of the cluster does not have data, users need to recover the cluster from a backup.
+4. The operator initializes the new blank Pods as new slaves.
+
 ### TBD
 
 - Write merge strategy of `my.cnf`.
