@@ -43,7 +43,6 @@ jobs:
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
       - run: make test
-      - run: mkdir -p build
       - run: make manager
   image:
     docker:
@@ -55,7 +54,6 @@ jobs:
       - run: cp -a /tmp/workspace build
       - setup_remote_docker
       - run: docker build . -f ./docker/myso/Dockerfile -t quay.io/cybozu/myso:latest
-      - run: docker build . -f ./docker/mysql/Dockerfile -t quay.io/cybozu/mysql:latest
       - run:
           name: Push docker image to Quay.io
           command: |
