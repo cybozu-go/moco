@@ -30,6 +30,9 @@ const (
 	varRunVolumeName    = "var-run"
 	varLogVolumeName    = "var-log"
 	tmpVolumeName       = "tmp"
+
+	//
+	passwordBytes = 32
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -42,11 +45,11 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups=myso.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=myso.cybozu.com,resources=mysqlclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=services/status,verbs=get
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -59,18 +62,17 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Create root password secret if not exist
-	err := r.createSecret(ctx, log, cluster)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
+	err := r.createSecretIfNotExist(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	err = r.createOrUpdateHeadlessService(ctx, log, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -88,7 +90,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *MySQLClusterReconciler) createSecret(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
 	if err == nil {
@@ -116,28 +118,28 @@ func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, c
 		appNameKey:      appName,
 		instanceNameKey: cluster.Name,
 	}
-	rootPass, err := generateRandomString(10)
+	rootPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
-	operatorPass, err := generateRandomString(10)
+	operatorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
-	replicatorPass, err := generateRandomString(10)
+	replicatorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
-	donorPass, err := generateRandomString(10)
+	donorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
 
 	secret.Data = map[string][]byte{
-		myso.RootPasswordKey:        []byte(rootPass),
-		myso.OperatorPasswordKey:    []byte(operatorPass),
-		myso.ReplicationPasswordKey: []byte(replicatorPass),
-		myso.DonorPasswordKey:       []byte(donorPass),
+		myso.RootPasswordKey:        rootPass,
+		myso.OperatorPasswordKey:    operatorPass,
+		myso.ReplicationPasswordKey: replicatorPass,
+		myso.DonorPasswordKey:       donorPass,
 	}
 
 	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
@@ -148,18 +150,18 @@ func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, c
 	return r.Client.Create(ctx, secret)
 }
 
-func generateRandomString(n int) (string, error) {
+func generateRandomBytes(n int) ([]byte, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 	bytes := make([]byte, n)
 	_, err := rand.Read(bytes)
 	// Note that err == nil only if we read len(bytes) bytes.
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for i, b := range bytes {
 		bytes[i] = letters[b%byte(len(letters))]
 	}
-	return string(bytes), nil
+	return bytes, nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
@@ -172,14 +174,18 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 			appNameKey:      appName,
 			instanceNameKey: cluster.Name,
 		}
-		sts.Spec.Replicas = cluster.Spec.Replicas
+		sts.Spec.Replicas = &cluster.Spec.Replicas
+		sts.Spec.ServiceName = cluster.Name
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
 			appNameKey:      appName,
 			instanceNameKey: cluster.Name,
 		}
 		sts.Spec.Template = r.makePodTemplate(log, cluster)
-		sts.Spec.VolumeClaimTemplates = r.makeVolumeClaimTemplates(cluster)
+		sts.Spec.VolumeClaimTemplates = append(
+			r.makeVolumeClaimTemplates(cluster),
+			r.makeDataVolumeClaimTemplate(cluster),
+		)
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
@@ -225,8 +231,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 	template := cluster.Spec.PodTemplate
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        template.Name,
-			Namespace:   cluster.Namespace,
 			Labels:      template.Labels,
 			Annotations: template.Annotations,
 		},
@@ -390,6 +394,15 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 	return newTemplate
 }
 
+func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mysov1alpha1.MySQLCluster) corev1.PersistentVolumeClaim {
+	return corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mysqlDataVolumeName,
+		},
+		Spec: cluster.Spec.DataVolumeClaimTemplateSpec,
+	}
+}
+
 func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mysov1alpha1.MySQLCluster) []corev1.PersistentVolumeClaim {
 	templates := cluster.Spec.VolumeClaimTemplates
 	newTemplates := make([]corev1.PersistentVolumeClaim, len(templates))
@@ -398,7 +411,6 @@ func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mysov1alpha1.
 		newTemplates[i] = corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        template.Name,
-				Namespace:   cluster.Namespace,
 				Labels:      template.Labels,
 				Annotations: template.Annotations,
 			},

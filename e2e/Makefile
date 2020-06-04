@@ -25,7 +25,7 @@ test: myso.img mysql.img
 	-kubectl delete -n e2e-test mysqlcluster --all
 	-kubectl delete -n e2e-test pvc --all
 	kubectl delete crd --all
-	kustomize build --load_restrictor='none' . | kubectl apply -f -
+	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
 	kubectl delete -n myso-system pod --all
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
