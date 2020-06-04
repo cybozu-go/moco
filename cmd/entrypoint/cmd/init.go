@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const timeoutSeconds = 30
+const timeoutDuration = 30 * time.Second
 
 var (
 	initOnceCompletedPath = filepath.Join(myso.MySQLDataPath, "init-once-completed")
@@ -35,7 +35,6 @@ var initCmd = &cobra.Command{
 	Long: fmt.Sprintf(`Initialize MySQL instance managed by MySO.
 	If %s already exists, this command does nothing.
 	`, initOnceCompletedPath),
-	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		well.Go(func(ctx context.Context) error {
 			log.Info("start initialization", nil)
@@ -61,13 +60,12 @@ var initCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-
-			well.Stop()
 			return nil
 		})
 
+		well.Stop()
 		err := well.Wait()
-		if err != nil && !well.IsSignaled(err) {
+		if err != nil {
 			log.ErrorExit(err)
 		}
 
@@ -80,8 +78,7 @@ func initializeOnce(ctx context.Context) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	skipInitializeOnce := err == nil
-	if skipInitializeOnce {
+	if err == nil {
 		log.Info("skip data initialization since "+initOnceCompletedPath+" already exists", nil)
 		return nil
 	}
@@ -117,12 +114,6 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
-	log.Info("setup ping user", nil)
-	err = initializePingUser(ctx)
-	if err != nil {
-		return err
-	}
-
 	log.Info("sync timezone with system", nil)
 	err = importTimeZoneFromHost(ctx)
 	if err != nil {
@@ -146,9 +137,9 @@ func initializeOnce(ctx context.Context) error {
 }
 
 func initializeInstance(ctx context.Context) error {
-	stdout, stderr, err := doExec(ctx, nil, "mysqld", "--initialize-insecure")
+	out, err := doExec(ctx, nil, "mysqld", "--initialize-insecure")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
 	cmd := well.CommandContext(ctx, "mysqld", "--skip-networking", "--socket="+socketPath)
@@ -158,14 +149,18 @@ func initializeInstance(ctx context.Context) error {
 }
 
 func waitInstanceBootstrap(ctx context.Context) error {
-	timeout := time.After(timeoutSeconds * time.Second)
-	tick := time.Tick(time.Second)
+	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
+	defer cancel()
+
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+
 	for {
 		select {
-		case <-timeout:
-			return errors.New("timed out")
-		case <-tick:
-			_, _, err := doExec(ctx, nil, "mysqladmin", "--socket="+socketPath, "ping")
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-tick.C:
+			_, err := doExec(ctx, nil, "mysqladmin", "--socket="+socketPath, "ping")
 			if err == nil {
 				return nil
 			}
@@ -174,14 +169,14 @@ func waitInstanceBootstrap(ctx context.Context) error {
 }
 
 func importTimeZoneFromHost(ctx context.Context) error {
-	stdout, stderr, err := doExec(ctx, nil, "mysql_tzinfo_to_sql", "/usr/share/zoneinfo")
+	out, err := doExec(ctx, nil, "mysql_tzinfo_to_sql", "/usr/share/zoneinfo")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	stdout, stderr, err = execSQL(ctx, stdout, "mysql")
+	out, err = execSQL(ctx, out, "mysql")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
@@ -207,9 +202,9 @@ FLUSH PRIVILEGES ;
 		Host     string
 	}{rootPassword, rootHost})
 
-	stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
 	passwordConf := `[client]
@@ -248,9 +243,9 @@ REVOKE
 		Password string
 	}{myso.OperatorUser, password})
 
-	stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
@@ -269,17 +264,17 @@ GRANT
 		Password string
 	}{myso.OperatorAdminUser, password})
 
-	stdout, stderr, err := execSQL(ctx, sql.Bytes(), "")
+	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
 
 func initializePingUser(ctx context.Context) error {
-	stdout, stderr, err := execSQL(ctx, []byte("CREATE USER ping@localhost IDENTIFIED BY 'pingpass' ;"), "")
+	out, err := execSQL(ctx, []byte("CREATE USER ping@localhost IDENTIFIED BY 'pingpass' ;"), "")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
@@ -298,18 +293,18 @@ func installPlugins(ctx context.Context) error {
 	sql := `INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 `
-	stdout, stderr, err := execSQL(ctx, []byte(sql), "")
+	out, err := execSQL(ctx, []byte(sql), "")
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
 
 func shutdownInstance(ctx context.Context) error {
-	stdout, stderr, err := doExec(ctx, nil,
+	out, err := doExec(ctx, nil,
 		"mysqladmin", "--defaults-file="+passwordFilePath, "shutdown", "-uroot", "--socket="+socketPath)
 	if err != nil {
-		return fmt.Errorf("stdout=%s, stderr=%s, err=%v", stdout, stderr, err)
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
 }
@@ -351,20 +346,16 @@ func touchInitOnceCompleted(ctx context.Context) error {
 	return f.Close()
 }
 
-func doExec(ctx context.Context, input []byte, command string, args ...string) ([]byte, []byte, error) {
-	var stdout, stderr bytes.Buffer
+func doExec(ctx context.Context, input []byte, command string, args ...string) ([]byte, error) {
 	cmd := well.CommandContext(ctx, command, args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
 	if input != nil {
 		cmd.Stdin = bytes.NewReader(input)
 	}
 
-	err := cmd.Run()
-	return stdout.Bytes(), stderr.Bytes(), err
+	return cmd.Output()
 }
 
-func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, []byte, error) {
+func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, error) {
 	args := []string{
 		"--defaults-file=" + passwordFilePath,
 		"-uroot",
@@ -379,6 +370,8 @@ func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, []
 }
 
 func init() {
+	rootCmd.AddCommand(initCmd)
+
 	initCmd.Flags().String(myso.PodNameFlag, "", "Pod Name created by StatefulSet")
 	initCmd.Flags().String(myso.PodIPFlag, "", "Pod IP address")
 	initCmd.Flags().String(myso.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")

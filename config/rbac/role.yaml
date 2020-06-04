@@ -24,8 +24,6 @@ rules:
   - secrets/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - ""
   resources:
@@ -44,8 +42,6 @@ rules:
   - services/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - apps
   resources:
@@ -64,8 +60,6 @@ rules:
   - statefulsets/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - myso.cybozu.com
   resources:

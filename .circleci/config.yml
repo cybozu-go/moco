@@ -43,7 +43,7 @@ jobs:
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
       - run: make test
-      - run: make manager
+      - run: make moco-controller
   image:
     docker:
       - image: docker:stable

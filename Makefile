@@ -22,7 +22,7 @@ endif
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.2.9
 
-all: manager
+all: moco-controller
 
 # Run tests
 test:
@@ -37,13 +37,15 @@ test:
 	go vet ./...
 	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
 
-# Build manager binary
-manager: generate
-	go build -o bin/manager ./cmd/manager/main.go
+# Build moco-controller binary
+moco-controller: generate
+	go build -o bin/moco-controller ./cmd/moco-controller/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=moco-controller-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	rm -f deploy/crd.yaml
+	cp config/crd/bases/myso.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
 
 # Generate code
 generate: controller-gen
@@ -81,4 +83,4 @@ setup:
 	$(SUDO) chmod a+x /usr/local/kubebuilder/bin/kustomize
 	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
 
-.PHONY:	all test manager manifests generate controller-gen mod setup
+.PHONY:	all test moco-controller manifests generate controller-gen mod setup

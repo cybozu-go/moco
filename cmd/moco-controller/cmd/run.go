@@ -1,9 +1,6 @@
-package main
+package cmd
 
 import (
-	"flag"
-	"os"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -27,27 +24,19 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.Parse()
-
+func subMain() error {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
+		MetricsBindAddress: config.metricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "cd5f0f26.cybozu.com",
+		LeaderElection:     true,
+		LeaderElectionID:   config.leaderElectionID,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return err
 	}
 
 	if err = (&controllers.MySQLClusterReconciler{
@@ -56,13 +45,14 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
-		os.Exit(1)
+		return err
 	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return err
 	}
+	return nil
 }

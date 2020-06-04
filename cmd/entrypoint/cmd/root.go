@@ -3,6 +3,7 @@ package cmd
 import (
 	"strings"
 
+	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -12,6 +13,17 @@ var (
 		Use:   "entrypoint",
 		Short: "Entrypoint for MySQL instances managed by MySO",
 		Long:  `Entrypoint for MySQL instances managed by MySO.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// without this, each subcommand's RunE would display usage text.
+			cmd.SilenceUsage = true
+
+			err := well.LogConfig{}.Apply()
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
 	}
 )
 
@@ -22,8 +34,6 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	rootCmd.AddCommand(initCmd)
 }
 
 func initConfig() {

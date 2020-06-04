@@ -26,13 +26,10 @@ spec:
         runAsUser: 10000
         runAsGroup: 10000
         fsGroup: 10000
-  volumeClaimTemplates:
-    - metadata:
-        name: mysql-data
-      spec:
-        accessModes: [ "ReadWriteOnce" ]
-        resources:
-          requests:
-            storage: 1Gi
+  dataVolumeClaimTemplateSpec:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 1Gi
   mySQLConfigMapName: mycnf
   rootPasswordSecretName: root-password
