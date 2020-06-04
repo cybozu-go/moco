@@ -15,16 +15,17 @@ The cluster does not mean [NDB cluster](https://dev.mysql.com/doc/refman/8.0/en/
 MySQLClusterSpec
 ----------------
 
-| Field                         | Type                        | Required | Description                                                                                                                                                           |
-| ----------------------------- | --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replicas`                    | int                         | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                        |
-| `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.                                                                                                                            |
-| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for MySQL server container.                                                                                                         |
-| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both master and slaves.                                                                                                                        |
-| `mySQLConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                     |
-| `rootPasswordSecretName`      | string                      | Yes      | `Secret` name for root user config.                                                                                                                                   |
-| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate master. |
-| `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.             |
+| Field                         | Type                        | Required | Description                                                                                                                                                                       |
+| ----------------------------- | --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replicas`                    | int                         | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                                    |
+| `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                            |
+| `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec] | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                       |
+| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta]. |
+| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both master and slaves.                                                                                                                                    |
+| `mySQLConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                 |
+| `rootPasswordSecretName`      | string                      | Yes      | `Secret` name for root user config.                                                                                                                                               |
+| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate master.             |
+| `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                         |
 
 RestoreSpec
 -----------
@@ -38,13 +39,12 @@ RestoreSpec
 MySQLClusterStatus
 ------------------
 
-| Field                | Type                                                | Description                                                                    |
-| -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `conditions`         | \[\][MySQLClusterCondition](#MySQLClusterCondition) | Array of conditions.                                                           |
-| `ready`              | Enum                                                | Status of readiness. One of `True`, `False`, `Unknown`.                        |
-| `readOnly`           | boolean                                             | The cluster is read-only or not (e.g. `true` when the master is intermediate). |
-| `currentMasterIndex` | int                                                 | Ordinal of the current master in `StatefulSet`.                                |
-| `syncedReplicas`     | int                                                 | Number of synced instances.                                                    |
+| Field                | Type                                                | Required | Description                                             |
+| -------------------- | --------------------------------------------------- | -------- | ------------------------------------------------------- |
+| `conditions`         | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                    |
+| `ready`              | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`. |
+| `currentMasterIndex` | int                                                 | No       | Ordinal of the current master in `StatefulSet`.         |
+| `syncedReplicas`     | int                                                 | Yes      | Number of synced instances including the master.        |
 
 MySQLClusterCondition
 ---------------------
@@ -57,9 +57,10 @@ MySQLClusterCondition
 | `message`            | string | No       | Human-readable message indicating details about last transition. |
 | `lastTransitionTime` | [Time] | Yes      | The last time the condition transits from one status to another. |
 
-[ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta
-[Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#time-v1-meta
-[PersistentVolumeClaim]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaim-v1-core
-[PodTemplateSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core
-[ServiceSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#servicespec-v1-core
+[ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta
+[Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta
+[PersistentVolumeClaim]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumeclaim-v1-core
+[PersistentVolumeClaimSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumeclaimspec-v1-core
+[PodTemplateSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podtemplatespec-v1-core
+[ServiceSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#servicespec-v1-core
 [Options]: https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html

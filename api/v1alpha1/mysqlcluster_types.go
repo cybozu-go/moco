@@ -17,15 +17,17 @@ type MySQLClusterSpec struct {
 	// +kubebuilder:validation:Enum=1;3;5
 	// +kubebuilder:default=1
 	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
+	Replicas int32 `json:"replicas,omitempty"`
 
 	// PodTemplate is a `Pod` template for MySQL server container.
-	// +kubebuilder:validation:Required
 	PodTemplate PodTemplateSpec `json:"podTemplate"`
 
-	// VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container.
+	// DataVolumeClaimTemplateSpec is a `PersistentVolumeClaimSpec` template for the MySQL data volume.
+	DataVolumeClaimTemplateSpec corev1.PersistentVolumeClaimSpec `json:"dataVolumeClaimTemplateSpec"`
+
+	// VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container, except for the MySQL data volume.
 	// +optional
-	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates"`
+	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 
 	// ServiceTemplate is a `Service` template for both master and slaves.
 	// +optional
@@ -36,7 +38,6 @@ type MySQLClusterSpec struct {
 	MySQLConfigMapName *string `json:"mySQLConfigMapName,omitempty"`
 
 	// RootPasswordSecretName is a `Secret` name for root user config.
-	// +kubebuilder:validation:Required
 	RootPasswordSecretName string `json:"rootPasswordSecretName"`
 
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
@@ -51,96 +52,53 @@ type MySQLClusterSpec struct {
 	Restore *RestoreSpec `json:"restore,omitempty"`
 }
 
-// ObjectMeta is metadata that all persisted resources must have, which includes all objects
-// users must create.
-// This is partially copied from metav1.ObjectMeta to cope with the following issue.
-// https://github.com/kubernetes-sigs/controller-tools/issues/385
+// ObjectMeta is metadata of objects.
+// This is partially copied from metav1.ObjectMeta.
 type ObjectMeta struct {
-	// Name must be unique within a namespace. Is required when creating resources, although
-	// some resources may allow a client to request the generation of an appropriate name
-	// automatically. Name is primarily intended for creation idempotence and configuration
-	// definition.
-	// Cannot be updated.
-	// More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	// Name is the name of the object.
 	// +optional
-	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	Name string `json:"name,omitempty"`
 
-	// Namespace defines the space within each name must be unique. An empty namespace is
-	// equivalent to the "default" namespace, but "default" is the canonical representation.
-	// Not all objects are required to be scoped to a namespace - the value of this field for
-	// those objects will be empty.
-	//
-	// Must be a DNS_LABEL.
-	// Cannot be updated.
-	// More info: http://kubernetes.io/docs/user-guide/namespaces
+	// Labels is a map of string keys and values.
 	// +optional
-	// Excluded to avoid users to create resources, e.g. StatefulSet, in an arbitrary namespace.
-	// Namespace string `json:"namespace,omitempty" protobuf:"bytes,3,opt,name=namespace"`
+	Labels map[string]string `json:"labels,omitempty"`
 
-	// Map of string keys and values that can be used to organize and categorize
-	// (scope and select) objects. May match selectors of replication controllers
-	// and services.
-	// More info: http://kubernetes.io/docs/user-guide/labels
+	// Annotations is a map of string keys and values.
 	// +optional
-	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,4,rep,name=labels"`
-
-	// Annotations is an unstructured key value map stored with a resource that may be
-	// set by external tools to store and retrieve arbitrary metadata. They are not
-	// queryable and should be preserved when modifying objects.
-	// More info: http://kubernetes.io/docs/user-guide/annotations
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,5,rep,name=annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
-// PodTemplateSpec describes the data a pod should have when created from a template
-// This is slightly modified from corev1.PodTemplateSpec to cope with the following issue.
-// https://github.com/kubernetes-sigs/controller-tools/issues/385
+// PodTemplateSpec describes the data a pod should have when created from a template.
+// This is slightly modified from corev1.PodTemplateSpec.
 type PodTemplateSpec struct {
-	// Standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// Standard object's metadata.  The name in this metadata is ignored.
 	// +optional
-	ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ObjectMeta `json:"metadata,omitempty"`
 
 	// Specification of the desired behavior of the pod.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-	// +optional
-	Spec corev1.PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	// The name of the MySQL server container in this spec must be `mysqld`.
+	Spec corev1.PodSpec `json:"spec"`
 }
 
-// PersistentVolumeClaim is a user's request for and claim to a persistent volume
-// This is slightly modified from corev1.PersistentVolumeClaim to cope with the following issue.
-// https://github.com/kubernetes-sigs/controller-tools/issues/385
+// PersistentVolumeClaim is a user's request for and claim to a persistent volume.
+// This is slightly modified from corev1.PersistentVolumeClaim.
 type PersistentVolumeClaim struct {
-	metav1.TypeMeta `json:",inline"`
 	// Standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
-	// +optional
-	ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ObjectMeta `json:"metadata"`
 
 	// Spec defines the desired characteristics of a volume requested by a pod author.
-	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
-	// +optional
-	Spec corev1.PersistentVolumeClaimSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
-
-	// Status represents the current information/status of a persistent volume claim.
-	// Read-only.
-	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
-	// +optional
-	Status corev1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+	Spec corev1.PersistentVolumeClaimSpec `json:"spec"`
 }
 
 // RestoreSpec defines the desired spec of Point-in-Time-Recovery
 type RestoreSpec struct {
 	// SourceClusterName is a source `MySQLCluster` name.
-	// +kubebuilder:validation:Required
 	SourceClusterName string `json:"restore"`
 
 	// PointInTime is a point-in-time of the state which the cluster is restored to.
-	// +kubebuilder:validation:Required
 	PointInTime metav1.Time `json:"pointInTime"`
 
 	// ObjectStorageName is a name of `ObjectStorage`.
-	// +kubebuilder:validation:Required
 	ObjectStorageName string `json:"objectStorageName"`
 }
 
@@ -154,31 +112,23 @@ type MySQLClusterStatus struct {
 	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
 
 	// Ready represents the status of readiness.
-	// +kubebuilder:validation:Required
 	Ready MySQLClusterReady `json:"ready"`
 
-	// ReadOnly is true when the cluster is read-only, e.g. when the master is intermediate.
-	// +kubebuilder:validation:Required
-	ReadOnly bool `json:"readOnly"`
-
 	// CurrentMasterIndex is the ordinal of the current master in StatefulSet.
-	// +kubebuilder:validation:Required
-	CurrentMasterIndex int `json:"currentMasterIndex"`
+	// +optional
+	CurrentMasterIndex *int `json:"currentMasterIndex,omitempty"`
 
-	// SyncedReplicas is the number of synced instances.
-	// +kubebuilder:validation:Required
+	// SyncedReplicas is the number of synced instances including the master.
 	SyncedReplicas int `json:"syncedReplicas"`
 }
 
 // MySQLClusterCondition defines the condition of MySQLCluster.
 type MySQLClusterCondition struct {
 	// Type is the type of condition.
-	// +kubebuilder:validation:Required
 	Type MySQLClusterConditionType `json:"type"`
 
 	// Status is the status of the condition.
-	// +kubebuilder:validation:Required
-	Status metav1.ConditionStatus `json:"status"`
+	Status corev1.ConditionStatus `json:"status"`
 
 	// Reason is a one-word CamelCase reason for the condition's last transition.
 	// +optional
@@ -189,16 +139,29 @@ type MySQLClusterCondition struct {
 	Message string `json:"message,omitempty"`
 
 	// LastTransitionTime is the last time the condition transits from one status to another.
-	// +kubebuilder:validation:Required
 	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
 }
 
 // MySQLClusterConditionType is the type of MySQLCluster condition.
+// +kubebuilder:validation:Enum=Initialized
 type MySQLClusterConditionType string
+
+// Valid values for MySQLClusterConditionType
+const (
+	ConditionInitialized MySQLClusterConditionType = "Initialized"
+	// and more
+)
 
 // MySQLClusterReady represents the status of readiness.
 // +kubebuilder:validation:Enum=True;False;Unknown
 type MySQLClusterReady string
+
+// Valid values for MySQLClusterReady.
+const (
+	ReadyTrue    MySQLClusterReady = "True"
+	ReadyFalse   MySQLClusterReady = "False"
+	ReadyUnknown MySQLClusterReady = "Unknown"
+)
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -208,8 +171,9 @@ type MySQLCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MySQLClusterSpec   `json:"spec,omitempty"`
-	Status MySQLClusterStatus `json:"status,omitempty"`
+	Spec MySQLClusterSpec `json:"spec"`
+	// +optional
+	Status *MySQLClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
