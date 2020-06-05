@@ -115,8 +115,11 @@ To avoid these uncessary restarts of the clusters, we prepare a init container w
 The container takes the Default, User and Constant configurations as `ConfigMap`, and then it merges the three `ConfigMap`s to create `my.cnf`.
 
 So, in short we prepare the following two init containers.
-1. A container to create `my.cnf` from `ConfigMap`s created by the operator when it starts and a `ConfigMap` created by the user.
-2. A container to initialize the MySQL cluster, for example, creating necessary users.
+1. A container to initialize the MySQL cluster, for example, creating necessary users.
+  The entrypoint binary is provided by this repository.
+  If users want to use their custom image, they have to include the binary in the image.
+2. A container to create `my.cnf` from `ConfigMap`s created by the operator and the user.
+  This container is injected by the operator.
 
 If users want to change their MySQL cluster configuration, users basically should execute mysql commands like `SET GLOBAL ...`.
 In case that we cannot avoid restarting MySQL cluster to apply changes in the user-defined `ConfigMap`,
@@ -211,6 +214,12 @@ The process is as follows.
 3. The operator tries to select the master of the cluster only after all members are up and running, and the quorum of the cluster has data.
    - If the quorum of the cluster does not have data, users need to recover the cluster from a backup.
 4. The operator initializes the new blank Pods as new slaves.
+
+### How to collect metrics for Prometheus
+
+To avoid unncessary restart when the operator is updated, we prepare external Pods which collect prometheus metrics over network.
+
+The detail is TBD.
 
 ### TBD
 
