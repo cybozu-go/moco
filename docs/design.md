@@ -89,18 +89,18 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
 
-#### How to implement StatefulSet initialization with avoiding unncessary restart at the operator update
+#### How to implement the initialization of MySQL pods with avoiding unnecessary restart at the operator update
 
-When initializing the `StatefulSet`, the following procedures should be executed in their init containers.
+When initializing MySQL pods, the following procedures should be executed in their init containers.
 
-- Create `my.cnf`.
+- Initialize data-dir.
 - Create mysql users.
-- Create directories, for example `mysql/conf.d`.
+- Create `my.cnf`.
 - etc.
 
-When updating the operator version, we want to avoid unnecessary restarts of MySQL clusters.
-Creating mysql users and creating directories are done in an init container of which image is the same with
-the `mysqld` container, so this restart is necessary.
+When upgrading the operator, we want to avoid unnecessary restarts of MySQL pods.
+Creating mysql users and initializing data-dir are done in an init container of which image is the same with
+the `mysqld` container, so the MySQL pods are not restarted at the upgrade.
 
 On the other hand, `my.cnf` is created by merging the following three configurations.
 
@@ -111,7 +111,8 @@ On the other hand, `my.cnf` is created by merging the following three configurat
 If the default and constant configurations are implemented in an init container, the container might be updated
 every time the version of the operator changes and the operator restarts the existing MySQL clusters frequently.
 
-To avoid these uncessary restarts of the clusters, we prepare a init container which is responsible only for the merging logic.
+To avoid these unnecessary restarts of the clusters, we prepare another container image that is responsible only for the merging logic.
+This container image is independent of MOCO image.
 The container takes the Default, User and Constant configurations as `ConfigMap`, and then it merges the three `ConfigMap`s to create `my.cnf`.
 
 So, in short we prepare the following two init containers.
@@ -217,7 +218,8 @@ The process is as follows.
 
 ### How to collect metrics for Prometheus
 
-To avoid unncessary restart when the operator is updated, we prepare external Pods which collect prometheus metrics over network.
+To avoid unnecessary restart when the operator is upgraded, we prepare external Pods which collect mysqld metrics over the network,
+and export them as Prometheus metrics.
 
 The detail is TBD.
 
