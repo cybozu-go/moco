@@ -74,19 +74,53 @@ Components
 
 ![design_architecture](http://www.plantuml.com/plantuml/png/ZLEnRjim4Dtv5GTdIGS3jRmLHH54cOoaSKi4GM5xeAIBhPeYLP9AQmJvzrAaB96nXMGHmFSUxzqz7Q-qOSeq5ISiDrB1WqP5LXJLSvdZMZnPg6BQeDe0qr1fJxnHQCwUKJk5FYg8a0N2T_lvtEAJHwdsg2RmGW1gbk_P5k5cwQWRhBayL2YCfm5MrK7BZIFl3lH-0XU_a7FvrvAlv3MeFJjgVjp2dUlpqXjzYfqezKfgcC6dXbEClFxmOkRj_67SC0aCQJlsRCmmUSSm-PZX_ArXCcOuVyTmFcuub4aNJfGgAHOowojabcxg3GmLib9mkLqBTwYRgZuPeM26PKmZhAYHoXRt_ckn5hRNN5OrCsN6SItkiz-O6-XahS0MkostEtFD6uINFf1K2gCaNt8cqFVf0N28xxQtdR2wRBSHLLpDJ-GIJNdJx_OaH2xJdpRVYsKfzbv-xGAW-GwBXdUJnDZ9bU1FU7q0HC8kx4sS_23mlNetBmg0oDO7txvXc4w_zSyLle3L3xWUmSC4B9SgP0O7Efvt4BIFzTpzHsRotS36rq_v89upjRjS1YQKVvrEsoT-1alEO7FI5NFdT47yTbkNumfQbuUQIrQGFaB7qfbbbah-En0T4yaOCPXDLRk35Wp-7hb2KJGL_my0)
 
+
 The operator has the responsibility to create master-slave configuration of MySQL clusters.
 
 When the `MySQLCluster` is created, the operator starts deploying a new MySQL cluster as follows.
 In this section, the name of `MySQLCluster` is assumed to be `mysql`.
 
 1. The operator creates `StatefulSet` which has `N`(`N`=3 or 5) `Pod`s and its headless `Service`.
-1. The operator sets `mysql-0` as master and the other `Pod`s as slave.
+2. The operator sets `mysql-0` as master and the other `Pod`s as slave.
    The index of the current master is managed under `MySQLCluster.status.currentMasterIndex`.
-1. The operator creates some k8s resources.
+3. The operator creates some k8s resources.
   - `Service` for accessing master, both for MySQL protocol and X protocol.
   - `Service` for accessing slaves, both for MySQL protocol and X protocol.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
+
+#### How to implement StatefulSet initialization with avoiding unncessary restart at the operator update
+
+When initializing the `StatefulSet`, the following procedures should be executed in their init containers.
+
+- Create `my.cnf`.
+- Create mysql users.
+- Create directories, for example `mysql/conf.d`.
+- etc.
+
+When updating the operator version, we want to avoid unnecessary restarts of MySQL clusters.
+Creating mysql users and creating directories are done in an init container of which image is the same with
+the `mysqld` container, so this restart is necessary.
+
+On the other hand, `my.cnf` is created by merging the following three configurations.
+
+- Default: This is created by the operator and contains default value of `my.cnf`.
+- User: This is created by users and contains user-defined values of `my.cnf`. This overwrites Default values.
+- Constant: This is created by the operator. This overwrites User values.
+
+If the default and constant configurations are implemented in an init container, the container might be updated
+every time the version of the operator changes and the operator restarts the existing MySQL clusters frequently.
+
+To avoid these uncessary restarts of the clusters, we prepare a init container which is responsible only for the merging logic.
+The container takes the Default, User and Constant configurations as `ConfigMap`, and then it merges the three `ConfigMap`s to create `my.cnf`.
+
+So, in short we prepare the following two init containers.
+1. A container to create `my.cnf` from `ConfigMap`s created by the operator when it starts and a `ConfigMap` created by the user.
+2. A container to initialize the MySQL cluster, for example, creating necessary users.
+
+If users want to change their MySQL cluster configuration, users basically should execute mysql commands like `SET GLOBAL ...`.
+In case that we cannot avoid restarting MySQL cluster to apply changes in the user-defined `ConfigMap`,
+we should execute a command like `kubectl moco graceful-restart CLUSTER`.
 
 Behaviors
 ---------
