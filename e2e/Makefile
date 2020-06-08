@@ -36,7 +36,7 @@ myso.img:
 	rm -f $@
 
 mysql.img:
-	docker build .. -f ../docker/mysql/Dockerfile -t mysql:dev
+	docker build .. -f ../e2e/Dockerfile -t mysql:dev
 	docker save -o $@ mysql:dev
 	kind load image-archive mysql.img
 	rm -f $@
