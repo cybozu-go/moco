@@ -3,13 +3,10 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"text/template"
 	"time"
 
@@ -49,17 +46,6 @@ var initCmd = &cobra.Command{
 				return err
 			}
 
-			log.Info("create config file for admin interface", nil)
-			err = confAdminInterface(ctx, viper.GetString(myso.PodIPFlag))
-			if err != nil {
-				return err
-			}
-
-			log.Info("create config file for server-id", nil)
-			err = confServerID(ctx, viper.GetString(myso.PodNameFlag))
-			if err != nil {
-				return err
-			}
 			return nil
 		})
 
@@ -137,7 +123,7 @@ func initializeOnce(ctx context.Context) error {
 }
 
 func initializeInstance(ctx context.Context) error {
-	out, err := doExec(ctx, nil, "mysqld", "--initialize-insecure")
+	out, err := doExec(ctx, nil, "mysqld", "--defaults-file="+filepath.Join(myso.MySQLConfPath, myso.MySQLConfName), "--initialize-insecure")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
@@ -307,35 +293,6 @@ func shutdownInstance(ctx context.Context) error {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 	return nil
-}
-
-func confAdminInterface(ctx context.Context, podIP string) error {
-	conf := `
-[mysqld]
-admin-address=%s
-`
-	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
-}
-
-func confServerID(ctx context.Context, podNameWithOrdinal string) error {
-	// ordinal should be increased by 1000 because the case server-id is 0 is not suitable for the replication purpose
-	const ordinalOffset = 1000
-
-	s := strings.Split(podNameWithOrdinal, "-")
-	if len(s) < 2 {
-		return errors.New("podName should contain an ordinal with dash, like 'podname-0', at the end: " + podNameWithOrdinal)
-	}
-
-	ordinal, err := strconv.Atoi(s[len(s)-1])
-	if err != nil {
-		return err
-	}
-
-	conf := `
-[mysqld]
-server-id=%d
-`
-	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
 }
 
 func touchInitOnceCompleted(ctx context.Context) error {

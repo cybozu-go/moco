@@ -20,7 +20,10 @@ const (
 	MySQLDataPath = "/var/lib/mysql"
 
 	// MySQLConfPath is a path for MySQL conf dir.
-	MySQLConfPath = "/etc/mysql/conf.d"
+	MySQLConfPath = "/etc/mysql"
+
+	// MySQLConfName is a filename for MySQL conf.
+	MySQLConfName = "my.cnf"
 
 	// VarRunPath is a path for variable files which concerns MySQLd.
 	VarRunPath = "/var/run/mysqld"

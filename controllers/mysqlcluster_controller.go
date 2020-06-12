@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"crypto/rand"
+	"path/filepath"
 
 	"github.com/cybozu-go/myso"
 	mysov1alpha1 "github.com/cybozu-go/myso/api/v1alpha1"
@@ -22,8 +23,9 @@ const (
 	appNameKey      = "app.kubernetes.io/name"
 	instanceNameKey = "app.kubernetes.io/instance"
 
-	containerName     = "mysqld"
-	initContainerName = "myso-init"
+	containerName               = "mysqld"
+	entrypointInitContainerName = "myso-init"
+	configInitContainerName     = "myso-config"
 
 	mysqlDataVolumeName = "mysql-data"
 	mysqlConfVolumeName = "mysql-conf"
@@ -38,8 +40,9 @@ const (
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log                      logr.Logger
+	Scheme                   *runtime.Scheme
+	ConfigInitContainerImage string
 }
 
 // +kubebuilder:rbac:groups=myso.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -289,6 +292,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 
 		mysqldContainer = c
 
+		c.Args = []string{"--defaults-file=" + filepath.Join(myso.MySQLConfPath, myso.MySQLConfName)}
 		c.Env = append(c.Env,
 			corev1.EnvVar{
 				Name: myso.RootPasswordEnvName,
@@ -334,12 +338,68 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 		)
 	}
 
-	// create init container and append it to Pod
+	// create init containers and append them to Pod
+	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
+		r.makeConfigInitContainer(log, cluster),
+		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
+	)
+
+	return newTemplate
+}
+
+func (r *MySQLClusterReconciler) makeConfigInitContainer(log logr.Logger, cluster *mysov1alpha1.MySQLCluster) corev1.Container {
 	c := corev1.Container{}
-	c.Name = initContainerName
+	c.Name = configInitContainerName
+
+	c.Image = r.ConfigInitContainerImage
+
+	c.Command = []string{"/moco-conf-gen"}
+	c.Env = append(c.Env,
+		corev1.EnvVar{
+			Name: myso.PodIPEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		},
+		corev1.EnvVar{
+			Name: myso.PodNameEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	)
+	c.VolumeMounts = append(c.VolumeMounts,
+		corev1.VolumeMount{
+			MountPath: myso.MySQLConfPath,
+			Name:      mysqlConfVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: myso.VarRunPath,
+			Name:      varRunVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: myso.VarLogPath,
+			Name:      varLogVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: myso.TmpPath,
+			Name:      tmpVolumeName,
+		},
+	)
+
+	return c
+}
+
+func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cluster *mysov1alpha1.MySQLCluster, mysqldContainerImage string) corev1.Container {
+	c := corev1.Container{}
+	c.Name = entrypointInitContainerName
 
 	// use the same image with the 'mysqld' container
-	c.Image = mysqldContainer.Image
+	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
@@ -355,14 +415,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "status.podIP",
-				},
-			},
-		},
-		corev1.EnvVar{
-			Name: myso.PodNameEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
 				},
 			},
 		},
@@ -389,9 +441,8 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 			Name:      tmpVolumeName,
 		},
 	)
-	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers, c)
 
-	return newTemplate
+	return c
 }
 
 func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mysov1alpha1.MySQLCluster) corev1.PersistentVolumeClaim {

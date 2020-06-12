@@ -7,6 +7,7 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY constants.go constants.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o entrypoint ./cmd/entrypoint
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o moco-conf-gen ./cmd/moco-conf-gen
 
 FROM ubuntu:18.04
 
@@ -44,8 +45,8 @@ RUN groupadd -r mysql \
 VOLUME /var/lib/mysql
 
 COPY e2e/ping.sh /ping.sh
-COPY e2e/my.cnf /etc/my.cnf
 COPY --from=builder /workspace/entrypoint /entrypoint
+COPY --from=builder /workspace/moco-conf-gen /moco-conf-gen
 
 ENTRYPOINT ["mysqld"]
 HEALTHCHECK CMD /ping.sh

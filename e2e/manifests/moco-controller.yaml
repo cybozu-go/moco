@@ -10,5 +10,6 @@ spec:
       - name: manager
         command:
         - /moco-controller
+        - --config-init-container-image=mysql:dev
         image: controller:dev
         imagePullPolicy: Never
