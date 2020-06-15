@@ -1,15 +1,15 @@
-FROM golang:1.13 as builder
+FROM quay.io/cybozu/golang:1.13-bionic as builder
 
 WORKDIR /workspace
-COPY go.mod go.mod
-RUN go mod download
 
+COPY go.mod go.mod
+COPY vendor/ vendor/
 COPY cmd/ cmd/
 COPY constants.go constants.go
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o entrypoint ./cmd/entrypoint
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o moco-conf-gen ./cmd/moco-conf-gen
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o entrypoint ./cmd/entrypoint
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o moco-conf-gen ./cmd/moco-conf-gen
 
-FROM ubuntu:18.04
+FROM quay.io/cybozu/ubuntu:18.04
 
 ENV MYSQL_VERSION 8.0.20-1ubuntu18.04
 ENV MYSQL_MINOR_VERSION 8.0
