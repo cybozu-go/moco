@@ -88,6 +88,7 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
   - `Service` for accessing slaves, both for MySQL protocol and X protocol.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
+  - `ServiceAccount`, `Role` and `RoleBinding` to allow Pods to access resources.
 
 #### How to implement the initialization of MySQL pods with avoiding unnecessary restart at the operator update
 

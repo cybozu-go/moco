@@ -87,4 +87,5 @@ workflows:
       - image:
           requires:
             - build
+            - e2e
       - e2e
