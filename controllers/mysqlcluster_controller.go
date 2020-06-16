@@ -3,7 +3,9 @@ package controllers
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/cybozu-go/myso"
@@ -33,8 +35,7 @@ const (
 	varLogVolumeName    = "var-log"
 	tmpVolumeName       = "tmp"
 
-	//
-	passwordBytes = 32
+	passwordBytes = 16
 
 	defaultTerminationGracePeriodSeconds = 300
 )
@@ -55,6 +56,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services/status,verbs=get
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=serviceaccounts/status,verbs=get
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -77,6 +80,11 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
+	err = r.createOrUpdateRBAC(ctx, log, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -92,12 +100,15 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
+		Owns(&corev1.ServiceAccount{}).
 		Complete(r)
 }
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.Spec.RootPasswordSecretName}, secret)
+	myNS := os.Getenv("POD_NAMESPACE")
+	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err == nil {
 		return nil
 	}
@@ -106,22 +117,6 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return err
 	}
 
-	err = r.createRootPasswordSecret(ctx, cluster)
-	if err != nil {
-		log.Error(err, "unable to create Secret")
-		return err
-	}
-	return nil
-}
-
-func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, cluster *mysov1alpha1.MySQLCluster) error {
-	secret := &corev1.Secret{}
-	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(cluster.Spec.RootPasswordSecretName)
-
-	secret.Labels = map[string]string{
-		appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
-	}
 	rootPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
@@ -139,6 +134,48 @@ func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, c
 		return err
 	}
 
+	err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
+	if err != nil {
+		log.Error(err, "unable to create Secret for Controller")
+		return err
+	}
+
+	err = r.createPasswordSecretForUser(ctx, cluster, rootPass, operatorPass, replicatorPass, donorPass)
+	if err != nil {
+		log.Error(err, "unable to create Secret for user")
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mysov1alpha1.MySQLCluster, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
+	secret := &corev1.Secret{}
+	secret.SetNamespace(namespace)
+	secret.SetName(secretName)
+
+	secret.Data = map[string][]byte{
+		myso.OperatorPasswordKey:    operatorPass,
+		myso.ReplicationPasswordKey: replicatorPass,
+		myso.DonorPasswordKey:       donorPass,
+	}
+
+	err := ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	return r.Client.Create(ctx, secret)
+}
+
+func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context, cluster *mysov1alpha1.MySQLCluster, rootPass, operatorPass, replicatorPass, donorPass []byte) error {
+	secret := &corev1.Secret{}
+	secret.SetNamespace(cluster.Namespace)
+	secret.SetName(cluster.Spec.RootPasswordSecretName)
+
+	secret.Labels = map[string]string{
+		appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+	}
+
 	secret.Data = map[string][]byte{
 		myso.RootPasswordKey:        rootPass,
 		myso.OperatorPasswordKey:    operatorPass,
@@ -146,7 +183,7 @@ func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, c
 		myso.DonorPasswordKey:       donorPass,
 	}
 
-	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	err := ctrl.SetControllerReference(cluster, secret, r.Scheme)
 	if err != nil {
 		return err
 	}
@@ -155,17 +192,15 @@ func (r *MySQLClusterReconciler) createRootPasswordSecret(ctx context.Context, c
 }
 
 func generateRandomBytes(n int) ([]byte, error) {
-	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
 	bytes := make([]byte, n)
 	_, err := rand.Read(bytes)
-	// Note that err == nil only if we read len(bytes) bytes.
 	if err != nil {
 		return nil, err
 	}
-	for i, b := range bytes {
-		bytes[i] = letters[b%byte(len(letters))]
-	}
-	return bytes, nil
+
+	ret := make([]byte, hex.EncodedLen(n))
+	hex.Encode(ret, bytes)
+	return ret, nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
@@ -200,7 +235,7 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 	sa.SetName(cluster.Name)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		return nil
+		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
 	})
 
 	if err != nil {
@@ -230,7 +265,11 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		sts.Spec.Selector.MatchLabels = map[string]string{
 			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
 		}
-		sts.Spec.Template = r.makePodTemplate(log, cluster)
+		template, err := r.makePodTemplate(log, cluster)
+		if err != nil {
+			return err
+		}
+		sts.Spec.Template = template
 		sts.Spec.VolumeClaimTemplates = append(
 			r.makeVolumeClaimTemplates(cluster),
 			r.makeDataVolumeClaimTemplate(cluster),
@@ -248,7 +287,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov1alpha1.MySQLCluster) corev1.PodTemplateSpec {
+func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov1alpha1.MySQLCluster) (corev1.PodTemplateSpec, error) {
 	template := cluster.Spec.PodTemplate
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -340,6 +379,9 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 			},
 		)
 	}
+	if mysqldContainer == nil {
+		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", containerName)
+	}
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
@@ -347,7 +389,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
 	)
 
-	return newTemplate
+	return newTemplate, nil
 }
 
 func (r *MySQLClusterReconciler) makeConfigInitContainer(log logr.Logger, cluster *mysov1alpha1.MySQLCluster) corev1.Container {
