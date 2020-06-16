@@ -142,8 +142,8 @@ func (in *MySQLClusterStatus) DeepCopyInto(out *MySQLClusterStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.CurrentMasterIndex != nil {
-		in, out := &in.CurrentMasterIndex, &out.CurrentMasterIndex
+	if in.CurrentPrimaryIndex != nil {
+		in, out := &in.CurrentPrimaryIndex, &out.CurrentPrimaryIndex
 		*out = new(int)
 		**out = **in
 	}

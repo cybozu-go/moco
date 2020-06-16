@@ -13,20 +13,20 @@ There are some existing operators which deploy a group of MySQL servers without 
 - [oracle/mysql-operator](https://github.com/oracle/mysql-operator) takes backups only with `mysqldump`
 - [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired Point-in-Time
 
-This operator deploys a group of MySQL servers which replicates data semi-synchronously to the slaves and takes backups with both `mysqlpump` and `mysqlbinlog`.
+This operator deploys a group of MySQL servers which replicates data semi-synchronously to the replicas and takes backups with both `mysqlpump` and `mysqlbinlog`.
 
 In this context, we call the group of MySQL servers as MySQL cluster.
 
 Goals
 -----
 
-- Have the master replicate data semi-synchronously to the multiple slaves
+- Have the primary replicate data semi-synchronously to the multiple replicas
 - Support all the four transaction isolation levels.
 - Avoid split-brain.
 - Accept large transactions.
 - Upgrade this operator without restarting MySQL `Pod`s.
 - Support multiple MySQL versions and automatic upgrading.
-- Support automatic master selection and switchover.
+- Support automatic primary selection and switchover.
 - Support automatic failover.
 - Support backups at least once in a day.
 - Support a quick recovery by combining full backup and binary logs.
@@ -60,12 +60,12 @@ Components
   - [MySQLBackupSchedule](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
   - [SwitchoverJob](crd_mysql_switch_over_job.md) represents a switchover job.
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
-- [cert-manager](https://cert-manager.io/): Provide client certifications and master-slave certifications automatically.
+- [cert-manager](https://cert-manager.io/): Provide client certifications and primary-replica certifications automatically.
 
 ### Tools
 
 - `kubectl-myso`: CLI to manipulate MySQL cluster. It provides functionalities such as:
-  - Change master manually.
+  - Change primary manually.
   - Port-forward to MySQL servers.
   - Execute SQL like `mysql -u -p` without a credential file on a local environment.
   - Fetch a credential file to a local environment.
@@ -75,17 +75,17 @@ Components
 ![design_architecture](http://www.plantuml.com/plantuml/png/ZLEnRjim4Dtv5GTdIGS3jRmLHH54cOoaSKi4GM5xeAIBhPeYLP9AQmJvzrAaB96nXMGHmFSUxzqz7Q-qOSeq5ISiDrB1WqP5LXJLSvdZMZnPg6BQeDe0qr1fJxnHQCwUKJk5FYg8a0N2T_lvtEAJHwdsg2RmGW1gbk_P5k5cwQWRhBayL2YCfm5MrK7BZIFl3lH-0XU_a7FvrvAlv3MeFJjgVjp2dUlpqXjzYfqezKfgcC6dXbEClFxmOkRj_67SC0aCQJlsRCmmUSSm-PZX_ArXCcOuVyTmFcuub4aNJfGgAHOowojabcxg3GmLib9mkLqBTwYRgZuPeM26PKmZhAYHoXRt_ckn5hRNN5OrCsN6SItkiz-O6-XahS0MkostEtFD6uINFf1K2gCaNt8cqFVf0N28xxQtdR2wRBSHLLpDJ-GIJNdJx_OaH2xJdpRVYsKfzbv-xGAW-GwBXdUJnDZ9bU1FU7q0HC8kx4sS_23mlNetBmg0oDO7txvXc4w_zSyLle3L3xWUmSC4B9SgP0O7Efvt4BIFzTpzHsRotS36rq_v89upjRjS1YQKVvrEsoT-1alEO7FI5NFdT47yTbkNumfQbuUQIrQGFaB7qfbbbah-En0T4yaOCPXDLRk35Wp-7hb2KJGL_my0)
 
 
-The operator has the responsibility to create master-slave configuration of MySQL clusters.
+The operator has the responsibility to create primary-replica configuration of MySQL clusters.
 
 When the `MySQLCluster` is created, the operator starts deploying a new MySQL cluster as follows.
 In this section, the name of `MySQLCluster` is assumed to be `mysql`.
 
 1. The operator creates `StatefulSet` which has `N`(`N`=3 or 5) `Pod`s and its headless `Service`.
-2. The operator sets `mysql-0` as master and the other `Pod`s as slave.
-   The index of the current master is managed under `MySQLCluster.status.currentMasterIndex`.
+2. The operator sets `mysql-0` as primary and the other `Pod`s as replica.
+   The index of the current primary is managed under `MySQLCluster.status.currentPrimaryIndex`.
 3. The operator creates some k8s resources.
-  - `Service` for accessing master, both for MySQL protocol and X protocol.
-  - `Service` for accessing slaves, both for MySQL protocol and X protocol.
+  - `Service` for accessing primary, both for MySQL protocol and X protocol.
+  - `Service` for accessing replicas, both for MySQL protocol and X protocol.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
   - `ServiceAccount`, `Role` and `RoleBinding` to allow Pods to access resources.
@@ -130,28 +130,28 @@ we should execute a command like `kubectl moco graceful-restart CLUSTER`.
 Behaviors
 ---------
 
-### How to execute failover when the master fails
+### How to execute failover when the primary fails
 
-When the master fails, the cluster is recovered in the following process:
+When the primary fails, the cluster is recovered in the following process:
 
-1. Stop the `IO_THREAD` of all slaves.
-2. Select and configure new master.
-3. Update `MySQLCluster.status.currentMasterIndex` with the new master name.
-4. Turn off read-only mode on the new master
+1. Stop the `IO_THREAD` of all replicas.
+2. Select and configure new primary.
+3. Update `MySQLCluster.status.currentPrimaryIndex` with the new primary name.
+4. Turn off read-only mode on the new primary
 
-In the process, the operator configures the old master as slave if the server is ready.
+In the process, the operator configures the old primary as replica if the server is ready.
 
-### How to execute failover when a slave fails
+### How to execute failover when a replica fails
 
-When a slave fails once and it restarts afterwards, the operator basically configures it to follow the master.
+When a replica fails once and it restarts afterwards, the operator basically configures it to follow the primary.
 
-#### How to handle the case a slave continues to fail and restart
+#### How to handle the case a replica continues to fail and restart
 
-If one of the slaves fails again after restarting, the `StatefulSet` controller restarts the slave again.
-This means that the slave may continue to fail and restart again and again.
-This loop can occur, for example, in the case that the data in the slave is corrupted.
+If one of the replicas fails again after restarting, the `StatefulSet` controller restarts the replica again.
+This means that the replica may continue to fail and restart again and again.
+This loop can occur, for example, in the case that the data in the replica is corrupted.
 Users must handle this failure manually by deleting the `Pod` or/and `PersistentVolumeClaim`.
-Then, the slave `Pod` is scheduled again onto a different node and the operator configures it to follow the master automatically.
+Then, the replica `Pod` is scheduled again onto a different node and the operator configures it to follow the primary automatically.
 
 Users can keep the data with a [`VolumeSnapshot`](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) and
 create `PersistentVolumeClaim` from the snapshot even after this failure happens.
@@ -159,7 +159,7 @@ This feature is available only if the underlying `StorageClass` supports it.
 
 ### How to execute switchover
 
-Users can execute master switchover by applying `SwitchoverJob` CR which contains the master index to be switched to.
+Users can execute primary switchover by applying `SwitchoverJob` CR which contains the primary index to be switched to.
 
 Note that while any `SwitchoverJob` is running, another `SwitchoverJob` can be created but the operator waits for the completion of running jobs.
 
@@ -183,17 +183,17 @@ When we create a `MySQLCluster` with `.spec.restore` specified, the operator per
 6. The operator restores the MySQL servers to the state at `MySQLCluster.spec.restore.pointInTime`.
 7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
 
-### How to upgrade MySQL version of master and slaves
+### How to upgrade MySQL version of primary and replicas
 
 MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.
 In this section, the name of `StatefulSet` is assumed to be `mysql`.
 
-1. Switch master to the pod `mysql-0` if the current master is not `mysql-0`.
-2. Update and apply the `StatefulSet` manifest for `mysql`, to trigger upgrading the slaves as follows:
+1. Switch primary to the pod `mysql-0` if the current primary is not `mysql-0`.
+2. Update and apply the `StatefulSet` manifest for `mysql`, to trigger upgrading the replicas as follows:
   - Set `.spec.updateStrategy.rollingUpdate.partition` as `1`.
   - Set new image version in `.spec.template.spec.containers`.
-3. Wait for all the slaves to be upgraded.
-4. Switch master to `mysql-1`.
+3. Wait for all the replicas to be upgraded.
+4. Switch primary to `mysql-1`.
 5. Update and apply the `StatefulSet` manifest to trigger upgrading `mysql-0` as follows:
   - Remove `.spec.updateStrategy.rollingUpdate.partition`.
 6. Wait for `mysql-0` to be upgraded.
@@ -213,9 +213,9 @@ The process is as follows.
    - [The StatefulSet controller may recreate Pods improperly](https://github.com/kubernetes/kubernetes/issues/74374).
      Users may need to delete the Nodes in this case.
 2. The StatefulSet controller creates new blank Pods and/or PVCs.
-3. The operator tries to select the master of the cluster only after all members are up and running, and the quorum of the cluster has data.
+3. The operator tries to select the primary of the cluster only after all members are up and running, and the quorum of the cluster has data.
    - If the quorum of the cluster does not have data, users need to recover the cluster from a backup.
-4. The operator initializes the new blank Pods as new slaves.
+4. The operator initializes the new blank Pods as new replicas.
 
 ### How to collect metrics for Prometheus
 

@@ -6092,7 +6092,7 @@ spec:
                 description: ReplicationSourceSecretName is a `Secret` name which
                   contains replication source info. Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.
                   If this field is given, the `MySQLCluster` works as an intermediate
-                  master.
+                  primary.
                 type: string
               restore:
                 description: Restore is a Specification to perform Point-in-Time-Recovery
@@ -6120,8 +6120,8 @@ spec:
                   config.
                 type: string
               serviceTemplate:
-                description: ServiceTemplate is a `Service` template for both master
-                  and slaves.
+                description: ServiceTemplate is a `Service` template for both primary
+                  and replicas.
                 properties:
                   clusterIP:
                     description: 'clusterIP is the IP address of the service and is
@@ -6521,8 +6521,8 @@ spec:
                   - type
                   type: object
                 type: array
-              currentMasterIndex:
-                description: CurrentMasterIndex is the ordinal of the current master
+              currentPrimaryIndex:
+                description: CurrentPrimaryIndex is the ordinal of the current primary
                   in StatefulSet.
                 type: integer
               ready:
@@ -6534,7 +6534,7 @@ spec:
                 type: string
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances including
-                  the master.
+                  the primary.
                 type: integer
             required:
             - ready

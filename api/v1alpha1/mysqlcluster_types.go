@@ -29,7 +29,7 @@ type MySQLClusterSpec struct {
 	// +optional
 	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 
-	// ServiceTemplate is a `Service` template for both master and slaves.
+	// ServiceTemplate is a `Service` template for both primary and replicas.
 	// +optional
 	ServiceTemplate *corev1.ServiceSpec `json:"serviceTemplate,omitempty"`
 
@@ -42,7 +42,7 @@ type MySQLClusterSpec struct {
 
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
 	// Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.
-	// If this field is given, the `MySQLCluster` works as an intermediate master.
+	// If this field is given, the `MySQLCluster` works as an intermediate primary.
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
@@ -114,11 +114,11 @@ type MySQLClusterStatus struct {
 	// Ready represents the status of readiness.
 	Ready MySQLClusterReady `json:"ready"`
 
-	// CurrentMasterIndex is the ordinal of the current master in StatefulSet.
+	// CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
 	// +optional
-	CurrentMasterIndex *int `json:"currentMasterIndex,omitempty"`
+	CurrentPrimaryIndex *int `json:"currentPrimaryIndex,omitempty"`
 
-	// SyncedReplicas is the number of synced instances including the master.
+	// SyncedReplicas is the number of synced instances including the primary.
 	SyncedReplicas int `json:"syncedReplicas"`
 }
 

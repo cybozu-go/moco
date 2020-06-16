@@ -21,10 +21,10 @@ MySQLClusterSpec
 | `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                            |
 | `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec] | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                       |
 | `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta]. |
-| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both master and slaves.                                                                                                                                    |
+| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both primary and replicas.                                                                                                                                 |
 | `mySQLConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                 |
 | `rootPasswordSecretName`      | string                      | Yes      | `Secret` name for root user config.                                                                                                                                               |
-| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate master.             |
+| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary.            |
 | `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                         |
 
 RestoreSpec
@@ -39,12 +39,12 @@ RestoreSpec
 MySQLClusterStatus
 ------------------
 
-| Field                | Type                                                | Required | Description                                             |
-| -------------------- | --------------------------------------------------- | -------- | ------------------------------------------------------- |
-| `conditions`         | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                    |
-| `ready`              | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`. |
-| `currentMasterIndex` | int                                                 | No       | Ordinal of the current master in `StatefulSet`.         |
-| `syncedReplicas`     | int                                                 | Yes      | Number of synced instances including the master.        |
+| Field                 | Type                                                | Required | Description                                             |
+| --------------------- | --------------------------------------------------- | -------- | ------------------------------------------------------- |
+| `conditions`          | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                    |
+| `ready`               | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`. |
+| `currentPrimaryIndex` | int                                                 | No       | Ordinal of the current primary in `StatefulSet`.        |
+| `syncedReplicas`      | int                                                 | Yes      | Number of synced instances including the primary.       |
 
 MySQLClusterCondition
 ---------------------
