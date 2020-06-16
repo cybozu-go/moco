@@ -39,7 +39,7 @@ const (
 
 	defaultTerminationGracePeriodSeconds = 300
 
-	MySQLClusterFinalizer = "moco.cybozu.com/mysqlcluster"
+	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -73,10 +73,9 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	if cluster.DeletionTimestamp == nil {
-
-		if !containsString(cluster.Finalizers, MySQLClusterFinalizer) {
+		if !containsString(cluster.Finalizers, mysqlClusterFinalizer) {
 			cluster2 := cluster.DeepCopy()
-			cluster2.Finalizers = append(cluster2.Finalizers, MySQLClusterFinalizer)
+			cluster2.Finalizers = append(cluster2.Finalizers, mysqlClusterFinalizer)
 			patch := client.MergeFrom(cluster)
 			if err := r.Patch(ctx, cluster2, patch); err != nil {
 				log.Error(err, "failed to add finalizer", "name", cluster.Name)
@@ -109,7 +108,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	// finalization
-	if !containsString(cluster.Finalizers, MySQLClusterFinalizer) {
+	if !containsString(cluster.Finalizers, mysqlClusterFinalizer) {
 		// Our finalizer has finished, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
@@ -121,33 +120,13 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	cluster2 := cluster.DeepCopy()
-	cluster2.Finalizers = removeString(cluster2.Finalizers, MySQLClusterFinalizer)
+	cluster2.Finalizers = removeString(cluster2.Finalizers, mysqlClusterFinalizer)
 	patch := client.MergeFrom(cluster)
 	if err := r.Patch(ctx, cluster2, patch); err != nil {
 		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
-}
-
-func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
-	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
-	if err == nil {
-		err = r.Delete(ctx, secret)
-		if err != nil {
-			log.Error(err, "unable to delete Secret")
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *MySQLClusterReconciler) getSecretNameForController(cluster *mysov1alpha1.MySQLCluster) (string, string) {
-	myNS := os.Getenv("POD_NAMESPACE")
-	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
-	return myNS, mySecretName
 }
 
 // SetupWithManager sets up the controller for reconciliation.
@@ -190,32 +169,20 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return err
 	}
 
+	err = r.createPasswordSecretForUser(ctx, cluster, rootPass, operatorPass, replicatorPass, donorPass)
+	if err != nil {
+		log.Error(err, "unable to create Secret for user")
+		return err
+	}
+
+	// Secret for controller must be created lastly, because its existence is checked at the beginning of the process
 	err = r.createPasswordSecretForController(ctx, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
 	if err != nil {
 		log.Error(err, "unable to create Secret for Controller")
 		return err
 	}
 
-	err = r.createPasswordSecretForUser(ctx, cluster, rootPass, operatorPass, replicatorPass, donorPass)
-	if err != nil {
-		log.Error(err, "unable to create Secret for user")
-		return err
-	}
 	return nil
-}
-
-func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
-	secret := &corev1.Secret{}
-	secret.SetNamespace(namespace)
-	secret.SetName(secretName)
-
-	secret.Data = map[string][]byte{
-		myso.OperatorPasswordKey:    operatorPass,
-		myso.ReplicationPasswordKey: replicatorPass,
-		myso.DonorPasswordKey:       donorPass,
-	}
-
-	return r.Client.Create(ctx, secret)
 }
 
 func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context, cluster *mysov1alpha1.MySQLCluster, rootPass, operatorPass, replicatorPass, donorPass []byte) error {
@@ -240,6 +207,45 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 	}
 
 	return r.Client.Create(ctx, secret)
+}
+
+func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
+	secret := &corev1.Secret{}
+	secret.SetNamespace(namespace)
+	secret.SetName(secretName)
+
+	secret.Data = map[string][]byte{
+		myso.OperatorPasswordKey:    operatorPass,
+		myso.ReplicationPasswordKey: replicatorPass,
+		myso.DonorPasswordKey:       donorPass,
+	}
+
+	return r.Client.Create(ctx, secret)
+}
+
+func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+	secret := &corev1.Secret{}
+	myNS, mySecretName := r.getSecretNameForController(cluster)
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "unable to get Secret")
+		return err
+	}
+	err = r.Delete(ctx, secret)
+	if err != nil {
+		log.Error(err, "unable to delete Secret")
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) getSecretNameForController(cluster *mysov1alpha1.MySQLCluster) (string, string) {
+	myNS := os.Getenv("POD_NAMESPACE")
+	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
+	return myNS, mySecretName
 }
 
 func generateRandomBytes(n int) ([]byte, error) {
