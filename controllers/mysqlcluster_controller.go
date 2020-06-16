@@ -348,16 +348,17 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 	template := cluster.Spec.PodTemplate
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      template.Labels,
 			Annotations: template.Annotations,
 		},
-		Spec: template.Spec,
+		Spec: *template.Spec.DeepCopy(),
+	}
+
+	newTemplate.Labels = make(map[string]string)
+	for k, v := range template.Labels {
+		newTemplate.Labels[k] = v
 	}
 
 	// add labels to describe application
-	if newTemplate.Labels == nil {
-		newTemplate.Labels = make(map[string]string)
-	}
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != appName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
