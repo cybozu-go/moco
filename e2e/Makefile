@@ -27,6 +27,7 @@ test: myso.img mysql.img
 	kubectl delete crd --all
 	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
 	kubectl delete -n myso-system pod --all
+	kubectl delete -n myso-system secret --all
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
 myso.img:
