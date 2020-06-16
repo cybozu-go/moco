@@ -21,7 +21,7 @@ launch-kind:
 shutdown-kind:
 	kind delete cluster || true
 
-test: myso.img mysql.img
+test: load-image
 	-kubectl delete -n e2e-test mysqlcluster --all
 	-kubectl delete -n e2e-test pvc --all
 	kubectl delete crd --all
@@ -30,17 +30,17 @@ test: myso.img mysql.img
 	kubectl delete -n myso-system pod --all
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
-myso.img:
+load-image: myso.img mysql.img
+	kind load image-archive myso.img
+	kind load image-archive mysql.img
+
+myso.img: $(GO_FILES)
 	docker build .. -f ../Dockerfile -t controller:dev
 	docker save -o $@ controller:dev
-	kind load image-archive myso.img
-	rm -f $@
 
-mysql.img:
+mysql.img: $(GO_FILES)
 	docker build .. -f ../e2e/Dockerfile -t mysql:dev
 	docker save -o $@ mysql:dev
-	kind load image-archive mysql.img
-	rm -f $@
 
 $(KUBECTL):
 	$(SUDO) curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
@@ -55,4 +55,4 @@ setup: $(KUBECTL)
 clean:
 	rm -f myso.img mysql.img
 
-.PHONY: launch-kind shutdown-kind test setup clean
+.PHONY: launch-kind shutdown-kind test load-image setup clean
