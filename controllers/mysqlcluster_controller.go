@@ -134,7 +134,7 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return err
 	}
 
-	err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
+	err = r.createPasswordSecretForController(ctx, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
 	if err != nil {
 		log.Error(err, "unable to create Secret for Controller")
 		return err
@@ -148,7 +148,7 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 	return nil
 }
 
-func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mysov1alpha1.MySQLCluster, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
+func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
 	secret := &corev1.Secret{}
 	secret.SetNamespace(namespace)
 	secret.SetName(secretName)
@@ -157,11 +157,6 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 		myso.OperatorPasswordKey:    operatorPass,
 		myso.ReplicationPasswordKey: replicatorPass,
 		myso.DonorPasswordKey:       donorPass,
-	}
-
-	err := ctrl.SetControllerReference(cluster, secret, r.Scheme)
-	if err != nil {
-		return err
 	}
 
 	return r.Client.Create(ctx, secret)
