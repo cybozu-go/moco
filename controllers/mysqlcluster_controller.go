@@ -350,7 +350,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: template.Annotations,
 		},
-		Spec: *template.Spec.DeepCopy(),
+		Spec: template.Spec,
 	}
 
 	newTemplate.Labels = make(map[string]string)
@@ -405,14 +405,14 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 
 	// find "mysqld" container and update it
 	var mysqldContainer *corev1.Container
-	for i := range newTemplate.Spec.Containers {
-		c := &newTemplate.Spec.Containers[i]
-		if c.Name != containerName {
+	newTemplate.Spec.Containers = make([]corev1.Container, len(template.Spec.Containers))
+	for i, orig := range template.Spec.Containers {
+		if orig.Name != containerName {
+			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
 
-		mysqldContainer = c
-
+		c := orig.DeepCopy()
 		c.Args = []string{"--defaults-file=" + filepath.Join(myso.MySQLConfPath, myso.MySQLConfName)}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
@@ -436,7 +436,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mysov
 				Name:      tmpVolumeName,
 			},
 		)
+		newTemplate.Spec.Containers[i] = *c
+		mysqldContainer = &newTemplate.Spec.Containers[i]
 	}
+
 	if mysqldContainer == nil {
 		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", containerName)
 	}
