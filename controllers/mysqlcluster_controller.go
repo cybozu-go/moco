@@ -38,6 +38,8 @@ const (
 	passwordBytes = 16
 
 	defaultTerminationGracePeriodSeconds = 300
+
+	MySQLClusterFinalizer = "moco.cybozu.com/mysqlcluster"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -70,27 +72,82 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	err := r.createSecretIfNotExist(ctx, log, cluster)
+	if cluster.DeletionTimestamp == nil {
+
+		if !containsString(cluster.Finalizers, MySQLClusterFinalizer) {
+			cluster2 := cluster.DeepCopy()
+			cluster2.Finalizers = append(cluster2.Finalizers, MySQLClusterFinalizer)
+			patch := client.MergeFrom(cluster)
+			if err := r.Patch(ctx, cluster2, patch); err != nil {
+				log.Error(err, "failed to add finalizer", "name", cluster.Name)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{Requeue: true}, nil
+		}
+
+		err := r.createSecretIfNotExist(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.createOrUpdateHeadlessService(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.createOrUpdateRBAC(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.createOrUpdateStatefulSet(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	// finalization
+	if !containsString(cluster.Finalizers, MySQLClusterFinalizer) {
+		// Our finalizer has finished, so the reconciler can do nothing.
+		return ctrl.Result{}, nil
+	}
+
+	log.Info("start finalizing MySQLCluster", "name", cluster.Name)
+	err := r.removePasswordSecretForController(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = r.createOrUpdateHeadlessService(ctx, log, cluster)
-	if err != nil {
+	cluster2 := cluster.DeepCopy()
+	cluster2.Finalizers = removeString(cluster2.Finalizers, MySQLClusterFinalizer)
+	patch := client.MergeFrom(cluster)
+	if err := r.Patch(ctx, cluster2, patch); err != nil {
+		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
 		return ctrl.Result{}, err
 	}
-
-	err = r.createOrUpdateRBAC(ctx, log, cluster)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	return ctrl.Result{}, nil
+}
+
+func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
+	secret := &corev1.Secret{}
+	myNS, mySecretName := r.getSecretNameForController(cluster)
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	if err == nil {
+		err = r.Delete(ctx, secret)
+		if err != nil {
+			log.Error(err, "unable to delete Secret")
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) getSecretNameForController(cluster *mysov1alpha1.MySQLCluster) (string, string) {
+	myNS := os.Getenv("POD_NAMESPACE")
+	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
+	return myNS, mySecretName
 }
 
 // SetupWithManager sets up the controller for reconciliation.
@@ -106,8 +163,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mysov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
-	myNS := os.Getenv("POD_NAMESPACE")
-	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
+	myNS, mySecretName := r.getSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err == nil {
 		return nil
@@ -510,4 +566,23 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mysov1alph
 		},
 		Spec: cluster.Spec.DataVolumeClaimTemplateSpec,
 	}
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
