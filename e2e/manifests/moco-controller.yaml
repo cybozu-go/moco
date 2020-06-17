@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myso-controller-manager
-  namespace: myso-system
+  name: moco-controller-manager
+  namespace: moco-system
 spec:
   template:
     spec:

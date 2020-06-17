@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/cybozu-go/log"
-	"github.com/cybozu-go/myso"
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,16 +20,16 @@ import (
 const timeoutDuration = 30 * time.Second
 
 var (
-	initOnceCompletedPath = filepath.Join(myso.MySQLDataPath, "init-once-completed")
-	socketPath            = filepath.Join(myso.VarRunPath, "mysqld.sock")
-	passwordFilePath      = filepath.Join(myso.TmpPath, "myso-root-password")
-	pingConfPath          = filepath.Join(myso.TmpPath, "ping.cnf")
+	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
+	socketPath            = filepath.Join(moco.VarRunPath, "mysqld.sock")
+	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
+	pingConfPath          = filepath.Join(moco.TmpPath, "ping.cnf")
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize MySQL instance",
-	Long: fmt.Sprintf(`Initialize MySQL instance managed by MySO.
+	Long: fmt.Sprintf(`Initialize MySQL instance managed by MOCO.
 	If %s already exists, this command does nothing.
 	`, initOnceCompletedPath),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -82,20 +82,20 @@ func initializeOnce(ctx context.Context) error {
 	}
 
 	log.Info("setup root user", nil)
-	err = initializeRootUser(ctx, viper.GetString(myso.RootPasswordFlag), viper.GetString(myso.PodIPFlag))
+	err = initializeRootUser(ctx, viper.GetString(moco.RootPasswordFlag), viper.GetString(moco.PodIPFlag))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup operator user", nil)
-	err = initializeOperatorUser(ctx, viper.GetString(myso.OperatorPasswordFlag))
+	err = initializeOperatorUser(ctx, viper.GetString(moco.OperatorPasswordFlag))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup operator-admin users", nil)
 	// use the password for an operator-admin user which is the same with the one for operator user
-	err = initializeOperatorAdminUser(ctx, viper.GetString(myso.OperatorPasswordFlag))
+	err = initializeOperatorAdminUser(ctx, viper.GetString(moco.OperatorPasswordFlag))
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func initializeOnce(ctx context.Context) error {
 }
 
 func initializeInstance(ctx context.Context) error {
-	out, err := doExec(ctx, nil, "mysqld", "--defaults-file="+filepath.Join(myso.MySQLConfPath, myso.MySQLConfName), "--initialize-insecure")
+	out, err := doExec(ctx, nil, "mysqld", "--defaults-file="+filepath.Join(moco.MySQLConfPath, moco.MySQLConfName), "--initialize-insecure")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
@@ -227,7 +227,7 @@ REVOKE
 	t.Execute(sql, struct {
 		User     string
 		Password string
-	}{myso.OperatorUser, password})
+	}{moco.OperatorUser, password})
 
 	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
@@ -248,7 +248,7 @@ GRANT
 	t.Execute(sql, struct {
 		User     string
 		Password string
-	}{myso.OperatorAdminUser, password})
+	}{moco.OperatorAdminUser, password})
 
 	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
@@ -329,10 +329,10 @@ func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, er
 func init() {
 	rootCmd.AddCommand(initCmd)
 
-	initCmd.Flags().String(myso.PodNameFlag, "", "Pod Name created by StatefulSet")
-	initCmd.Flags().String(myso.PodIPFlag, "", "Pod IP address")
-	initCmd.Flags().String(myso.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")
-	initCmd.Flags().String(myso.RootPasswordFlag, "", "Password for root user")
+	initCmd.Flags().String(moco.PodNameFlag, "", "Pod Name created by StatefulSet")
+	initCmd.Flags().String(moco.PodIPFlag, "", "Pod IP address")
+	initCmd.Flags().String(moco.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")
+	initCmd.Flags().String(moco.RootPasswordFlag, "", "Password for root user")
 	err := viper.BindPFlags(initCmd.Flags())
 	if err != nil {
 		panic(err)

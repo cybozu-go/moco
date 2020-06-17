@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cybozu-go/myso"
+	"github.com/cybozu-go/moco"
 )
 
 var mycnf = `
@@ -25,18 +25,18 @@ symbolic-links=0
 
 func subMain() error {
 	// log.Info("create config file for admin interface", nil)
-	// err = confAdminInterface(ctx, viper.GetString(myso.PodIPFlag))
+	// err = confAdminInterface(ctx, viper.GetString(moco.PodIPFlag))
 	// if err != nil {
 	// 	return err
 	// }
 
 	// log.Info("create config file for server-id", nil)
-	// err = confServerID(ctx, viper.GetString(myso.PodNameFlag))
+	// err = confServerID(ctx, viper.GetString(moco.PodNameFlag))
 	// if err != nil {
 	// 	return err
 	// }
 
-	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, myso.MySQLConfName), []byte(mycnf), 0644)
+	return ioutil.WriteFile(filepath.Join(moco.MySQLConfPath, moco.MySQLConfName), []byte(mycnf), 0644)
 }
 
 func confAdminInterface(ctx context.Context, podIP string) error {
@@ -44,7 +44,7 @@ func confAdminInterface(ctx context.Context, podIP string) error {
 [mysqld]
 admin-address=%s
 `
-	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
+	return ioutil.WriteFile(filepath.Join(moco.MySQLConfPath, "admin-interface.cnf"), []byte(fmt.Sprintf(conf, podIP)), 0400)
 }
 
 func confServerID(ctx context.Context, podNameWithOrdinal string) error {
@@ -65,5 +65,5 @@ func confServerID(ctx context.Context, podNameWithOrdinal string) error {
 [mysqld]
 server-id=%d
 `
-	return ioutil.WriteFile(filepath.Join(myso.MySQLConfPath, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
+	return ioutil.WriteFile(filepath.Join(moco.MySQLConfPath, "server-id.cnf"), []byte(fmt.Sprintf(conf, ordinal+ordinalOffset)), 0400)
 }

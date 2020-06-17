@@ -44,7 +44,7 @@ moco-controller: generate
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
 	controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	cp config/crd/bases/myso.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
+	cp config/crd/bases/moco.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
 
 # Generate code
 generate:

@@ -1,14 +1,14 @@
-[![GitHub release](https://img.shields.io/github/release/cybozu-go/myso.svg?maxAge=60)][releases]
-[![CircleCI](https://circleci.com/gh/cybozu-go/myso.svg?style=svg)](https://circleci.com/gh/cybozu-go/myso)
-[![GoDoc](https://godoc.org/github.com/cybozu-go/myso?status.svg)][godoc]
-[![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/myso)](https://goreportcard.com/report/github.com/cybozu-go/myso)
+[![GitHub release](https://img.shields.io/github/release/cybozu-go/moco.svg?maxAge=60)][releases]
+[![CircleCI](https://circleci.com/gh/cybozu-go/moco.svg?style=svg)](https://circleci.com/gh/cybozu-go/moco)
+[![GoDoc](https://godoc.org/github.com/cybozu-go/moco?status.svg)][godoc]
+[![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/moco)](https://goreportcard.com/report/github.com/cybozu-go/moco)
 
-# MySO
+# MOCO
 
-MySO is a Kubernetes operator for MySQL.
+MOCO is a Kubernetes operator for MySQL.
 Its primary function is to manage a cluster of MySQL using binlog-based, semi-synchronous replication.
 
-MySO is designed for the following properties:
+MOCO is designed for the following properties:
 
 - Durability
   - Do not lose any data under a given degree of faults.
@@ -31,11 +31,11 @@ TBD
 
 ## Docker images
 
-Docker images are available on [Quay.io](https://quay.io/repository/cybozu/myso)
+Docker images are available on [Quay.io](https://quay.io/repository/cybozu/moco)
 
 ## License
 
-MySO is licensed under MIT license.
+MOCO is licensed under MIT license.
 
-[releases]: https://github.com/cybozu-go/myso/releases
-[godoc]: https://godoc.org/github.com/cybozu-go/myso
+[releases]: https://github.com/cybozu-go/moco/releases
+[godoc]: https://godoc.org/github.com/cybozu-go/moco

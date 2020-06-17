@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cybozu-go/myso"
+	"github.com/cybozu-go/moco"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 )
@@ -19,7 +19,7 @@ var config struct {
 
 var rootCmd = &cobra.Command{
 	Use:     "moco-controller",
-	Version: myso.Version,
+	Version: moco.Version,
 	Short:   "MOCO controller",
 	Long:    `MOCO controller manages MySQL cluster with binlog-based semi-sync replication.`,
 

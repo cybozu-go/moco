@@ -79,7 +79,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - myso.cybozu.com
+  - moco.cybozu.com
   resources:
   - mysqlclusters
   verbs:
@@ -91,7 +91,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - myso.cybozu.com
+  - moco.cybozu.com
   resources:
   - mysqlclusters/status
   verbs:

@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
-  name: mysqlclusters.myso.cybozu.com
+  name: mysqlclusters.moco.cybozu.com
 spec:
-  group: myso.cybozu.com
+  group: moco.cybozu.com
   names:
     kind: MySQLCluster
     listKind: MySQLClusterList

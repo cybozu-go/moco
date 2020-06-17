@@ -22,6 +22,6 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "kind test")
 }
 
-var _ = Describe("MySO", func() {
+var _ = Describe("MOCO", func() {
 	Context("bootstrap", testBootstrap)
 })
