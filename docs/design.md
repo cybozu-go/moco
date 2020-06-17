@@ -178,8 +178,8 @@ When we create a `MySQLCluster` with `.spec.restore` specified, the operator per
 1. The operator sets the source cluster's `.status.ready` as `False` and make the MySQL cluster block incoming transactions.
 2. The operator makes the MySQL cluster flush binlogs from the source `MySQLCluster`. This binlog is used for recovery if the PiTR fails.
 3. The operator lists `MySQLBackup` candidates based on `MySQLCluster.spec.restore.sourceClusterName`.
-4. The operator selects the corresponding `MySQLBackup` CRs  `MySQLCluster.spec.restore.pointInTime`.
-5. The operator downloads the dump file and the binlogs from the object storage specified at `MySQLCluster.spec.restore.pointInTime`.
+4. The operator selects the corresponding `MySQLBackup` CRs according to `MySQLCluster.spec.restore.pointInTime`.
+5. The operator downloads the dump file and the binlogs for `MySQLCluster.spec.restore.pointInTime` from the object storage.
 6. The operator restores the MySQL servers to the state at `MySQLCluster.spec.restore.pointInTime`.
 7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
 

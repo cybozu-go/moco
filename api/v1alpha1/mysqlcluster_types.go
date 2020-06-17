@@ -13,7 +13,7 @@ type MySQLClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Replicas is a number of instances. Available values are 1, 3, and 5.
+	// Replicas is the number of instances. Available values are 1, 3, and 5.
 	// +kubebuilder:validation:Enum=1;3;5
 	// +kubebuilder:default=1
 	// +optional
@@ -46,7 +46,7 @@ type MySQLClusterSpec struct {
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
-	// Restore is a Specification to perform Point-in-Time-Recovery from existing cluster.
+	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is filled, start restoring. This field is unable to be updated.
 	// +optional
 	Restore *RestoreSpec `json:"restore,omitempty"`
@@ -92,14 +92,11 @@ type PersistentVolumeClaim struct {
 
 // RestoreSpec defines the desired spec of Point-in-Time-Recovery
 type RestoreSpec struct {
-	// SourceClusterName is a source `MySQLCluster` name.
+	// SourceClusterName is the name of the source `MySQLCluster`.
 	SourceClusterName string `json:"restore"`
 
-	// PointInTime is a point-in-time of the state which the cluster is restored to.
+	// PointInTime is the point-in-time of the state which the cluster is restored to.
 	PointInTime metav1.Time `json:"pointInTime"`
-
-	// ObjectStorageName is a name of `ObjectStorage`.
-	ObjectStorageName string `json:"objectStorageName"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
@@ -124,7 +121,7 @@ type MySQLClusterStatus struct {
 
 // MySQLClusterCondition defines the condition of MySQLCluster.
 type MySQLClusterCondition struct {
-	// Type is the type of condition.
+	// Type is the type of the condition.
 	Type MySQLClusterConditionType `json:"type"`
 
 	// Status is the status of the condition.

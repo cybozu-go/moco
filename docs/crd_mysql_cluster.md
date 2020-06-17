@@ -34,7 +34,6 @@ RestoreSpec
 | ------------------- | ------ | -------- | ------------------------------------------------------------ |
 | `sourceClusterName` | string | Yes      | Source `MySQLCluster` name.                                  |
 | `pointInTime`       | [Time] | Yes      | Point-in-time of the state which the cluster is restored to. |
-| `objectStorageName` | string | Yes      | Name of [ObjectStorage](crd_object_storage.md).              |
 
 MySQLClusterStatus
 ------------------
