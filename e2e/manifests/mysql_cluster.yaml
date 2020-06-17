@@ -1,0 +1,35 @@
+apiVersion: myso.cybozu.com/v1alpha1
+kind: MySQLCluster
+metadata:
+  name: mysqlcluster
+spec:
+  replicas: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: mysql:dev
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        livenessProbe:
+          exec:
+            command: ["/ping.sh"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["/ping.sh"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+  dataVolumeClaimTemplateSpec:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 1Gi
+  mySQLConfigMapName: mycnf
+  rootPasswordSecretName: root-password

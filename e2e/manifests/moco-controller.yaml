@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myso-controller-manager
+  namespace: myso-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        command:
+        - /moco-controller
+        - --config-init-container-image=mysql:dev
+        image: controller:dev
+        imagePullPolicy: Never
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
