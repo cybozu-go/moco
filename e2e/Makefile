@@ -25,16 +25,16 @@ test: load-image
 	-kubectl delete -n e2e-test mysqlcluster --all
 	-kubectl delete -n e2e-test pvc --all
 	kubectl delete crd --all
-	kubectl delete -n myso-system secret --all
+	kubectl delete -n moco-system secret --all
 	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
-	kubectl delete -n myso-system pod --all
+	kubectl delete -n moco-system pod --all
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
-load-image: myso.img mysql.img
-	kind load image-archive myso.img
+load-image: moco.img mysql.img
+	kind load image-archive moco.img
 	kind load image-archive mysql.img
 
-myso.img: $(GO_FILES)
+moco.img: $(GO_FILES)
 	docker build .. -f ../Dockerfile -t controller:dev
 	docker save -o $@ controller:dev
 
@@ -53,6 +53,6 @@ setup: $(KUBECTL)
 	cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION)
 
 clean:
-	rm -f myso.img mysql.img
+	rm -f moco.img mysql.img
 
 .PHONY: launch-kind shutdown-kind test load-image setup clean

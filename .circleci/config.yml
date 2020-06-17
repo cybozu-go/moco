@@ -53,7 +53,7 @@ jobs:
           at: /tmp/workspace
       - run: cp -a /tmp/workspace build
       - setup_remote_docker
-      - run: docker build . -t quay.io/cybozu/myso:latest
+      - run: docker build . -t quay.io/cybozu/moco:latest
       - run:
           name: Push docker image to Quay.io
           command: |
@@ -61,15 +61,15 @@ jobs:
             docker login -u $QUAY_USER -p $QUAY_PASSWORD quay.io
             echo "pushing image ..."
             TAG=$(echo $CIRCLE_TAG | cut -c 2-)
-            docker tag quay.io/cybozu/myso:latest quay.io/cybozu/myso:$TAG
-            docker push quay.io/cybozu/myso:$TAG
+            docker tag quay.io/cybozu/moco:latest quay.io/cybozu/moco:$TAG
+            docker push quay.io/cybozu/moco:$TAG
             if echo $TAG | grep -q -e - ; then
                 echo ===== Skip pushing branch tags for pre-release $TAG =====
                 exit 0
             fi
             BRANCH=$(echo $TAG | cut -d "." -f 1-2)
-            docker tag quay.io/cybozu/myso:latest quay.io/cybozu/myso:$BRANCH
-            docker push quay.io/cybozu/myso:$BRANCH
+            docker tag quay.io/cybozu/moco:latest quay.io/cybozu/moco:$BRANCH
+            docker push quay.io/cybozu/moco:$BRANCH
   e2e:
     machine:
       image: ubuntu-1604:201903-01

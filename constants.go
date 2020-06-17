@@ -1,18 +1,18 @@
-package myso
+package moco
 
 const (
-	// OperatorUser is a name of MySO operator user in the MySQL context.
-	OperatorUser = "myso"
+	// OperatorUser is a name of MOCO operator user in the MySQL context.
+	OperatorUser = "moco"
 
-	// OperatorAdminUser is a name of MySO operator-admin user in the MySQL context.
+	// OperatorAdminUser is a name of MOCO operator-admin user in the MySQL context.
 	// This user is a super user especially for creating and granting privileges to other users.
-	OperatorAdminUser = "myso-admin"
+	OperatorAdminUser = "moco-admin"
 
-	// ReplicatorUser is a name of MySO replicator user in the MySQL context.
-	ReplicatorUser = "myso-repl"
+	// ReplicatorUser is a name of MOCO replicator user in the MySQL context.
+	ReplicatorUser = "moco-repl"
 
-	// DonorUser is a name of MySO clone-donor user in the MySQL context.
-	DonorUser = "myso-clone-donor"
+	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
+	DonorUser = "moco-clone-donor"
 )
 
 const (

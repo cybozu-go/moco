@@ -47,7 +47,7 @@ Non-goals
 - Support for InnoDB cluster.
 - Zero downtime upgrade.
 - Node fencing.
-  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, MySO will restore the cluster appropriately.
+  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, MOCO will restore the cluster appropriately.
 
 Components
 ----------
@@ -64,7 +64,7 @@ Components
 
 ### Tools
 
-- `kubectl-myso`: CLI to manipulate MySQL cluster. It provides functionalities such as:
+- `kubectl-moco`: CLI to manipulate MySQL cluster. It provides functionalities such as:
   - Change primary manually.
   - Port-forward to MySQL servers.
   - Execute SQL like `mysql -u -p` without a credential file on a local environment.

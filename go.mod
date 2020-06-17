@@ -1,4 +1,4 @@
-module github.com/cybozu-go/myso
+module github.com/cybozu-go/moco
 
 go 1.13
 

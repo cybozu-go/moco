@@ -11,8 +11,8 @@ import (
 var (
 	rootCmd = &cobra.Command{
 		Use:   "moco-conf-gen",
-		Short: "Configuration generator MySQL instances managed by MySO",
-		Long:  `Configuration generator MySQL instances managed by MySO.`,
+		Short: "Configuration generator MySQL instances managed by MOCO",
+		Long:  `Configuration generator MySQL instances managed by MOCO.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// without this, each subcommand's RunE would display usage text.
 			cmd.SilenceUsage = true

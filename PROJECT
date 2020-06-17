@@ -1,7 +1,7 @@
 domain: cybozu.com
-repo: github.com/cybozu-go/myso
+repo: github.com/cybozu-go/moco
 resources:
-- group: myso
+- group: moco
   kind: MySQLCluster
   version: v1alpha1
 version: "2"
