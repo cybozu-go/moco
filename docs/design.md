@@ -47,7 +47,7 @@ Non-goals
 - Support for InnoDB cluster.
 - Zero downtime upgrade.
 - Node fencing.
-  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, MOCO will restore the cluster appropriately.
+  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, the operator will restore the cluster appropriately.
 
 Components
 ----------
