@@ -40,12 +40,12 @@ test:
 # Build moco-controller binary
 build/moco-controller: generate
 	mkdir -p build
-	GO111MODULE=on go build -o build/moco-controller ./cmd/moco-controller/main.go
+	GO111MODULE=on go build -o $@ ./cmd/moco-controller/main.go
 
 # Build entrypoint binary
 build/entrypoint:
 	mkdir -p build
-	GO111MODULE=on go build -o bin/entrypoint ./cmd/entrypoint
+	GO111MODULE=on go build -o $@ ./cmd/entrypoint
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
