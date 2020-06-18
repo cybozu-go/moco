@@ -1,7 +1,7 @@
 Release procedure
 =================
 
-This document describes how to release a new version of neco-template.
+This document describes how to release a new version of MOCO.
 
 Versioning
 ----------
@@ -33,25 +33,40 @@ It should look like:
 Bump version
 ------------
 
-1. Determine a new version number.  Let it write `$VERSION` as `VERSION=x.y.z`.
-1. Checkout `master` branch.
-1. Make a branch to release, for example by `git neco dev "$VERSION"`
-1. Edit `CHANGELOG.md` for the new version ([example][]).
-1. Commit the change and push it.
+1. Determine a new version number.  Export it as an environment variable:
+
+    ```console
+    $ VERSION=1.2.3
+    $ export VERSION
+    ```
+
+2. Checkout `master` branch.
+3. Make a branch to release, for example by `git neco dev bump-$VERSION`
+4. Update `version.go`.
+5. Update image versions in documents.
+
+    ```console
+    $ sed -r -i "s/:[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/:${VERSION}/g" \
+        deploy/README.md deploy/*.yaml
+    ```
+
+6. Edit `CHANGELOG.md` for the new version ([example][]).
+7. Commit the change and create a pull request:
 
     ```console
     $ git commit -a -m "Bump version to $VERSION"
     $ git neco review
     ```
-1. Merge this branch.
-1. Checkout `master` branch.
-1. Add a git tag, then push it.
+
+8. Merge the new pull request.
+9. Add a new tag and push it as follows:
 
     ```console
-    $ git tag "v$VERSION"
-    $ git push origin "v$VERSION"
-
-Now the version is bumped up and the latest container image is uploaded to [quay.io](https://quay.io/cybozu/neco-template).
+    $ git checkout master
+    $ git pull
+    $ git tag v$VERSION
+    $ git push origin v$VERSION
+    ```
 
 Publish GitHub release page
 ---------------------------
@@ -60,5 +75,13 @@ Go to https://github.com/cybozu-go/neco-template/releases and edit the tag.
 Finally, press `Publish release` button.
 
 
+Once a new tag is pushed to GitHub, [CircleCI][] automatically
+builds a tar archive for the new release, and uploads it to GitHub
+releases page.
+
+Visit https://github.com/cybozu-go/moco/releases to check
+the result.  You may manually edit the page to describe the release.
+
 [semver]: https://semver.org/spec/v2.0.0.html
 [example]: https://github.com/cybozu-go/etcdpasswd/commit/77d95384ac6c97e7f48281eaf23cb94f68867f79
+[CircleCI]: https://circleci.com/gh/cybozu-go/moco
