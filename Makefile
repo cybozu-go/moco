@@ -22,7 +22,7 @@ endif
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.2.9
 
-all: moco-controller
+all: build/moco-controller
 
 # Run tests
 test:
@@ -38,8 +38,14 @@ test:
 	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
 
 # Build moco-controller binary
-moco-controller: generate
-	go build -o bin/moco-controller ./cmd/moco-controller/main.go
+build/moco-controller: generate
+	mkdir -p build
+	GO111MODULE=on go build -o build/moco-controller ./cmd/moco-controller/main.go
+
+# Build entrypoint binary
+build/entrypoint:
+	mkdir -p build
+	GO111MODULE=on go build -o bin/entrypoint ./cmd/entrypoint
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
@@ -65,4 +71,4 @@ setup:
 	$(SUDO) chmod a+x /usr/local/kubebuilder/bin/kustomize
 	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
 
-.PHONY:	all test moco-controller manifests generate mod setup
+.PHONY:	all test manifests generate mod setup

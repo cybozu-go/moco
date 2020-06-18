@@ -43,7 +43,11 @@ jobs:
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
       - run: make test
-      - run: make moco-controller
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/moco-controller
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/entrypoint
+      - persist_to_workspace:
+          root: build
+          paths: ["*"]
   image:
     docker:
       - image: docker:stable
@@ -78,6 +82,13 @@ jobs:
     steps:
       - checkout
       - e2e-command
+  publish-github-release:
+    docker:
+      - image: quay.io/cybozu/golang:1.13-bionic
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run: ghr -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_TAG} ./artifacts/entrypoint
 
 workflows:
   version: 2
@@ -89,3 +100,27 @@ workflows:
             - build
             - e2e
       - e2e
+  release:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
+      - image:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v.*/
