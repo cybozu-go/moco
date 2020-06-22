@@ -27,7 +27,7 @@ const (
 
 	containerName               = "mysqld"
 	entrypointInitContainerName = "moco-init"
-	configInitContainerName     = "moco-config"
+	confInitContainerName       = "moco-conf-gen"
 
 	mysqlDataVolumeName = "mysql-data"
 	mysqlConfVolumeName = "mysql-conf"
@@ -446,16 +446,16 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
-		r.makeConfigInitContainer(log, cluster),
+		r.makeConfInitContainer(log, cluster),
 		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
 	)
 
 	return newTemplate, nil
 }
 
-func (r *MySQLClusterReconciler) makeConfigInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) corev1.Container {
+func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) corev1.Container {
 	c := corev1.Container{}
-	c.Name = configInitContainerName
+	c.Name = confInitContainerName
 
 	c.Image = r.ConfigInitContainerImage
 
