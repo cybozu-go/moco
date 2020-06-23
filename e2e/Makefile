@@ -34,12 +34,12 @@ load-image: moco.img mysql.img
 	kind load image-archive moco.img
 	kind load image-archive mysql.img
 
-moco.img: $(GO_FILES)
+moco.img: $(GO_FILES) ../Dockerfile
 	docker build .. -f ../Dockerfile -t controller:dev
 	docker save -o $@ controller:dev
 
-mysql.img: $(GO_FILES)
-	docker build .. -f ../e2e/Dockerfile -t mysql:dev
+mysql.img: $(GO_FILES) Dockerfile
+	docker build .. -f Dockerfile -t mysql:dev
 	docker save -o $@ mysql:dev
 
 $(KUBECTL):
