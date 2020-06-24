@@ -31,5 +31,5 @@ spec:
     resources:
       requests:
         storage: 1Gi
-  mysqlConfigMapName: mycnf
+  # mysqlConfigMapName: mycnf
   rootPasswordSecretName: root-password

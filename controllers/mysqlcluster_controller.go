@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -29,11 +31,12 @@ const (
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
-	mysqlDataVolumeName = "mysql-data"
-	mysqlConfVolumeName = "mysql-conf"
-	varRunVolumeName    = "var-run"
-	varLogVolumeName    = "var-log"
-	tmpVolumeName       = "tmp"
+	mysqlDataVolumeName         = "mysql-data"
+	mysqlConfVolumeName         = "mysql-conf"
+	varRunVolumeName            = "var-run"
+	varLogVolumeName            = "var-log"
+	tmpVolumeName               = "tmp"
+	mysqlConfTemplateVolumeName = "mysql-conf-template"
 
 	passwordBytes = 16
 
@@ -42,12 +45,21 @@ const (
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
 )
 
+var (
+	mycnfTemplate = map[string]string{
+		"server-id":     "{{ .server_id }}",
+		"admin-address": "{{ .admin_address }}",
+	}
+)
+
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Log                      logr.Logger
-	Scheme                   *runtime.Scheme
-	ConfigInitContainerImage string
+	Log                    logr.Logger
+	Scheme                 *runtime.Scheme
+	ConfInitContainerImage string
+	DefaultConfConfigMap   string
+	ConstantConfConfigMap  string
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -60,6 +72,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=serviceaccounts/status,verbs=get
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -85,6 +99,11 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 
 		err := r.createSecretIfNotExist(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.createOrUpdateConfigMap(ctx, log, cluster)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -137,6 +156,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
+		Owns(&corev1.ConfigMap{}).
 		Complete(r)
 }
 
@@ -258,6 +278,84 @@ func generateRandomBytes(n int) ([]byte, error) {
 	ret := make([]byte, hex.EncodedLen(n))
 	hex.Encode(ret, bytes)
 	return ret, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	cm := &corev1.ConfigMap{}
+	cm.SetNamespace(cluster.Namespace)
+	cm.SetName(cluster.Name)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		cm.Labels = map[string]string{
+			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+		}
+
+		conf := make(map[string]string)
+		if r.DefaultConfConfigMap != "" {
+			err := r.updateConfigMap(ctx, client.ObjectKey{Namespace: os.Getenv("POD_NAMESPACE"), Name: r.DefaultConfConfigMap}, conf)
+			if err != nil {
+				return err
+			}
+		}
+		if cluster.Spec.MySQLConfigMapName != nil {
+			err := r.updateConfigMap(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, conf)
+			if err != nil {
+				return err
+			}
+		}
+		if r.ConstantConfConfigMap != "" {
+			err := r.updateConfigMap(ctx, client.ObjectKey{Namespace: os.Getenv("POD_NAMESPACE"), Name: r.ConstantConfConfigMap}, conf)
+			if err != nil {
+				return err
+			}
+		}
+
+		cm.Data = make(map[string]string)
+		cm.Data["my.cnf"] = r.convertToMycnf(conf)
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update ConfigMap")
+		return err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile ConfigMap successfully", "op", op)
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) updateConfigMap(ctx context.Context, objectKey client.ObjectKey, conf map[string]string) error {
+	cm := &corev1.ConfigMap{}
+	err := r.Get(ctx, objectKey, cm)
+	if err != nil {
+		return err
+	}
+	for k, v := range cm.Data {
+		conf[k] = v
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) convertToMycnf(conf map[string]string) string {
+	for k, v := range mycnfTemplate {
+		conf[k] = v
+	}
+
+	// sort keys to generate reproducible my.cnf
+	confKeys := make([]string, 0, len(conf))
+	for k := range conf {
+		confKeys = append(confKeys, k)
+	}
+	sort.Strings(confKeys)
+
+	b := new(strings.Builder)
+	b.WriteString("[mysqld]\n")
+	for _, k := range confKeys {
+		fmt.Fprintf(b, "%s = %s\n", k, conf[k])
+	}
+	return b.String()
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
@@ -401,6 +499,16 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		corev1.Volume{
+			Name: mysqlConfTemplateVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cluster.Name,
+					},
+				},
+			},
+		},
 	)
 
 	// find "mysqld" container and update it
@@ -457,10 +565,26 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 	c := corev1.Container{}
 	c.Name = confInitContainerName
 
-	c.Image = r.ConfigInitContainerImage
+	c.Image = r.ConfInitContainerImage
 
 	c.Command = []string{"/moco-conf-gen"}
 	c.Env = append(c.Env,
+		corev1.EnvVar{
+			Name: moco.PodNameEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		corev1.EnvVar{
+			Name: moco.PodNamespaceEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
 		corev1.EnvVar{
 			Name: moco.PodIPEnvName,
 			ValueFrom: &corev1.EnvVarSource{
@@ -470,10 +594,10 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 			},
 		},
 		corev1.EnvVar{
-			Name: moco.PodNameEnvName,
+			Name: moco.NodeNameEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
+					FieldPath: "spec.nodeName",
 				},
 			},
 		},
@@ -494,6 +618,10 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 		corev1.VolumeMount{
 			MountPath: moco.TmpPath,
 			Name:      tmpVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: moco.MySQLConfTemplatePath,
+			Name:      mysqlConfTemplateVolumeName,
 		},
 	)
 
