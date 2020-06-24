@@ -158,7 +158,7 @@ spec:
                       backing this claim.
                     type: string
                 type: object
-              mySQLConfigMapName:
+              mysqlConfigMapName:
                 description: MySQLConfigMapName is a `ConfigMap` name of MySQL config.
                 type: string
               podTemplate:

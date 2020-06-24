@@ -35,7 +35,7 @@ type MySQLClusterSpec struct {
 
 	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
 	// +optional
-	MySQLConfigMapName *string `json:"mySQLConfigMapName,omitempty"`
+	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
 	// RootPasswordSecretName is a `Secret` name for root user config.
 	RootPasswordSecretName string `json:"rootPasswordSecretName"`
