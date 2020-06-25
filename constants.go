@@ -41,37 +41,37 @@ const (
 // env names must correspond to options in entrypoint/init.go
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.
-	PodNameEnvName = "MYSQL_POD_NAME"
+	PodNameEnvName = "POD_NAME"
 
 	// PodNameFlag is a name of the flag of a pod name.
 	PodNameFlag = "pod-name"
 
 	// PodNamespaceEnvName is a name of the environment variable of a pod namespace.
-	PodNamespaceEnvName = "MYSQL_POD_NAMESPACE"
+	PodNamespaceEnvName = "POD_NAMESPACE"
 
 	// PodNamespaceFlag is a name of the flag of a pod namespace.
 	PodNamespaceFlag = "pod-namespace"
 
 	// PodIPEnvName is a name of the environment variable of a pod IP.
-	PodIPEnvName = "MYSQL_POD_IP"
+	PodIPEnvName = "POD_IP"
 
 	// PodNameFlag is a name of the flag of a pod IP.
 	PodIPFlag = "pod-ip"
 
 	// NodeNameEnvName is a name of the environment variable of a node name where the pod runs.
-	NodeNameEnvName = "MYSQL_NODE_NAME"
+	NodeNameEnvName = "NODE_NAME"
 
 	// NodeNameFlag is a name of the flag of a node name where the pod runs.
 	NodeNameFlag = "node-name"
 
 	// RootPasswordEnvName is a name of the environment variable of a root password.
-	RootPasswordEnvName = "MYSQL_ROOT_PASSWORD"
+	RootPasswordEnvName = "ROOT_PASSWORD"
 
 	// RootPasswordFlag is a name of the flag of a root password.
 	RootPasswordFlag = "root-password"
 
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
-	OperatorPasswordEnvName = "MYSQL_OPERATOR_PASSWORD"
+	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
 	// OperatorPasswordFlag is a name of the flag of a password for both operator and operator-admin.
 	OperatorPasswordFlag = "operator-password"
