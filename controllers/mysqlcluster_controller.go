@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -43,31 +41,6 @@ const (
 	defaultTerminationGracePeriodSeconds = 300
 
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
-)
-
-type mysqlConf map[string]string
-
-var (
-	// Default options of mysqld section
-	defaultMycnf = mysqlConf{}
-
-	consMycnf = map[string]mysqlConf{
-		"mysqld": {
-			"datadir":          "/var/lib/mysql",
-			"pid-file":         "/var/run/mysqld/mysqld.pid",
-			"socket":           "/var/run/mysqld/mysqld.sock",
-			"secure-file-priv": "NULL",
-
-			// Disabling symbolic-links to prevent assorted security risks
-			"symbolic-links": "0",
-			"server-id":      "{{ .server_id }}",
-			"admin-address":  "{{ .admin_address }}",
-		},
-		"client": {
-			"port":   "3306",
-			"socket": "/tmp/mysql.sock",
-		},
-	}
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -296,16 +269,6 @@ func generateRandomBytes(n int) ([]byte, error) {
 	return ret, nil
 }
 
-func mergeMycnf(cnf1, cnf2 map[string]string) {
-	for k, v := range cnf2 {
-		cnf1[normalizeConfKey(k)] = v
-	}
-}
-
-func normalizeConfKey(k string) string {
-	return strings.ReplaceAll(k, "-", "_")
-}
-
 func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
@@ -315,30 +278,19 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 		cm.Labels = map[string]string{
 			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
 		}
-
-		conf := make(map[string]mysqlConf)
-		conf["mysqld"] = make(mysqlConf)
-		mergeMycnf(conf["mysqld"], defaultMycnf)
-
+		gen := mysqlConfGenerator{}
+		gen.mergeSection("mysqld", defaultMycnf)
 		if cluster.Spec.MySQLConfigMapName != nil {
 			cm := &corev1.ConfigMap{}
 			err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, cm)
 			if err != nil {
 				return err
 			}
-			mergeMycnf(conf["mysqld"], cm.Data)
+			gen.mergeSection("mysqld", cm.Data)
 		}
-
-		mergeMycnf(conf["mysqld"], consMycnf["mysqld"])
-		for k, v := range consMycnf {
-			if k == "mysqld" {
-				continue
-			}
-			conf[k] = v
-		}
-
+		gen.merge(constMycnf)
 		cm.Data = make(map[string]string)
-		cm.Data["my.cnf"] = r.convertToMycnf(conf)
+		cm.Data["my.cnf"] = gen.generate()
 
 		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
 	})
@@ -351,44 +303,6 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 		log.Info("reconcile ConfigMap successfully", "op", op)
 	}
 	return nil
-}
-
-func (r *MySQLClusterReconciler) updateConfigMap(ctx context.Context, objectKey client.ObjectKey, conf map[string]string) error {
-	cm := &corev1.ConfigMap{}
-	err := r.Get(ctx, objectKey, cm)
-	if err != nil {
-		return err
-	}
-	for k, v := range cm.Data {
-		conf[k] = v
-	}
-	return nil
-}
-
-func (r *MySQLClusterReconciler) convertToMycnf(conf map[string]mysqlConf) string {
-	// sort keys to generate reproducible my.cnf
-	sections := make([]string, 0, len(conf))
-	for sec := range conf {
-		sections = append(sections, sec)
-	}
-	sort.Strings(sections)
-
-	b := new(strings.Builder)
-	for _, sec := range sections {
-		fmt.Fprintf(b, "[%s]\n", sec)
-
-		// sort keys to generate reproducible my.cnf
-		confKeys := make([]string, 0, len(conf[sec]))
-		for k := range conf[sec] {
-			confKeys = append(confKeys, k)
-		}
-		sort.Strings(confKeys)
-
-		for _, k := range confKeys {
-			fmt.Fprintf(b, "%s = %s\n", k, conf[sec][k])
-		}
-	}
-	return b.String()
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
