@@ -114,9 +114,9 @@ every time the version of the operator changes and the operator restarts the exi
 To avoid these unnecessary restarts of the clusters, we implement the merging logic in the operator
 and prepare another container image that is responsible only for outputting the merged contents to `my.cnf`.
 This container image is independent of the operator's image.
-The operator takes the Default and Constant configurations for all MySQL clusters as `ConfigMap`s given in command-line options,
+The operator contains the Default and Constant configurations for all MySQL clusters,
 and the User configuration for a certain MySQL cluster specified in the cluster's CR.
-The operator then merges these three `ConfigMap`s to create a `my.cnf` template.
+The operator then merges these three configurations to create a `my.cnf` template.
 The init container receives the merged `my.cnf` template and fills it with run-time values, e.g. the Pod's IP address.
 
 So, in short we prepare the following two init containers.

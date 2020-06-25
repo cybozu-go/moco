@@ -27,6 +27,8 @@ MySQLClusterSpec
 | `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary.            |
 | `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                         |
 
+The configMap specified with `mysqlConfigMapName` contains MySQL options of mysqld section as key-value pairs.
+
 RestoreSpec
 -----------
 
