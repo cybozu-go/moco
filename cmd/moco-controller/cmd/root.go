@@ -15,8 +15,6 @@ var config struct {
 	metricsAddr            string
 	leaderElectionID       string
 	confInitContainerImage string
-	defaultConfConfigMap   string
-	constantConfConfigMap  string
 }
 
 var rootCmd = &cobra.Command{
@@ -53,8 +51,6 @@ func init() {
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
-	fs.StringVar(&config.defaultConfConfigMap, "default-conf-configmap", "", "The ConfigMap name of the default MySQL configration")
-	fs.StringVar(&config.constantConfConfigMap, "constant-conf-configmap", "", "The ConfigMap name of the constant (== forced) MySQL configration")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)

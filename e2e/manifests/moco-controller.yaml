@@ -11,7 +11,6 @@ spec:
         command:
         - /moco-controller
         - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.1.0
-        - --constant-conf-configmap=constant-mycnf
         image: controller:dev
         imagePullPolicy: Never
         env:

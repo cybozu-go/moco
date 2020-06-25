@@ -31,5 +31,16 @@ spec:
     resources:
       requests:
         storage: 1Gi
-  # mysqlConfigMapName: mycnf
+  mysqlConfigMapName: mycnf
   rootPasswordSecretName: root-password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mycnf
+data:
+  max_connections: "5000"
+  max_connect_errors: "10"
+  max_allowed_packet: 1G
+  max_heap_table_size: 64M
+  pid_file: /hoge/fuga
