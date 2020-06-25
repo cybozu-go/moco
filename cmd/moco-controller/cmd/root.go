@@ -12,9 +12,9 @@ import (
 )
 
 var config struct {
-	metricsAddr              string
-	leaderElectionID         string
-	configInitContainerImage string
+	metricsAddr            string
+	leaderElectionID       string
+	confInitContainerImage string
 }
 
 var rootCmd = &cobra.Command{
@@ -24,8 +24,8 @@ var rootCmd = &cobra.Command{
 	Long:    `MOCO controller manages MySQL cluster with binlog-based semi-sync replication.`,
 
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if config.configInitContainerImage == "" {
-			return errors.New("config-init-container-image is mandatory")
+		if config.confInitContainerImage == "" {
+			return errors.New("conf-init-container-image is mandatory")
 		}
 		return nil
 	},
@@ -50,7 +50,7 @@ func init() {
 	fs := rootCmd.Flags()
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
-	fs.StringVar(&config.configInitContainerImage, "config-init-container-image", defaultInitContainerImage, "The container image name of moco-config")
+	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)

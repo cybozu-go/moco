@@ -10,7 +10,7 @@ spec:
       - name: manager
         command:
         - /moco-controller
-        - --config-init-container-image=mysql:dev
+        - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.1.0
         image: controller:dev
         imagePullPolicy: Never
         env:
