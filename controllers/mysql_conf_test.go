@@ -26,7 +26,10 @@ func TestMySQLConfGenerator(t *testing.T) {
 		},
 	})
 
-	actual := gen.generate()
+	actual, err := gen.generate()
+	if err != nil {
+		t.Fatal(err)
+	}
 	expect := `[client]
 port = 3306
 [mysqld]
@@ -37,6 +40,6 @@ pid_file = /var/run/mysqld/mysqld.pid
 `
 
 	if actual != expect {
-		t.Fatal(fmt.Sprintf("actual: %s, expect: %s", actual, expect))
+		t.Error(fmt.Sprintf("actual: %s, expect: %s", actual, expect))
 	}
 }

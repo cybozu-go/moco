@@ -21,7 +21,6 @@ var (
 		"default_time_zone": "+0:00",
 
 		"back_log":            "900",
-		"skip_name_resolve":   "ON",
 		"max_connections":     "5000",
 		"max_connect_errors":  "10",
 		"max_allowed_packet":  "1G",
@@ -89,6 +88,8 @@ var (
 			"datadir":                       moco.MySQLDataPath,
 			"default_authentication_plugin": "mysql_native_password",
 
+			"skip_name_resolve": "ON",
+
 			"log_error":           "/var/log/mysql/mysql.err",
 			"slow_query_log_file": "/var/log/mysql/mysql.slow",
 
@@ -139,7 +140,7 @@ func (g *mysqlConfGenerator) merge(conf map[string]map[string]string) {
 	}
 }
 
-func (g *mysqlConfGenerator) generate() string {
+func (g *mysqlConfGenerator) generate() (string, error) {
 	// sort keys to generate reproducible my.cnf
 	sections := make([]string, 0, len(g.conf))
 	for sec := range g.conf {
@@ -149,7 +150,10 @@ func (g *mysqlConfGenerator) generate() string {
 
 	b := new(strings.Builder)
 	for _, sec := range sections {
-		fmt.Fprintf(b, "[%s]\n", sec)
+		_, err := fmt.Fprintf(b, "[%s]\n", sec)
+		if err != nil {
+			return "", err
+		}
 
 		confSec := g.conf[sec]
 		// sort keys to generate reproducible my.cnf
@@ -160,10 +164,13 @@ func (g *mysqlConfGenerator) generate() string {
 		sort.Strings(confKeys)
 
 		for _, k := range confKeys {
-			fmt.Fprintf(b, "%s = %s\n", k, confSec[k])
+			_, err = fmt.Fprintf(b, "%s = %s\n", k, confSec[k])
+			if err != nil {
+				return "", err
+			}
 		}
 	}
-	return b.String()
+	return b.String(), nil
 }
 
 func normalizeConfKey(k string) string {

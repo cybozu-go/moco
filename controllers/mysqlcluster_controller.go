@@ -289,8 +289,13 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			gen.mergeSection("mysqld", cm.Data)
 		}
 		gen.merge(constMycnf)
+
+		myCnf, err := gen.generate()
+		if err != nil {
+			return err
+		}
 		cm.Data = make(map[string]string)
-		cm.Data["my.cnf"] = gen.generate()
+		cm.Data["my.cnf"] = myCnf
 
 		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
 	})
