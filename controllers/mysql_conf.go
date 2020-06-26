@@ -2,29 +2,117 @@ package controllers
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/cybozu-go/moco"
 )
 
 var (
 	// Default options of mysqld section
-	defaultMycnf = map[string]string{}
+	defaultMycnf = map[string]string{
+		"tmpdir":                              moco.TmpPath,
+		"innodb_tmpdir":                       moco.TmpPath,
+		"character_set_server":                "utf8mb4",
+		"collation_server":                    "utf8mb4_unicode_ci",
+		"skip_character_set_client_handshake": "ON",
+
+		"default_time_zone": "+0:00",
+
+		"back_log":            "900",
+		"skip_name_resolve":   "ON",
+		"max_connections":     "5000",
+		"max_connect_errors":  "10",
+		"max_allowed_packet":  "1G",
+		"max_heap_table_size": "64M",
+		"sort_buffer_size":    "4M",
+		"join_buffer_size":    "2M",
+		"thread_cache_size":   "100",
+		"wait_timeout":        "604800", // == 7 days
+		"lock_wait_timeout":   "60",
+
+		"table_open_cache":       "65536", // The default setting causes MY-012102
+		"table_definition_cache": "65536", // mitigate a innodb table cache eviction.
+
+		"transaction_isolation": "READ-COMMITTED",
+		"tmp_table_size":        "64M",
+		"slow_query_log":        "ON",
+		"long_query_time":       "2",
+		"log_error_verbosity":   "3",
+
+		"max_sp_recursion_depth": "20",
+
+		"print_identified_with_as_hex": "ON",
+
+		"loose_binlog_transaction_compression": "ON", // It would reduce the size of binlog by a third, but only available in 8.0.20 or later.
+
+		"information_schema_stats_expiry": "0", // No need to cache information_schema.tables values
+
+		// MyISAM Specific options
+		"key_buffer_size":           "32M",
+		"read_buffer_size":          "2M",
+		"read_rnd_buffer_size":      "4M",
+		"bulk_insert_buffer_size":   "8M",
+		"myisam_sort_buffer_size":   "4M",
+		"myisam_max_sort_file_size": "128M",
+		"myisam_repair_threads":     "1",
+		"myisam_recover_options":    "FORCE,BACKUP",
+
+		// INNODB Specific options
+		"innodb_flush_method":              "O_DIRECT",
+		"innodb_lock_wait_timeout":         "60",
+		"innodb_print_all_deadlocks":       "1",
+		"innodb_online_alter_log_max_size": "1073741824",
+		"innodb_adaptive_hash_index":       "ON",
+		"innodb_numa_interleave":           "ON",
+
+		// options for adaptive flushing
+		"innodb_log_file_size":      "800M",
+		"innodb_log_files_in_group": "2",
+		"innodb_read_io_threads":    "8",
+		"innodb_write_io_threads":   "4",
+		"innodb_io_capacity":        "400",
+		"innodb_io_capacity_max":    "3200",
+		"innodb_flushing_avg_loops": "10",
+		"innodb_purge_threads":      "1",
+		"innodb_page_cleaners":      "1",
+		"innodb_lru_scan_depth":     "256",
+
+		"innodb_buffer_pool_in_core_file": "OFF", // It is rarely necessary to include a buffer pool in a core file.
+	}
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"datadir":          "/var/lib/mysql",
-			"pid_file":         "/var/run/mysqld/mysqld.pid",
-			"socket":           "/var/run/mysqld/mysqld.sock",
-			"secure_file_priv": "NULL",
+			"port":                          "3306",
+			"socket":                        filepath.Join(moco.VarRunPath, "mysqld.sock"),
+			"datadir":                       moco.MySQLDataPath,
+			"default_authentication_plugin": "mysql_native_password",
 
-			// Disabling symbolic-links to prevent assorted security risks
-			"symbolic_links": "0",
-			"server_id":      "{{ .server_id }}",
-			"admin_address":  "{{ .admin_address }}",
+			"log_error":           "/var/log/mysql/mysql.err",
+			"slow_query_log_file": "/var/log/mysql/mysql.slow",
+
+			"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
+			"gtid_mode":                "ON",
+
+			"temptable_use_mmap": "OFF", // Disable because there is a bug report, see https://bugs.mysql.com/bug.php?id=98739
+
+			"mysqlx_port": "33060",
+			"admin_port":  "33062",
+
+			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
+			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
+
+			"server_id":     "{{ .server_id }}",
+			"admin_address": "{{ .admin_address }}",
 		},
 		"client": {
 			"port":   "3306",
 			"socket": "/tmp/mysql.sock",
+		},
+		"mysql": {
+			"auto_rehash":  "OFF",
+			"init_command": `"SET autocommit=0"`,
 		},
 	}
 )

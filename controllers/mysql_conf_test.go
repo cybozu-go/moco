@@ -21,7 +21,7 @@ func TestMySQLConfGenerator(t *testing.T) {
 			"port": "3306",
 		},
 		"mysqld": {
-			"datadir": "/var/lib/mysql",
+			"datadir":  "/var/lib/mysql",
 			"pid_file": "/var/run/mysqld/mysqld.pid",
 		},
 	})
