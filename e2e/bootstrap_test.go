@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,7 +36,18 @@ func testBootstrap() {
 
 		By("getting StatefulSet")
 		Eventually(func() error {
-			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "statefulsets/mysqlcluster", "-o", "json")
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "mysqlcluster/mysqlcluster", "-o", "json")
+			if err != nil {
+				return fmt.Errorf("failed to get MySQLCluster. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+
+			var mysqlCluster v1alpha1.MySQLCluster
+			err = json.Unmarshal(stdout, &mysqlCluster)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal MySQLCluster. stdout: %s, err: %v", stdout, err)
+			}
+
+			stdout, stderr, err = kubectl("get", "-n", "e2e-test", "statefulsets/mysqlcluster-"+string(mysqlCluster.GetUID()), "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
