@@ -201,7 +201,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 	secret.SetName(cluster.Spec.RootPasswordSecretName)
 
 	secret.Labels = map[string]string{
-		appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+		appNameKey:      cluster.Spec.RootPasswordSecretName,
 		appManagedByKey: myName,
 	}
 
@@ -274,11 +274,11 @@ func generateRandomBytes(n int) ([]byte, error) {
 func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
-	cm.SetName(cluster.Name)
+	cm.SetName(createName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
 		cm.Labels = map[string]string{
-			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appNameKey:      createName(cluster),
 			appManagedByKey: myName,
 		}
 		gen := mysqlConfGenerator{
@@ -318,16 +318,16 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	headless := &corev1.Service{}
 	headless.SetNamespace(cluster.Namespace)
-	headless.SetName(cluster.Name)
+	headless.SetName(createName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		headless.Labels = map[string]string{
-			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appNameKey:      createName(cluster),
 			appManagedByKey: myName,
 		}
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appNameKey:      createName(cluster),
 			appManagedByKey: myName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
@@ -346,9 +346,13 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
-	sa.SetName(cluster.Name)
+	sa.SetName(createName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
+		sa.SetLabels(map[string]string{
+			appNameKey:      createName(cluster),
+			appManagedByKey: myName,
+		})
 		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
 	})
 
@@ -366,11 +370,11 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(cluster.Namespace)
-	sts.SetName(cluster.Name)
+	sts.SetName(createName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		sts.Labels = map[string]string{
-			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appNameKey:      createName(cluster),
 			appManagedByKey: myName,
 		}
 		sts.Spec.Replicas = &cluster.Spec.Replicas
@@ -378,7 +382,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		sts.Spec.ServiceName = cluster.Name
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appNameKey:      createName(cluster),
 			appManagedByKey: myName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
@@ -421,7 +425,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
+	newTemplate.Labels[appNameKey] = createName(cluster)
 	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
@@ -685,4 +689,8 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
+}
+
+func createName(cluster *mocov1alpha1.MySQLCluster) string {
+	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
 }
