@@ -101,8 +101,8 @@ var (
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
 
-			"server_id":     "{{ .server_id }}",
-			"admin_address": "{{ .admin_address }}",
+			"server_id":     "{{ .ServerID }}",
+			"admin_address": "{{ .AdminAddress }}",
 		},
 		"client": {
 			"port":   "3306",
