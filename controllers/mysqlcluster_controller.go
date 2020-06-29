@@ -379,7 +379,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		}
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.ServiceName = cluster.Name
+		sts.Spec.ServiceName = createName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
 			appNameKey:      createName(cluster),
@@ -431,7 +431,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
 	}
-	newTemplate.Spec.ServiceAccountName = cluster.Name
+	newTemplate.Spec.ServiceAccountName = createName(cluster)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -470,7 +470,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cluster.Name,
+						Name: createName(cluster),
 					},
 				},
 			},
