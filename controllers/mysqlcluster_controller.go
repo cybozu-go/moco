@@ -300,7 +300,7 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			return err
 		}
 		cm.Data = make(map[string]string)
-		cm.Data["my.cnf"] = myCnf
+		cm.Data[moco.MySQLConfName] = myCnf
 
 		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
 	})
