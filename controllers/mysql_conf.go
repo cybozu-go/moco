@@ -7,9 +7,16 @@ import (
 	"strings"
 
 	"github.com/cybozu-go/moco"
+	"github.com/go-logr/logr"
 )
 
 var (
+	confKeyPrefixes = []string{
+		"enable_",
+		"disable_",
+		"skip_",
+	}
+
 	// Default options of mysqld section
 	defaultMycnf = map[string]string{
 		"tmpdir":                              moco.TmpPath,
@@ -21,7 +28,7 @@ var (
 		"default_time_zone": "+0:00",
 
 		"back_log":            "900",
-		"max_connections":     "5000",
+		"max_connections":     "100000",
 		"max_connect_errors":  "10",
 		"max_allowed_packet":  "1G",
 		"max_heap_table_size": "64M",
@@ -47,16 +54,6 @@ var (
 		"loose_binlog_transaction_compression": "ON", // It would reduce the size of binlog by a third, but only available in 8.0.20 or later.
 
 		"information_schema_stats_expiry": "0", // No need to cache information_schema.tables values
-
-		// MyISAM Specific options
-		"key_buffer_size":           "32M",
-		"read_buffer_size":          "2M",
-		"read_rnd_buffer_size":      "4M",
-		"bulk_insert_buffer_size":   "8M",
-		"myisam_sort_buffer_size":   "4M",
-		"myisam_max_sort_file_size": "128M",
-		"myisam_repair_threads":     "1",
-		"myisam_recover_options":    "FORCE,BACKUP",
 
 		// INNODB Specific options
 		"innodb_flush_method":              "O_DIRECT",
@@ -120,9 +117,10 @@ var (
 
 type mysqlConfGenerator struct {
 	conf map[string]map[string]string
+	log  logr.Logger
 }
 
-func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string) {
+func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string, warn bool) {
 	if g.conf == nil {
 		g.conf = make(map[string]map[string]string)
 	}
@@ -130,13 +128,20 @@ func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string
 		g.conf[section] = make(map[string]string)
 	}
 	for k, v := range conf {
-		g.conf[section][normalizeConfKey(k)] = v
+		nk := normalizeConfKey(k)
+		for _, kk := range listConfKeyVariations(nk) {
+			if _, ok := g.conf[section][kk]; ok && warn {
+				g.log.Info("overriding MySQL configuration", "key", kk)
+			}
+			delete(g.conf[section], kk)
+		}
+		g.conf[section][nk] = v
 	}
 }
 
-func (g *mysqlConfGenerator) merge(conf map[string]map[string]string) {
+func (g *mysqlConfGenerator) merge(conf map[string]map[string]string, warn bool) {
 	for k, v := range conf {
-		g.mergeSection(k, v)
+		g.mergeSection(k, v, warn)
 	}
 }
 
@@ -175,4 +180,18 @@ func (g *mysqlConfGenerator) generate() (string, error) {
 
 func normalizeConfKey(k string) string {
 	return strings.ReplaceAll(k, "-", "_")
+}
+
+func listConfKeyVariations(k string) []string {
+	base := strings.TrimPrefix(k, "loose_")
+	for _, prefix := range confKeyPrefixes {
+		base = strings.TrimPrefix(base, prefix)
+	}
+
+	variations := []string{base, "loose_" + base}
+	for _, prefix := range confKeyPrefixes {
+		variations = append(variations, prefix+base, "loose_"+prefix+base)
+	}
+
+	return variations
 }

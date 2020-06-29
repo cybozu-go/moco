@@ -278,17 +278,19 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 		cm.Labels = map[string]string{
 			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
 		}
-		gen := mysqlConfGenerator{}
-		gen.mergeSection("mysqld", defaultMycnf)
+		gen := mysqlConfGenerator{
+			log: log,
+		}
+		gen.mergeSection("mysqld", defaultMycnf, false)
 		if cluster.Spec.MySQLConfigMapName != nil {
 			cm := &corev1.ConfigMap{}
 			err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, cm)
 			if err != nil {
 				return err
 			}
-			gen.mergeSection("mysqld", cm.Data)
+			gen.mergeSection("mysqld", cm.Data, false)
 		}
-		gen.merge(constMycnf)
+		gen.merge(constMycnf, true)
 
 		myCnf, err := gen.generate()
 		if err != nil {
