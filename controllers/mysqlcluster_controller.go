@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	appName    = "moco"
-	appNameKey = "app.kubernetes.io/name"
+	myName          = "moco"
+	appNameKey      = "app.kubernetes.io/name"
+	appManagedByKey = "app.kubernetes.io/managed-by"
 
 	containerName               = "mysqld"
 	entrypointInitContainerName = "moco-init"
@@ -200,7 +201,8 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 	secret.SetName(cluster.Spec.RootPasswordSecretName)
 
 	secret.Labels = map[string]string{
-		appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+		appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+		appManagedByKey: myName,
 	}
 
 	secret.Data = map[string][]byte{
@@ -276,7 +278,8 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
 		cm.Labels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appManagedByKey: myName,
 		}
 		gen := mysqlConfGenerator{
 			log: log,
@@ -319,11 +322,13 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		headless.Labels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appManagedByKey: myName,
 		}
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appManagedByKey: myName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -365,14 +370,16 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		sts.Labels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appManagedByKey: myName,
 		}
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 		sts.Spec.ServiceName = cluster.Name
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID()),
+			appManagedByKey: myName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
 		if err != nil {
@@ -411,10 +418,11 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	if v, ok := newTemplate.Labels[appNameKey]; ok && v != appName {
+	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = fmt.Sprintf("%s-%s", appName, cluster.Name)
+	newTemplate.Labels[appNameKey] = fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
+	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
