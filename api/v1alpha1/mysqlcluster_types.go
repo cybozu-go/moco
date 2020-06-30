@@ -39,7 +39,7 @@ type MySQLClusterSpec struct {
 
 	// RootPasswordSecretName is a `Secret` name for root user config.
 	// +optional
-	RootPasswordSecretName *string `json:"rootPasswordSecretName"`
+	RootPasswordSecretName *string `json:"rootPasswordSecretName,omitempty"`
 
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
 	// Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.

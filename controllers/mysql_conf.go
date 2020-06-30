@@ -57,6 +57,8 @@ var (
 
 		"information_schema_stats_expiry": "0", // No need to cache information_schema.tables values
 
+		"disabled_storage_engines": "MyISAM",
+
 		// INNODB Specific options
 		"innodb_flush_method":              "O_DIRECT",
 		"innodb_lock_wait_timeout":         "60",
@@ -64,8 +66,11 @@ var (
 		"innodb_online_alter_log_max_size": "1073741824",
 		"innodb_adaptive_hash_index":       "ON",
 		"innodb_numa_interleave":           "ON",
-
 		"innodb_buffer_pool_in_core_file": "OFF", // It is rarely necessary to include a buffer pool in a core file.
+
+		// options for adaptive flushing	
+		"innodb_log_file_size":      "800M",	
+		"innodb_log_files_in_group": "2",
 
 		// Optimized options for SSD
 		"innodb_flush_neighbors":      "0",
@@ -95,8 +100,6 @@ var (
 
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
-
-			"disabled_storage_engines": "MyISAM",
 
 			"server_id":     "{{ .ServerID }}",
 			"admin_address": "{{ .AdminAddress }}",
