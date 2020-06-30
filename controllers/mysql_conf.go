@@ -65,19 +65,13 @@ var (
 		"innodb_adaptive_hash_index":       "ON",
 		"innodb_numa_interleave":           "ON",
 
-		// options for adaptive flushing
-		"innodb_log_file_size":      "800M",
-		"innodb_log_files_in_group": "2",
-		"innodb_read_io_threads":    "8",
-		"innodb_write_io_threads":   "4",
-		"innodb_io_capacity":        "400",
-		"innodb_io_capacity_max":    "3200",
-		"innodb_flushing_avg_loops": "10",
-		"innodb_purge_threads":      "1",
-		"innodb_page_cleaners":      "1",
-		"innodb_lru_scan_depth":     "256",
-
 		"innodb_buffer_pool_in_core_file": "OFF", // It is rarely necessary to include a buffer pool in a core file.
+
+		// Optimized options for SSD
+		"innodb_flush_neighbors":      "0",
+		"innodb_random_read_ahead":    "false",
+		"innodb_read_ahead_threshold": "0",
+		"innodb_log_write_ahead_size": "0",
 	}
 
 	constMycnf = map[string]map[string]string{
