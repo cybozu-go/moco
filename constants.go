@@ -79,14 +79,14 @@ const (
 
 const (
 	// RootPasswordKey is a Secret key for root password.
-	RootPasswordKey = "MYSQL_ROOT_PASSWORD"
+	RootPasswordKey = "ROOT_PASSWORD"
 
 	// OperatorPasswordKey is a Secret key for operator password.
-	OperatorPasswordKey = "MYSQL_OPERATOR_PASSWORD"
+	OperatorPasswordKey = "OPERATOR_PASSWORD"
 
 	// ReplicationPasswordKey is a Secret key for operator replication password.
-	ReplicationPasswordKey = "MYSQL_REPLICATION_PASSWORD"
+	ReplicationPasswordKey = "REPLICATION_PASSWORD"
 
 	// DonorPasswordKey is a Secret key for operator donor password.
-	DonorPasswordKey = "MYSQL_CLONE_DONOR_PASSWORD"
+	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
 )
