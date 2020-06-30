@@ -20,7 +20,17 @@ func testBootstrap() {
 
 		By("getting Secret which contains root password")
 		Eventually(func() error {
-			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "secret/root-password", "-o", "json")
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "mysqlcluster/mysqlcluster", "-o", "json")
+			if err != nil {
+				return fmt.Errorf("failed to get MySQLCluster. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+
+			var mysqlCluster v1alpha1.MySQLCluster
+			err = json.Unmarshal(stdout, &mysqlCluster)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal MySQLCluster. stdout: %s, err: %v", stdout, err)
+			}
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "secret/root-password-mysqlcluster-"+string(mysqlCluster.GetUID()), "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
