@@ -66,10 +66,10 @@ var (
 		"innodb_online_alter_log_max_size": "1073741824",
 		"innodb_adaptive_hash_index":       "ON",
 		"innodb_numa_interleave":           "ON",
-		"innodb_buffer_pool_in_core_file": "OFF", // It is rarely necessary to include a buffer pool in a core file.
+		"innodb_buffer_pool_in_core_file":  "OFF", // It is rarely necessary to include a buffer pool in a core file.
 
-		// options for adaptive flushing	
-		"innodb_log_file_size":      "800M",	
+		// options for adaptive flushing
+		"innodb_log_file_size":      "800M",
 		"innodb_log_files_in_group": "2",
 
 		// Optimized options for SSD
