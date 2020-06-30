@@ -26,7 +26,11 @@ const (
 	appNameKey      = "app.kubernetes.io/name"
 	appManagedByKey = "app.kubernetes.io/managed-by"
 
-	containerName               = "mysqld"
+	mysqldContainerName = "mysqld"
+	mysqlPort           = 3306
+	mysqlAdminPort      = 33062
+	mysqlxPort          = 33060
+
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
@@ -42,6 +46,8 @@ const (
 	defaultTerminationGracePeriodSeconds = 300
 
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
+
+	rootPasswordSecretPrefix = "root-password-"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -196,12 +202,15 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 }
 
 func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, rootPass, operatorPass, replicatorPass, donorPass []byte) error {
+	if cluster.Spec.RootPasswordSecretName != nil {
+		return nil
+	}
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(cluster.Spec.RootPasswordSecretName)
+	secret.SetName(rootPasswordSecretPrefix + createName(cluster))
 
 	secret.Labels = map[string]string{
-		appNameKey:      cluster.Spec.RootPasswordSecretName,
+		appNameKey:      *cluster.Spec.RootPasswordSecretName,
 		appManagedByKey: myName,
 	}
 
@@ -425,7 +434,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = createName(cluster)
 	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
@@ -481,13 +489,21 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	var mysqldContainer *corev1.Container
 	newTemplate.Spec.Containers = make([]corev1.Container, len(template.Spec.Containers))
 	for i, orig := range template.Spec.Containers {
-		if orig.Name != containerName {
+		if orig.Name != mysqldContainerName {
 			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
 
 		c := orig.DeepCopy()
 		c.Args = []string{"--defaults-file=" + filepath.Join(moco.MySQLConfPath, moco.MySQLConfName)}
+		c.Ports = []corev1.ContainerPort{
+			{
+				ContainerPort: mysqlPort, Protocol: corev1.ProtocolTCP},
+			{
+				ContainerPort: mysqlxPort, Protocol: corev1.ProtocolTCP},
+			{
+				ContainerPort: mysqlAdminPort, Protocol: corev1.ProtocolTCP},
+		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
 				MountPath: moco.MySQLDataPath,
@@ -515,7 +531,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	if mysqldContainer == nil {
-		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", containerName)
+		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", mysqldContainerName)
 	}
 
 	// create init containers and append them to Pod
@@ -602,10 +618,16 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
+	var secretName string
+	if cluster.Spec.RootPasswordSecretName == nil {
+		secretName = rootPasswordSecretPrefix + createName(cluster)
+	} else {
+		secretName = *cluster.Spec.RootPasswordSecretName
+	}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: cluster.Spec.RootPasswordSecretName,
+				Name: secretName,
 			},
 		},
 	})

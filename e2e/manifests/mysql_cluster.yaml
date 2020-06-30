@@ -32,7 +32,6 @@ spec:
       requests:
         storage: 1Gi
   mysqlConfigMapName: mycnf
-  rootPasswordSecretName: root-password
 ---
 apiVersion: v1
 kind: ConfigMap

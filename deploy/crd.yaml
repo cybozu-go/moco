@@ -6480,7 +6480,6 @@ spec:
             required:
             - dataVolumeClaimTemplateSpec
             - podTemplate
-            - rootPasswordSecretName
             type: object
           status:
             description: MySQLClusterStatus defines the observed state of MySQLCluster

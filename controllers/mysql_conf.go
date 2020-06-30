@@ -19,11 +19,10 @@ var (
 
 	// Default options of mysqld section
 	defaultMycnf = map[string]string{
-		"tmpdir":                              moco.TmpPath,
-		"innodb_tmpdir":                       moco.TmpPath,
-		"character_set_server":                "utf8mb4",
-		"collation_server":                    "utf8mb4_unicode_ci",
-		"skip_character_set_client_handshake": "ON",
+		"tmpdir":               moco.TmpPath,
+		"innodb_tmpdir":        moco.TmpPath,
+		"character_set_server": "utf8mb4",
+		"collation_server":     "utf8mb4_unicode_ci",
 
 		"default_time_zone": "+0:00",
 
@@ -38,7 +37,10 @@ var (
 		"wait_timeout":        "604800", // == 7 days
 		"lock_wait_timeout":   "60",
 
-		"table_open_cache":       "65536", // The default setting causes MY-012102
+		// The default setting causes MY-012102. Adjust table_open_cache to suppress MY-012102,
+		// since　open_files_limit and table_open_cache are interdependent and those values are set dynamically
+		// See https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html#error_er_ib_msg_277
+		"table_open_cache":       "65536",
 		"table_definition_cache": "65536", // mitigate a innodb table cache eviction.
 
 		"transaction_isolation": "READ-COMMITTED",
@@ -80,10 +82,9 @@ var (
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"port":                          "3306",
-			"socket":                        filepath.Join(moco.VarRunPath, "mysqld.sock"),
-			"datadir":                       moco.MySQLDataPath,
-			"default_authentication_plugin": "mysql_native_password",
+			"port":    "3306",
+			"socket":  filepath.Join(moco.VarRunPath, "mysqld.sock"),
+			"datadir": moco.MySQLDataPath,
 
 			"skip_name_resolve": "ON",
 
@@ -101,12 +102,15 @@ var (
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
 
+			"disabled_storage_engines": "MyISAM",
+
 			"server_id":     "{{ .ServerID }}",
 			"admin_address": "{{ .AdminAddress }}",
 		},
 		"client": {
-			"port":   "3306",
-			"socket": "/tmp/mysql.sock",
+			"port":                  "3306",
+			"socket":                "/tmp/mysql.sock",
+			"default_character_set": "utf8mb4",
 		},
 		"mysql": {
 			"auto_rehash":  "OFF",
