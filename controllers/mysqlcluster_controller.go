@@ -450,6 +450,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
+	newTemplate.Labels[appNameKey] = uniqueName(cluster)
 	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
