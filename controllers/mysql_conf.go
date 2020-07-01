@@ -48,6 +48,7 @@ var (
 		"slow_query_log":        "ON",
 		"long_query_time":       "2",
 		"log_error_verbosity":   "3",
+		"log_slow_extra":        "ON",
 
 		"max_sp_recursion_depth": "20",
 
