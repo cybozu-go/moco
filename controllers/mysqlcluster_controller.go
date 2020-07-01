@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -305,9 +306,9 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			if orig.Name != mysqldContainerName {
 				continue
 			}
-			if mem := orig.Resources.Requests.Memory(); mem != nil && mem.Value() != 0 {
+			if mem := orig.Resources.Requests.Memory(); mem != nil && !mem.IsZero() {
 				bufferSize := int64(float64(mem.Value()) * 0.7)
-				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": string(bufferSize)}, false)
+				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": strconv.FormatInt(bufferSize, 10)}, false)
 			}
 		}
 
