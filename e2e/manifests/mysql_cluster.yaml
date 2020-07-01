@@ -12,6 +12,9 @@ spec:
         ports:
         - containerPort: 3306
           protocol: TCP
+        resources:
+          requests:
+            memory: "1Gi"
         livenessProbe:
           exec:
             command: ["/ping.sh"]

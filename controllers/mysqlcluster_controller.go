@@ -220,10 +220,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 	secret.SetNamespace(cluster.Namespace)
 	secret.SetName(secretName)
 
-	secret.Labels = map[string]string{
-		appNameKey:      secretName,
-		appManagedByKey: myName,
-	}
+	setLabels(&secret.ObjectMeta)
 
 	secret.Data = map[string][]byte{
 		moco.RootPasswordKey:        rootPass,
@@ -297,14 +294,23 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	cm.SetName(uniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-		cm.Labels = map[string]string{
-			appNameKey:      uniqueName(cluster),
-			appManagedByKey: myName,
-		}
+		setLabels(&cm.ObjectMeta)
 		gen := mysqlConfGenerator{
 			log: log,
 		}
 		gen.mergeSection("mysqld", defaultMycnf, false)
+
+		// Set innodb_buffer_pool_size if resources.requests.memory is specified
+		for _, orig := range cluster.Spec.PodTemplate.Spec.Containers {
+			if orig.Name != mysqldContainerName {
+				continue
+			}
+			if mem := orig.Resources.Requests.Memory(); mem != nil && mem.Value() != 0 {
+				bufferSize := int64(float64(mem.Value()) * 0.7)
+				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": string(bufferSize)}, false)
+			}
+		}
+
 		if cluster.Spec.MySQLConfigMapName != nil {
 			cm := &corev1.ConfigMap{}
 			err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, cm)
@@ -341,10 +347,7 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	headless.SetName(uniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
-		headless.Labels = map[string]string{
-			appNameKey:      uniqueName(cluster),
-			appManagedByKey: myName,
-		}
+		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
 			appNameKey:      uniqueName(cluster),
@@ -374,10 +377,7 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 	sa.SetName(saName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		sa.SetLabels(map[string]string{
-			appNameKey:      saName,
-			appManagedByKey: myName,
-		})
+		setLabels(&sa.ObjectMeta)
 		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
 	})
 
@@ -398,10 +398,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	sts.SetName(uniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		sts.Labels = map[string]string{
-			appNameKey:      uniqueName(cluster),
-			appManagedByKey: myName,
-		}
+		setLabels(&sts.ObjectMeta)
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 		sts.Spec.ServiceName = uniqueName(cluster)
@@ -727,4 +724,11 @@ func removeString(slice []string, s string) (result []string) {
 
 func uniqueName(cluster *mocov1alpha1.MySQLCluster) string {
 	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
+}
+
+func setLabels(om *metav1.ObjectMeta) {
+	om.Labels = map[string]string{
+		appNameKey:      om.Name,
+		appManagedByKey: myName,
+	}
 }

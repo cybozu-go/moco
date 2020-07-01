@@ -60,15 +60,18 @@ var (
 		"disabled_storage_engines": "MyISAM",
 
 		// INNODB Specific options
-		"innodb_flush_method":              "O_DIRECT",
-		"innodb_lock_wait_timeout":         "60",
-		"innodb_print_all_deadlocks":       "1",
-		"innodb_online_alter_log_max_size": "1073741824",
-		"innodb_adaptive_hash_index":       "ON",
-		"innodb_numa_interleave":           "ON",
-		"innodb_buffer_pool_in_core_file":  "OFF", // It is rarely necessary to include a buffer pool in a core file.
-		"innodb_log_file_size":             "800M",
-		"innodb_log_files_in_group":        "2",
+		"innodb_flush_method":                 "O_DIRECT",
+		"innodb_lock_wait_timeout":            "60",
+		"innodb_print_all_deadlocks":          "1",
+		"innodb_online_alter_log_max_size":    "1073741824",
+		"innodb_adaptive_hash_index":          "ON",
+		"innodb_numa_interleave":              "ON",
+		"innodb_buffer_pool_in_core_file":     "OFF", // It is rarely necessary to include a buffer pool in a core file.
+		"innodb_log_file_size":                "800M",
+		"innodb_log_files_in_group":           "2",
+		"innodb_buffer_pool_dump_pct":         "100",
+		"innodb_buffer_pool_dump_at_shutdown": "1",
+		"innodb_buffer_pool_load_at_startup":  "0",
 
 		// Optimized options for SSD
 		"innodb_flush_neighbors":      "0",
