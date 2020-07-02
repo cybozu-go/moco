@@ -28,8 +28,8 @@ const (
 	// VarRunPath is a path for variable files which concerns MySQLd.
 	VarRunPath = "/var/run/mysqld"
 
-	// VarLogPath is a path for /var/log.
-	VarLogPath = "/var/log"
+	// VarLogPath is a path for /var/log/mysql.
+	VarLogPath = "/var/log/mysql"
 
 	// TmpPath is a path for /tmp.
 	TmpPath = "/tmp"
