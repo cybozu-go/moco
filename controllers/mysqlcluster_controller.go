@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -301,15 +302,11 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 		}
 		gen.mergeSection("mysqld", defaultMycnf, false)
 
-		// Set innodb_buffer_pool_size if resources.requests.memory is specified
-		for _, orig := range cluster.Spec.PodTemplate.Spec.Containers {
-			if orig.Name != mysqldContainerName {
-				continue
-			}
-			if mem := orig.Resources.Requests.Memory(); mem != nil && !mem.IsZero() {
-				bufferSize := int64(float64(mem.Value()) * 0.7)
-				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": strconv.FormatInt(bufferSize, 10)}, false)
-			}
+		// Set innodb_buffer_pool_size if resources.requests.memory or resources.limits.memory is specified
+		mem := getMysqldContainerRequests(cluster, corev1.ResourceMemory)
+		if mem != nil {
+			bufferSize := int64(float64(mem.Value()) * 0.7)
+			gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": strconv.FormatInt(bufferSize, 10)}, false)
 		}
 
 		if cluster.Spec.MySQLConfigMapName != nil {
@@ -320,6 +317,7 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			}
 			gen.mergeSection("mysqld", cm.Data, false)
 		}
+
 		gen.merge(constMycnf, true)
 
 		myCnf, err := gen.generate()
@@ -732,4 +730,22 @@ func setLabels(om *metav1.ObjectMeta) {
 		appNameKey:      om.Name,
 		appManagedByKey: myName,
 	}
+}
+
+func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {
+	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+		if c.Name != mysqldContainerName {
+			continue
+		}
+		r, ok := c.Resources.Requests[resourceName]
+		if ok {
+			return &r
+		}
+		r, ok = c.Resources.Limits[resourceName]
+		if ok {
+			return &r
+		}
+		return nil
+	}
+	return nil
 }
