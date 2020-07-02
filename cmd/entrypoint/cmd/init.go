@@ -100,6 +100,12 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Info("setup ping user", nil)
+	err = initializePingUser(ctx)
+	if err != nil {
+		return err
+	}
+
 	log.Info("sync timezone with system", nil)
 	err = importTimeZoneFromHost(ctx)
 	if err != nil {

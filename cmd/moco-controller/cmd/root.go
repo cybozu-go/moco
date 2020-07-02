@@ -48,7 +48,7 @@ func Execute() {
 
 func init() {
 	fs := rootCmd.Flags()
-	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
 

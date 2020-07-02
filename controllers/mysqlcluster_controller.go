@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -22,32 +23,41 @@ import (
 )
 
 const (
-	appName    = "moco"
-	appNameKey = "app.kubernetes.io/name"
+	myName          = "moco"
+	appNameKey      = "app.kubernetes.io/name"
+	appManagedByKey = "app.kubernetes.io/managed-by"
 
-	containerName               = "mysqld"
+	mysqldContainerName = "mysqld"
+	mysqlPort           = 3306
+	mysqlAdminPort      = 33062
+	mysqlxPort          = 33060
+
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
-	mysqlDataVolumeName = "mysql-data"
-	mysqlConfVolumeName = "mysql-conf"
-	varRunVolumeName    = "var-run"
-	varLogVolumeName    = "var-log"
-	tmpVolumeName       = "tmp"
+	mysqlDataVolumeName         = "mysql-data"
+	mysqlConfVolumeName         = "mysql-conf"
+	varRunVolumeName            = "var-run"
+	varLogVolumeName            = "var-log"
+	tmpVolumeName               = "tmp"
+	mysqlConfTemplateVolumeName = "mysql-conf-template"
 
 	passwordBytes = 16
 
 	defaultTerminationGracePeriodSeconds = 300
 
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
+
+	rootPasswordSecretPrefix = "root-password-"
+	serviceAccountPrefix     = "mysqld-sa-"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Log                      logr.Logger
-	Scheme                   *runtime.Scheme
-	ConfigInitContainerImage string
+	Log                    logr.Logger
+	Scheme                 *runtime.Scheme
+	ConfInitContainerImage string
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -60,6 +70,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=serviceaccounts/status,verbs=get
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -85,6 +97,11 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 
 		err := r.createSecretIfNotExist(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.createOrUpdateConfigMap(ctx, log, cluster)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -137,6 +154,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
+		Owns(&corev1.ConfigMap{}).
 		Complete(r)
 }
 
@@ -152,10 +170,6 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return err
 	}
 
-	rootPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return err
-	}
 	operatorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
@@ -169,7 +183,7 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return err
 	}
 
-	err = r.createPasswordSecretForUser(ctx, cluster, rootPass, operatorPass, replicatorPass, donorPass)
+	err = r.createPasswordSecretForUser(ctx, cluster, operatorPass, replicatorPass, donorPass)
 	if err != nil {
 		log.Error(err, "unable to create Secret for user")
 		return err
@@ -185,14 +199,29 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 	return nil
 }
 
-func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, rootPass, operatorPass, replicatorPass, donorPass []byte) error {
+func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, operatorPass, replicatorPass, donorPass []byte) error {
+	var rootPass []byte
+	if cluster.Spec.RootPasswordSecretName != nil {
+		secret := &corev1.Secret{}
+		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.RootPasswordSecretName}, secret)
+		if err != nil {
+			return err
+		}
+		rootPass = secret.Data[moco.RootPasswordKey]
+	}
+	if len(rootPass) == 0 {
+		var err error
+		rootPass, err = generateRandomBytes(passwordBytes)
+		if err != nil {
+			return err
+		}
+	}
+	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(cluster.Spec.RootPasswordSecretName)
+	secret.SetName(secretName)
 
-	secret.Labels = map[string]string{
-		appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
-	}
+	setLabels(&secret.ObjectMeta)
 
 	secret.Data = map[string][]byte{
 		moco.RootPasswordKey:        rootPass,
@@ -260,18 +289,68 @@ func generateRandomBytes(n int) ([]byte, error) {
 	return ret, nil
 }
 
+func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	cm := &corev1.ConfigMap{}
+	cm.SetNamespace(cluster.Namespace)
+	cm.SetName(uniqueName(cluster))
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		setLabels(&cm.ObjectMeta)
+		gen := mysqlConfGenerator{
+			log: log,
+		}
+		gen.mergeSection("mysqld", defaultMycnf, false)
+
+		// Set innodb_buffer_pool_size if resources.requests.memory or resources.limits.memory is specified
+		mem := getMysqldContainerRequests(cluster, corev1.ResourceMemory)
+		// 128MiB is the default innodb_buffer_pool_size value
+		if mem != nil && mem.Value() > (128<<20) {
+			bufferSize := mem.Value() / 10 * 7
+			gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": fmt.Sprintf("%dM", bufferSize>>20)}, false)
+		}
+
+		if cluster.Spec.MySQLConfigMapName != nil {
+			cm := &corev1.ConfigMap{}
+			err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, cm)
+			if err != nil {
+				return err
+			}
+			gen.mergeSection("mysqld", cm.Data, false)
+		}
+
+		gen.merge(constMycnf, true)
+
+		myCnf, err := gen.generate()
+		if err != nil {
+			return err
+		}
+		cm.Data = make(map[string]string)
+		cm.Data[moco.MySQLConfName] = myCnf
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update ConfigMap")
+		return err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile ConfigMap successfully", "op", op)
+	}
+	return nil
+}
+
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	headless := &corev1.Service{}
 	headless.SetNamespace(cluster.Namespace)
-	headless.SetName(cluster.Name)
+	headless.SetName(uniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
-		headless.Labels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
-		}
+		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      uniqueName(cluster),
+			appManagedByKey: myName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -287,11 +366,17 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	if cluster.Spec.PodTemplate.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
+	saName := serviceAccountPrefix + uniqueName(cluster)
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
-	sa.SetName(cluster.Name)
+	sa.SetName(saName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
+		setLabels(&sa.ObjectMeta)
 		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
 	})
 
@@ -309,18 +394,17 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(cluster.Namespace)
-	sts.SetName(cluster.Name)
+	sts.SetName(uniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		sts.Labels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
-		}
+		setLabels(&sts.ObjectMeta)
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.ServiceName = cluster.Name
+		sts.Spec.ServiceName = uniqueName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey: fmt.Sprintf("%s-%s", appName, cluster.Name),
+			appNameKey:      uniqueName(cluster),
+			appManagedByKey: myName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
 		if err != nil {
@@ -359,15 +443,16 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	if v, ok := newTemplate.Labels[appNameKey]; ok && v != appName {
+	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = fmt.Sprintf("%s-%s", appName, cluster.Name)
+	newTemplate.Labels[appNameKey] = uniqueName(cluster)
+	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
 	}
-	newTemplate.Spec.ServiceAccountName = cluster.Name
+	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + uniqueName(cluster)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -401,19 +486,37 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		corev1.Volume{
+			Name: mysqlConfTemplateVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: uniqueName(cluster),
+					},
+				},
+			},
+		},
 	)
 
 	// find "mysqld" container and update it
 	var mysqldContainer *corev1.Container
 	newTemplate.Spec.Containers = make([]corev1.Container, len(template.Spec.Containers))
 	for i, orig := range template.Spec.Containers {
-		if orig.Name != containerName {
+		if orig.Name != mysqldContainerName {
 			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
 
 		c := orig.DeepCopy()
 		c.Args = []string{"--defaults-file=" + filepath.Join(moco.MySQLConfPath, moco.MySQLConfName)}
+		c.Ports = []corev1.ContainerPort{
+			{
+				ContainerPort: mysqlPort, Protocol: corev1.ProtocolTCP},
+			{
+				ContainerPort: mysqlxPort, Protocol: corev1.ProtocolTCP},
+			{
+				ContainerPort: mysqlAdminPort, Protocol: corev1.ProtocolTCP},
+		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
 				MountPath: moco.MySQLDataPath,
@@ -441,7 +544,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	if mysqldContainer == nil {
-		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", containerName)
+		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", mysqldContainerName)
 	}
 
 	// create init containers and append them to Pod
@@ -457,10 +560,26 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 	c := corev1.Container{}
 	c.Name = confInitContainerName
 
-	c.Image = r.ConfigInitContainerImage
+	c.Image = r.ConfInitContainerImage
 
 	c.Command = []string{"/moco-conf-gen"}
 	c.Env = append(c.Env,
+		corev1.EnvVar{
+			Name: moco.PodNameEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		corev1.EnvVar{
+			Name: moco.PodNamespaceEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
 		corev1.EnvVar{
 			Name: moco.PodIPEnvName,
 			ValueFrom: &corev1.EnvVarSource{
@@ -470,10 +589,10 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 			},
 		},
 		corev1.EnvVar{
-			Name: moco.PodNameEnvName,
+			Name: moco.NodeNameEnvName,
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
+					FieldPath: "spec.nodeName",
 				},
 			},
 		},
@@ -495,6 +614,10 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 			MountPath: moco.TmpPath,
 			Name:      tmpVolumeName,
 		},
+		corev1.VolumeMount{
+			MountPath: moco.MySQLConfTemplatePath,
+			Name:      mysqlConfTemplateVolumeName,
+		},
 	)
 
 	return c
@@ -508,10 +631,11 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
+	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: cluster.Spec.RootPasswordSecretName,
+				Name: secretName,
 			},
 		},
 	})
@@ -595,4 +719,33 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
+}
+
+func uniqueName(cluster *mocov1alpha1.MySQLCluster) string {
+	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
+}
+
+func setLabels(om *metav1.ObjectMeta) {
+	om.Labels = map[string]string{
+		appNameKey:      om.Name,
+		appManagedByKey: myName,
+	}
+}
+
+func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {
+	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+		if c.Name != mysqldContainerName {
+			continue
+		}
+		r, ok := c.Resources.Requests[resourceName]
+		if ok {
+			return &r
+		}
+		r, ok = c.Resources.Limits[resourceName]
+		if ok {
+			return &r
+		}
+		return nil
+	}
+	return nil
 }

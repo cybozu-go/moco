@@ -37,7 +37,6 @@ func init() {
 }
 
 func initConfig() {
-	viper.SetEnvPrefix("mysql")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 }

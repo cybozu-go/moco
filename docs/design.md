@@ -111,15 +111,19 @@ On the other hand, `my.cnf` is created by merging the following three configurat
 If the default and constant configurations are implemented in an init container, the container might be updated
 every time the version of the operator changes and the operator restarts the existing MySQL clusters frequently.
 
-To avoid these unnecessary restarts of the clusters, we prepare another container image that is responsible only for the merging logic.
-This container image is independent of MOCO image.
-The container takes the Default, User and Constant configurations as `ConfigMap`, and then it merges the three `ConfigMap`s to create `my.cnf`.
+To avoid these unnecessary restarts of the clusters, we implement the merging logic in the operator
+and prepare another container image that is responsible only for outputting the merged contents to `my.cnf`.
+This container image is independent of the operator's image.
+The operator contains the Default and Constant configurations for all MySQL clusters,
+and the User configuration for a certain MySQL cluster specified in the cluster's CR.
+The operator then merges these three configurations to create a `my.cnf` template.
+The init container receives the merged `my.cnf` template and fills it with run-time values, e.g. the Pod's IP address.
 
 So, in short we prepare the following two init containers.
 1. A container to initialize the MySQL cluster, for example, creating necessary users.
   The entrypoint binary is provided by this repository.
   If users want to use their custom image, they have to include the binary in the image.
-2. A container to create `my.cnf` from `ConfigMap`s created by the operator and the user.
+2. A container to fill the `my.cnf` template received from the operator into a file.
   This container is injected by the operator.
 
 If users want to change their MySQL cluster configuration, users basically should execute mysql commands like `SET GLOBAL ...`.

@@ -33,30 +33,45 @@ const (
 
 	// TmpPath is a path for /tmp.
 	TmpPath = "/tmp"
+
+	// MySQLConfTemplatePath is
+	MySQLConfTemplatePath = "/etc/mysql_template"
 )
 
 // env names must correspond to options in entrypoint/init.go
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.
-	PodNameEnvName = "MYSQL_POD_NAME"
+	PodNameEnvName = "POD_NAME"
 
 	// PodNameFlag is a name of the flag of a pod name.
 	PodNameFlag = "pod-name"
 
+	// PodNamespaceEnvName is a name of the environment variable of a pod namespace.
+	PodNamespaceEnvName = "POD_NAMESPACE"
+
+	// PodNamespaceFlag is a name of the flag of a pod namespace.
+	PodNamespaceFlag = "pod-namespace"
+
 	// PodIPEnvName is a name of the environment variable of a pod IP.
-	PodIPEnvName = "MYSQL_POD_IP"
+	PodIPEnvName = "POD_IP"
 
 	// PodNameFlag is a name of the flag of a pod IP.
 	PodIPFlag = "pod-ip"
 
+	// NodeNameEnvName is a name of the environment variable of a node name where the pod runs.
+	NodeNameEnvName = "NODE_NAME"
+
+	// NodeNameFlag is a name of the flag of a node name where the pod runs.
+	NodeNameFlag = "node-name"
+
 	// RootPasswordEnvName is a name of the environment variable of a root password.
-	RootPasswordEnvName = "MYSQL_ROOT_PASSWORD"
+	RootPasswordEnvName = "ROOT_PASSWORD"
 
 	// RootPasswordFlag is a name of the flag of a root password.
 	RootPasswordFlag = "root-password"
 
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
-	OperatorPasswordEnvName = "MYSQL_OPERATOR_PASSWORD"
+	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
 	// OperatorPasswordFlag is a name of the flag of a password for both operator and operator-admin.
 	OperatorPasswordFlag = "operator-password"
@@ -64,14 +79,14 @@ const (
 
 const (
 	// RootPasswordKey is a Secret key for root password.
-	RootPasswordKey = "MYSQL_ROOT_PASSWORD"
+	RootPasswordKey = "ROOT_PASSWORD"
 
 	// OperatorPasswordKey is a Secret key for operator password.
-	OperatorPasswordKey = "MYSQL_OPERATOR_PASSWORD"
+	OperatorPasswordKey = "OPERATOR_PASSWORD"
 
 	// ReplicationPasswordKey is a Secret key for operator replication password.
-	ReplicationPasswordKey = "MYSQL_REPLICATION_PASSWORD"
+	ReplicationPasswordKey = "REPLICATION_PASSWORD"
 
 	// DonorPasswordKey is a Secret key for operator donor password.
-	DonorPasswordKey = "MYSQL_CLONE_DONOR_PASSWORD"
+	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
 )

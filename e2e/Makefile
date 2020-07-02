@@ -7,6 +7,7 @@ KUBECTL=/usr/local/bin/kubectl
 KIND_VERSION=0.8.1
 KUSTOMIZE_VERSION=3.5.4
 KUSTOMIZE=/usr/local/bin/kustomize
+KIND_CLUSTER_NAME=moco-e2e
 
 KUBERNETES_VERSION=1.17.2
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
@@ -16,19 +17,19 @@ GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -na
 launch-kind:
 	sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
 		-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster.yaml > /tmp/kind-cluster.yaml
-	kind create cluster --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION)
+	kind create cluster --name=$(KIND_CLUSTER_NAME) --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION)
 
 shutdown-kind:
-	kind delete cluster || true
+	kind delete cluster --name=$(KIND_CLUSTER_NAME) || true
 
 test: load-image
-	kubectl config use-context kind-kind
+	kubectl config use-context kind-$(KIND_CLUSTER_NAME)
 	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
 load-image: moco.img mysql.img
-	kind load image-archive moco.img
-	kind load image-archive mysql.img
+	kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img
+	kind load image-archive --name=$(KIND_CLUSTER_NAME) mysql.img
 
 moco.img: $(GO_FILES) ../Dockerfile
 	docker build .. -f ../Dockerfile -t controller:dev
