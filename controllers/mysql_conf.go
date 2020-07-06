@@ -108,7 +108,7 @@ var (
 		},
 		"client": {
 			"port":                  "3306",
-			"socket":                "/tmp/mysql.sock",
+			"socket":                filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"default_character_set": "utf8mb4",
 		},
 		"mysql": {
