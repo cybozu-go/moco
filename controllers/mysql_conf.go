@@ -89,8 +89,8 @@ var (
 
 			"skip_name_resolve": "ON",
 
-			"log_error":           "/var/log/mysql/mysql.err",
-			"slow_query_log_file": "/var/log/mysql/mysql.slow",
+			"log_error":           filepath.Join(moco.VarLogPath, "mysql.err"),
+			"slow_query_log_file": filepath.Join(moco.VarLogPath, "mysql.slow"),
 
 			"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
 			"gtid_mode":                "ON",
