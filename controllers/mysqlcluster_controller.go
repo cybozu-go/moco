@@ -32,6 +32,8 @@ const (
 	mysqlAdminPort      = 33062
 	mysqlxPort          = 33060
 
+	rotateContainerName = "rotate"
+
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
@@ -410,7 +412,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		if err != nil {
 			return err
 		}
-		sts.Spec.Template = template
+		sts.Spec.Template = *template
 		sts.Spec.VolumeClaimTemplates = append(
 			r.makeVolumeClaimTemplates(cluster),
 			r.makeDataVolumeClaimTemplate(cluster),
@@ -428,7 +430,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (corev1.PodTemplateSpec, error) {
+func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*corev1.PodTemplateSpec, error) {
 	template := cluster.Spec.PodTemplate
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -544,8 +546,46 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	if mysqldContainer == nil {
-		return corev1.PodTemplateSpec{}, fmt.Errorf("container named %q not found in podTemplate", mysqldContainerName)
+		return nil, fmt.Errorf("container named %q not found in podTemplate", mysqldContainerName)
 	}
+
+	for _, orig := range template.Spec.Containers {
+		if orig.Name == rotateContainerName {
+			err := fmt.Errorf("cannot specify %s container in podTemplate", rotateContainerName)
+			log.Error(err, "invalid container found")
+			return nil, err
+		}
+	}
+	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, corev1.Container{
+		Name:  rotateContainerName,
+		Image: mysqldContainer.Image,
+		Command: []string{
+			"/entrypoint", "rotate",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: moco.MySQLConfPath,
+				Name:      mysqlConfVolumeName,
+			},
+			{
+				MountPath: moco.VarRunPath,
+				Name:      varRunVolumeName,
+			},
+			{
+				MountPath: moco.VarLogPath,
+				Name:      varLogVolumeName,
+			},
+		},
+		EnvFrom: []corev1.EnvFromSource{
+			{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: rootPasswordSecretPrefix + uniqueName(cluster),
+					},
+				},
+			},
+		},
+	})
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
@@ -553,7 +593,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
 	)
 
-	return newTemplate, nil
+	return &newTemplate, nil
 }
 
 func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) corev1.Container {
