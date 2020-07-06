@@ -227,6 +227,17 @@ and export them as Prometheus metrics.
 
 The detail is TBD.
 
+### How to manage log files
+
+The operator configures MySQL to output error logs and slow query logs into files.
+
+To avoid exhaustion of storage resources, the operator appends a sidecar container to the MySQL Pod.
+The sidecar container rotates and deletes the log files.
+The operator creates a CronJob to invoke rotation and deletion periodically.
+
+The operator does not care about gathering the contents of the log files.
+Tenant users can extract the contents by defining a sidecar container.
+
 ### TBD
 
 - Write merge strategy of `my.cnf`.
