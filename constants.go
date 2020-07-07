@@ -75,6 +75,12 @@ const (
 
 	// OperatorPasswordFlag is a name of the flag of a password for both operator and operator-admin.
 	OperatorPasswordFlag = "operator-password"
+
+	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
+	MiscPasswordEnvName = "MISC_PASSWORD"
+
+	// MiscPasswordFlag is a name of the flag of a password for the misc user.
+	MiscPasswordFlag = "misc-password"
 )
 
 const (
@@ -89,4 +95,7 @@ const (
 
 	// DonorPasswordKey is a Secret key for operator donor password.
 	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
+
+	// MiscPasswordKey is a Secret key for misc user password.
+	MiscPasswordKey = "MISC_PASSWORD"
 )

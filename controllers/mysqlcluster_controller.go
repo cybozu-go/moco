@@ -218,6 +218,10 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 			return err
 		}
 	}
+	miscPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
 	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
@@ -230,9 +234,10 @@ func (r *MySQLClusterReconciler) createPasswordSecretForUser(ctx context.Context
 		moco.OperatorPasswordKey:    operatorPass,
 		moco.ReplicationPasswordKey: replicatorPass,
 		moco.DonorPasswordKey:       donorPass,
+		moco.MiscPasswordKey:        miscPass,
 	}
 
-	err := ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
 	if err != nil {
 		return err
 	}
@@ -564,6 +569,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
+				MountPath: moco.MySQLDataPath,
+				Name:      mysqlDataVolumeName,
+			},
+			{
 				MountPath: moco.MySQLConfPath,
 				Name:      mysqlConfVolumeName,
 			},
@@ -574,15 +583,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			{
 				MountPath: moco.VarLogPath,
 				Name:      varLogVolumeName,
-			},
-		},
-		EnvFrom: []corev1.EnvFromSource{
-			{
-				SecretRef: &corev1.SecretEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: rootPasswordSecretPrefix + uniqueName(cluster),
-					},
-				},
 			},
 		},
 	})

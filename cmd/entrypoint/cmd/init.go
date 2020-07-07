@@ -21,9 +21,8 @@ const timeoutDuration = 30 * time.Second
 
 var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
-	socketPath            = filepath.Join(moco.VarRunPath, "mysqld.sock")
 	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
-	pingConfPath          = filepath.Join(moco.TmpPath, "ping.cnf")
+	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 )
 
 var initCmd = &cobra.Command{
@@ -40,11 +39,7 @@ var initCmd = &cobra.Command{
 				return err
 			}
 
-			log.Info("create config file for ping user", nil)
-			err = confPingUser(ctx)
-			if err != nil {
-				return err
-			}
+			// Put preparation steps which should be executed at every startup.
 
 			return nil
 		})
@@ -100,8 +95,8 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
-	log.Info("setup ping user", nil)
-	err = initializePingUser(ctx)
+	log.Info("setup misc user", nil)
+	err = initializeMiscUser(ctx, viper.GetString(moco.MiscPasswordFlag))
 	if err != nil {
 		return err
 	}
@@ -134,7 +129,7 @@ func initializeInstance(ctx context.Context) error {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	cmd := well.CommandContext(ctx, "mysqld", "--skip-networking", "--socket="+socketPath)
+	cmd := well.CommandContext(ctx, "mysqld", "--skip-networking")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
@@ -152,7 +147,7 @@ func waitInstanceBootstrap(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-tick.C:
-			_, err := doExec(ctx, nil, "mysqladmin", "--socket="+socketPath, "ping")
+			_, err := doExec(ctx, nil, "mysqladmin", "ping")
 			if err == nil {
 				return nil
 			}
@@ -174,7 +169,11 @@ func importTimeZoneFromHost(ctx context.Context) error {
 }
 
 func initializeRootUser(ctx context.Context, rootPassword, rootHost string) error {
-	err := ioutil.WriteFile(passwordFilePath, nil, 0600)
+	// execSQL requires the password file.
+	conf := `[client]
+user=root
+`
+	err := ioutil.WriteFile(passwordFilePath, []byte(conf), 0600)
 	if err != nil {
 		return err
 	}
@@ -200,6 +199,7 @@ FLUSH PRIVILEGES ;
 	}
 
 	passwordConf := `[client]
+user=root
 password="%s"
 `
 	return ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
@@ -214,7 +214,6 @@ GRANT
     TRIGGER,
     LOCK TABLES,
     REPLICATION CLIENT,
-    RELOAD,
     BACKUP_ADMIN,
     BINLOG_ADMIN,
     SYSTEM_VARIABLES_ADMIN,
@@ -264,22 +263,30 @@ GRANT
 	return nil
 }
 
-func initializePingUser(ctx context.Context) error {
-	out, err := execSQL(ctx, []byte("CREATE USER ping@localhost IDENTIFIED BY 'pingpass' ;"), "")
+func initializeMiscUser(ctx context.Context, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+CREATE USER misc@localhost IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+	RELOAD
+  ON *.* TO misc@localhost ;
+`))
+
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		Password string
+	}{Password: password})
+
+	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
-	return nil
-}
 
-func confPingUser(ctx context.Context) error {
 	conf := `
 [client]
-user=ping
-password=pingpass
-socket=%s
+user=misc
+password=%s
 `
-	return ioutil.WriteFile(pingConfPath, []byte(fmt.Sprintf(conf, socketPath)), 0400)
+	return ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400)
 }
 
 func installPlugins(ctx context.Context) error {
@@ -295,7 +302,7 @@ INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 
 func shutdownInstance(ctx context.Context) error {
 	out, err := doExec(ctx, nil,
-		"mysqladmin", "--defaults-file="+passwordFilePath, "shutdown", "-uroot", "--socket="+socketPath)
+		"mysqladmin", "--defaults-extra-file="+passwordFilePath, "shutdown")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
@@ -321,10 +328,8 @@ func doExec(ctx context.Context, input []byte, command string, args ...string) (
 
 func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, error) {
 	args := []string{
-		"--defaults-file=" + passwordFilePath,
-		"-uroot",
+		"--defaults-extra-file=" + passwordFilePath,
 		"-hlocalhost",
-		"--socket=" + socketPath,
 		"--init-command=SET @@GLOBAL.SUPER_READ_ONLY=OFF; SET @@GLOBAL.OFFLINE_MODE=OFF; SET @@SESSION.SQL_LOG_BIN=0;",
 	}
 	if databaseName != "" {
@@ -340,6 +345,7 @@ func init() {
 	initCmd.Flags().String(moco.PodIPFlag, "", "Pod IP address")
 	initCmd.Flags().String(moco.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")
 	initCmd.Flags().String(moco.RootPasswordFlag, "", "Password for root user")
+	initCmd.Flags().String(moco.MiscPasswordFlag, "", "Password for misc user")
 	err := viper.BindPFlags(initCmd.Flags())
 	if err != nil {
 		panic(err)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ var rotateCmd = &cobra.Command{
 		serv := &well.HTTPServer{
 			Server: &http.Server{
 				Addr:    viper.GetString(addressFlag),
-				Handler: http.HandlerFunc(rotateLog),
+				Handler: http.HandlerFunc(handler),
 			},
 		}
 
@@ -43,44 +44,65 @@ var rotateCmd = &cobra.Command{
 	},
 }
 
-func rotateLog(w http.ResponseWriter, r *http.Request) {
+func handler(w http.ResponseWriter, r *http.Request) {
+	err := rotateLog(w, r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func rotateLog(w http.ResponseWriter, r *http.Request) error {
 	errFile := filepath.Join(moco.VarLogPath, "mysql.err")
 	_, err := os.Stat(errFile)
 	if err == nil {
-		os.Rename(errFile, errFile+".0")
+		err := os.Rename(errFile, errFile+".0")
+		if err != nil {
+			log.Error("failed to rotate err log file", map[string]interface{}{
+				log.FnError: err,
+			})
+			return fmt.Errorf("failed to rotate err log file: %w", err)
+		}
 	} else if !os.IsNotExist(err) {
 		log.Error("failed to stat err log file", map[string]interface{}{
 			log.FnError: err,
 		})
+		return fmt.Errorf("failed to stat err log file: %w", err)
 	}
 
 	slowFile := filepath.Join(moco.VarLogPath, "mysql.slow")
-	_, err = os.Stat(errFile)
+	_, err = os.Stat(slowFile)
 	if err == nil {
-		os.Rename(slowFile, slowFile+".0")
+		err := os.Rename(slowFile, slowFile+".0")
+		if err != nil {
+			log.Error("failed to rotate slow query log file", map[string]interface{}{
+				log.FnError: err,
+			})
+			return fmt.Errorf("failed to rotate slow query log file: %w", err)
+		}
 	} else if !os.IsNotExist(err) {
 		log.Error("failed to stat slow query log file", map[string]interface{}{
 			log.FnError: err,
 		})
+		return fmt.Errorf("failed to stat slow query log file: %w", err)
 	}
 
-	cmd := well.CommandContext(r.Context(), "mysql", "--defaults-file", filepath.Join(moco.MySQLConfPath, moco.MySQLConfName), "-u", moco.OperatorUser, "-p"+viper.GetString(moco.OperatorPasswordFlag))
-	cmd.Stdin = strings.NewReader("FLUSH ERROR LOGS\nFLUSH SLOW LOGS\n")
+	cmd := well.CommandContext(r.Context(), "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
+	cmd.Stdin = strings.NewReader("FLUSH ERROR LOGS;\nFLUSH SLOW LOGS;\n")
 	err = cmd.Run()
 	if err != nil {
 		log.Error("failed to exec mysql FLUSH", map[string]interface{}{
 			log.FnError: err,
 		})
+		return fmt.Errorf("failed to exec mysql FLUSH: %w", err)
 	}
 
-	return
+	return nil
 }
 
 func init() {
 	rootCmd.AddCommand(rotateCmd)
 
 	rotateCmd.Flags().String(addressFlag, ":8080", "Listening address and port.")
-	rotateCmd.Flags().String(moco.OperatorPasswordFlag, "", "Password for operator user")
 
 	err := viper.BindPFlags(rotateCmd.Flags())
 	if err != nil {
