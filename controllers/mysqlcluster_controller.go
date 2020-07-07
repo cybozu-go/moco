@@ -12,6 +12,7 @@ import (
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -32,8 +33,7 @@ const (
 	mysqlAdminPort      = 33062
 	mysqlxPort          = 33060
 
-	rotateContainerName = "rotate"
-
+	rotateServerContainerName   = "rotate"
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
@@ -60,6 +60,7 @@ type MySQLClusterReconciler struct {
 	Log                    logr.Logger
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
+	CurlContainerImage     string
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -74,6 +75,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=serviceaccounts/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
+// +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -123,6 +126,11 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{}, err
 		}
 
+		err = r.createOrUpdateCronJob(ctx, log, cluster)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -157,6 +165,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
+		Owns(&batchv1beta1.CronJob{}).
 		Complete(r)
 }
 
@@ -555,17 +564,17 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	for _, orig := range template.Spec.Containers {
-		if orig.Name == rotateContainerName {
-			err := fmt.Errorf("cannot specify %s container in podTemplate", rotateContainerName)
+		if orig.Name == rotateServerContainerName {
+			err := fmt.Errorf("cannot specify %s container in podTemplate", rotateServerContainerName)
 			log.Error(err, "invalid container found")
 			return nil, err
 		}
 	}
 	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, corev1.Container{
-		Name:  rotateContainerName,
+		Name:  rotateServerContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			"/entrypoint", "rotate",
+			"/entrypoint", "rotate-server",
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -740,6 +749,38 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 		},
 		Spec: cluster.Spec.DataVolumeClaimTemplateSpec,
 	}
+}
+
+// createOrUpdateCronJob doesn't remove cron jobs when the replica number is decreased
+func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	for i := int32(0); i < cluster.Spec.Replicas; i++ {
+		cronJob := &batchv1beta1.CronJob{}
+		cronJob.SetNamespace(cluster.Namespace)
+		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), i)
+		cronJob.SetName(podName)
+
+		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
+			setLabels(&cronJob.ObjectMeta)
+			cronJob.Spec.Schedule = cluster.Spec.LogRotationSchedule
+			cronJob.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
+			cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = []corev1.Container{
+				{
+					Name:    "curl",
+					Image:   r.CurlContainerImage,
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, uniqueName(cluster))},
+				},
+			}
+			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
+		})
+		if err != nil {
+			log.Error(err, "unable to create-or-update CronJob")
+			return err
+		}
+		if op != controllerutil.OperationResultNone {
+			log.Info("reconcile CronJob successfully", "op", op)
+		}
+	}
+	return nil
 }
 
 func containsString(slice []string, s string) bool {

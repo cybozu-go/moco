@@ -18,10 +18,10 @@ const (
 	addressFlag = "address"
 )
 
-var rotateCmd = &cobra.Command{
-	Use:   "rotate",
-	Short: "Rotate MySQL log files",
-	Long:  `Rotate MySQL log files.`,
+var rotateServerCmd = &cobra.Command{
+	Use:   "rotate-server",
+	Short: "Start HTTP server to rotate MySQL log files",
+	Long:  `Start HTTP server to rotate MySQL log files.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		serv := &well.HTTPServer{
 			Server: &http.Server{
@@ -100,11 +100,11 @@ func rotateLog(w http.ResponseWriter, r *http.Request) error {
 }
 
 func init() {
-	rootCmd.AddCommand(rotateCmd)
+	rootCmd.AddCommand(rotateServerCmd)
 
-	rotateCmd.Flags().String(addressFlag, ":8080", "Listening address and port.")
+	rotateServerCmd.Flags().String(addressFlag, ":8080", "Listening address and port.")
 
-	err := viper.BindPFlags(rotateCmd.Flags())
+	err := viper.BindPFlags(rotateServerCmd.Flags())
 	if err != nil {
 		panic(err)
 	}

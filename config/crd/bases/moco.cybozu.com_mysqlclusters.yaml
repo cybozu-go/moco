@@ -158,6 +158,11 @@ spec:
                       backing this claim.
                     type: string
                 type: object
+              logRotationSchedule:
+                default: '*/5 * * * *'
+                description: LogRotationSchedule is a schedule in Cron format for
+                  MySQL log rotation
+                type: string
               mysqlConfigMapName:
                 description: MySQLConfigMapName is a `ConfigMap` name of MySQL config.
                 type: string

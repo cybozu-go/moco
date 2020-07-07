@@ -43,6 +43,7 @@ func subMain() error {
 		Log:                    ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
 		Scheme:                 mgr.GetScheme(),
 		ConfInitContainerImage: config.confInitContainerImage,
+		CurlContainerImage:     config.curlContainerImage,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
