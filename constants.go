@@ -31,6 +31,12 @@ const (
 	// VarLogPath is a path for /var/log/mysql.
 	VarLogPath = "/var/log/mysql"
 
+	// MySQLErrorLogName is a filename of error log for MySQL.
+	MySQLErrorLogName = "mysql.err"
+
+	// MySQLSlowLogName is a filename of slow query log for MySQL.
+	MySQLSlowLogName = "mysql.slow"
+
 	// TmpPath is a path for /tmp.
 	TmpPath = "/tmp"
 

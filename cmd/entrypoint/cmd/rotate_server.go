@@ -52,7 +52,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func rotateLog(w http.ResponseWriter, r *http.Request) error {
-	errFile := filepath.Join(moco.VarLogPath, "mysql.err")
+	errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
 	if err == nil {
 		err := os.Rename(errFile, errFile+".0")
@@ -69,7 +69,7 @@ func rotateLog(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("failed to stat err log file: %w", err)
 	}
 
-	slowFile := filepath.Join(moco.VarLogPath, "mysql.slow")
+	slowFile := filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName)
 	_, err = os.Stat(slowFile)
 	if err == nil {
 		err := os.Rename(slowFile, slowFile+".0")
