@@ -25,10 +25,55 @@ spec:
             command: ["/ping.sh"]
           initialDelaySeconds: 10
           periodSeconds: 5
+      - name: err-filebeat
+        image: quay.io/cybozu/filebeat:7.8.0.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: err-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: err-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      - name: slow-filebeat
+        image: quay.io/cybozu/filebeat:7.8.0.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: slow-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: slow-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000
         fsGroup: 10000
+      volumes:
+      - name: err-filebeat-config
+        configMap:
+          name: err-filebeat-config
+      - name: err-filebeat-data
+        emptyDir: {}
+      - name: slow-filebeat-config
+        configMap:
+          name: slow-filebeat-config
+      - name: slow-filebeat-data
+        emptyDir: {}
   dataVolumeClaimTemplateSpec:
     accessModes: [ "ReadWriteOnce" ]
     resources:
@@ -46,3 +91,45 @@ data:
   max_allowed_packet: 1G
   max_heap_table_size: 64M
   pid_file: /hoge/fuga
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: err-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.err*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slow-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.slow*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
