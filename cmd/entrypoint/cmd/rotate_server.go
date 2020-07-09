@@ -90,9 +90,6 @@ func rotateLog(w http.ResponseWriter, r *http.Request) error {
 	cmd.Stdin = strings.NewReader("FLUSH ERROR LOGS;\nFLUSH SLOW LOGS;\n")
 	err = cmd.Run()
 	if err != nil {
-		log.Error("failed to exec mysql FLUSH", map[string]interface{}{
-			log.FnError: err,
-		})
 		return fmt.Errorf("failed to exec mysql FLUSH: %w", err)
 	}
 

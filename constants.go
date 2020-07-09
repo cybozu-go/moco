@@ -73,20 +73,11 @@ const (
 	// RootPasswordEnvName is a name of the environment variable of a root password.
 	RootPasswordEnvName = "ROOT_PASSWORD"
 
-	// RootPasswordFlag is a name of the flag of a root password.
-	RootPasswordFlag = "root-password"
-
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
 	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
-	// OperatorPasswordFlag is a name of the flag of a password for both operator and operator-admin.
-	OperatorPasswordFlag = "operator-password"
-
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
-
-	// MiscPasswordFlag is a name of the flag of a password for the misc user.
-	MiscPasswordFlag = "misc-password"
 )
 
 const (

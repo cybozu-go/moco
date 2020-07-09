@@ -77,26 +77,26 @@ func initializeOnce(ctx context.Context) error {
 	}
 
 	log.Info("setup root user", nil)
-	err = initializeRootUser(ctx, viper.GetString(moco.RootPasswordFlag), viper.GetString(moco.PodIPFlag))
+	err = initializeRootUser(ctx, os.Getenv(moco.RootPasswordEnvName), viper.GetString(moco.PodIPFlag))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup operator user", nil)
-	err = initializeOperatorUser(ctx, viper.GetString(moco.OperatorPasswordFlag))
+	err = initializeOperatorUser(ctx, os.Getenv(moco.OperatorPasswordEnvName))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup operator-admin users", nil)
 	// use the password for an operator-admin user which is the same with the one for operator user
-	err = initializeOperatorAdminUser(ctx, viper.GetString(moco.OperatorPasswordFlag))
+	err = initializeOperatorAdminUser(ctx, os.Getenv(moco.OperatorPasswordEnvName))
 	if err != nil {
 		return err
 	}
 
 	log.Info("setup misc user", nil)
-	err = initializeMiscUser(ctx, viper.GetString(moco.MiscPasswordFlag))
+	err = initializeMiscUser(ctx, os.Getenv(moco.MiscPasswordEnvName))
 	if err != nil {
 		return err
 	}
@@ -169,6 +169,9 @@ func importTimeZoneFromHost(ctx context.Context) error {
 }
 
 func initializeRootUser(ctx context.Context, rootPassword, rootHost string) error {
+	if rootPassword == "" {
+		return fmt.Errorf("root password is not set")
+	}
 	// execSQL requires the password file.
 	conf := `[client]
 user=root
@@ -343,9 +346,6 @@ func init() {
 
 	initCmd.Flags().String(moco.PodNameFlag, "", "Pod Name created by StatefulSet")
 	initCmd.Flags().String(moco.PodIPFlag, "", "Pod IP address")
-	initCmd.Flags().String(moco.OperatorPasswordFlag, "", "Password for both operator user and operator admin user")
-	initCmd.Flags().String(moco.RootPasswordFlag, "", "Password for root user")
-	initCmd.Flags().String(moco.MiscPasswordFlag, "", "Password for misc user")
 	err := viper.BindPFlags(initCmd.Flags())
 	if err != nil {
 		panic(err)
