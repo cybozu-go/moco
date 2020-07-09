@@ -15,6 +15,7 @@ var config struct {
 	metricsAddr            string
 	leaderElectionID       string
 	confInitContainerImage string
+	curlContainerImage     string
 }
 
 var rootCmd = &cobra.Command{
@@ -35,7 +36,10 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-const defaultInitContainerImage = " quay.io/cybozu/moco-conf-gen:1.0.0"
+const (
+	defaultInitContainerImage = "quay.io/cybozu/moco-conf-gen:1.0.0"
+	defaultCurlContainerImage = "quay.io/cybozu/ubuntu:18.04"
+)
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -51,6 +55,7 @@ func init() {
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
+	fs.StringVar(&config.curlContainerImage, "curl-container-image", defaultCurlContainerImage, "The container image name of curl")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)

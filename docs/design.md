@@ -227,6 +227,121 @@ and export them as Prometheus metrics.
 
 The detail is TBD.
 
+### How to manage log files
+
+The operator configures MySQL to output error logs and slow query logs into files.
+
+To avoid exhaustion of storage resources, the operator appends a sidecar container to the MySQL Pod.
+The sidecar container rotates and deletes the log files.
+The operator creates a CronJob to invoke rotation and deletion periodically.
+
+The operator does not care about gathering the contents of the log files.
+Tenant users can extract the contents by defining sidecar containers for `slow.log` and `error.log`.
+Here is an example with FileBeat
+
+```yaml
+apiVersion: moco.cybozu.com/v1alpha1
+kind: MySQLCluster
+metadata:
+  name: mysqlcluster
+spec:
+  replicas: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: err-filebeat
+        image: quay.io/cybozu/filebeat:7.8.0.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: err-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: err-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      - name: slow-filebeat
+        image: quay.io/cybozu/filebeat:7.8.0.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: slow-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: slow-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+      volumes:
+      - name: err-filebeat-config
+        configMap:
+          name: err-filebeat-config
+      - name: err-filebeat-data
+        emptyDir: {}
+      - name: slow-filebeat-config
+        configMap:
+          name: slow-filebeat-config
+      - name: slow-filebeat-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: err-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.err*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slow-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.slow*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+```
+
 ### TBD
 
 - Write merge strategy of `my.cnf`.

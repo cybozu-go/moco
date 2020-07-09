@@ -47,6 +47,12 @@ type MySQLClusterSpec struct {
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
+	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation
+	// +kubebuilder:default="*/5 * * * *"
+	// +kubebuilder:validation:Pattern=`^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$`
+	// +optional
+	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
+
 	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is filled, start restoring. This field is unable to be updated.
 	// +optional

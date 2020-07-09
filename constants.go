@@ -31,6 +31,12 @@ const (
 	// VarLogPath is a path for /var/log/mysql.
 	VarLogPath = "/var/log/mysql"
 
+	// MySQLErrorLogName is a filename of error log for MySQL.
+	MySQLErrorLogName = "mysql.err"
+
+	// MySQLSlowLogName is a filename of slow query log for MySQL.
+	MySQLSlowLogName = "mysql.slow"
+
 	// TmpPath is a path for /tmp.
 	TmpPath = "/tmp"
 
@@ -67,14 +73,11 @@ const (
 	// RootPasswordEnvName is a name of the environment variable of a root password.
 	RootPasswordEnvName = "ROOT_PASSWORD"
 
-	// RootPasswordFlag is a name of the flag of a root password.
-	RootPasswordFlag = "root-password"
-
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
 	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
-	// OperatorPasswordFlag is a name of the flag of a password for both operator and operator-admin.
-	OperatorPasswordFlag = "operator-password"
+	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
+	MiscPasswordEnvName = "MISC_PASSWORD"
 )
 
 const (
@@ -89,4 +92,7 @@ const (
 
 	// DonorPasswordKey is a Secret key for operator donor password.
 	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
+
+	// MiscPasswordKey is a Secret key for misc user password.
+	MiscPasswordKey = "MISC_PASSWORD"
 )
