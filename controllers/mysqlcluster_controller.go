@@ -131,6 +131,8 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{}, err
 		}
 
+		err = r.reconcileMySQLCluster(ctx, log, cluster)
+
 		return ctrl.Result{}, nil
 	}
 
@@ -829,4 +831,45 @@ func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName
 		return nil
 	}
 	return nil
+}
+
+// reconcileMySQLCluster recoclies MySQL cluster
+func (r *MySQLClusterReconciler) reconcileMySQLCluster(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+
+}
+
+type MySQLClusterStatus struct {
+
+}
+
+func getMySQLClusterStatus() (*MySQLClusterStatus, error){
+	secret := &corev1.Secret{}
+	myNS, mySecretName := r.getSecretNameForController(cluster)
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	if err != nil {
+		return nil, err
+	}
+	secret.
+
+}
+
+func doExec(ctx context.Context, input []byte, command string, args ...string) ([]byte, error) {
+	cmd := well.CommandContext(ctx, command, args...)
+	if input != nil {
+		cmd.Stdin = bytes.NewReader(input)
+	}
+
+	return cmd.Output()
+}
+
+func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, error) {
+	args := []string{
+		"--defaults-extra-file=" + passwordFilePath,
+		"-hlocalhost",
+		"--init-command=SET @@GLOBAL.SUPER_READ_ONLY=OFF; SET @@GLOBAL.OFFLINE_MODE=OFF; SET @@SESSION.SQL_LOG_BIN=0;",
+	}
+	if databaseName != "" {
+		args = append(args, databaseName)
+	}
+	return doExec(ctx, input, "mysql", args...)
 }

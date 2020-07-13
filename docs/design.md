@@ -133,6 +133,24 @@ we should execute a command like `kubectl moco graceful-restart CLUSTER`.
 Behaviors
 ---------
 
+### How to watch the status of instances
+
+Fetch the following information with mysql-client from each instance:
+
+1. GTID
+2. Replication source
+3. read-only mode
+
+### How to bootstrap MySQL Cluster
+
+When all instances are the initial state, bootstrap the cluster as follows:
+
+1. Select the first instance as the primary.
+2. Set the replication source using `CHANGE MASTER TO` for a replica instances.
+3. Create Service resources to access to primary and replicas.
+4. Update `MySQLCluster.status.currentPrimaryIndex` with the primary name.
+5. Turn off read-only mode on the primary.
+
 ### How to execute failover when the primary fails
 
 When the primary fails, the cluster is recovered in the following process:
