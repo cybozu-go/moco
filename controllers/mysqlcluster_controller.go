@@ -1,19 +1,12 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -135,11 +128,6 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 
 		err = r.createOrUpdateCronJob(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.reconcileMySQLCluster(ctx, log, cluster)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -842,76 +830,4 @@ func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName
 		return nil
 	}
 	return nil
-}
-
-// reconcileMySQLCluster recoclies MySQL cluster
-func (r *MySQLClusterReconciler) reconcileMySQLCluster(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
-	_, err := r.getMySQLClusterStatus(ctx, log, cluster)
-	return err
-}
-
-// MySQLClusterStatus contains MySQLCluster status
-type MySQLClusterStatus struct {
-}
-
-func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
-	podName := uniqueName(cluster) + "-0"
-	var pod corev1.Pod
-	err := r.Get(ctx, types.NamespacedName{
-		Namespace: cluster.Namespace,
-		Name:      podName,
-	}, &pod)
-	if err != nil {
-		return nil, err
-	}
-
-	stdout, stderr, err := r.ExecuteRemoteCommand(&pod, "mysql --version")
-	if err != nil {
-		return nil, err
-	}
-	log.Info("RemoteCommand", "stdout", stdout, "stderr", stderr)
-	return nil, nil
-}
-
-// ExecuteRemoteCommand executes a remote shell command on the given pod
-// returns the output from stdout and stderr
-func (r *MySQLClusterReconciler) ExecuteRemoteCommand(pod *corev1.Pod, command string) (string, string, error) {
-
-	restCfg, err := ctrl.GetConfig()
-	if err != nil {
-		return "", "", err
-	}
-	coreClient, err := kubernetes.NewForConfig(restCfg)
-	if err != nil {
-		return "", "", err
-	}
-
-	buf := &bytes.Buffer{}
-	errBuf := &bytes.Buffer{}
-	request := coreClient.RESTClient().
-		Post().
-		Namespace(pod.Namespace).
-		Resource("pods").
-		Name(pod.Name).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Command: []string{"/bin/sh", "-c", command},
-			Stdin:   true,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     true,
-		}, scheme.ParameterCodec)
-	spdyExec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
-	if err != nil {
-		return "", "", err
-	}
-	err = spdyExec.Stream(remotecommand.StreamOptions{
-		Stdout: buf,
-		Stderr: errBuf,
-	})
-	if err != nil {
-		return "", "", fmt.Errorf("failed executing command %s on %v/%v: %w", command, pod.Namespace, pod.Name, err)
-	}
-
-	return buf.String(), errBuf.String(), nil
 }

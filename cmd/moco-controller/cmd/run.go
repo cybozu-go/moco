@@ -48,6 +48,14 @@ func subMain() error {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}
+
+	if err = (&controllers.ClusteringReconciler{
+		Client:                 mgr.GetClient(),
+		Log:                    ctrl.Log.WithName("controllers").WithName("Clustering"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Clustering")
+		return err
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
