@@ -23,7 +23,7 @@ type mySQLClusterWatcher struct {
 }
 
 func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {

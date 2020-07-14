@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -44,6 +46,11 @@ func subMain() error {
 		Scheme:                 mgr.GetScheme(),
 		ConfInitContainerImage: config.confInitContainerImage,
 		CurlContainerImage:     config.curlContainerImage,
+		MySQLAccessor: controllers.NewMySQLAccessor(&controllers.MySQLAccessorConfig{
+			ConnMaxLifeTime:   30 * time.Minute,
+			ConnectionTimeout: 3 * time.Second,
+			ReadTimeout:       30 * time.Second,
+		}),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err

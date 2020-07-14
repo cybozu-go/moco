@@ -71,6 +71,7 @@ type MySQLClusterReconciler struct {
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
+	MySQLAccessor          *mySQLAccessor
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -237,11 +238,24 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 		return nil, err
 	}
 
-	stdout, stderr, err := r.ExecuteRemoteCommand(&pod, "mysql --version")
+	/*/
+	db, err := NewMySQLAccessor(user, passwd, host)
 	if err != nil {
-		return nil, err
+		// when error
 	}
-	log.Info("RemoteCommand", "stdout", stdout, "stderr", stderr)
+
+	if err := db.Ping(); err != nil {
+		// when error
+	}
+	//*/
+
+	/*
+		stdout, stderr, err := r.ExecuteRemoteCommand(&pod, "mysql --version")
+		if err != nil {
+			return nil, err
+		}
+		log.Info("RemoteCommand", "stdout", stdout, "stderr", stderr)
+	*/
 	return nil, nil
 }
 
