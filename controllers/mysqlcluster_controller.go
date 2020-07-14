@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -18,9 +20,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -102,37 +112,13 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		err := r.createSecretIfNotExist(ctx, log, cluster)
+		err := r.reconcileInitialize(ctx, log, req, cluster)
 		if err != nil {
-			return ctrl.Result{}, err
+			if errUpdate := r.Status().Update(ctx, cluster); errUpdate != nil {
+				// TBD
+			}
 		}
-
-		err = r.createOrUpdateConfigMap(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateHeadlessService(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateRBAC(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateStatefulSet(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateCronJob(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{}, nil
+		// TBD
 	}
 
 	// finalization
@@ -157,8 +143,59 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	return ctrl.Result{}, nil
 }
 
+func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log logr.Logger, req ctrl.Request, cluster *mocov1alpha1.MySQLCluster) error {
+
+	err := r.createSecretIfNotExist(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.createOrUpdateConfigMap(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.createOrUpdateHeadlessService(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.createOrUpdateRBAC(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.createOrUpdateStatefulSet(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.createOrUpdateCronJob(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SetupWithManager sets up the controller for reconciliation.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// SetupWithManager sets up the controller for reconciliation.
+	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, ".status.ready", selectReadyCluster)
+	if err != nil {
+		return err
+	}
+
+	ch := make(chan event.GenericEvent)
+	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch)
+	err = mgr.Add(watcher)
+	if err != nil {
+		return err
+	}
+	src := source.Channel{
+		Source: ch,
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1alpha1.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -167,7 +204,88 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1beta1.CronJob{}).
+		Watches(&src, &handler.EnqueueRequestForObject{}).
+		WithOptions(
+			controller.Options{MaxConcurrentReconciles: 8},
+		).
 		Complete(r)
+}
+
+func selectReadyCluster(obj runtime.Object) []string {
+	cluster := obj.(*mocov1alpha1.MySQLCluster)
+	return []string{string(cluster.Status.Ready)}
+}
+
+// reconcileMySQLCluster recoclies MySQL cluster
+func (r *MySQLClusterReconciler) reconcileMySQLCluster(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	_, err := r.getMySQLClusterStatus(ctx, log, cluster)
+	return err
+}
+
+// MySQLClusterStatus contains MySQLCluster status
+type MySQLClusterStatus struct {
+}
+
+func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
+	podName := uniqueName(cluster) + "-0"
+	var pod corev1.Pod
+	err := r.Get(ctx, types.NamespacedName{
+		Namespace: cluster.Namespace,
+		Name:      podName,
+	}, &pod)
+	if err != nil {
+		return nil, err
+	}
+
+	stdout, stderr, err := r.ExecuteRemoteCommand(&pod, "mysql --version")
+	if err != nil {
+		return nil, err
+	}
+	log.Info("RemoteCommand", "stdout", stdout, "stderr", stderr)
+	return nil, nil
+}
+
+// ExecuteRemoteCommand executes a remote shell command on the given pod
+// returns the output from stdout and stderr
+func (r *MySQLClusterReconciler) ExecuteRemoteCommand(pod *corev1.Pod, command string) (string, string, error) {
+
+	restCfg, err := ctrl.GetConfig()
+	if err != nil {
+		return "", "", err
+	}
+	coreClient, err := kubernetes.NewForConfig(restCfg)
+	if err != nil {
+		return "", "", err
+	}
+
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	request := coreClient.RESTClient().
+		Post().
+		Namespace(pod.Namespace).
+		Resource("pods").
+		Name(pod.Name).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command: []string{"/bin/sh", "-c", command},
+			Stdin:   true,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     true,
+		}, scheme.ParameterCodec)
+	spdyExec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
+	if err != nil {
+		return "", "", err
+	}
+	err = spdyExec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("failed executing command %s on %v/%v: %w", command, pod.Namespace, pod.Name, err)
+	}
+
+	return buf.String(), errBuf.String(), nil
 }
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {

@@ -40,7 +40,7 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 
 func (w mySQLClusterWatcher) fire(ctx context.Context) error {
 	clusters := mocov1alpha1.MySQLClusterList{}
-	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{".status.reqdy": "True"}))
+	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{".status.ready": "True"}))
 	if err != err {
 		return err
 	}
