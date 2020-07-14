@@ -4,13 +4,16 @@ import (
 	"context"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
-func NewMySQLClusterWatcher(client client.Client, ch chan<- event.GenericEvent) *mySQLClusterWatcher {
+// NewMySQLClusterWatcher creates new mySQLClusterWatcher
+func NewMySQLClusterWatcher(client client.Client, ch chan<- event.GenericEvent) manager.Runnable {
 	return &mySQLClusterWatcher{
 		client:  client,
 		channel: ch,
@@ -22,6 +25,7 @@ type mySQLClusterWatcher struct {
 	channel chan<- event.GenericEvent
 }
 
+// Start implements Runnable.Start
 func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -40,7 +44,8 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 
 func (w mySQLClusterWatcher) fire(ctx context.Context) error {
 	clusters := mocov1alpha1.MySQLClusterList{}
-	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{".status.ready": "True"}))
+	// err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{".status.ready": "True"}))
+	err := w.client.List(ctx, &clusters, &client.ListOptions{})
 	if err != err {
 		return err
 	}
@@ -56,6 +61,7 @@ func (w mySQLClusterWatcher) fire(ctx context.Context) error {
 	return nil
 }
 
+// NeedLeaderElection implements LeaderElectionRunnable
 func (w mySQLClusterWatcher) NeedLeaderElection() bool {
 	return true
 }

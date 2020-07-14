@@ -9,6 +9,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY cmd/ cmd/
 COPY constants.go constants.go
+COPY runners/ runners/
 COPY version.go version.go
 COPY vendor/ vendor/
 

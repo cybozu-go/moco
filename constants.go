@@ -44,6 +44,17 @@ const (
 	MySQLConfTemplatePath = "/etc/mysql_template"
 )
 
+const (
+	// MySQLPort is a port number for MySQL
+	MySQLPort = "3306"
+
+	// MySQLAdminPort is a port number for MySQL Admin
+	MySQLAdminPort = "33062"
+
+	// MySQLXPort is a port number for MySQL XProtocol
+	MySQLXPort = "33060"
+)
+
 // env names must correspond to options in entrypoint/init.go
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.

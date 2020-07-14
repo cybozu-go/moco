@@ -6,32 +6,39 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cybozu-go/moco"
+	// MySQL Driver
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// MySQLAccessorConfig contains MySQL connection configurations
 type MySQLAccessorConfig struct {
 	ConnMaxLifeTime   time.Duration
 	ConnectionTimeout time.Duration
 	ReadTimeout       time.Duration
-	// WriteTimeout      *time.Duration ... unused
 }
 
-type mySQLAccessor struct {
+// MySQLAccessor contains MySQL connection configurations and sql.db
+type MySQLAccessor struct {
 	config *MySQLAccessorConfig
 	dbs    map[string]*sql.DB
 	mutex  *sync.Mutex
 }
 
-func NewMySQLAccessor(config *MySQLAccessorConfig) *mySQLAccessor {
-	return &mySQLAccessor{
+// NewMySQLAccessor creates new MySQLAccessor
+func NewMySQLAccessor(config *MySQLAccessorConfig) *MySQLAccessor {
+	return &MySQLAccessor{
 		config: config,
 		dbs:    make(map[string]*sql.DB),
 		mutex:  &sync.Mutex{},
 	}
 }
 
-func (acc *mySQLAccessor) Get(uri string) (*sql.DB, error) {
-	// TODO uri
+// Get connects a database with specified parameters
+func (acc *MySQLAccessor) Get(host, user, password string) (*sql.DB, error) {
+	uri := acc.getURI(host, user, password)
+	fmt.Println("uri = " + uri)
+
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 
@@ -39,18 +46,25 @@ func (acc *mySQLAccessor) Get(uri string) (*sql.DB, error) {
 		if db, err := acc.connect(uri); err == nil {
 			acc.dbs[uri] = db
 		} else {
-			return db, err
+			return nil, err
 		}
 	}
 
-	return acc.dbs[uri], nil
+	db := acc.dbs[uri]
+	err := db.Ping()
+	if err != nil {
+		delete(acc.dbs, uri)
+		return nil, err
+	}
+	return db, nil
 }
 
-func (acc *mySQLAccessor) getURI(host string) string {
-	return fmt.Sprintf("%s?timeout=%.0fs&readTimeout=%.0fs", host, acc.config.ConnectionTimeout.Seconds(), acc.config.ReadTimeout.Seconds())
+func (acc *MySQLAccessor) getURI(host, user, password string) string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=%.0fs&readTimeout=%.0fs", user, password, host,
+		moco.MySQLAdminPort, acc.config.ConnectionTimeout.Seconds(), acc.config.ReadTimeout.Seconds())
 }
 
-func (acc *mySQLAccessor) connect(uri string) (*sql.DB, error) {
+func (acc *MySQLAccessor) connect(uri string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", uri)
 	if err != nil {
 		return nil, err
@@ -61,14 +75,16 @@ func (acc *mySQLAccessor) connect(uri string) (*sql.DB, error) {
 	return db, nil
 }
 
+// Cleanup cleans staled connections
 // TODO run on background
-func (acc *mySQLAccessor) Cleanup() {
+func (acc *MySQLAccessor) Cleanup() {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 
 	for uri, db := range acc.dbs {
 		err := db.Ping()
 		if err != nil {
+			db.Close()
 			delete(acc.dbs, uri)
 		}
 	}

@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -20,10 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/remotecommand"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -71,7 +67,7 @@ type MySQLClusterReconciler struct {
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
-	MySQLAccessor          *mySQLAccessor
+	MySQLAccessor          *MySQLAccessor
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -88,7 +84,6 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
-// +kubebuilder:rbac:groups="",resources=pods/exec,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -118,8 +113,16 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			if errUpdate := r.Status().Update(ctx, cluster); errUpdate != nil {
 				// TBD
 			}
+			log.Error(err, "failed to initialize MySQLCluster")
+			return ctrl.Result{}, err
 		}
 		// TBD
+		err = r.reconcileMySQLCluster(ctx, log, cluster)
+		if err != nil {
+			log.Error(err, "failed to reconcile MySQLCluster")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	// finalization
@@ -182,14 +185,15 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 // SetupWithManager sets up the controller for reconciliation.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// SetupWithManager sets up the controller for reconciliation.
-	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, ".status.ready", selectReadyCluster)
-	if err != nil {
-		return err
-	}
-
+	/*
+		err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, ".status.ready", selectReadyCluster)
+		if err != nil {
+			return err
+		}
+	*/
 	ch := make(chan event.GenericEvent)
 	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch)
-	err = mgr.Add(watcher)
+	err := mgr.Add(watcher)
 	if err != nil {
 		return err
 	}
@@ -229,77 +233,76 @@ type MySQLClusterStatus struct {
 
 func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
 	podName := uniqueName(cluster) + "-0"
-	var pod corev1.Pod
-	err := r.Get(ctx, types.NamespacedName{
-		Namespace: cluster.Namespace,
-		Name:      podName,
-	}, &pod)
+
+	host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+
+	secret := &corev1.Secret{}
+	myNS, mySecretName := r.getSecretNameForController(cluster)
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	if err != nil {
+		return nil, err
+	}
+	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, string(secret.Data[moco.OperatorPasswordKey]))
 	if err != nil {
 		return nil, err
 	}
 
-	/*/
-	db, err := NewMySQLAccessor(user, passwd, host)
+	rows, err := db.Query("SHOW DATABASES")
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// Get column names
+	columns, err := rows.Columns()
 	if err != nil {
-		// when error
+		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		// when error
-	}
-	//*/
+	// Make a slice for the values
+	values := make([]sql.RawBytes, len(columns))
 
-	/*
-		stdout, stderr, err := r.ExecuteRemoteCommand(&pod, "mysql --version")
+	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
+	// references into such a slice
+	// See http://code.google.com/p/go-wiki/wiki/InterfaceSlice for details
+	scanArgs := make([]interface{}, len(values))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+
+	table := make([]map[string]string, 0)
+	// Fetch rows
+	for rows.Next() {
+		row := make(map[string]string)
+		table = append(table, row)
+		// get RawBytes from data
+		err = rows.Scan(scanArgs...)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("RemoteCommand", "stdout", stdout, "stderr", stderr)
-	*/
+
+		// Now do something with the data.
+		// Here we just print each column as a string.
+		var value string
+		for i, col := range values {
+			// Here we can check if the value is nil (NULL value)
+			if col == nil {
+				value = "NULL"
+			} else {
+				value = string(col)
+			}
+			row[columns[i]] = value
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	log.Info("SHOW DATABASES", "table", table)
+
 	return nil, nil
-}
-
-// ExecuteRemoteCommand executes a remote shell command on the given pod
-// returns the output from stdout and stderr
-func (r *MySQLClusterReconciler) ExecuteRemoteCommand(pod *corev1.Pod, command string) (string, string, error) {
-
-	restCfg, err := ctrl.GetConfig()
-	if err != nil {
-		return "", "", err
-	}
-	coreClient, err := kubernetes.NewForConfig(restCfg)
-	if err != nil {
-		return "", "", err
-	}
-
-	buf := &bytes.Buffer{}
-	errBuf := &bytes.Buffer{}
-	request := coreClient.RESTClient().
-		Post().
-		Namespace(pod.Namespace).
-		Resource("pods").
-		Name(pod.Name).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Command: []string{"/bin/sh", "-c", command},
-			Stdin:   true,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     true,
-		}, scheme.ParameterCodec)
-	spdyExec, err := remotecommand.NewSPDYExecutor(restCfg, "POST", request.URL())
-	if err != nil {
-		return "", "", err
-	}
-	err = spdyExec.Stream(remotecommand.StreamOptions{
-		Stdout: buf,
-		Stderr: errBuf,
-	})
-	if err != nil {
-		return "", "", fmt.Errorf("failed executing command %s on %v/%v: %w", command, pod.Namespace, pod.Name, err)
-	}
-
-	return buf.String(), errBuf.String(), nil
 }
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {

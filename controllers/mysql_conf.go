@@ -94,7 +94,7 @@ var (
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"port":    "3306",
+			"port":    moco.MySQLPort,
 			"socket":  filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"datadir": moco.MySQLDataPath,
 
@@ -107,8 +107,8 @@ var (
 			"gtid_mode":                "ON",
 			"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
-			"mysqlx_port": "33060",
-			"admin_port":  "33062",
+			"mysqlx_port": moco.MySQLXPort,
+			"admin_port":  moco.MySQLAdminPort,
 
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
@@ -117,7 +117,7 @@ var (
 			"admin_address": "{{ .AdminAddress }}",
 		},
 		"client": {
-			"port":                        "3306",
+			"port":                        moco.MySQLPort,
 			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"loose-default_character_set": "utf8mb4",
 		},
