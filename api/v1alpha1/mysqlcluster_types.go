@@ -153,6 +153,7 @@ type MySQLClusterConditionType string
 // Valid values for MySQLClusterConditionType
 const (
 	ConditionInitialized MySQLClusterConditionType = "Initialized"
+	ConditionReady       MySQLClusterConditionType = "Ready"
 	// and more
 )
 

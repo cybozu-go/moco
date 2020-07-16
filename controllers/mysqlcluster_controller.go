@@ -109,7 +109,8 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		isUpdated, err := r.reconcileInitialize(ctx, log, req, cluster)
+		// initialize
+		isUpdated, err := r.reconcileInitialize(ctx, log, cluster)
 		if err != nil {
 			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
 				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionFalse, Reason: "reconcileInitializeFailed", Message: err.Error()})
@@ -127,11 +128,27 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 				return ctrl.Result{}, err
 			}
 		}
-		err = r.reconcileMySQLCluster(ctx, log, cluster)
+
+		// clustering
+		isUpdated, err = r.reconcileClustering(ctx, log, cluster)
 		if err != nil {
-			log.Error(err, "failed to reconcile MySQLCluster")
+			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+				Type: mocov1alpha1.ConditionReady, Status: corev1.ConditionFalse, Reason: "reconcileClusteringFailed", Message: err.Error()})
+			if errUpdate := r.Status().Update(ctx, cluster); errUpdate != nil {
+				log.Error(err, "failed to status update")
+			}
+			log.Error(err, "failed to ready MySQLCluster")
 			return ctrl.Result{}, err
 		}
+		if isUpdated {
+			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+				Type: mocov1alpha1.ConditionReady, Status: corev1.ConditionTrue})
+			if err := r.Status().Update(ctx, cluster); err != nil {
+				log.Error(err, "failed to status update")
+				return ctrl.Result{}, err
+			}
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -157,7 +174,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	return ctrl.Result{}, nil
 }
 
-func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log logr.Logger, req ctrl.Request, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 
 	isUpdatedAtLeastOnce := false
 	isUpdated, err := r.createSecretIfNotExist(ctx, log, cluster)
@@ -203,7 +220,7 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// SetupWithManager sets up the controller for reconciliation.
 
-	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectReadyCluster)
+	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
 	if err != nil {
 		return err
 	}
@@ -233,8 +250,12 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func selectReadyCluster(obj runtime.Object) []string {
+func selectInitializedCluster(obj runtime.Object) []string {
 	cluster := obj.(*mocov1alpha1.MySQLCluster)
+	if cluster.Status == nil {
+		return []string{string(corev1.ConditionUnknown)}
+	}
+
 	for _, cond := range cluster.Status.Conditions {
 		if cond.Type == mocov1alpha1.ConditionInitialized {
 			return []string{string(cond.Status)}
@@ -244,32 +265,123 @@ func selectReadyCluster(obj runtime.Object) []string {
 }
 
 // reconcileMySQLCluster recoclies MySQL cluster
-func (r *MySQLClusterReconciler) reconcileMySQLCluster(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	_, err := r.getMySQLClusterStatus(ctx, log, cluster)
-	return err
+	return true, err
 }
 
 // MySQLClusterStatus contains MySQLCluster status
 type MySQLClusterStatus struct {
+	InstanceStatus []MySQLInstanceStatus
+}
+
+type MySQLPrimaryStatus struct {
+	ExecutedGtidSet string
+}
+
+type MySQLReplicaStatus struct {
+	PrimaryHost       string
+	ReplicaIORunning  string
+	ReplicaSQLRunning string
+	RetrievedGtidSet  string
+	ExecutedGtidSet   string
+}
+
+type MySQLInstanceStatus struct {
+	Available     bool
+	PrimaryStatus *MySQLPrimaryStatus
+	ReplicaStatus []MySQLReplicaStatus
 }
 
 func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
-	podName := uniqueName(cluster) + "-0"
-
-	host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
-
 	secret := &corev1.Secret{}
 	myNS, mySecretName := r.getSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
 		return nil, err
 	}
-	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, string(secret.Data[moco.OperatorPasswordKey]))
+	operatorPassword := string(secret.Data[moco.OperatorPasswordKey])
+
+	status := &MySQLClusterStatus{
+		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
+	}
+	for instanceIdx := 0; instanceIdx < int(cluster.Spec.Replicas); instanceIdx++ {
+		status.InstanceStatus[instanceIdx].Available = false
+
+		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), instanceIdx)
+		host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+
+		db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+		if err != nil {
+			log.Info("instance not available", "err", err, "podName", podName)
+			continue
+		}
+
+		primaryStatus, err := r.getMySQLPrimaryStatus(ctx, log, db)
+		if err != nil {
+			log.Info("get primary status failed", "err", err, "podName", podName)
+			continue
+		}
+		status.InstanceStatus[instanceIdx].PrimaryStatus = primaryStatus
+
+		replicaStatus, err := r.getMySQLReplicaStatus(ctx, log, db)
+		if err != nil {
+			log.Info("get replica status failed", "err", err, "podName", podName)
+			continue
+		}
+		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
+
+		status.InstanceStatus[instanceIdx].Available = true
+	}
+	return status, nil
+}
+
+func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sql.DB) (*MySQLPrimaryStatus, error) {
+	rows, err := r.getColumns(ctx, log, db, "SHOW MASTER STATUS")
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := db.Query("SHOW DATABASES")
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	if len(rows) != 1 {
+		return nil, fmt.Errorf("unsupported topology")
+	}
+
+	status := &MySQLPrimaryStatus{
+		ExecutedGtidSet: rows[0]["Executed_Gtid_Set"],
+	}
+
+	return status, nil
+}
+
+func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sql.DB) ([]MySQLReplicaStatus, error) {
+	rows, err := r.getColumns(ctx, log, db, "SHOW SLAVE STATUS")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	status := make([]MySQLReplicaStatus, len(rows))
+	for idx, row := range rows {
+		status[idx] = MySQLReplicaStatus{
+			PrimaryHost:       row["Slave_IO_State"],
+			ReplicaIORunning:  row["Slave_IO_Running"],
+			ReplicaSQLRunning: row["Slave_SQL_Running"],
+			RetrievedGtidSet:  row["Retrieved_Gtid_Set"],
+			ExecutedGtidSet:   row["Executed_Gtid_Set"],
+		}
+	}
+	return status, nil
+}
+
+func (r *MySQLClusterReconciler) getColumns(ctx context.Context, log logr.Logger, db *sql.DB, query string) ([]map[string]string, error) {
+	rows, err := db.Query(query)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -294,11 +406,12 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 		scanArgs[i] = &values[i]
 	}
 
-	table := make([]map[string]string, 0)
+	result := make([]map[string]string, 0)
+
 	// Fetch rows
 	for rows.Next() {
 		row := make(map[string]string)
-		table = append(table, row)
+		result = append(result, row)
 		// get RawBytes from data
 		err = rows.Scan(scanArgs...)
 		if err != nil {
@@ -318,13 +431,12 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 			row[columns[i]] = value
 		}
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	log.Info("SHOW DATABASES", "table", table)
-
-	return nil, nil
+	return result, nil
 }
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
