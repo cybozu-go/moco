@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/cybozu-go/moco"
+	corev1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -34,7 +37,7 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 		case <-ch:
 			return nil
 		case <-ticker.C:
-			err := w.fire(context.Background())
+			err := w.fireEventForInitializedMySQLClusters(context.Background())
 			if err != nil {
 				//TODO
 			}
@@ -42,10 +45,9 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 	}
 }
 
-func (w mySQLClusterWatcher) fire(ctx context.Context) error {
+func (w mySQLClusterWatcher) fireEventForInitializedMySQLClusters(ctx context.Context) error {
 	clusters := mocov1alpha1.MySQLClusterList{}
-	// err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{".status.ready": "True"}))
-	err := w.client.List(ctx, &clusters, &client.ListOptions{})
+	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{moco.InitializedClusterIndexField: string(corev1.ConditionTrue)}))
 	if err != err {
 		return err
 	}

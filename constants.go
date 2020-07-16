@@ -107,3 +107,8 @@ const (
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"
 )
+
+const (
+	// InitializedClusterIndexField is an index name for Initialized MySQL Clusters
+	InitializedClusterIndexField = ".status.conditions.type.initialized"
+)
