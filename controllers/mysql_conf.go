@@ -107,9 +107,9 @@ var (
 			"admin_address": "{{ .AdminAddress }}",
 		},
 		"client": {
-			"port":                  "3306",
-			"socket":                filepath.Join(moco.VarRunPath, "mysqld.sock"),
-			"default_character_set": "utf8mb4",
+			"port":                        "3306",
+			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
+			"loose-default_character_set": "utf8mb4",
 		},
 		"mysql": {
 			"auto_rehash":  "OFF",
