@@ -54,13 +54,24 @@ var (
 
 		"print_identified_with_as_hex": "ON",
 
-		"loose_binlog_transaction_compression": "ON", // It would reduce the size of binlog by a third, but only available in 8.0.20 or later.
+		// This would reduce the size of binlog by a third.
+		// Available since MySQL 8.0.20
+		"loose_binlog_transaction_compression": "ON",
 
-		"information_schema_stats_expiry": "0", // No need to cache information_schema.tables values
+		// Enabling this would take long time at startup if there are a lot of tables.
+		// Available since MySQL 8.0.21
+		"loose_innodb_validate_tablespace_paths": "OFF",
+
+		// Disabled because of https://bugs.mysql.com/bug.php?id=98739
+		// Fixed in MySQL 8.0.21
+		"temptable_use_mmap": "OFF",
+
+		// No need to cache information_schema.tables values
+		"information_schema_stats_expiry": "0",
 
 		"disabled_storage_engines": "MyISAM",
 
-		// INNODB Specific options
+		// InnoDB Specific options
 		"innodb_flush_method":                 "O_DIRECT",
 		"innodb_lock_wait_timeout":            "60",
 		"innodb_print_all_deadlocks":          "1",
@@ -74,7 +85,7 @@ var (
 		"innodb_buffer_pool_dump_at_shutdown": "1",
 		"innodb_buffer_pool_load_at_startup":  "0",
 
-		// Optimized options for SSD
+		// Optimization options for SSD
 		"innodb_flush_neighbors":      "0",
 		"innodb_random_read_ahead":    "false",
 		"innodb_read_ahead_threshold": "0",
@@ -94,8 +105,7 @@ var (
 
 			"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
 			"gtid_mode":                "ON",
-
-			"temptable_use_mmap": "OFF", // Disable because there is a bug report, see https://bugs.mysql.com/bug.php?id=98739
+			"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
 			"mysqlx_port": "33060",
 			"admin_port":  "33062",
