@@ -87,7 +87,7 @@ func rotateLog(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	cmd := well.CommandContext(r.Context(), "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
-	cmd.Stdin = strings.NewReader("FLUSH ERROR LOGS;\nFLUSH SLOW LOGS;\n")
+	cmd.Stdin = strings.NewReader("FLUSH LOCAL ERROR LOGS;\nFLUSH LOCAL SLOW LOGS;\n")
 	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("failed to exec mysql FLUSH: %w", err)

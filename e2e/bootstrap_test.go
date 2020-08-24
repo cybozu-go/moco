@@ -68,12 +68,12 @@ func testBootstrap() {
 				return fmt.Errorf("failed to unmarshal StatefulSet. stdout: %s, err: %v", stdout, err)
 			}
 
-			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 1 {
-				return fmt.Errorf("replicas should be 1: %v", sts.Spec.Replicas)
+			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 3 {
+				return fmt.Errorf("replicas should be 3: %v", sts.Spec.Replicas)
 			}
 
-			if sts.Status.ReadyReplicas != 1 {
-				return fmt.Errorf("readyReplicas should be 1: %v", sts.Status.ReadyReplicas)
+			if sts.Status.ReadyReplicas != 3 {
+				return fmt.Errorf("readyReplicas should be 3: %v", sts.Status.ReadyReplicas)
 			}
 			return nil
 		}).Should(Succeed())

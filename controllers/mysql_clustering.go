@@ -19,6 +19,7 @@ import (
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	status, err := r.getMySQLClusterStatus(ctx, log, cluster)
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
+
 	return true, err
 }
 
