@@ -147,7 +147,7 @@ type MySQLClusterCondition struct {
 }
 
 // MySQLClusterConditionType is the type of MySQLCluster condition.
-// +kubebuilder:validation:Enum=Initialized
+// +kubebuilder:validation:Enum=Initialized;Ready
 type MySQLClusterConditionType string
 
 // Valid values for MySQLClusterConditionType
@@ -176,9 +176,8 @@ type MySQLCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec MySQLClusterSpec `json:"spec"`
-	// +optional
-	Status *MySQLClusterStatus `json:"status,omitempty"`
+	Spec   MySQLClusterSpec   `json:"spec"`
+	Status MySQLClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
