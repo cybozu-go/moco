@@ -119,7 +119,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
-	rows, err := db.Queryx(`show master status`)
+	rows, err := db.Unsafe().Queryx(`show master status`)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReplicaStatus, error) {
-	rows, err := db.Queryx(`show slave status`)
+	rows, err := db.Unsafe().Queryx(`show slave status`)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLReadOnlyStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReadOnlyStatus, error) {
-	rows, err := db.Queryx(`select @@global.read_only, @@global.super_read_only`)
+	rows, err := db.Queryx(`select @@read_only, @@super_read_only`)
 	if err != nil {
 		return nil, err
 	}
