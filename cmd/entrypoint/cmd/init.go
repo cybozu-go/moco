@@ -295,6 +295,7 @@ password=%s
 func installPlugins(ctx context.Context) error {
 	sql := `INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 `
 	out, err := execSQL(ctx, []byte(sql), "")
 	if err != nil {

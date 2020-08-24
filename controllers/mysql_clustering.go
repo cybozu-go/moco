@@ -17,7 +17,8 @@ import (
 
 // reconcileMySQLCluster recoclies MySQL cluster
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
-	_, err := r.getMySQLClusterStatus(ctx, log, cluster)
+	status, err := r.getMySQLClusterStatus(ctx, log, cluster)
+	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 	return true, err
 }
 
@@ -27,13 +28,37 @@ type MySQLClusterStatus struct {
 }
 
 type MySQLPrimaryStatus struct {
-	ExecutedGtidSet string
+	ExecutedGtidSet sql.NullString `db:"Executed_Gtid_Set"`
+}
+
+type MySQLReplicaStatus struct {
+	ID               int            `db:"id"`
+	LastIoErrno      int            `db:"Last_IO_Errno"`
+	LastIoError      sql.NullString `db:"Last_IO_Error"`
+	LastSqlErrno     int            `db:"Last_SQL_Errno"`
+	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
+	MasterHost       string         `db:"Master_Host"`
+	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
+	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
+	SlaveIoRunning   string         `db:"Slave_IO_Running"`
+	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
+}
+
+type MySQLReadOnlyStatus struct {
+	ReadOnly      bool `db:"@@read_only"`
+	SuperReadOnly bool `db:"@@super_read_only"`
+}
+
+type MySQLCloneStateStatus struct {
+	State sql.NullString `db:"state"`
 }
 
 type MySQLInstanceStatus struct {
-	Available     bool
-	PrimaryStatus *MySQLPrimaryStatus
-	ReplicaStatus *MySQLReplicaStatus
+	Available        bool
+	PrimaryStatus    *MySQLPrimaryStatus
+	ReplicaStatus    *MySQLReplicaStatus
+	ReadOnlyStatus   *MySQLReadOnlyStatus
+	CloneStateStatus *MySQLCloneStateStatus
 }
 
 func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
@@ -74,13 +99,42 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
+		readOnlyStatus, err := r.getMySQLReadOnlyStatus(ctx, log, db)
+		if err != nil {
+			log.Info("get readOnly status failed", "err", err, "podName", podName)
+			continue
+		}
+		status.InstanceStatus[instanceIdx].ReadOnlyStatus = readOnlyStatus
+
+		cloneStatus, err := r.getMySQLCloneStateStatus(ctx, log, db)
+		if err != nil {
+			log.Info("get clone status failed", "err", err, "podName", podName)
+			continue
+		}
+		status.InstanceStatus[instanceIdx].CloneStateStatus = cloneStatus
+
 		status.InstanceStatus[instanceIdx].Available = true
 	}
 	return status, nil
 }
 
 func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
-	return nil, nil
+	rows, err := db.Queryx(`show master status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var status MySQLPrimaryStatus
+	for rows.Next() {
+		err = rows.StructScan(&status)
+		if err != nil {
+			return nil, err
+		}
+		return &status, nil
+	}
+
+	return nil, errors.New("primary status is empty")
 }
 
 func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReplicaStatus, error) {
@@ -99,18 +153,43 @@ func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log 
 		return &status, nil
 	}
 
-	return nil, errors.New("replica status is empty")
+	return nil, nil
 }
 
-type MySQLReplicaStatus struct {
-	ID               int            `db:"id"`
-	LastIoErrno      int            `db:"Last_IO_Errno"`
-	LastIoError      sql.NullString `db:"Last_IO_Error"`
-	LastSqlErrno     int            `db:"Last_SQL_Errno"`
-	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
-	MasterHost       string         `db:"Master_Host"`
-	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
-	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
-	SlaveIoRunning   string         `db:"Slave_IO_Running"`
-	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
+func (r *MySQLClusterReconciler) getMySQLReadOnlyStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReadOnlyStatus, error) {
+	rows, err := db.Queryx(`select @@global.read_only, @@global.super_read_only`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var status MySQLReadOnlyStatus
+	for rows.Next() {
+		err = rows.StructScan(&status)
+		if err != nil {
+			return nil, err
+		}
+		return &status, nil
+	}
+
+	return nil, errors.New("readOnly status is empty")
+}
+
+func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLCloneStateStatus, error) {
+	rows, err := db.Queryx(` select state from performance_schema.clone_status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var status MySQLCloneStateStatus
+	for rows.Next() {
+		err = rows.StructScan(&status)
+		if err != nil {
+			return nil, err
+		}
+		return &status, nil
+	}
+
+	return nil, nil
 }
