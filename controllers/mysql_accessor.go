@@ -1,12 +1,13 @@
 package controllers
 
 import (
-	"database/sql"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/jmoiron/sqlx"
+
 	// MySQL Driver
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -18,10 +19,10 @@ type MySQLAccessorConfig struct {
 	ReadTimeout       time.Duration
 }
 
-// MySQLAccessor contains MySQL connection configurations and sql.db
+// MySQLAccessor contains MySQL connection configurations and sqlx.db
 type MySQLAccessor struct {
 	config *MySQLAccessorConfig
-	dbs    map[string]*sql.DB
+	dbs    map[string]*sqlx.DB
 	mutex  *sync.Mutex
 }
 
@@ -29,13 +30,13 @@ type MySQLAccessor struct {
 func NewMySQLAccessor(config *MySQLAccessorConfig) *MySQLAccessor {
 	return &MySQLAccessor{
 		config: config,
-		dbs:    make(map[string]*sql.DB),
+		dbs:    make(map[string]*sqlx.DB),
 		mutex:  &sync.Mutex{},
 	}
 }
 
 // Get connects a database with specified parameters
-func (acc *MySQLAccessor) Get(host, user, password string) (*sql.DB, error) {
+func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
 	uri := acc.getURI(host, user, password)
 	fmt.Println("uri = " + uri)
 
@@ -64,8 +65,8 @@ func (acc *MySQLAccessor) getURI(host, user, password string) string {
 		moco.MySQLAdminPort, acc.config.ConnectionTimeout.Seconds(), acc.config.ReadTimeout.Seconds())
 }
 
-func (acc *MySQLAccessor) connect(uri string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", uri)
+func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
+	db, err := sqlx.Connect("mysql", uri)
 	if err != nil {
 		return nil, err
 	}

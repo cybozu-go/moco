@@ -3,11 +3,14 @@ package controllers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-logr/logr"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,18 +30,10 @@ type MySQLPrimaryStatus struct {
 	ExecutedGtidSet string
 }
 
-type MySQLReplicaStatus struct {
-	PrimaryHost       string
-	ReplicaIORunning  string
-	ReplicaSQLRunning string
-	RetrievedGtidSet  string
-	ExecutedGtidSet   string
-}
-
 type MySQLInstanceStatus struct {
 	Available     bool
 	PrimaryStatus *MySQLPrimaryStatus
-	ReplicaStatus []MySQLReplicaStatus
+	ReplicaStatus *MySQLReplicaStatus
 }
 
 func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
@@ -84,105 +79,38 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 	return status, nil
 }
 
-func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sql.DB) (*MySQLPrimaryStatus, error) {
-	rows, err := r.getColumns(ctx, log, db, "SHOW MASTER STATUS")
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	if len(rows) != 1 {
-		return nil, fmt.Errorf("unsupported topology")
-	}
-
-	status := &MySQLPrimaryStatus{
-		ExecutedGtidSet: rows[0]["Executed_Gtid_Set"],
-	}
-
-	return status, nil
+func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
+	return nil, nil
 }
 
-func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sql.DB) ([]MySQLReplicaStatus, error) {
-	rows, err := r.getColumns(ctx, log, db, "SHOW SLAVE STATUS")
+func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReplicaStatus, error) {
+	rows, err := db.Queryx(`show slave status`)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	status := make([]MySQLReplicaStatus, len(rows))
-	for idx, row := range rows {
-		status[idx] = MySQLReplicaStatus{
-			PrimaryHost:       row["Slave_IO_State"],
-			ReplicaIORunning:  row["Slave_IO_Running"],
-			ReplicaSQLRunning: row["Slave_SQL_Running"],
-			RetrievedGtidSet:  row["Retrieved_Gtid_Set"],
-			ExecutedGtidSet:   row["Executed_Gtid_Set"],
-		}
-	}
-	return status, nil
-}
-
-func (r *MySQLClusterReconciler) getColumns(ctx context.Context, log logr.Logger, db *sql.DB, query string) ([]map[string]string, error) {
-	rows, err := db.Query(query)
-	if rows != nil {
-		defer rows.Close()
-	}
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-
-	// Get column names
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	// Make a slice for the values
-	values := make([]sql.RawBytes, len(columns))
-
-	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
-	// references into such a slice
-	// See http://code.google.com/p/go-wiki/wiki/InterfaceSlice for details
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-
-	result := make([]map[string]string, 0)
-
-	// Fetch rows
+	var status MySQLReplicaStatus
 	for rows.Next() {
-		row := make(map[string]string)
-		result = append(result, row)
-		// get RawBytes from data
-		err = rows.Scan(scanArgs...)
+		err = rows.StructScan(&status)
 		if err != nil {
 			return nil, err
 		}
-
-		// Now do something with the data.
-		// Here we just print each column as a string.
-		var value string
-		for i, col := range values {
-			// Here we can check if the value is nil (NULL value)
-			if col == nil {
-				value = "NULL"
-			} else {
-				value = string(col)
-			}
-			row[columns[i]] = value
-		}
+		return &status, nil
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
+	return nil, errors.New("replica status is empty")
+}
 
-	return result, nil
+type MySQLReplicaStatus struct {
+	ID               int            `db:"id"`
+	LastIoErrno      int            `db:"Last_IO_Errno"`
+	LastIoError      sql.NullString `db:"Last_IO_Error"`
+	LastSqlErrno     int            `db:"Last_SQL_Errno"`
+	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
+	MasterHost       string         `db:"Master_Host"`
+	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
+	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
+	SlaveIoRunning   string         `db:"Slave_IO_Running"`
+	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
 }

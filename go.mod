@@ -7,6 +7,7 @@ require (
 	github.com/cybozu-go/well v1.10.0
 	github.com/go-logr/logr v0.1.0
 	github.com/go-sql-driver/mysql v1.5.0
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
 	github.com/spf13/cobra v1.0.0

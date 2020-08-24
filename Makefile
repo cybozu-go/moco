@@ -20,7 +20,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 KUBEBUILDER_VERSION := 2.3.1
-CTRLTOOLS_VERSION := 0.2.9
+CTRLTOOLS_VERSION := 0.4.0
 
 all: build/moco-controller
 
