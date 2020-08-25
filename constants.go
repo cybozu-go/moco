@@ -1,5 +1,7 @@
 package moco
 
+import "errors"
+
 const (
 	// OperatorUser is a name of MOCO operator user in the MySQL context.
 	OperatorUser = "moco"
@@ -111,4 +113,11 @@ const (
 const (
 	// InitializedClusterIndexField is an index name for Initialized MySQL Clusters
 	InitializedClusterIndexField = ".status.conditions.type.initialized"
+)
+
+var (
+	// ErrConstraintsViolation is returned when the constraints violation occurs
+	ErrConstraintsViolation = errors.New("constraints violation occurs")
+	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
+	ErrConstraintsRecovered = erros.New("constrains recovered but once violated")
 )

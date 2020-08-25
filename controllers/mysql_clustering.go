@@ -16,12 +16,27 @@ import (
 )
 
 // reconcileMySQLCluster recoclies MySQL cluster
-func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	status, err := r.getMySQLClusterStatus(ctx, log, cluster)
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
-	r.validateConstraints(ctx, log, status, cluster.Status.CurrentPrimaryIndex)
-	return true, err
+	err = r.validateConstraints(ctx, log, status, cluster)
+	if err != nil {
+		condition := mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionViolation,
+			Status:  corev1.ConditionTrue,
+			Message: err.Error(),
+		}
+		setCondition(&cluster.Status.Conditions, condition)
+
+		apiErr := r.Status().Update(ctx, cluster)
+		if apiErr != nil {
+			return apiErr
+		}
+		return err
+	}
+
+	return err
 }
 
 // MySQLClusterStatus contains MySQLCluster status
@@ -196,9 +211,9 @@ func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, l
 
 	return nil, nil
 }
-func (r *MySQLClusterReconciler) validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, currentPrimaryIndex *int) (bool, error) {
+func (r *MySQLClusterReconciler) validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	if status == nil {
-		return false, nil
+		panic("unreachable condition")
 	}
 
 	var writableInstanceCounts int
@@ -208,7 +223,10 @@ func (r *MySQLClusterReconciler) validateConstraints(ctx context.Context, log lo
 		}
 	}
 	if writableInstanceCounts > 1 {
-		return false, nil
+		return moco.ErrConstraintsViolation
 	}
-	return true, nil
+
+	// TODO: check the condition of violation and return ErrConstrainsRecovered if needed
+
+	return nil
 }

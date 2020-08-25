@@ -13,8 +13,8 @@
 .#*
 \#*#
 /.vscode
+/.idea
 
-# ignore go.sum
 /go.sum
 
 # ignore binaries
