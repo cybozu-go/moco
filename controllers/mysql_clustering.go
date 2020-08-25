@@ -36,6 +36,38 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		return err
 	}
 
+	primaryIndex, err := r.selectPrimary(ctx, log, status, cluster)
+	if err != nil {
+		condition := mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionFailure,
+			Status:  corev1.ConditionTrue,
+			Message: err.Error(),
+		}
+		setCondition(&cluster.Status.Conditions, condition)
+
+		apiErr := r.Status().Update(ctx, cluster)
+		if apiErr != nil {
+			return apiErr
+		}
+		return err
+	}
+
+	err = r.updatePrimary(ctx, log, status, cluster, primaryIndex)
+	if err != nil {
+		condition := mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionFailure,
+			Status:  corev1.ConditionTrue,
+			Message: err.Error(),
+		}
+		setCondition(&cluster.Status.Conditions, condition)
+
+		apiErr := r.Status().Update(ctx, cluster)
+		if apiErr != nil {
+			return apiErr
+		}
+		return err
+	}
+
 	return err
 }
 
@@ -79,7 +111,7 @@ type MySQLInstanceStatus struct {
 	CloneStateStatus     *MySQLCloneStateStatus
 }
 
-func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
+func (r *MySQLClusterReconciler) getDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
 	secret := &corev1.Secret{}
 	myNS, mySecretName := r.getSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
@@ -88,6 +120,17 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 	}
 	operatorPassword := string(secret.Data[moco.OperatorPasswordKey])
 
+	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
+	host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+
+	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
 	status := &MySQLClusterStatus{
 		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
 	}
@@ -95,9 +138,8 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 		status.InstanceStatus[instanceIdx].Available = false
 
 		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), instanceIdx)
-		host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
 
-		db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+		db, err := r.getDB(ctx, cluster, instanceIdx)
 		if err != nil {
 			log.Info("instance not available", "err", err, "podName", podName)
 			continue
@@ -211,22 +253,78 @@ func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, l
 
 	return nil, nil
 }
+
 func (r *MySQLClusterReconciler) validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	if status == nil {
 		panic("unreachable condition")
 	}
 
 	var writableInstanceCounts int
-	for _, status := range status.InstanceStatus {
+	var primaryIndex int
+	for i, status := range status.InstanceStatus {
 		if !status.GlobalVariableStatus.ReadOnly {
 			writableInstanceCounts++
+			primaryIndex = i
 		}
 	}
 	if writableInstanceCounts > 1 {
 		return moco.ErrConstraintsViolation
 	}
 
-	// TODO: check the condition of violation and return ErrConstrainsRecovered if needed
+	if cluster.Status.CurrentPrimaryIndex != nil && writableInstanceCounts == 1 {
+		if *cluster.Status.CurrentPrimaryIndex != primaryIndex {
+			return moco.ErrConstraintsViolation
+		}
+	}
+
+	cond := findCondition(cluster.Status.Conditions, mocov1alpha1.ConditionViolation)
+	if cond != nil {
+		return moco.ErrConstraintsRecovered
+	}
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) selectPrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
+	return 0, nil
+}
+
+func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) error {
+	cluster.Status.CurrentPrimaryIndex = &newPrimaryIndex
+	err := r.Status().Update(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
+	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
+	masterHost := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+
+	for i, is := range status.InstanceStatus {
+		if i == *cluster.Status.CurrentPrimaryIndex {
+			continue
+		}
+		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != masterHost {
+			db, err := r.getDB(ctx, cluster, i)
+			if err != nil {
+				return err
+			}
+			_, err = db.Exec("STOP SLAVE")
+			if err != nil {
+				return err
+			}
+			//CHANGE MASTER TO
+			//  MASTER_HOST = 'mysqlcluster-6ca24b39-0bea-43e2-8511-9ad89b6c1970-0.mysqlcluster-6ca24b39-0bea-43e2-8511-9ad89b6c1970',
+			//  MASTER_PORT = 3306,
+			//  MASTER_USER = 'moco-repl',
+			//  MASTER_PASSWORD = '1726648148b0c0a01f3ecea355f397d3',
+			//  MASTER_AUTO_POSITION = 1;
+			//_, err = db.NamedExec(`CHANGE MASTER TO MASTER_HOST = 'master_host' `)
+
+		}
+	}
 
 	return nil
 }

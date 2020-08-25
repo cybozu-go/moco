@@ -119,5 +119,5 @@ var (
 	// ErrConstraintsViolation is returned when the constraints violation occurs
 	ErrConstraintsViolation = errors.New("constraints violation occurs")
 	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
-	ErrConstraintsRecovered = erros.New("constrains recovered but once violated")
+	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
 )
