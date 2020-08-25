@@ -45,9 +45,10 @@ type MySQLReplicaStatus struct {
 	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
 }
 
-type MySQLReadOnlyStatus struct {
-	ReadOnly      bool `db:"@@read_only"`
-	SuperReadOnly bool `db:"@@super_read_only"`
+type MySQLGlobalVariablesStatus struct {
+	ReadOnly                           bool `db:"@@read_only"`
+	SuperReadOnly                      bool `db:"@@super_read_only"`
+	RplSemiSyncMasterWaitForSlaveCount int  `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
 }
 
 type MySQLCloneStateStatus struct {
@@ -58,7 +59,7 @@ type MySQLInstanceStatus struct {
 	Available        bool
 	PrimaryStatus    *MySQLPrimaryStatus
 	ReplicaStatus    *MySQLReplicaStatus
-	ReadOnlyStatus   *MySQLReadOnlyStatus
+	ReadOnlyStatus   *MySQLGlobalVariablesStatus
 	CloneStateStatus *MySQLCloneStateStatus
 }
 
@@ -100,7 +101,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
-		readOnlyStatus, err := r.getMySQLReadOnlyStatus(ctx, log, db)
+		readOnlyStatus, err := r.getMySQLGlobalVariablesStatus(ctx, log, db)
 		if err != nil {
 			log.Info("get readOnly status failed", "err", err, "podName", podName)
 			continue
@@ -157,14 +158,14 @@ func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log 
 	return nil, nil
 }
 
-func (r *MySQLClusterReconciler) getMySQLReadOnlyStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReadOnlyStatus, error) {
-	rows, err := db.Queryx(`select @@read_only, @@super_read_only`)
+func (r *MySQLClusterReconciler) getMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLGlobalVariablesStatus, error) {
+	rows, err := db.Queryx(`select @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var status MySQLReadOnlyStatus
+	var status MySQLGlobalVariablesStatus
 	for rows.Next() {
 		err = rows.StructScan(&status)
 		if err != nil {

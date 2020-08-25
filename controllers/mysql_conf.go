@@ -115,6 +115,10 @@ var (
 
 			"server_id":     "{{ .ServerID }}",
 			"admin_address": "{{ .AdminAddress }}",
+
+			"read_only":        "ON",
+			"super_read_only":  "ON",
+			"skip_slave_start": "ON",
 		},
 		"client": {
 			"port":                        moco.MySQLPort,
