@@ -20,6 +20,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	status, err := r.getMySQLClusterStatus(ctx, log, cluster)
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
+	r.validateConstraints(ctx, log, status, cluster.Status.CurrentPrimaryIndex)
 	return true, err
 }
 
@@ -56,11 +57,11 @@ type MySQLCloneStateStatus struct {
 }
 
 type MySQLInstanceStatus struct {
-	Available        bool
-	PrimaryStatus    *MySQLPrimaryStatus
-	ReplicaStatus    *MySQLReplicaStatus
-	ReadOnlyStatus   *MySQLGlobalVariablesStatus
-	CloneStateStatus *MySQLCloneStateStatus
+	Available            bool
+	PrimaryStatus        *MySQLPrimaryStatus
+	ReplicaStatus        *MySQLReplicaStatus
+	GlobalVariableStatus *MySQLGlobalVariablesStatus
+	CloneStateStatus     *MySQLCloneStateStatus
 }
 
 func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
@@ -106,7 +107,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 			log.Info("get readOnly status failed", "err", err, "podName", podName)
 			continue
 		}
-		status.InstanceStatus[instanceIdx].ReadOnlyStatus = readOnlyStatus
+		status.InstanceStatus[instanceIdx].GlobalVariableStatus = readOnlyStatus
 
 		cloneStatus, err := r.getMySQLCloneStateStatus(ctx, log, db)
 		if err != nil {
@@ -194,4 +195,20 @@ func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, l
 	}
 
 	return nil, nil
+}
+func (r *MySQLClusterReconciler) validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, currentPrimaryIndex *int) (bool, error) {
+	if status == nil {
+		return false, nil
+	}
+
+	var writableInstanceCounts int
+	for _, status := range status.InstanceStatus {
+		if !status.GlobalVariableStatus.ReadOnly {
+			writableInstanceCounts++
+		}
+	}
+	if writableInstanceCounts > 1 {
+		return false, nil
+	}
+	return true, nil
 }
