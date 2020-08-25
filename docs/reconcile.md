@@ -34,7 +34,14 @@ In the reconcile loop, MOCO keeps the following constraints:
     - `skip slave start=on`
     
 Reconcile Flows
---------
+---------------
 
 1. Retrieve all mysqld instances' statuses and `.status.currentPrimaryIndex`.
 2. Confirm if all constraints are complied.
+3. If a instance with `read_only=off` does not exist, select a primary instance.
+4. Update the primary index to `.status.currentPrimaryIndex`.
+5. Clone the data from the new primary to replica instances, if necessary.
+6. Configure replication settings with the new primary.
+7. Wait for replicas to catch up with the new primary.
+8. Create Service resources to access to the primary and replicas.
+9. Turn off `read_only` mode on the primary.
