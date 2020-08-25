@@ -137,9 +137,23 @@ Behaviors
 
 Fetch the following information with mysql-client from each instance:
 
-1. GTID
-2. Replication source
-3. read-only mode
+1. SHOW MASTER STATUS
+    1.1. Executed_Gtid_Set
+2. SHOW SLAVE STATUS
+    2.1. Master_Host
+    2.2. Executed_Gtid_Set
+    2.3. Retrieved_Gtid_Set
+    2.4. Slave_IO_Running
+    2.5. Slave_SQL_Running
+    2.6. Last_IO_Errno
+    2.7. Last_IO_Error
+    2.8. Last_SQL_Errno
+    2.9. Last_SQL_Error
+3. select @@global.read_only, @@global.super_read_only;
+    3.1. read_only
+    3.2. super_read_only
+4. performance_schema.clone_status table
+    4.1. STATE
 
 ### How to bootstrap MySQL Cluster
 
@@ -147,9 +161,10 @@ When all instances are the initial state, bootstrap the cluster as follows:
 
 1. Select the first instance as the primary.
 2. Set the replication source using `CHANGE MASTER TO` for a replica instances.
-3. Create Service resources to access to primary and replicas.
-4. Update `MySQLCluster.status.currentPrimaryIndex` with the primary name.
-5. Turn off read-only mode on the primary.
+3. Start replication using `START SLAVE` on each replicas.
+4. Create Service resources to access to primary and replicas.
+5. Update `MySQLCluster.status.currentPrimaryIndex` with the primary name.
+6. Turn off read-only mode on the primary.
 
 ### How to execute failover when the primary fails
 
