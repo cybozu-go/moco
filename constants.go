@@ -48,13 +48,13 @@ const (
 
 const (
 	// MySQLPort is a port number for MySQL
-	MySQLPort = "3306"
+	MySQLPort = 3306
 
 	// MySQLAdminPort is a port number for MySQL Admin
-	MySQLAdminPort = "33062"
+	MySQLAdminPort = 33062
 
 	// MySQLXPort is a port number for MySQL XProtocol
-	MySQLXPort = "33060"
+	MySQLXPort = 33060
 )
 
 // env names must correspond to options in entrypoint/init.go

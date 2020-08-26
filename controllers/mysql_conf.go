@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cybozu-go/moco"
@@ -94,7 +95,7 @@ var (
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"port":    moco.MySQLPort,
+			"port":    strconv.Itoa(moco.MySQLPort),
 			"socket":  filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"datadir": moco.MySQLDataPath,
 
@@ -107,8 +108,8 @@ var (
 			"gtid_mode":                "ON",
 			"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
-			"mysqlx_port": moco.MySQLXPort,
-			"admin_port":  moco.MySQLAdminPort,
+			"mysqlx_port": strconv.Itoa(moco.MySQLXPort),
+			"admin_port":  strconv.Itoa(moco.MySQLAdminPort),
 
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
@@ -121,7 +122,7 @@ var (
 			"skip_slave_start": "ON",
 		},
 		"client": {
-			"port":                        moco.MySQLPort,
+			"port":                        strconv.Itoa(moco.MySQLPort),
 			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"loose-default_character_set": "utf8mb4",
 		},

@@ -313,7 +313,7 @@ func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Log
 func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
 	masterHost := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
-	password, err := r.getPassword(ctx, cluster, moco.OperatorPasswordKey)
+	password, err := r.getPassword(ctx, cluster, moco.ReplicationPasswordKey)
 	if err != nil {
 		return err
 	}
@@ -331,13 +331,8 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 			if err != nil {
 				return err
 			}
-			_, err = db.Exec(`
-				CHANGE MASTER TO
-				MASTER_HOST = ?,
-				MASTER_PORT = ?,
-				MASTER_USER = ?,
-				MASTER_PASSWORD = ?,
-				MASTER_AUTO_POSITION = 1`, masterHost, moco.MySQLPort, moco.ReplicatorUser, password)
+			_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
+				masterHost, moco.MySQLPort, moco.ReplicatorUser, password)
 			if err != nil {
 				return err
 			}
