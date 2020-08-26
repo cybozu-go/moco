@@ -276,7 +276,8 @@ func initializeReplicationUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	REPLICATION SLAVE
+    REPLICATION SLAVE,
+    REPLICATION CLIENT
   ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
 `))
 
