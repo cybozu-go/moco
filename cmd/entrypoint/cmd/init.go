@@ -95,6 +95,12 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Info("setup replication user", nil)
+	initializeReplicationUser(ctx, os.Getenv(moco.ReplicationPasswordEnvName))
+	if err != nil {
+		return err
+	}
+
 	log.Info("setup misc user", nil)
 	err = initializeMiscUser(ctx, os.Getenv(moco.MiscPasswordEnvName))
 	if err != nil {
@@ -258,6 +264,27 @@ GRANT
 		User     string
 		Password string
 	}{moco.OperatorAdminUser, password})
+
+	out, err := execSQL(ctx, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+	return nil
+}
+
+func initializeReplicationUser(ctx context.Context, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+	REPLICATION SLAVE
+  ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
+`))
+
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.ReplicatorUser, password})
 
 	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {

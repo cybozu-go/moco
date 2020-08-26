@@ -89,6 +89,9 @@ const (
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
 	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
+	// ReplicationPasswordEnvName is a name of the environment variable of a password for replication user.
+	ReplicationPasswordEnvName = "REPLICATION_PASSWORD"
+
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
 )
