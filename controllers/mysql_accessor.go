@@ -61,7 +61,7 @@ func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
 }
 
 func (acc *MySQLAccessor) getURI(host, user, password string) string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=%.0fs&readTimeout=%.0fs", user, password, host,
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/?timeout=%.0fs&readTimeout=%.0fs&interpolateParams=true", user, password, host,
 		moco.MySQLAdminPort, acc.config.ConnectionTimeout.Seconds(), acc.config.ReadTimeout.Seconds())
 }
 
