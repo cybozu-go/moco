@@ -17,10 +17,22 @@ import (
 
 // reconcileMySQLCluster recoclies MySQL cluster
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
-	status, err := r.getMySQLClusterStatus(ctx, log, cluster)
+	status := r.getMySQLClusterStatus(ctx, log, cluster)
+	var unavailable bool
+	for i, is := range status.InstanceStatus {
+		if !is.Available {
+			log.Info("unavailable host exists", map[string]interface{}{
+				"index": i,
+			})
+			unavailable = true
+		}
+	}
+	if unavailable {
+		return nil
+	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
-	err = r.validateConstraints(ctx, log, status, cluster)
+	err := r.validateConstraints(ctx, log, status, cluster)
 	if err != nil {
 		condition := mocov1alpha1.MySQLClusterCondition{
 			Type:    mocov1alpha1.ConditionViolation,
@@ -142,7 +154,7 @@ func (r *MySQLClusterReconciler) getDB(ctx context.Context, cluster *mocov1alpha
 	return db, nil
 }
 
-func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
+func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) *MySQLClusterStatus {
 	status := &MySQLClusterStatus{
 		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
 	}
@@ -187,7 +199,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 
 		status.InstanceStatus[instanceIdx].Available = true
 	}
-	return status, nil
+	return status
 }
 
 func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
