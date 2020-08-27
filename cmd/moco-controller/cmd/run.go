@@ -48,11 +48,14 @@ func subMain() error {
 		Scheme:                 mgr.GetScheme(),
 		ConfInitContainerImage: config.confInitContainerImage,
 		CurlContainerImage:     config.curlContainerImage,
-		MySQLAccessor: controllers.NewMySQLAccessor(&controllers.MySQLAccessorConfig{
-			ConnMaxLifeTime:   30 * time.Minute,
-			ConnectionTimeout: 3 * time.Second,
-			ReadTimeout:       30 * time.Second,
-		}),
+		MySQLService: controllers.MySQLService{
+			Client: mgr.GetClient(),
+			MySQLAccessor: controllers.NewMySQLAccessor(&controllers.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			}),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
