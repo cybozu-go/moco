@@ -104,6 +104,22 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
+	err = r.acceptWriteRequest(ctx, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	condition := mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionHealthy,
+		Status:  corev1.ConditionTrue,
+		Message: err.Error(),
+	}
+	setCondition(&cluster.Status.Conditions, condition)
+
+	apiErr := r.Status().Update(ctx, cluster)
+	if apiErr != nil {
+		return ctrl.Result{}, apiErr
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -442,4 +458,14 @@ func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov
 		return "", err
 	}
 	return string(secret.Data[passwordKey]), nil
+}
+
+func (r *MySQLClusterReconciler) acceptWriteRequest(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+	db, err := r.getDB(ctx, cluster, primaryIndex)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("set global read_only=0")
+	return err
 }
