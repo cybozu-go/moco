@@ -14,9 +14,11 @@ import (
 
 type DatabaseService interface {
 	GetMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) *MySQLClusterStatus
-	ChangeMaster()
-	StartSlave()
-	StopSlave()
+	ChangeMaster(ctx context.Context, targetHost, targetPassword string, host string, port int, user, password string) error
+	StartSlave(ctx context.Context, targetHost, password string) error
+	StopSlave(ctx context.Context, targetHost, password string) error
+	SetWaitForSlaveCount(ctx context.Context, targetHost, password string, count int) error
+	TurnOffReadOnly(ctx context.Context, targetHost, password string) error
 }
 
 type MySQLService struct {
@@ -24,16 +26,58 @@ type MySQLService struct {
 	MySQLAccessor DatabaseAccessor
 }
 
-func (r *MySQLService) getDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	operatorPassword, err := r.getPassword(ctx, cluster, moco.OperatorPasswordKey)
+// TODO
+func (r *MySQLService) ChangeMaster(ctx context.Context, targetHost, targetPassword string, host string, port int, user, password string) error {
+	db, err := r.getDB(ctx, targetHost, targetPassword)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`)
+	return err
+}
 
-	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
-	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
+// TODO
+func (r *MySQLService) StartSlave(ctx context.Context, targetHost, password string) error {
+	db, err := r.getDB(ctx, targetHost, password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("START SLAVE")
+	return err
+}
 
-	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+// TODO
+func (r *MySQLService) StopSlave(ctx context.Context, targetHost, password string) error {
+	db, err := r.getDB(ctx, targetHost, password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`STOP SLAVE`)
+	return err
+}
+
+// TODO
+func (r *MySQLService) SetWaitForSlaveCount(ctx context.Context, targetHost, password string, count int) error {
+	db, err := r.getDB(ctx, targetHost, password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("set global rpl_semi_sync_master_wait_for_slave_count=?", count)
+	return err
+}
+
+// TODO
+func (r *MySQLService) TurnOffReadOnly(ctx context.Context, targetHost, password string) error {
+	db, err := r.getDB(ctx, targetHost, password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("set global read_only=0")
+	return err
+}
+
+func (r *MySQLService) getDB(ctx context.Context, host, password string) (*sqlx.DB, error) {
+	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, password)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +93,13 @@ func (r *MySQLService) GetMySQLClusterStatus(ctx context.Context, log logr.Logge
 
 		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), instanceIdx)
 
-		db, err := r.getDB(ctx, cluster, instanceIdx)
+		targetHost, password, err := getTarget(ctx, r.Client, cluster, instanceIdx)
+		if err != nil {
+			log.Info("instance not available", "err", err, "podName", podName)
+			continue
+		}
+
+		db, err := r.getDB(ctx, targetHost, password)
 		if err != nil {
 			log.Info("instance not available", "err", err, "podName", podName)
 			continue

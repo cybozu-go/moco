@@ -18,7 +18,7 @@ import (
 
 // reconcileMySQLCluster recoclies MySQL cluster
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
-	status := r.getMySQLClusterStatus(ctx, log, cluster)
+	status := r.MySQLService.GetMySQLClusterStatus(ctx, log, cluster)
 	var unavailable bool
 	for i, is := range status.InstanceStatus {
 		if !is.Available {
@@ -292,18 +292,15 @@ func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Log
 	if st.GlobalVariableStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
 		return nil
 	}
-	db, err := r.getDB(ctx, cluster, newPrimaryIndex)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("set global rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
+	// getTarget
+	err = r.MySQLService.SetWaitForSlaveCount(ctx, newPrimaryIndex, expectedRplSemiSyncMasterWaitForSlaveCount)
 	return err
 }
 
 func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
 	masterHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
-	password, err := r.getPassword(ctx, cluster, moco.ReplicationPasswordKey)
+	password, err := getPassword(ctx, r.Client, cluster, moco.ReplicationPasswordKey)
 	if err != nil {
 		return err
 	}
@@ -313,16 +310,15 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 			continue
 		}
 		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != masterHost {
-			db, err := r.getDB(ctx, cluster, i)
+			err := r.MySQLService.StopSlave(ctx, i)
 			if err != nil {
 				return err
 			}
-			_, err = db.Exec("STOP SLAVE")
+			targetHost, targetPassword, err := getTarget(ctx, r.Client, cluster, i)
 			if err != nil {
 				return err
 			}
-			_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
-				masterHost, moco.MySQLPort, moco.ReplicatorUser, password)
+			err = r.MySQLService.ChangeMaster(ctx, targetHost, targetPassword, masterHost, moco.MySQLPort, moco.ReplicatorUser, password)
 			if err != nil {
 				return err
 			}
@@ -333,11 +329,7 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
-		db, err := r.getDB(ctx, cluster, i)
-		if err != nil {
-			return err
-		}
-		_, err = db.Exec("START SLAVE")
+		err := r.MySQLService.StartSlave(ctx, i)
 		if err != nil {
 			return err
 		}
@@ -377,10 +369,11 @@ func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log log
 	return false, outOfSyncIns, nil
 }
 
-func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
+func getPassword(ctx context.Context, c client.Client, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	myNS, mySecretName := getSecretNameForController(cluster)
+
+	err := c.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
 		return "", err
 	}
@@ -388,11 +381,17 @@ func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov
 }
 
 func (r *MySQLClusterReconciler) acceptWriteRequest(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
-	primaryIndex := *cluster.Status.CurrentPrimaryIndex
-	db, err := r.getDB(ctx, cluster, primaryIndex)
+	return r.MySQLService.TurnOffReadOnly(ctx, *cluster.Status.CurrentPrimaryIndex)
+}
+
+func getTarget(ctx context.Context, cli client.Client, cluster *mocov1alpha1.MySQLCluster, index int) (string, string, error) {
+	operatorPassword, err := getPassword(ctx, cli, cluster, moco.OperatorPasswordKey)
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	_, err = db.Exec("set global read_only=0")
-	return err
+
+	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
+	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
+
+	return host, operatorPassword, nil
 }
