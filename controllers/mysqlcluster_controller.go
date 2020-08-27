@@ -131,13 +131,13 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 
 		// clustering
-		err = r.reconcileClustering(ctx, log, cluster)
+		result, err := r.reconcileClustering(ctx, log, cluster)
 		if err != nil {
 			log.Error(err, "failed to ready MySQLCluster")
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 
 	// finalization

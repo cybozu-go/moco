@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -12,11 +13,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // reconcileMySQLCluster recoclies MySQL cluster
-func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
 	status := r.getMySQLClusterStatus(ctx, log, cluster)
 	var unavailable bool
 	for i, is := range status.InstanceStatus {
@@ -26,7 +28,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 	}
 	if unavailable {
-		return nil
+		return ctrl.Result{}, nil
 	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
@@ -41,9 +43,9 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 
 		apiErr := r.Status().Update(ctx, cluster)
 		if apiErr != nil {
-			return apiErr
+			return ctrl.Result{}, apiErr
 		}
-		return err
+		return ctrl.Result{}, err
 	}
 
 	primaryIndex, err := r.selectPrimary(ctx, log, status, cluster)
@@ -57,9 +59,9 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 
 		apiErr := r.Status().Update(ctx, cluster)
 		if apiErr != nil {
-			return apiErr
+			return ctrl.Result{}, apiErr
 		}
-		return err
+		return ctrl.Result{}, err
 	}
 
 	err = r.updatePrimary(ctx, log, status, cluster, primaryIndex)
@@ -73,9 +75,9 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 
 		apiErr := r.Status().Update(ctx, cluster)
 		if apiErr != nil {
-			return apiErr
+			return ctrl.Result{}, apiErr
 		}
-		return err
+		return ctrl.Result{}, err
 	}
 
 	err = r.configureReplication(ctx, log, status, cluster)
@@ -89,11 +91,17 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 
 		apiErr := r.Status().Update(ctx, cluster)
 		if apiErr != nil {
-			return apiErr
+			return ctrl.Result{}, apiErr
 		}
-		return err
+		return ctrl.Result{}, err
 	}
-	return err
+
+	wait := r.waitForReplication(ctx, log, status, cluster)
+	if wait {
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // MySQLClusterStatus contains MySQLCluster status
@@ -317,7 +325,18 @@ func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Log
 	if err != nil {
 		return err
 	}
-	return nil
+
+	expectedRplSemiSyncMasterWaitForSlaveCount := int(cluster.Spec.Replicas / 2)
+	st := status.InstanceStatus[newPrimaryIndex]
+	if st.GlobalVariableStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
+		return nil
+	}
+	db, err := r.getDB(ctx, cluster, newPrimaryIndex)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("set global rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
+	return err
 }
 
 func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
@@ -364,6 +383,30 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 	}
 
 	return nil
+}
+
+func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) bool {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+	primaryStatus := status.InstanceStatus[primaryIndex]
+	if !primaryStatus.GlobalVariableStatus.ReadOnly {
+		return false
+	}
+
+	primaryGTID := primaryStatus.PrimaryStatus.ExecutedGtidSet
+	count := 0
+	for i, is := range status.InstanceStatus {
+		if i == primaryIndex {
+			continue
+		}
+		if is.ReplicaStatus.ExecutedGtidSet == primaryGTID {
+			count++
+		}
+	}
+
+	if count < int(cluster.Spec.Replicas/2) {
+		return true
+	}
+	return false
 }
 
 func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
