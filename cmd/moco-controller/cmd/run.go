@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,11 +30,12 @@ func subMain() error {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: config.metricsAddr,
-		Port:               9443,
-		LeaderElection:     true,
-		LeaderElectionID:   config.leaderElectionID,
+		Scheme:                  scheme,
+		MetricsBindAddress:      config.metricsAddr,
+		Port:                    9443,
+		LeaderElection:          true,
+		LeaderElectionID:        config.leaderElectionID,
+		LeaderElectionNamespace: os.Getenv("POD_NAMESPACE"),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

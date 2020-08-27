@@ -21,9 +21,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	var unavailable bool
 	for i, is := range status.InstanceStatus {
 		if !is.Available {
-			log.Info("unavailable host exists", map[string]interface{}{
-				"index": i,
-			})
+			log.Info("unavailable host exists", "index", i)
 			unavailable = true
 		}
 	}
@@ -145,7 +143,7 @@ func (r *MySQLClusterReconciler) getDB(ctx context.Context, cluster *mocov1alpha
 	}
 
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
-	host := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
 
 	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
 	if err != nil {
@@ -324,7 +322,7 @@ func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Log
 
 func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
-	masterHost := fmt.Sprintf("%s.%s.%s", podName, uniqueName(cluster), cluster.Namespace)
+	masterHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
 	password, err := r.getPassword(ctx, cluster, moco.ReplicationPasswordKey)
 	if err != nil {
 		return err

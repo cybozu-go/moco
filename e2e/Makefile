@@ -27,6 +27,9 @@ test: load-image
 	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
+telepresence:
+	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run -mod=vendor ./cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.0
+
 load-image: moco.img mysql.img
 	kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img
 	kind load image-archive --name=$(KIND_CLUSTER_NAME) mysql.img
