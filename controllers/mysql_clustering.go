@@ -96,7 +96,10 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		return ctrl.Result{}, err
 	}
 
-	wait := r.waitForReplication(ctx, log, status, cluster)
+	wait, err := r.waitForReplication(ctx, log, status, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	if wait {
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
@@ -216,7 +219,7 @@ func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log 
 	defer rows.Close()
 
 	var status MySQLPrimaryStatus
-	for rows.Next() {
+	if rows.Next() {
 		err = rows.StructScan(&status)
 		if err != nil {
 			return nil, err
@@ -235,7 +238,7 @@ func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log 
 	defer rows.Close()
 
 	var status MySQLReplicaStatus
-	for rows.Next() {
+	if rows.Next() {
 		err = rows.StructScan(&status)
 		if err != nil {
 			return nil, err
@@ -254,7 +257,7 @@ func (r *MySQLClusterReconciler) getMySQLGlobalVariablesStatus(ctx context.Conte
 	defer rows.Close()
 
 	var status MySQLGlobalVariablesStatus
-	for rows.Next() {
+	if rows.Next() {
 		err = rows.StructScan(&status)
 		if err != nil {
 			return nil, err
@@ -273,7 +276,7 @@ func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, l
 	defer rows.Close()
 
 	var status MySQLCloneStateStatus
-	for rows.Next() {
+	if rows.Next() {
 		err = rows.StructScan(&status)
 		if err != nil {
 			return nil, err
@@ -368,7 +371,7 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 		}
 	}
 
-	for i, _ := range status.InstanceStatus {
+	for i := range status.InstanceStatus {
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
@@ -385,28 +388,50 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 	return nil
 }
 
-func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) bool {
+func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	primaryStatus := status.InstanceStatus[primaryIndex]
 	if !primaryStatus.GlobalVariableStatus.ReadOnly {
-		return false
+		return false, nil
 	}
 
 	primaryGTID := primaryStatus.PrimaryStatus.ExecutedGtidSet
 	count := 0
+	var outOfSyncIns []int
 	for i, is := range status.InstanceStatus {
 		if i == primaryIndex {
 			continue
 		}
+
+		if is.ReplicaStatus.LastIoErrno != 0 {
+			outOfSyncIns = append(outOfSyncIns, i)
+			continue
+		}
+
 		if is.ReplicaStatus.ExecutedGtidSet == primaryGTID {
 			count++
 		}
 	}
 
-	if count < int(cluster.Spec.Replicas/2) {
-		return true
+	if len(outOfSyncIns) != 0 {
+		inss := fmt.Sprintf("%#v", outOfSyncIns)
+		condition := mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionOutOfSync,
+			Status:  corev1.ConditionTrue,
+			Message: inss,
+		}
+		setCondition(&cluster.Status.Conditions, condition)
+
+		err := r.Status().Update(ctx, cluster)
+		if err != nil {
+			return false, err
+		}
 	}
-	return false
+
+	if count < int(cluster.Spec.Replicas/2) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {

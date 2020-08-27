@@ -39,7 +39,7 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 		case <-ticker.C:
 			err := w.fireEventForInitializedMySQLClusters(context.Background())
 			if err != nil {
-				//TODO
+				return err
 			}
 		}
 	}
@@ -48,7 +48,7 @@ func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
 func (w mySQLClusterWatcher) fireEventForInitializedMySQLClusters(ctx context.Context) error {
 	clusters := mocov1alpha1.MySQLClusterList{}
 	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{moco.InitializedClusterIndexField: string(corev1.ConditionTrue)}))
-	if err != err {
+	if err != nil {
 		return err
 	}
 
