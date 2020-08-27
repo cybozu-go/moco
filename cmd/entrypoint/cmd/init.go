@@ -273,8 +273,11 @@ GRANT
 }
 
 func initializeReplicationUser(ctx context.Context, password string) error {
+	// Use mysql_native_password because no ssl connections without sha-2 cache fail
+	// Will fix it when we work on replication with encrypted connection
+	// See https://yoku0825.blogspot.com/2018/10/mysql-80cachingsha2password-ssl.html
 	t := template.Must(template.New("sql").Parse(`
-CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+CREATE USER '{{ .User }}'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Password }}' ;
 GRANT
     REPLICATION SLAVE,
     REPLICATION CLIENT
