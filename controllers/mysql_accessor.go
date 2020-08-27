@@ -12,10 +12,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type DatabaseAccessor interface {
-	Get(host, user, password string) (*sqlx.DB, error)
-}
-
 // MySQLAccessorConfig contains MySQL connection configurations
 type MySQLAccessorConfig struct {
 	ConnMaxLifeTime   time.Duration
