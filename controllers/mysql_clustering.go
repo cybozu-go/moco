@@ -28,99 +28,182 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 	}
 	if unavailable {
-		return ctrl.Result{}, nil
+		err := r.setFailureCondition(ctx, cluster, errors.New("unavailable host exists"), nil)
+		return ctrl.Result{}, err
 	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
 	err := r.validateConstraints(ctx, log, status, cluster)
 	if err != nil {
-		condition := mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionViolation,
-			Status:  corev1.ConditionTrue,
-			Message: err.Error(),
-		}
-		setCondition(&cluster.Status.Conditions, condition)
-
-		apiErr := r.Status().Update(ctx, cluster)
-		if apiErr != nil {
-			return ctrl.Result{}, apiErr
-		}
+		err = r.setViolationCondition(ctx, cluster, err)
 		return ctrl.Result{}, err
 	}
 
 	primaryIndex, err := r.selectPrimary(ctx, log, status, cluster)
 	if err != nil {
-		condition := mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionFailure,
-			Status:  corev1.ConditionTrue,
-			Message: err.Error(),
-		}
-		setCondition(&cluster.Status.Conditions, condition)
-
-		apiErr := r.Status().Update(ctx, cluster)
-		if apiErr != nil {
-			return ctrl.Result{}, apiErr
-		}
+		err = r.setFailureCondition(ctx, cluster, err, nil)
 		return ctrl.Result{}, err
 	}
 
 	err = r.updatePrimary(ctx, log, status, cluster, primaryIndex)
 	if err != nil {
-		condition := mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionFailure,
-			Status:  corev1.ConditionTrue,
-			Message: err.Error(),
-		}
-		setCondition(&cluster.Status.Conditions, condition)
-
-		apiErr := r.Status().Update(ctx, cluster)
-		if apiErr != nil {
-			return ctrl.Result{}, apiErr
-		}
+		err = r.setFailureCondition(ctx, cluster, err, nil)
 		return ctrl.Result{}, err
 	}
 
 	err = r.configureReplication(ctx, log, status, cluster)
 	if err != nil {
-		condition := mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionFailure,
-			Status:  corev1.ConditionTrue,
-			Message: err.Error(),
-		}
-		setCondition(&cluster.Status.Conditions, condition)
-
-		apiErr := r.Status().Update(ctx, cluster)
-		if apiErr != nil {
-			return ctrl.Result{}, apiErr
-		}
+		err = r.setFailureCondition(ctx, cluster, err, nil)
 		return ctrl.Result{}, err
 	}
 
-	wait, err := r.waitForReplication(ctx, log, status, cluster)
+	wait, outOfSyncInts, err := r.waitForReplication(ctx, log, status, cluster)
 	if err != nil {
+		err = r.setFailureCondition(ctx, cluster, err, nil)
 		return ctrl.Result{}, err
 	}
 	if wait {
+		err = r.setUnavailableCondition(ctx, cluster, outOfSyncInts)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	err = r.acceptWriteRequest(ctx, cluster)
 	if err != nil {
+		err = r.setFailureCondition(ctx, cluster, err, nil)
 		return ctrl.Result{}, err
 	}
-	condition := mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionHealthy,
+	err = r.setAvailableCondition(ctx, cluster, outOfSyncInts)
+
+	return ctrl.Result{}, err
+}
+
+func (r *MySQLClusterReconciler) setFailureCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, e error, outOfSyncInstances []int) error {
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionFailure,
 		Status:  corev1.ConditionTrue,
-		Message: err.Error(),
+		Message: e.Error(),
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionAvailable,
+		Status:  corev1.ConditionFalse,
+		Message: e.Error(),
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionHealthy,
+		Status:  corev1.ConditionFalse,
+		Message: e.Error(),
+	})
+	if len(outOfSyncInstances) != 0 {
+		msg := fmt.Sprintf("outOfSync instances: %#v", outOfSyncInstances)
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionOutOfSync,
+			Status:  corev1.ConditionTrue,
+			Message: msg,
+		})
 	}
-	setCondition(&cluster.Status.Conditions, condition)
 
-	apiErr := r.Status().Update(ctx, cluster)
-	if apiErr != nil {
-		return ctrl.Result{}, apiErr
+	err := r.Status().Update(ctx, cluster)
+	if err != nil {
+		return err
 	}
+	return nil
+}
 
-	return ctrl.Result{}, nil
+func (r *MySQLClusterReconciler) setViolationCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, e error) error {
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionViolation,
+		Status:  corev1.ConditionTrue,
+		Message: e.Error(),
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionFailure,
+		Status:  corev1.ConditionTrue,
+		Message: e.Error(),
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionAvailable,
+		Status:  corev1.ConditionFalse,
+		Message: e.Error(),
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionHealthy,
+		Status:  corev1.ConditionFalse,
+		Message: e.Error(),
+	})
+
+	err := r.Status().Update(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) setUnavailableCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, outOfSyncInstances []int) error {
+	if len(outOfSyncInstances) == 0 {
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:   mocov1alpha1.ConditionOutOfSync,
+			Status: corev1.ConditionFalse,
+		})
+	} else {
+		msg := fmt.Sprintf("outOfSync instances: %#v", outOfSyncInstances)
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionOutOfSync,
+			Status:  corev1.ConditionTrue,
+			Message: msg,
+		})
+	}
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:   mocov1alpha1.ConditionHealthy,
+		Status: corev1.ConditionFalse,
+	})
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:   mocov1alpha1.ConditionAvailable,
+		Status: corev1.ConditionFalse,
+	})
+
+	err := r.Status().Update(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *MySQLClusterReconciler) setAvailableCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, outOfSyncInstances []int) error {
+	if len(outOfSyncInstances) == 0 {
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:   mocov1alpha1.ConditionOutOfSync,
+			Status: corev1.ConditionFalse,
+		})
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:   mocov1alpha1.ConditionHealthy,
+			Status: corev1.ConditionTrue,
+		})
+	} else {
+		msg := fmt.Sprintf("outOfSync instances: %#v", outOfSyncInstances)
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionOutOfSync,
+			Status:  corev1.ConditionTrue,
+			Message: msg,
+		})
+		setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+			Type:    mocov1alpha1.ConditionHealthy,
+			Status:  corev1.ConditionFalse,
+			Message: msg,
+		})
+	}
+	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:   mocov1alpha1.ConditionAvailable,
+		Status: corev1.ConditionTrue,
+	})
+
+	err := r.Status().Update(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // MySQLClusterStatus contains MySQLCluster status
@@ -404,11 +487,11 @@ func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log l
 	return nil
 }
 
-func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int, error) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	primaryStatus := status.InstanceStatus[primaryIndex]
 	if !primaryStatus.GlobalVariableStatus.ReadOnly {
-		return false, nil
+		return false, nil, nil
 	}
 
 	primaryGTID := primaryStatus.PrimaryStatus.ExecutedGtidSet
@@ -429,25 +512,10 @@ func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log log
 		}
 	}
 
-	if len(outOfSyncIns) != 0 {
-		inss := fmt.Sprintf("%#v", outOfSyncIns)
-		condition := mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionOutOfSync,
-			Status:  corev1.ConditionTrue,
-			Message: inss,
-		}
-		setCondition(&cluster.Status.Conditions, condition)
-
-		err := r.Status().Update(ctx, cluster)
-		if err != nil {
-			return false, err
-		}
-	}
-
 	if count < int(cluster.Spec.Replicas/2) {
-		return true, nil
+		return true, outOfSyncIns, nil
 	}
-	return false, nil
+	return false, outOfSyncIns, nil
 }
 
 func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
