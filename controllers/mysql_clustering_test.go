@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"github.com/cybozu-go/moco"
 	"github.com/google/go-cmp/cmp"
@@ -143,7 +144,7 @@ func Test_decideNextOperation(t *testing.T) {
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := decideNextOperation(nil, logger, tt.cluster, tt.status)
+			got, err := decideNextOperation(context.Background(), logger, tt.cluster, tt.status)
 			if (err != nil) != tt.isWantErr {
 				t.Errorf("decideNextOperation() error = %v, isWantErr %v", err, tt.isWantErr)
 				return
