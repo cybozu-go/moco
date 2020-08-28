@@ -3,11 +3,13 @@ package controllers
 import (
 	"context"
 	"errors"
+	"sort"
+	"testing"
+
 	"github.com/cybozu-go/moco"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
-	"sort"
-	"testing"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -15,29 +17,25 @@ import (
 
 func Test_decideNextOperation(t *testing.T) {
 	tests := []struct {
-		name      string
-		cluster   *mocov1alpha1.MySQLCluster
-		status    *MySQLClusterStatus
-		want      *Operation
-		isWantErr bool
-		wantErr   error
+		name    string
+		cluster *mocov1alpha1.MySQLCluster
+		status  *MySQLClusterStatus
+		want    *Operation
+		wantErr error
 	}{
 		{
-			name: "includeUnavailableInstance",
+			name: "IncludeUnavailableInstance",
 			cluster: &mocov1alpha1.MySQLCluster{
 				Spec:   prepareCRSpec(),
 				Status: prepareCRStatus(nil),
 			},
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
-					prepareInstanceUnavailable(),
-					prepareReadOnlyInstance(),
-					prepareReadOnlyInstance(),
+					prepareInstanceUnavailable(), readOnlyIns(1), readOnlyIns(1),
 				},
 			},
-			want:      nil,
-			isWantErr: true,
-			wantErr:   moco.ErrUnAvailableHost,
+			want:    nil,
+			wantErr: moco.ErrUnAvailableHost,
 		},
 		{
 			name: "ConstraintsViolationWrongInstanceIsWritable",
@@ -47,38 +45,19 @@ func Test_decideNextOperation(t *testing.T) {
 			},
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
-					prepareReadOnlyInstance(),
-					prepareWritableInstance(),
-					prepareReadOnlyInstance(),
+					readOnlyIns(1), writableIns(1), readOnlyIns(1),
 				},
 			},
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					{
-						Type:    mocov1alpha1.ConditionViolation,
-						Status:  corev1.ConditionTrue,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionFailure,
-						Status:  corev1.ConditionTrue,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionAvailable,
-						Status:  corev1.ConditionFalse,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionHealthy,
-						Status:  corev1.ConditionFalse,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
+					violation("True", moco.ErrConstraintsViolation.Error()),
+					failure("True", moco.ErrConstraintsViolation.Error()),
+					available("False", moco.ErrConstraintsViolation.Error()),
+					healthy("False", moco.ErrConstraintsViolation.Error()),
 				},
 			},
-			isWantErr: true,
-			wantErr:   moco.ErrConstraintsViolation,
+			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
 			name: "ConstraintsViolationIncludeTwoWritableInstances",
@@ -88,38 +67,19 @@ func Test_decideNextOperation(t *testing.T) {
 			},
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
-					prepareWritableInstance(),
-					prepareWritableInstance(),
-					prepareReadOnlyInstance(),
+					writableIns(1), writableIns(1), readOnlyIns(1),
 				},
 			},
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					{
-						Type:    mocov1alpha1.ConditionViolation,
-						Status:  corev1.ConditionTrue,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionFailure,
-						Status:  corev1.ConditionTrue,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionAvailable,
-						Status:  corev1.ConditionFalse,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
-					{
-						Type:    mocov1alpha1.ConditionHealthy,
-						Status:  corev1.ConditionFalse,
-						Message: moco.ErrConstraintsViolation.Error(),
-					},
+					violation("True", moco.ErrConstraintsViolation.Error()),
+					failure("True", moco.ErrConstraintsViolation.Error()),
+					available("False", moco.ErrConstraintsViolation.Error()),
+					healthy("False", moco.ErrConstraintsViolation.Error()),
 				},
 			},
-			isWantErr: true,
-			wantErr:   moco.ErrConstraintsViolation,
+			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
 			name: "UpdateCurrentPrimaryIndexBeforeBootstrap",
@@ -129,31 +89,63 @@ func Test_decideNextOperation(t *testing.T) {
 			},
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
-					prepareReadOnlyInstance(),
-					prepareReadOnlyInstance(),
-					prepareReadOnlyInstance(),
+					readOnlyIns(1), readOnlyIns(1), readOnlyIns(1),
 				},
 			},
 			want: &Operation{
 				Wait:      false,
 				Operators: []Operator{&updatePrimaryOp{}},
 			},
-			isWantErr: false,
+		},
+		{
+			name: "ConfigureReplicationInitially",
+			cluster: &mocov1alpha1.MySQLCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster",
+					Namespace: "test-namespace",
+					UID:       "test-uid",
+				},
+				Spec:   prepareCRSpec(),
+				Status: prepareCRStatus(intPointer(0)),
+			},
+			status: &MySQLClusterStatus{
+				InstanceStatus: []MySQLInstanceStatus{
+					readOnlyIns(1), readOnlyIns(1), readOnlyIns(1),
+				},
+			},
+			want: &Operation{
+				Wait: false,
+				Operators: []Operator{
+					&configureReplicationOp{
+						index: 1,
+						host:  "test-uid-0.test-cluster.test-namespace",
+					},
+					&configureReplicationOp{
+						index: 2,
+						host:  "test-uid-0.test-cluster.test-namespace",
+					},
+				},
+			},
 		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := decideNextOperation(context.Background(), logger, tt.cluster, tt.status)
-			if (err != nil) != tt.isWantErr {
-				t.Errorf("decideNextOperation() error = %v, isWantErr %v", err, tt.isWantErr)
-				return
-			}
+
 			if !assertOperation(got, tt.want) {
-				t.Errorf("decideNextOperation() got = %v, want %v", got, tt.want)
+				diff := cmp.Diff(tt.want, got)
+				t.Errorf("decideNextOperation() diff: %s", diff)
 			}
-			if tt.isWantErr && !errors.Is(err, tt.wantErr) {
-				t.Errorf("decideNextOperation() error = %v, wantErr %v", err, tt.wantErr)
+
+			if !errors.Is(err, tt.wantErr) {
+				if err != nil && tt.wantErr == nil {
+					t.Errorf("decideNextOperation() error = %v, want = nil", err)
+				}
+				if err == nil && tt.wantErr != nil {
+					t.Errorf("decideNextOperation() error = nil, want = %v", tt.wantErr)
+				}
+				t.Errorf("decideNextOperation() error = %v, want = %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -179,7 +171,7 @@ func prepareInstanceUnavailable() MySQLInstanceStatus {
 	}
 }
 
-func prepareWritableInstance() MySQLInstanceStatus {
+func writableIns(syncWaitCount int) MySQLInstanceStatus {
 	return MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
@@ -187,12 +179,13 @@ func prepareWritableInstance() MySQLInstanceStatus {
 		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
 			ReadOnly:                           false,
 			SuperReadOnly:                      false,
-			RplSemiSyncMasterWaitForSlaveCount: 1,
+			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
 		},
 		CloneStateStatus: nil,
 	}
 }
-func prepareReadOnlyInstance() MySQLInstanceStatus {
+
+func readOnlyIns(syncWaitCount int) MySQLInstanceStatus {
 	return MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
@@ -200,9 +193,49 @@ func prepareReadOnlyInstance() MySQLInstanceStatus {
 		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
-			RplSemiSyncMasterWaitForSlaveCount: 1,
+			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
 		},
 		CloneStateStatus: nil,
+	}
+}
+
+func violation(status string, message string) mocov1alpha1.MySQLClusterCondition {
+	return mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionViolation,
+		Status:  corev1.ConditionStatus(status),
+		Message: message,
+	}
+}
+
+func available(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+	return mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionAvailable,
+		Status:  status,
+		Message: message,
+	}
+}
+
+func failure(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+	return mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionFailure,
+		Status:  status,
+		Message: message,
+	}
+}
+
+func healthy(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+	return mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionHealthy,
+		Status:  status,
+		Message: message,
+	}
+}
+
+func outOfSync(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+	return mocov1alpha1.MySQLClusterCondition{
+		Type:    mocov1alpha1.ConditionOutOfSync,
+		Status:  status,
+		Message: message,
 	}
 }
 

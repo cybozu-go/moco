@@ -457,14 +457,14 @@ func validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClus
 	return nil
 }
 
-// TODO
+// TODO: Implementation for failover
 func selectPrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
 	return 0, nil
 }
 
 func updatePrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) ([]Operator, error) {
 	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
-	if currentPrimaryIndex != nil && *currentPrimaryIndex != newPrimaryIndex {
+	if currentPrimaryIndex != nil && *currentPrimaryIndex == newPrimaryIndex {
 		return nil, nil
 	}
 
