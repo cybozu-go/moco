@@ -251,7 +251,7 @@ func selectInitializedCluster(obj runtime.Object) []string {
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
+	myNS, mySecretName := getSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err == nil {
 		return false, nil
@@ -350,7 +350,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 
 func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
+	myNS, mySecretName := getSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -367,7 +367,7 @@ func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.C
 	return nil
 }
 
-func (r *MySQLClusterReconciler) getSecretNameForController(cluster *mocov1alpha1.MySQLCluster) (string, string) {
+func getSecretNameForController(cluster *mocov1alpha1.MySQLCluster) (string, string) {
 	myNS := os.Getenv("POD_NAMESPACE")
 	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
 	return myNS, mySecretName

@@ -17,18 +17,94 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// MySQLClusterStatus defines the observed state of MySQLCluster
+type MySQLClusterStatus struct {
+	InstanceStatus []MySQLInstanceStatus
+}
+
+// MySQLPrimaryStatus defines the observed state of a primary
+type MySQLPrimaryStatus struct {
+	ExecutedGtidSet sql.NullString `db:"Executed_Gtid_Set"`
+}
+
+// MySQLReplicaStatus defines the observed state of a replica
+type MySQLReplicaStatus struct {
+	ID               int            `db:"id"`
+	LastIoErrno      int            `db:"Last_IO_Errno"`
+	LastIoError      sql.NullString `db:"Last_IO_Error"`
+	LastSqlErrno     int            `db:"Last_SQL_Errno"`
+	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
+	MasterHost       string         `db:"Master_Host"`
+	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
+	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
+	SlaveIoRunning   string         `db:"Slave_IO_Running"`
+	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
+}
+
+// MySQLReplicaStatus defines the observed global variable state of a MySQL instance
+type MySQLGlobalVariablesStatus struct {
+	ReadOnly                           bool `db:"@@read_only"`
+	SuperReadOnly                      bool `db:"@@super_read_only"`
+	RplSemiSyncMasterWaitForSlaveCount int  `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
+}
+
+// MySQLReplicaStatus defines the observed clone state of a MySQL instance
+type MySQLCloneStateStatus struct {
+	State sql.NullString `db:"state"`
+}
+
+// MySQLReplicaStatus defines the observed state of a MySQL instance
+type MySQLInstanceStatus struct {
+	Available            bool
+	PrimaryStatus        *MySQLPrimaryStatus
+	ReplicaStatus        *MySQLReplicaStatus
+	GlobalVariableStatus *MySQLGlobalVariablesStatus
+	CloneStateStatus     *MySQLCloneStateStatus
+}
+
+// Operator is the interface for operations
 type Operator interface {
 	Name() string
 	Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error
 }
 
+// Operation defines operations to MySQL Cluster
 type Operation struct {
 	Operators  []Operator
 	Wait       bool
 	Conditions []mocov1alpha1.MySQLClusterCondition
 }
 
-func (r *MySQLClusterReconciler) decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) (*Operation, error) {
+// reconcileMySQLCluster reconciles MySQL cluster
+func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
+	infra := infrastructure{r.Client, r.MySQLAccessor}
+	status := r.getMySQLClusterStatus(ctx, log, infra, cluster)
+	op, err := r.decideNextOperation(ctx, log, infra, cluster, status)
+	if err != nil {
+		condErr := r.setFailureCondition(ctx, cluster, err, nil)
+		if condErr != nil {
+			log.Error(condErr, "unable to update status")
+		}
+		return ctrl.Result{}, err
+	}
+	if op.Wait {
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+	for _, o := range op.Operators {
+		err = o.Run(ctx, infra, cluster, status)
+		if err != nil {
+			condErr := r.setFailureCondition(ctx, cluster, err, nil)
+			if condErr != nil {
+				log.Error(condErr, "unable to update status")
+			}
+			return ctrl.Result{}, err
+		}
+	}
+	err = r.setMySQLClusterCondition(ctx, cluster, op.Conditions)
+	return ctrl.Result{}, err
+}
+
+func (r *MySQLClusterReconciler) decideNextOperation(ctx context.Context, log logr.Logger, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) (*Operation, error) {
 	var unavailable bool
 	for i, is := range status.InstanceStatus {
 		if !is.Available {
@@ -63,7 +139,7 @@ func (r *MySQLClusterReconciler) decideNextOperation(ctx context.Context, log lo
 		}, nil
 	}
 
-	ops, err = r.configureReplication(ctx, log, status, cluster)
+	ops, err = r.configureReplication(ctx, log, infra, status, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -97,36 +173,6 @@ func (r *MySQLClusterReconciler) decideNextOperation(ctx context.Context, log lo
 	return &Operation{
 		Conditions: availableCondition(outOfSyncInts),
 	}, nil
-}
-
-// reconcileMySQLCluster recoclies MySQL cluster
-func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
-	status := r.getMySQLClusterStatus(ctx, log, cluster)
-	op, err := r.decideNextOperation(ctx, log, cluster, status)
-	if err != nil {
-		condErr := r.setFailureCondition(ctx, cluster, err, nil)
-		if condErr != nil {
-			log.Error(condErr, "unable to update status")
-		}
-		return ctrl.Result{}, err
-	}
-	if op.Wait {
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-	}
-	//TODO
-	infra := infrastructure{}
-	for _, o := range op.Operators {
-		err = o.Run(ctx, infra, cluster, status)
-		if err != nil {
-			condErr := r.setFailureCondition(ctx, cluster, err, nil)
-			if condErr != nil {
-				log.Error(condErr, "unable to update status")
-			}
-			return ctrl.Result{}, err
-		}
-	}
-	err = r.setMySQLClusterCondition(ctx, cluster, op.Conditions)
-	return ctrl.Result{}, err
 }
 
 func (r *MySQLClusterReconciler) setFailureCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, e error, outOfSyncInstances []int) error {
@@ -256,63 +302,7 @@ func (r *MySQLClusterReconciler) setMySQLClusterCondition(ctx context.Context, c
 	return nil
 }
 
-// MySQLClusterStatus contains MySQLCluster status
-type MySQLClusterStatus struct {
-	InstanceStatus []MySQLInstanceStatus
-}
-
-type MySQLPrimaryStatus struct {
-	ExecutedGtidSet sql.NullString `db:"Executed_Gtid_Set"`
-}
-
-type MySQLReplicaStatus struct {
-	ID               int            `db:"id"`
-	LastIoErrno      int            `db:"Last_IO_Errno"`
-	LastIoError      sql.NullString `db:"Last_IO_Error"`
-	LastSqlErrno     int            `db:"Last_SQL_Errno"`
-	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
-	MasterHost       string         `db:"Master_Host"`
-	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
-	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
-	SlaveIoRunning   string         `db:"Slave_IO_Running"`
-	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
-}
-
-type MySQLGlobalVariablesStatus struct {
-	ReadOnly                           bool `db:"@@read_only"`
-	SuperReadOnly                      bool `db:"@@super_read_only"`
-	RplSemiSyncMasterWaitForSlaveCount int  `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
-}
-
-type MySQLCloneStateStatus struct {
-	State sql.NullString `db:"state"`
-}
-
-type MySQLInstanceStatus struct {
-	Available            bool
-	PrimaryStatus        *MySQLPrimaryStatus
-	ReplicaStatus        *MySQLReplicaStatus
-	GlobalVariableStatus *MySQLGlobalVariablesStatus
-	CloneStateStatus     *MySQLCloneStateStatus
-}
-
-func (r *MySQLClusterReconciler) getDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	operatorPassword, err := r.getPassword(ctx, cluster, moco.OperatorPasswordKey)
-	if err != nil {
-		return nil, err
-	}
-
-	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
-	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
-
-	db, err := r.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) *MySQLClusterStatus {
+func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log logr.Logger, infra infrastructure, cluster *mocov1alpha1.MySQLCluster) *MySQLClusterStatus {
 	status := &MySQLClusterStatus{
 		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
 	}
@@ -321,7 +311,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 
 		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), instanceIdx)
 
-		db, err := r.getDB(ctx, cluster, instanceIdx)
+		db, err := infra.getDB(ctx, cluster, instanceIdx)
 		if err != nil {
 			log.Info("instance not available", "err", err, "podName", podName)
 			continue
@@ -472,7 +462,8 @@ func (r *MySQLClusterReconciler) selectPrimary(ctx context.Context, log logr.Log
 }
 
 func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) ([]Operator, error) {
-	if *cluster.Status.CurrentPrimaryIndex != newPrimaryIndex {
+	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
+	if currentPrimaryIndex != nil && *currentPrimaryIndex != newPrimaryIndex {
 		return nil, nil
 	}
 
@@ -483,18 +474,39 @@ func (r *MySQLClusterReconciler) updatePrimary(ctx context.Context, log logr.Log
 	}, nil
 }
 
-//TODO
 type infrastructure struct {
+	client.Client
+	MySQLAccessor *MySQLAccessor
 }
 
-//TODO
 func (i infrastructure) getClient() client.Client {
-	return nil
+	return i.Client
 }
 
-//TODO
 func (i infrastructure) getDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	return nil, nil
+	operatorPassword, err := i.getPassword(ctx, cluster, moco.OperatorPasswordKey)
+	if err != nil {
+		return nil, err
+	}
+
+	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
+	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
+
+	db, err := i.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func (i infrastructure) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
+	secret := &corev1.Secret{}
+	myNS, mySecretName := getSecretNameForController(cluster)
+	err := i.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	if err != nil {
+		return "", err
+	}
+	return string(secret.Data[passwordKey]), nil
 }
 
 type updatePrimaryOp struct {
@@ -525,10 +537,10 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster
 	return err
 }
 
-func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
+func (r *MySQLClusterReconciler) configureReplication(ctx context.Context, log logr.Logger, infra infrastructure, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
 	masterHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
-	password, err := r.getPassword(ctx, cluster, moco.ReplicationPasswordKey)
+	password, err := infra.getPassword(ctx, cluster, moco.ReplicationPasswordKey)
 	if err != nil {
 		return nil, err
 	}
@@ -607,16 +619,6 @@ func (r *MySQLClusterReconciler) waitForReplication(ctx context.Context, log log
 		return true, outOfSyncIns, nil
 	}
 	return false, outOfSyncIns, nil
-}
-
-func (r *MySQLClusterReconciler) getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, passwordKey string) (string, error) {
-	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
-	if err != nil {
-		return "", err
-	}
-	return string(secret.Data[passwordKey]), nil
 }
 
 func (r *MySQLClusterReconciler) acceptWriteRequest(ctx context.Context, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
