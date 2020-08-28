@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -15,6 +17,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+const (
+	CLUSTER   = "test-cluster"
+	NAMESPACE = "test-namespace"
+	UID       = "test-uid"
+)
+
 func Test_decideNextOperation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -24,11 +32,8 @@ func Test_decideNextOperation(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "IncludeUnavailableInstance",
-			cluster: &mocov1alpha1.MySQLCluster{
-				Spec:   prepareCRSpec(),
-				Status: prepareCRStatus(nil),
-			},
+			name:    "IncludeUnavailableInstance",
+			cluster: prepareMySQLCluster(3, nil),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
 					prepareInstanceUnavailable(), readOnlyIns(1), readOnlyIns(1),
@@ -38,11 +43,8 @@ func Test_decideNextOperation(t *testing.T) {
 			wantErr: moco.ErrUnAvailableHost,
 		},
 		{
-			name: "ConstraintsViolationWrongInstanceIsWritable",
-			cluster: &mocov1alpha1.MySQLCluster{
-				Spec:   prepareCRSpec(),
-				Status: prepareCRStatus(intPointer(0)),
-			},
+			name:    "ConstraintsViolationWrongInstanceIsWritable",
+			cluster: prepareMySQLCluster(3, intPointer(0)),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
 					readOnlyIns(1), writableIns(1), readOnlyIns(1),
@@ -60,11 +62,8 @@ func Test_decideNextOperation(t *testing.T) {
 			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
-			name: "ConstraintsViolationIncludeTwoWritableInstances",
-			cluster: &mocov1alpha1.MySQLCluster{
-				Spec:   prepareCRSpec(),
-				Status: prepareCRStatus(nil),
-			},
+			name:    "ConstraintsViolationIncludeTwoWritableInstances",
+			cluster: prepareMySQLCluster(3, nil),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
 					writableIns(1), writableIns(1), readOnlyIns(1),
@@ -82,11 +81,8 @@ func Test_decideNextOperation(t *testing.T) {
 			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
-			name: "UpdateCurrentPrimaryIndexBeforeBootstrap",
-			cluster: &mocov1alpha1.MySQLCluster{
-				Spec:   prepareCRSpec(),
-				Status: prepareCRStatus(nil),
-			},
+			name:    "UpdateCurrentPrimaryIndexBeforeBootstrap",
+			cluster: prepareMySQLCluster(3, nil),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
 					readOnlyIns(1), readOnlyIns(1), readOnlyIns(1),
@@ -98,16 +94,8 @@ func Test_decideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name: "ConfigureReplicationInitially",
-			cluster: &mocov1alpha1.MySQLCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster",
-					Namespace: "test-namespace",
-					UID:       "test-uid",
-				},
-				Spec:   prepareCRSpec(),
-				Status: prepareCRStatus(intPointer(0)),
-			},
+			name:    "ConfigureReplicationInitially",
+			cluster: prepareMySQLCluster(3, intPointer(0)),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
 					readOnlyIns(1), readOnlyIns(1), readOnlyIns(1),
@@ -117,13 +105,30 @@ func Test_decideNextOperation(t *testing.T) {
 				Wait: false,
 				Operators: []Operator{
 					&configureReplicationOp{
-						index: 1,
-						host:  "test-uid-0.test-cluster.test-namespace",
+						index:       1,
+						primaryHost: hostName(0),
 					},
 					&configureReplicationOp{
-						index: 2,
-						host:  "test-uid-0.test-cluster.test-namespace",
+						index:       2,
+						primaryHost: hostName(0),
 					},
+				},
+			},
+		},
+		{
+			name:    "WaitForReplicasCatchUp",
+			cluster: prepareMySQLCluster(3, intPointer(0)),
+			status: &MySQLClusterStatus{
+				InstanceStatus: []MySQLInstanceStatus{
+					readOnlyIns(1), readOnlyInsWithReplicaStatus(1), readOnlyInsWithReplicaStatus(1),
+				},
+			},
+			want: &Operation{
+				Wait: true,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					outOfSync("False", ""),
+					available("False", ""),
+					healthy("False", ""),
 				},
 			},
 		},
@@ -151,14 +156,20 @@ func Test_decideNextOperation(t *testing.T) {
 	}
 }
 
-func prepareCRSpec() mocov1alpha1.MySQLClusterSpec {
-	// TODO implement
-	return mocov1alpha1.MySQLClusterSpec{}
-}
-
-func prepareCRStatus(primaryIdx *int) mocov1alpha1.MySQLClusterStatus {
-	// TODO implement
-	return mocov1alpha1.MySQLClusterStatus{CurrentPrimaryIndex: primaryIdx}
+func prepareMySQLCluster(replicas int32, currentPrimaryIndex *int) *mocov1alpha1.MySQLCluster {
+	return &mocov1alpha1.MySQLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      CLUSTER,
+			Namespace: NAMESPACE,
+			UID:       UID,
+		},
+		Spec: mocov1alpha1.MySQLClusterSpec{
+			Replicas: replicas,
+		},
+		Status: mocov1alpha1.MySQLClusterStatus{
+			CurrentPrimaryIndex: currentPrimaryIndex,
+		},
+	}
 }
 
 func prepareInstanceUnavailable() MySQLInstanceStatus {
@@ -187,9 +198,43 @@ func writableIns(syncWaitCount int) MySQLInstanceStatus {
 
 func readOnlyIns(syncWaitCount int) MySQLInstanceStatus {
 	return MySQLInstanceStatus{
+		Available: true,
+		PrimaryStatus: &MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
+			String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+			Valid:  true,
+		}},
+		ReplicaStatus: nil,
+		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+			ReadOnly:                           true,
+			SuperReadOnly:                      true,
+			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+		},
+		CloneStateStatus: nil,
+	}
+}
+
+func readOnlyInsWithReplicaStatus(syncWaitCount int) MySQLInstanceStatus {
+	return MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
-		ReplicaStatus: nil,
+		ReplicaStatus: &MySQLReplicaStatus{
+			ID:           0,
+			LastIoErrno:  0,
+			LastIoError:  sql.NullString{},
+			LastSqlErrno: 0,
+			LastSqlError: sql.NullString{},
+			MasterHost:   hostName(0),
+			RetrievedGtidSet: sql.NullString{
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1",
+				Valid:  true,
+			},
+			ExecutedGtidSet: sql.NullString{
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1",
+				Valid:  true,
+			},
+			SlaveIoRunning:  "Yes",
+			SlaveSqlRunning: "Yes",
+		},
 		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
@@ -293,6 +338,11 @@ func convConditionsToArray(conditions []mocov1alpha1.MySQLClusterCondition) ([]s
 	sort.Strings(messages)
 
 	return types, statuses, reasons, messages
+}
+
+func hostName(index int) string {
+	uniqueName := fmt.Sprintf("%s-%s", CLUSTER, UID)
+	return fmt.Sprintf("%s-%d.%s.%s.svc", uniqueName, index, uniqueName, NAMESPACE)
 }
 
 func intPointer(i int) *int {

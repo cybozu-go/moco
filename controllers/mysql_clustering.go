@@ -540,17 +540,17 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster
 
 func configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
-	masterHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
+	primaryHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
 
 	var operators []Operator
 	for i, is := range status.InstanceStatus {
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
-		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != masterHost {
+		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
 			operators = append(operators, &configureReplicationOp{
-				index: i,
-				host:  masterHost,
+				index:       i,
+				primaryHost: primaryHost,
 			})
 		}
 	}
@@ -559,8 +559,8 @@ func configureReplication(ctx context.Context, log logr.Logger, status *MySQLClu
 }
 
 type configureReplicationOp struct {
-	index int
-	host  string
+	index       int
+	primaryHost string
 }
 
 func (r configureReplicationOp) Name() string {
@@ -581,7 +581,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, c
 		return err
 	}
 	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
-		r.host, moco.MySQLPort, moco.ReplicatorUser, password)
+		r.primaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
 
 	if err != nil {
 		return err
