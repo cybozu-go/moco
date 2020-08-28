@@ -2,10 +2,11 @@ package controllers
 
 import (
 	"database/sql"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"reflect"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
+
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func Test_decideNextOperation(t *testing.T) {
@@ -15,26 +16,64 @@ func Test_decideNextOperation(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		args    args
+		cluster *mocov1alpha1.MySQLCluster
+		status  *MySQLClusterStatus
 		want    *Operation
 		wantErr bool
 	}{
-		// TODO: Add test cases.
-		mocov1alpha1.MySQLClusterStatus{},
-		MySQLClusterStatus{[]MySQLInstanceStatus{{
-			Available: true,
-			PrimaryStatus: MySQLPrimaryStatus{sql.NullString{
-				"", true,
-			}},
-			ReplicaStatus:        nil,
-			GlobalVariableStatus: nil,
-			CloneStateStatus:     nil,
-		}}},
+		{
+			name: "testCaseSample",
+			cluster: &mocov1alpha1.MySQLCluster{
+				Spec:   prepareCRSpec(),
+				Status: prepareCRStatus(nil),
+			},
+			status: &MySQLClusterStatus{
+				InstanceStatus: []MySQLInstanceStatus{
+					{
+						Available: false,
+						PrimaryStatus: &MySQLPrimaryStatus{
+							ExecutedGtidSet: sql.NullString{"", true},
+						},
+						ReplicaStatus: nil,
+						GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+							ReadOnly:                           true,
+							SuperReadOnly:                      true,
+							RplSemiSyncMasterWaitForSlaveCount: 1,
+						},
+						CloneStateStatus: nil,
+					},
+				},
+			},
+			want: &Operation{
+				Wait:       false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{},
+				Operators:  []Operator{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "includeUnavailableInstance",
+			cluster: &mocov1alpha1.MySQLCluster{
+				Spec:   prepareCRSpec(),
+				Status: prepareCRStatus(nil),
+			},
+			status: &MySQLClusterStatus{
+				InstanceStatus: []MySQLInstanceStatus{
+					prepareInstanceUnavailable(),
+				},
+			},
+			want: &Operation{
+				Wait:       false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{},
+				Operators:  []Operator{},
+			},
+			wantErr: true,
+		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := decideNextOperation(nil, logger, tt.args.cluster, tt.args.status)
+			got, err := decideNextOperation(nil, logger, tt.cluster, tt.status)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("decideNextOperation() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -43,5 +82,25 @@ func Test_decideNextOperation(t *testing.T) {
 				t.Errorf("decideNextOperation() got = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func prepareCRSpec() mocov1alpha1.MySQLClusterSpec {
+	// TODO implement
+	return mocov1alpha1.MySQLClusterSpec{}
+}
+
+func prepareCRStatus(primaryIdx *int) mocov1alpha1.MySQLClusterStatus {
+	// TODO implement
+	return mocov1alpha1.MySQLClusterStatus{}
+}
+
+func prepareInstanceUnavailable() MySQLInstanceStatus {
+	return MySQLInstanceStatus{
+		Available:            false,
+		PrimaryStatus:        nil,
+		ReplicaStatus:        nil,
+		GlobalVariableStatus: nil,
+		CloneStateStatus:     nil,
 	}
 }
