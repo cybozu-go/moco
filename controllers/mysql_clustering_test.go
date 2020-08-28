@@ -120,7 +120,7 @@ func Test_decideNextOperation(t *testing.T) {
 			cluster: prepareMySQLCluster(3, intPointer(0)),
 			status: &MySQLClusterStatus{
 				InstanceStatus: []MySQLInstanceStatus{
-					readOnlyIns(1), readOnlyInsWithReplicaStatus(1), readOnlyInsWithReplicaStatus(1),
+					readOnlyIns(1), readOnlyInsWithReplicaStatus(1, true), readOnlyInsWithReplicaStatus(1, true),
 				},
 			},
 			want: &Operation{
@@ -129,6 +129,29 @@ func Test_decideNextOperation(t *testing.T) {
 					outOfSync("False", ""),
 					available("False", ""),
 					healthy("False", ""),
+				},
+			},
+		},
+		{
+			name:    "AcceptWriteRequestWithSyncedInstances",
+			cluster: prepareMySQLCluster(3, intPointer(0)),
+			status: &MySQLClusterStatus{
+				InstanceStatus: []MySQLInstanceStatus{
+					readOnlyIns(1), readOnlyInsWithReplicaStatus(1, false), readOnlyInsWithReplicaStatus(1, false),
+				},
+			},
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure("False", ""),
+					outOfSync("False", ""),
+					available("True", ""),
+					healthy("True", ""),
+				},
+				Operators: []Operator{
+					turnOffReadOnlyOp{
+						primaryIndex: 0,
+					},
 				},
 			},
 		},
@@ -213,7 +236,12 @@ func readOnlyIns(syncWaitCount int) MySQLInstanceStatus {
 	}
 }
 
-func readOnlyInsWithReplicaStatus(syncWaitCount int) MySQLInstanceStatus {
+func readOnlyInsWithReplicaStatus(syncWaitCount int, behind bool) MySQLInstanceStatus {
+	exeGtid := "1-5"
+	if behind {
+		exeGtid = "1"
+	}
+
 	return MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
@@ -225,11 +253,11 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int) MySQLInstanceStatus {
 			LastSqlError: sql.NullString{},
 			MasterHost:   hostName(0),
 			RetrievedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1",
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
 				Valid:  true,
 			},
 			ExecutedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1",
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:" + exeGtid,
 				Valid:  true,
 			},
 			SlaveIoRunning:  "Yes",

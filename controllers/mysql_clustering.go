@@ -79,6 +79,7 @@ type Operation struct {
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
 	infra := infrastructure{r.Client, r.MySQLAccessor}
 	status := r.getMySQLClusterStatus(ctx, log, infra, cluster)
+
 	op, err := decideNextOperation(ctx, log, cluster, status)
 	if err != nil {
 		condErr := r.setFailureCondition(ctx, cluster, err, nil)
@@ -87,9 +88,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 		return ctrl.Result{}, err
 	}
-	if op.Wait {
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-	}
+
 	for _, o := range op.Operators {
 		err = o.Run(ctx, infra, cluster, status)
 		if err != nil {
@@ -101,6 +100,11 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 	}
 	err = r.setMySQLClusterCondition(ctx, cluster, op.Conditions)
+
+	if err == nil && op.Wait {
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
 	return ctrl.Result{}, err
 }
 
@@ -166,7 +170,8 @@ func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1al
 	}
 	if len(ops) != 0 {
 		return &Operation{
-			Operators: ops,
+			Conditions: availableCondition(outOfSyncInts),
+			Operators:  ops,
 		}, nil
 	}
 
@@ -283,6 +288,10 @@ func availableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterCon
 			Message: msg,
 		})
 	}
+	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:   mocov1alpha1.ConditionFailure,
+		Status: corev1.ConditionFalse,
+	})
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
 		Type:   mocov1alpha1.ConditionAvailable,
 		Status: corev1.ConditionTrue,
