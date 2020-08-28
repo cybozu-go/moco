@@ -113,7 +113,7 @@ func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1al
 		}
 	}
 	if unavailable {
-		return nil, errors.New("unavailable host exists")
+		return nil, moco.ErrUnAvailableHost
 	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
@@ -515,7 +515,7 @@ type updatePrimaryOp struct {
 }
 
 func (o *updatePrimaryOp) Name() string {
-	return "update-primary"
+	return moco.OperatorUpdatePrimary
 }
 
 func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error {
@@ -564,7 +564,7 @@ type configureReplicationOp struct {
 }
 
 func (r configureReplicationOp) Name() string {
-	return "configure-replication"
+	return moco.OperatorConfigureReplication
 }
 
 func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error {
@@ -637,7 +637,7 @@ type turnOffReadOnlyOp struct {
 }
 
 func (o turnOffReadOnlyOp) Name() string {
-	return "turnoff-readonly"
+	return moco.OperatorTurnOffReadOnly
 }
 
 func (o turnOffReadOnlyOp) Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error {
