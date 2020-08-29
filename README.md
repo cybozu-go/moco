@@ -1,6 +1,6 @@
 [![GitHub release](https://img.shields.io/github/release/cybozu-go/moco.svg?maxAge=60)][releases]
 [![CircleCI](https://circleci.com/gh/cybozu-go/moco.svg?style=svg)](https://circleci.com/gh/cybozu-go/moco)
-[![GoDoc](https://godoc.org/github.com/cybozu-go/moco?status.svg)][godoc]
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/cybozu-go/moco)](https://pkg.go.dev/github.com/cybozu-go/moco)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cybozu-go/moco)](https://goreportcard.com/report/github.com/cybozu-go/moco)
 
 # MOCO
