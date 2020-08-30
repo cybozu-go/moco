@@ -141,6 +141,8 @@ func Test_decideNextOperation(t *testing.T) {
 			got, err := decideNextOperation(context.Background(), logger, tt.input.Custer, tt.input.Status)
 
 			if !assertOperation(got, tt.want) {
+				sortOp(got)
+				sortOp(tt.want)
 				diff := cmp.Diff(tt.want, got)
 				t.Errorf("decideNextOperation() diff: %s", diff)
 			}
@@ -433,4 +435,39 @@ func hostName(index int) string {
 
 func intPointer(i int) *int {
 	return &i
+}
+
+type Operators []Operator
+
+func (o Operators) Len() int {
+	return len(o)
+}
+
+func (o Operators) Less(i, j int) bool {
+	return o[i].Name() < o[j].Name()
+}
+
+func (o Operators) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+type Conditions []mocov1alpha1.MySQLClusterCondition
+
+func (c Conditions) Len() int {
+	return len(c)
+}
+
+func (c Conditions) Less(i, j int) bool {
+	return c[i].Type < c[j].Type
+}
+
+func (c Conditions) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func sortOp(op *Operation) {
+	if op != nil {
+		sort.Sort(Operators(op.Operators))
+		sort.Sort(Conditions(op.Conditions))
+	}
 }
