@@ -547,7 +547,15 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster
 	if st.GlobalVariableStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
 		return nil
 	}
-	_, err = db.Exec("set global rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_timeout=?", 24*60*60*1000)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=ON")
 	return err
 }
 
@@ -589,13 +597,17 @@ func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, c
 	if err != nil {
 		return err
 	}
+
 	_, err = db.Exec(`STOP SLAVE`)
 	if err != nil {
 		return err
 	}
 	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
 		r.primaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
-
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_slave_enabled=ON")
 	if err != nil {
 		return err
 	}
