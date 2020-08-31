@@ -606,9 +606,6 @@ func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, c
 func waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int, error) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	primaryStatus := status.InstanceStatus[primaryIndex]
-	if !primaryStatus.GlobalVariableStatus.ReadOnly {
-		return false, nil, nil
-	}
 
 	primaryGTID := primaryStatus.PrimaryStatus.ExecutedGtidSet
 	count := 0
@@ -626,6 +623,10 @@ func waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClust
 		if is.ReplicaStatus.ExecutedGtidSet == primaryGTID {
 			count++
 		}
+	}
+
+	if !primaryStatus.GlobalVariableStatus.ReadOnly {
+		return false, outOfSyncIns, nil
 	}
 
 	if count < int(cluster.Spec.Replicas/2) {

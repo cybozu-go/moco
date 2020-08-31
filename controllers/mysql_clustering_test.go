@@ -129,9 +129,9 @@ func Test_decideNextOperation(t *testing.T) {
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
 					failure("False", ""),
-					outOfSync("False", ""),
+					outOfSync("True", "outOfSync instances: []int{1}"),
 					available("True", ""),
-					healthy("False", ""),
+					healthy("False", "outOfSync instances: []int{1}"),
 				},
 			},
 		},
@@ -246,7 +246,7 @@ func (d testData) withReplicas() testData {
 func (d testData) withLaggedReplica() testData {
 	d.Status = &MySQLClusterStatus{
 		InstanceStatus: []MySQLInstanceStatus{
-			writableIns(1), readOnlyInsWithReplicaStatus(1, true), readOnlyInsWithReplicaStatus(1, false),
+			writableIns(1), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false),
 		},
 	}
 	return d
@@ -355,6 +355,37 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) MySQLInstanceS
 	}
 }
 
+func outOfSyncIns(syncWaitCount int) MySQLInstanceStatus {
+	return MySQLInstanceStatus{
+		Available:     true,
+		PrimaryStatus: nil,
+		ReplicaStatus: &MySQLReplicaStatus{
+			ID:           0,
+			LastIoErrno:  1,
+			LastIoError:  sql.NullString{},
+			LastSqlErrno: 0,
+			LastSqlError: sql.NullString{},
+			MasterHost:   hostName(0),
+			RetrievedGtidSet: sql.NullString{
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+				Valid:  true,
+			},
+			ExecutedGtidSet: sql.NullString{
+				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+				Valid:  true,
+			},
+			SlaveIoRunning:  "Yes",
+			SlaveSqlRunning: "Yes",
+		},
+		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+			ReadOnly:                           true,
+			SuperReadOnly:                      true,
+			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+		},
+		CloneStateStatus: nil,
+	}
+}
+
 func violation(status string, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionViolation,
@@ -417,21 +448,13 @@ func assertOperators(expected, actual []Operator) bool {
 }
 
 func assertConditions(expected, actual []mocov1alpha1.MySQLClusterCondition) bool {
-	if len(expected) == 0 && len(actual) == 0 {
-		return true
-	}
-
-	sort.Sort(Conditions(expected))
-	sort.Sort(Conditions(actual))
-	return equalConditions(expected, actual)
-}
-
-func equalConditions(conds1, conds2 []mocov1alpha1.MySQLClusterCondition) bool {
-	if len(conds1) != len(conds2) {
+	if len(expected) != len(actual) {
 		return false
 	}
-	for i := range conds1 {
-		if !equalCondition(conds1[i], conds2[i]) {
+	sort.Sort(Conditions(expected))
+	sort.Sort(Conditions(actual))
+	for i := range expected {
+		if !equalCondition(expected[i], actual[i]) {
 			return false
 		}
 	}
