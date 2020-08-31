@@ -111,7 +111,6 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		// initialize
 		isUpdated, err := r.reconcileInitialize(ctx, log, cluster)
 		if err != nil {
-			cluster.Status.Ready = mocov1alpha1.ReadyFalse
 			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
 				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionFalse, Reason: "reconcileInitializeFailed", Message: err.Error()})
 			if errUpdate := r.Status().Update(ctx, cluster); errUpdate != nil {
@@ -121,7 +120,6 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{}, err
 		}
 		if isUpdated {
-			cluster.Status.Ready = mocov1alpha1.ReadyTrue
 			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
 				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionTrue})
 			if err := r.Status().Update(ctx, cluster); err != nil {

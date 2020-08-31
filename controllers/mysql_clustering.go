@@ -70,9 +70,10 @@ type Operator interface {
 
 // Operation defines operations to MySQL Cluster
 type Operation struct {
-	Operators  []Operator
-	Wait       bool
-	Conditions []mocov1alpha1.MySQLClusterCondition
+	Operators      []Operator
+	Wait           bool
+	Conditions     []mocov1alpha1.MySQLClusterCondition
+	SyncedReplicas *int
 }
 
 // reconcileMySQLCluster reconciles MySQL cluster
@@ -80,7 +81,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	infra := infrastructure{r.Client, r.MySQLAccessor}
 	status := r.getMySQLClusterStatus(ctx, log, infra, cluster)
 
-	op, err := decideNextOperation(ctx, log, cluster, status)
+	op, err := decideNextOperation(log, cluster, status)
 	if err != nil {
 		condErr := r.setFailureCondition(ctx, cluster, err, nil)
 		if condErr != nil {
@@ -99,7 +100,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 			return ctrl.Result{}, err
 		}
 	}
-	err = r.setMySQLClusterCondition(ctx, cluster, op.Conditions)
+	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
 
 	if err == nil && op.Wait {
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
@@ -108,7 +109,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	return ctrl.Result{}, err
 }
 
-func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) (*Operation, error) {
+func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) (*Operation, error) {
 	var unavailable bool
 	for i, is := range status.InstanceStatus {
 		if !is.Available {
@@ -121,42 +122,30 @@ func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1al
 	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
-	err := validateConstraints(ctx, log, status, cluster)
+	err := validateConstraints(status, cluster)
 	if err != nil {
 		return &Operation{
 			Conditions: violationCondition(err),
 		}, err
 	}
 
-	primaryIndex, err := selectPrimary(ctx, log, status, cluster)
-	if err != nil {
-		return nil, err
-	}
+	primaryIndex := selectPrimary(status, cluster)
 
-	ops, err := updatePrimary(ctx, log, status, cluster, primaryIndex)
-	if err != nil {
-		return nil, err
-	}
+	ops := updatePrimary(cluster, primaryIndex)
 	if len(ops) != 0 {
 		return &Operation{
 			Operators: ops,
 		}, nil
 	}
 
-	ops, err = configureReplication(ctx, log, status, cluster)
-	if err != nil {
-		return nil, err
-	}
+	ops = configureReplication(status, cluster)
 	if len(ops) != 0 {
 		return &Operation{
 			Operators: ops,
 		}, nil
 	}
 
-	wait, outOfSyncInts, err := waitForReplication(ctx, log, status, cluster)
-	if err != nil {
-		return nil, err
-	}
+	wait, outOfSyncInts := waitForReplication(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
@@ -164,26 +153,19 @@ func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1al
 		}, nil
 	}
 
-	ops, err = acceptWriteRequest(ctx, status, cluster)
-	if err != nil {
-		return nil, err
-	}
+	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncInts)
+	ops = acceptWriteRequest(status, cluster)
 	if len(ops) != 0 {
 		return &Operation{
-			Conditions: availableCondition(outOfSyncInts),
-			Operators:  ops,
-		}, nil
-	}
-
-	ops, err = updateSyncedReplicas(ctx, status, cluster, len(outOfSyncInts))
-	if len(ops) != 0 {
-		return &Operation{
-			Operators: ops,
+			Conditions:     availableCondition(outOfSyncInts),
+			Operators:      ops,
+			SyncedReplicas: &syncedReplicas,
 		}, nil
 	}
 
 	return &Operation{
-		Conditions: availableCondition(outOfSyncInts),
+		Conditions:     availableCondition(outOfSyncInts),
+		SyncedReplicas: &syncedReplicas,
 	}, nil
 }
 
@@ -311,9 +293,15 @@ func availableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterCon
 	return conditions
 }
 
-func (r *MySQLClusterReconciler) setMySQLClusterCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, conditions []mocov1alpha1.MySQLClusterCondition) error {
+func (r *MySQLClusterReconciler) setMySQLClusterStatus(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, conditions []mocov1alpha1.MySQLClusterCondition, syncedStatus *int) error {
 	for _, cond := range conditions {
+		if cond.Type == mocov1alpha1.ConditionAvailable {
+			cluster.Status.Ready = cond.Status
+		}
 		setCondition(&cluster.Status.Conditions, cond)
+	}
+	if syncedStatus != nil {
+		cluster.Status.SyncedReplicas = *syncedStatus
 	}
 	err := r.Status().Update(ctx, cluster)
 	if err != nil {
@@ -446,7 +434,7 @@ func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, l
 	return nil, nil
 }
 
-func validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
+func validateConstraints(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
 	if status == nil {
 		panic("unreachable condition")
 	}
@@ -478,21 +466,21 @@ func validateConstraints(ctx context.Context, log logr.Logger, status *MySQLClus
 }
 
 // TODO: Implementation for failover
-func selectPrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
-	return 0, nil
+func selectPrimary(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) int {
+	return 0
 }
 
-func updatePrimary(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) ([]Operator, error) {
+func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []Operator {
 	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
 	if currentPrimaryIndex != nil && *currentPrimaryIndex == newPrimaryIndex {
-		return nil, nil
+		return nil
 	}
 
 	return []Operator{
 		&updatePrimaryOp{
 			newPrimaryIndex: newPrimaryIndex,
 		},
-	}, nil
+	}
 }
 
 type infrastructure struct {
@@ -563,7 +551,7 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster
 	return err
 }
 
-func configureReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
+func configureReplication(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
 	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
 	primaryHost := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
 
@@ -580,7 +568,7 @@ func configureReplication(ctx context.Context, log logr.Logger, status *MySQLClu
 		}
 	}
 
-	return operators, nil
+	return operators
 }
 
 type configureReplicationOp struct {
@@ -619,7 +607,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, c
 	return err
 }
 
-func waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int, error) {
+func waitForReplication(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	primaryStatus := status.InstanceStatus[primaryIndex]
 
@@ -642,24 +630,23 @@ func waitForReplication(ctx context.Context, log logr.Logger, status *MySQLClust
 	}
 
 	if !primaryStatus.GlobalVariableStatus.ReadOnly {
-		return false, outOfSyncIns, nil
+		return false, outOfSyncIns
 	}
 
 	if count < int(cluster.Spec.Replicas/2) {
-		return true, outOfSyncIns, nil
+		return true, outOfSyncIns
 	}
-	return false, outOfSyncIns, nil
+	return false, outOfSyncIns
 }
 
-func acceptWriteRequest(ctx context.Context, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]Operator, error) {
+func acceptWriteRequest(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 
 	if !status.InstanceStatus[primaryIndex].GlobalVariableStatus.ReadOnly {
-		return nil, nil
+		return nil
 	}
 	return []Operator{
-		&turnOffReadOnlyOp{primaryIndex: primaryIndex},
-	}, nil
+		&turnOffReadOnlyOp{primaryIndex: primaryIndex}}
 }
 
 type turnOffReadOnlyOp struct {
@@ -677,25 +664,4 @@ func (o turnOffReadOnlyOp) Run(ctx context.Context, infra infrastructure, cluste
 	}
 	_, err = db.Exec("set global read_only=0")
 	return err
-}
-
-func updateSyncedReplicas(ctx context.Context, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, outOfSyncCount int) ([]Operator, error) {
-	syncedReplicas := int(cluster.Spec.Replicas) - outOfSyncCount
-	if cluster.Status.SyncedReplicas == syncedReplicas {
-		return nil, nil
-	}
-	return []Operator{}, nil
-}
-
-type updateSyncedReplicasOp struct {
-	syncedReplicas int
-}
-
-func (o updateSyncedReplicasOp) Name() string {
-	return moco.UpdateSyncedReplicas
-}
-
-func (o updateSyncedReplicasOp) Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error {
-	cluster.Status.SyncedReplicas = o.syncedReplicas
-	return infra.Client.Status().Update(ctx, cluster)
 }

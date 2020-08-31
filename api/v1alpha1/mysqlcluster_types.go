@@ -116,7 +116,7 @@ type MySQLClusterStatus struct {
 	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
 
 	// Ready represents the status of readiness.
-	Ready MySQLClusterReady `json:"ready"`
+	Ready corev1.ConditionStatus `json:"ready"`
 
 	// CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
 	// +optional
@@ -159,17 +159,6 @@ const (
 	ConditionFailure     MySQLClusterConditionType = "Failure"
 	ConditionViolation   MySQLClusterConditionType = "Violation"
 	// and more
-)
-
-// MySQLClusterReady represents the status of readiness.
-// +kubebuilder:validation:Enum=True;False;Unknown
-type MySQLClusterReady string
-
-// Valid values for MySQLClusterReady.
-const (
-	ReadyTrue    MySQLClusterReady = "True"
-	ReadyFalse   MySQLClusterReady = "False"
-	ReadyUnknown MySQLClusterReady = "Unknown"
 )
 
 // +kubebuilder:object:root=true
