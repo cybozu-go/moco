@@ -97,6 +97,7 @@ func Test_decideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait: true,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure("False", ""),
 					outOfSync("False", ""),
 					available("False", ""),
 					healthy("False", ""),
@@ -118,6 +119,19 @@ func Test_decideNextOperation(t *testing.T) {
 					turnOffReadOnlyOp{
 						primaryIndex: 0,
 					},
+				},
+			},
+		},
+		{
+			name:  "WorkingProperlyWithLaggedOneReplica",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withLaggedReplica(),
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure("False", ""),
+					outOfSync("False", ""),
+					available("True", ""),
+					healthy("False", ""),
 				},
 			},
 		},
@@ -224,6 +238,15 @@ func (d testData) withReplicas() testData {
 	d.Status = &MySQLClusterStatus{
 		InstanceStatus: []MySQLInstanceStatus{
 			readOnlyIns(1), readOnlyInsWithReplicaStatus(1, false), readOnlyInsWithReplicaStatus(1, false),
+		},
+	}
+	return d
+}
+
+func (d testData) withLaggedReplica() testData {
+	d.Status = &MySQLClusterStatus{
+		InstanceStatus: []MySQLInstanceStatus{
+			writableIns(1), readOnlyInsWithReplicaStatus(1, true), readOnlyInsWithReplicaStatus(1, false),
 		},
 	}
 	return d
@@ -380,20 +403,17 @@ func assertOperation(expected, actual *Operation) bool {
 }
 
 func assertOperators(expected, actual []Operator) bool {
-	if len(expected) == 0 && len(actual) == 0 {
-		return true
+	if len(expected) != len(actual) {
+		return false
 	}
-	expectedOpNames := make([]string, len(expected))
-	actualOpNames := make([]string, len(actual))
-	for i, o := range expected {
-		expectedOpNames[i] = o.Name()
+	sort.Sort(Operators(expected))
+	sort.Sort(Operators(actual))
+	for i := range expected {
+		if expected[i].Name() != actual[i].Name() {
+			return false
+		}
 	}
-	for i, o := range actual {
-		actualOpNames[i] = o.Name()
-	}
-	sort.Strings(expectedOpNames)
-	sort.Strings(actualOpNames)
-	return cmp.Equal(expectedOpNames, actualOpNames)
+	return true
 }
 
 func assertConditions(expected, actual []mocov1alpha1.MySQLClusterCondition) bool {
@@ -401,31 +421,25 @@ func assertConditions(expected, actual []mocov1alpha1.MySQLClusterCondition) boo
 		return true
 	}
 
-	expectedTypes, expectedStatuses, expectedReasons, expectedMessages := convConditionsToArray(expected)
-	actualTypes, actualStatuses, actualReasons, actualMessages := convConditionsToArray(actual)
-
-	return cmp.Equal(expectedTypes, actualTypes) && cmp.Equal(expectedStatuses, actualStatuses) && cmp.Equal(expectedReasons, actualReasons) && cmp.Equal(expectedMessages, actualMessages)
+	sort.Sort(Conditions(expected))
+	sort.Sort(Conditions(actual))
+	return equalConditions(expected, actual)
 }
 
-func convConditionsToArray(conditions []mocov1alpha1.MySQLClusterCondition) ([]string, []string, []string, []string) {
-	types := make([]string, len(conditions))
-	statuses := make([]string, len(conditions))
-	reasons := make([]string, len(conditions))
-	messages := make([]string, len(conditions))
-
-	for i, c := range conditions {
-		types[i] = string(c.Type)
-		statuses[i] = string(c.Status)
-		reasons[i] = c.Reason
-		messages[i] = c.Message
+func equalConditions(conds1, conds2 []mocov1alpha1.MySQLClusterCondition) bool {
+	if len(conds1) != len(conds2) {
+		return false
 	}
+	for i := range conds1 {
+		if !equalCondition(conds1[i], conds2[i]) {
+			return false
+		}
+	}
+	return true
+}
 
-	sort.Strings(types)
-	sort.Strings(statuses)
-	sort.Strings(reasons)
-	sort.Strings(messages)
-
-	return types, statuses, reasons, messages
+func equalCondition(cond1, cond2 mocov1alpha1.MySQLClusterCondition) bool {
+	return cond1.Type == cond2.Type && cond1.Status == cond2.Status && cond1.Message == cond2.Message && cond1.Reason == cond2.Reason
 }
 
 func hostName(index int) string {

@@ -253,6 +253,10 @@ func unavailableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterC
 		})
 	}
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
+		Type:   mocov1alpha1.ConditionFailure,
+		Status: corev1.ConditionFalse,
+	})
+	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
 		Type:   mocov1alpha1.ConditionHealthy,
 		Status: corev1.ConditionFalse,
 	})
