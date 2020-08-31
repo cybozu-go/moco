@@ -124,7 +124,7 @@ var (
 		"client": {
 			"port":                        strconv.Itoa(moco.MySQLPort),
 			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
-			"loose-default_character_set": "utf8mb4",
+			"loose_default_character_set": "utf8mb4",
 		},
 		"mysql": {
 			"auto_rehash":  "OFF",
