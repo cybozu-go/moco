@@ -936,9 +936,9 @@ func setCondition(conditions *[]mocov1alpha1.MySQLClusterCondition, newCondition
 }
 
 func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionType mocov1alpha1.MySQLClusterConditionType) *mocov1alpha1.MySQLClusterCondition {
-	for _, c := range conditions {
+	for i, c := range conditions {
 		if c.Type == conditionType {
-			return &c
+			return &conditions[i]
 		}
 	}
 	return nil
