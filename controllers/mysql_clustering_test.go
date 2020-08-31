@@ -35,7 +35,7 @@ func Test_decideNextOperation(t *testing.T) {
 			name:    "IncludeUnavailableInstance",
 			input:   newTestData().withUnAvailableInstances(),
 			want:    nil,
-			wantErr: moco.ErrUnAvailableHost,
+			wantErr: moco.ErrUnavailableHost,
 		},
 		{
 			name:  "ConstraintsViolationWrongInstanceIsWritable",

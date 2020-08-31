@@ -118,7 +118,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}
 	}
 	if unavailable {
-		return nil, moco.ErrUnAvailableHost
+		return nil, moco.ErrUnavailableHost
 	}
 	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
@@ -633,10 +633,7 @@ func waitForReplication(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLC
 		return false, outOfSyncIns
 	}
 
-	if count < int(cluster.Spec.Replicas/2) {
-		return true, outOfSyncIns
-	}
-	return false, outOfSyncIns
+	return count < int(cluster.Spec.Replicas/2), outOfSyncIns
 }
 
 func acceptWriteRequest(status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
