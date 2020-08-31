@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
   name: mysqlclusters.moco.cybozu.com
 spec:
@@ -16,7 +16,11 @@ spec:
     singular: mysqlcluster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.currentPrimaryIndex
+      name: PRIMARY
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: MySQLCluster is the Schema for the mysqlclusters API
@@ -6535,10 +6539,6 @@ spec:
                 type: integer
               ready:
                 description: Ready represents the status of readiness.
-                enum:
-                - "True"
-                - "False"
-                - Unknown
                 type: string
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances including

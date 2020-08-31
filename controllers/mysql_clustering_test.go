@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -120,11 +119,12 @@ func Test_decideNextOperation(t *testing.T) {
 						primaryIndex: 0,
 					},
 				},
+				SyncedReplicas: intPointer(3),
 			},
 		},
 		{
 			name:  "WorkingProperlyWithLaggedOneReplica",
-			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withLaggedReplica(),
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withSyncedReplicas(2).withLaggedReplica(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
@@ -133,11 +133,12 @@ func Test_decideNextOperation(t *testing.T) {
 					available("True", ""),
 					healthy("False", "outOfSync instances: []int{1}"),
 				},
+				SyncedReplicas: intPointer(2),
 			},
 		},
 		{
 			name:  "WorkingProperly",
-			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withAvailableCluster(),
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withSyncedReplicas(3).withAvailableCluster(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
@@ -146,13 +147,14 @@ func Test_decideNextOperation(t *testing.T) {
 					available("True", ""),
 					healthy("True", ""),
 				},
+				SyncedReplicas: intPointer(3),
 			},
 		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := decideNextOperation(context.Background(), logger, tt.input.Custer, tt.input.Status)
+			got, err := decideNextOperation(logger, tt.input.Custer, tt.input.Status)
 
 			if !assertOperation(got, tt.want) {
 				sortOp(got)
@@ -263,6 +265,11 @@ func (d testData) withLaggedReplicas() testData {
 
 func (d testData) withCurrentPrimaryIndex(primaryIndex *int) testData {
 	d.Custer.Status.CurrentPrimaryIndex = primaryIndex
+	return d
+}
+
+func (d testData) withSyncedReplicas(replicas int) testData {
+	d.Custer.Status.SyncedReplicas = replicas
 	return d
 }
 
@@ -430,7 +437,11 @@ func assertOperation(expected, actual *Operation) bool {
 	if expected == nil || actual == nil {
 		return expected == nil && actual == nil
 	}
-	return assertOperators(expected.Operators, actual.Operators) && assertConditions(expected.Conditions, actual.Conditions) && expected.Wait == actual.Wait
+
+	return assertOperators(expected.Operators, actual.Operators) &&
+		assertConditions(expected.Conditions, actual.Conditions) &&
+		expected.Wait == actual.Wait &&
+		cmp.Equal(expected.SyncedReplicas, actual.SyncedReplicas)
 }
 
 func assertOperators(expected, actual []Operator) bool {
