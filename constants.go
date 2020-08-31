@@ -122,6 +122,7 @@ const (
 	OperatorUpdatePrimary        = "update-primary"
 	OperatorConfigureReplication = "configure-replication"
 	OperatorTurnOffReadOnly      = "turnoff-readonly"
+	UpdateSyncedReplicas         = "update-syncedreplicas"
 )
 
 var (

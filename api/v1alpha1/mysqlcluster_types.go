@@ -174,6 +174,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="PRIMARY",type="string",JSONPath=".status.currentPrimaryIndex"
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {

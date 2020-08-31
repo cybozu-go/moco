@@ -5,7 +5,7 @@ export GOFLAGS
 GINKGO=$(GOPATH)/bin/ginkgo
 KUBECTL=/usr/local/bin/kubectl
 KIND_VERSION=0.8.1
-KUSTOMIZE_VERSION=3.5.4
+KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE=/usr/local/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 

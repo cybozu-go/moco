@@ -120,6 +120,8 @@ var (
 			"read_only":        "ON",
 			"super_read_only":  "ON",
 			"skip_slave_start": "ON",
+
+			"loose_rpl_semi_sync_master_timeout": strconv.Itoa(24 * 60 * 60 * 1000),
 		},
 		"client": {
 			"port":                        strconv.Itoa(moco.MySQLPort),

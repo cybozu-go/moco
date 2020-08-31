@@ -175,6 +175,13 @@ func decideNextOperation(ctx context.Context, log logr.Logger, cluster *mocov1al
 		}, nil
 	}
 
+	ops, err = updateSyncedReplicas(ctx, status, cluster, len(outOfSyncInts))
+	if len(ops) != 0 {
+		return &Operation{
+			Operators: ops,
+		}, nil
+	}
+
 	return &Operation{
 		Conditions: availableCondition(outOfSyncInts),
 	}, nil
@@ -542,20 +549,17 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra infrastructure, cluster
 		return err
 	}
 
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=ON,GLOBAL rpl_semi_sync_slave_enabled=OFF")
+	if err != nil {
+		return err
+	}
+
 	expectedRplSemiSyncMasterWaitForSlaveCount := int(cluster.Spec.Replicas / 2)
 	st := status.InstanceStatus[o.newPrimaryIndex]
 	if st.GlobalVariableStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
 		return nil
 	}
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_timeout=?", 24*60*60*1000)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=ON")
 	return err
 }
 
@@ -607,7 +611,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra infrastructure, c
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("SET GLOBAL rpl_semi_sync_slave_enabled=ON")
+	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=OFF,GLOBAL rpl_semi_sync_slave_enabled=ON")
 	if err != nil {
 		return err
 	}
@@ -673,4 +677,25 @@ func (o turnOffReadOnlyOp) Run(ctx context.Context, infra infrastructure, cluste
 	}
 	_, err = db.Exec("set global read_only=0")
 	return err
+}
+
+func updateSyncedReplicas(ctx context.Context, status *MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, outOfSyncCount int) ([]Operator, error) {
+	syncedReplicas := int(cluster.Spec.Replicas) - outOfSyncCount
+	if cluster.Status.SyncedReplicas == syncedReplicas {
+		return nil, nil
+	}
+	return []Operator{}, nil
+}
+
+type updateSyncedReplicasOp struct {
+	syncedReplicas int
+}
+
+func (o updateSyncedReplicasOp) Name() string {
+	return moco.UpdateSyncedReplicas
+}
+
+func (o updateSyncedReplicasOp) Run(ctx context.Context, infra infrastructure, cluster *mocov1alpha1.MySQLCluster, status *MySQLClusterStatus) error {
+	cluster.Status.SyncedReplicas = o.syncedReplicas
+	return infra.Client.Status().Update(ctx, cluster)
 }
