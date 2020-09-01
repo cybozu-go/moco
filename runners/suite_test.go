@@ -8,11 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -24,6 +26,7 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var mgr manager.Manager
 
 func TestRunners(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -52,6 +55,10 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
+	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: sch,
+	})
+	Expect(err).ToNot(HaveOccurred())
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
@@ -66,5 +73,5 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Test runners", func() {
-	Context("cluster-watcher", TestMySQLClusterWatcher)
+	Context("cluster-watcher", testMySQLClusterWatcher)
 })

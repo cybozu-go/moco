@@ -7,12 +7,11 @@ import (
 	"github.com/cybozu-go/moco"
 	corev1 "k8s.io/api/core/v1"
 
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // NewMySQLClusterWatcher creates new mySQLClusterWatcher
@@ -32,7 +31,7 @@ type mySQLClusterWatcher struct {
 
 // Start implements Runnable.Start
 func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(w.tick)
 	defer ticker.Stop()
 	for {
 		select {
@@ -63,9 +62,4 @@ func (w mySQLClusterWatcher) fireEventForInitializedMySQLClusters(ctx context.Co
 		}
 	}
 	return nil
-}
-
-// NeedLeaderElection implements LeaderElectionRunnable
-func (w mySQLClusterWatcher) NeedLeaderElection() bool {
-	return true
 }

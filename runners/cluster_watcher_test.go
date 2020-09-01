@@ -1,13 +1,67 @@
 package runners
 
 import (
+	"context"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/yaml"
 )
 
-func TestMySQLClusterWatcher() {
-	ch := make(chan event.GenericEvent)
-	watcher := NewMySQLClusterWatcher(k8sClient, ch, time.Second)
+func testMySQLClusterWatcher() {
+	It("should notify generic events", func() {
+		stop := make(chan struct{})
+		ch := make(chan event.GenericEvent)
+		watcher := NewMySQLClusterWatcher(k8sClient, ch, time.Second)
+		go watcher.Start(stop)
 
+		manifest := `apiVersion: moco.cybozu.com/v1alpha1
+kind: MySQLCluster
+metadata:
+  name: mysqlcluster
+  namespace: default
+spec:
+  replicas: 3
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: mysql:dev
+  dataVolumeClaimTemplateSpec:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 1Gi
+  mysqlConfigMapName: mycnf
+`
+		cluster := mocov1alpha1.MySQLCluster{}
+		err := yaml.Unmarshal([]byte(manifest), &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = k8sClient.Create(context.Background(), &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
+		cluster.Status.Conditions = []mocov1alpha1.MySQLClusterCondition{
+			{
+				Type:               mocov1alpha1.ConditionInitialized,
+				Status:             corev1.ConditionTrue,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			},
+		}
+		err = k8sClient.Status().Update(context.Background(), &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		var ev event.GenericEvent
+		select {
+		case ev = <-ch:
+			Expect(ev.Meta.GetNamespace()).Should(Equal("default"))
+			Expect(ev.Meta.GetName()).Should(Equal("mysqlcluster"))
+		case <-time.After(3 * time.Second):
+			Expect(true).Should(Equal(false))
+		}
+	})
 }
