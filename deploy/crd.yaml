@@ -17,9 +17,15 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .status.ready
+      name: READY
+      type: string
     - jsonPath: .status.currentPrimaryIndex
       name: PRIMARY
-      type: string
+      type: integer
+    - jsonPath: .status.syncedReplicas
+      name: SYNCED
+      type: integer
     name: v1alpha1
     schema:
       openAPIV3Schema:
