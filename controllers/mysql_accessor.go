@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,23 +88,18 @@ func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-// Cleanup cleans staled connections
-// TODO run on background
-func (acc *MySQLAccessor) Cleanup(clusters []*mocov1alpha1.MySQLCluster) {
-	// TODO construct uri to close acc.dbs
-	var uriPostfixs []string
-	for _, c := range clusters {
-		uriPostfixs = append(uriPostfixs, uniqueName(cluster) 
-	}
+// Remove cleans staled connections
+func (acc *MySQLAccessor) Remove(cluster *mocov1alpha1.MySQLCluster) {
+	postfix := uniqueName(cluster) + "." + cluster.Namespace
 
 	acc.mu.Lock()
 	defer acc.mu.Unlock()
 
 	for uri, db := range acc.dbs {
-		err := db.Ping()
-		if err != nil {
-			db.Close()
-			delete(acc.dbs, uri)
+		if !strings.Contains(uri, postfix) {
+			continue
 		}
+		db.Close()
+		delete(acc.dbs, uri)
 	}
 }

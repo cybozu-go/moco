@@ -157,6 +157,9 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
 		return ctrl.Result{}, err
 	}
+
+	r.MySQLAccessor.Remove(cluster)
+
 	return ctrl.Result{}, nil
 }
 

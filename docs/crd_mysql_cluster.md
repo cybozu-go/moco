@@ -62,9 +62,14 @@ MySQLClusterCondition
 MySQLClusterConditionType
 ------------------------
 
-| Value       | Description                                                                   |
-| ----------- | ----------------------------------------------------------------------------- |
-| Initialized | All the objects needed to make up the cluster have been created successfully. |
+| Value       | Description                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Initialized | All the objects needed to make up the cluster have been created successfully.                                                        |
+| Healthy     | As for all replicas, semi-sync replication is working without `OutOfSync`, and the primary is writable.                              |
+| Available   | In a minimum number of replicas (1 of 3, 2 of 5), semi-sync replication is working without `OutOfSync`, and the primary is writable. |
+| OutOfSync   | There are replicas whose data is out of sync (i.e., `Last_IO_Errno` not equal zero).                                                 |
+| Failure     | Any errors were detected. The primary is not writable.                                                                               |
+| Violation   | The constraints violation was detected. Once detected, it will not be changed.                                                       |
 
 
 
