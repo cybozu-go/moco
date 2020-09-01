@@ -96,7 +96,7 @@ func initializeOnce(ctx context.Context) error {
 	}
 
 	log.Info("setup replication user", nil)
-	initializeReplicationUser(ctx, os.Getenv(moco.ReplicationPasswordEnvName))
+	err = initializeReplicationUser(ctx, os.Getenv(moco.ReplicationPasswordEnvName))
 	if err != nil {
 		return err
 	}
