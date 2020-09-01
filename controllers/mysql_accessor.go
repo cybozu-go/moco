@@ -2,13 +2,16 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/cybozu-go/moco"
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/jmoiron/sqlx"
 
 	// MySQL Driver
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -22,16 +25,16 @@ type MySQLAccessorConfig struct {
 // MySQLAccessor contains MySQL connection configurations and sqlx.db
 type MySQLAccessor struct {
 	config *MySQLAccessorConfig
+	mu     sync.Mutex
 	dbs    map[string]*sqlx.DB
-	mutex  *sync.Mutex
 }
 
 // NewMySQLAccessor creates new MySQLAccessor
 func NewMySQLAccessor(config *MySQLAccessorConfig) *MySQLAccessor {
 	return &MySQLAccessor{
 		config: config,
+		mu:     sync.Mutex{},
 		dbs:    make(map[string]*sqlx.DB),
-		mutex:  &sync.Mutex{},
 	}
 }
 
@@ -40,8 +43,8 @@ func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
 	uri := acc.getURI(host, user, password)
 	fmt.Println("uri = " + uri)
 
-	acc.mutex.Lock()
-	defer acc.mutex.Unlock()
+	acc.mu.Lock()
+	defer acc.mu.Unlock()
 
 	if _, exists := acc.dbs[uri]; !exists {
 		if db, err := acc.connect(uri); err == nil {
@@ -61,8 +64,16 @@ func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
 }
 
 func (acc *MySQLAccessor) getURI(host, user, password string) string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/?timeout=%.0fs&readTimeout=%.0fs&interpolateParams=true", user, password, host,
-		moco.MySQLAdminPort, acc.config.ConnectionTimeout.Seconds(), acc.config.ReadTimeout.Seconds())
+	conf := mysql.NewConfig()
+	conf.User = user
+	conf.Passwd = password
+	conf.Net = "tcp"
+	conf.Addr = host + ":" + strconv.Itoa(moco.MySQLAdminPort)
+	conf.Timeout = acc.config.ConnectionTimeout
+	conf.ReadTimeout = acc.config.ReadTimeout
+	conf.InterpolateParams = true
+
+	return conf.FormatDSN()
 }
 
 func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
@@ -78,9 +89,15 @@ func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
 
 // Cleanup cleans staled connections
 // TODO run on background
-func (acc *MySQLAccessor) Cleanup() {
-	acc.mutex.Lock()
-	defer acc.mutex.Unlock()
+func (acc *MySQLAccessor) Cleanup(clusters []*mocov1alpha1.MySQLCluster) {
+	// TODO construct uri to close acc.dbs
+	var uriPostfixs []string
+	for _, c := range clusters {
+		uriPostfixs = append(uriPostfixs, uniqueName(cluster) 
+	}
+
+	acc.mu.Lock()
+	defer acc.mu.Unlock()
 
 	for uri, db := range acc.dbs {
 		err := db.Ping()

@@ -498,10 +498,7 @@ func (i infrastructure) getDB(ctx context.Context, cluster *mocov1alpha1.MySQLCl
 		return nil, err
 	}
 
-	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
-	host := fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
-
-	db, err := i.MySQLAccessor.Get(host, moco.OperatorAdminUser, operatorPassword)
+	db, err := i.MySQLAccessor.Get(getHost(cluster, index), moco.OperatorAdminUser, operatorPassword)
 	if err != nil {
 		return nil, err
 	}

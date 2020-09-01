@@ -890,6 +890,11 @@ func uniqueName(cluster *mocov1alpha1.MySQLCluster) string {
 	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
 }
 
+func getHost(cluster *mocov1alpha1.MySQLCluster, index int) string {
+	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
+	return fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
+}
+
 func setLabels(om *metav1.ObjectMeta) {
 	om.Labels = map[string]string{
 		appNameKey:      om.Name,
