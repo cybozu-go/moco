@@ -23,7 +23,7 @@ const (
 	REPLICAS  = 3
 )
 
-func Test_decideNextOperation(t *testing.T) {
+func TestDecideNextOperation(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string

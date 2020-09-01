@@ -215,7 +215,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	ch := make(chan event.GenericEvent)
-	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch)
+	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch, 30*time.Second)
 	err = mgr.Add(watcher)
 	if err != nil {
 		return err

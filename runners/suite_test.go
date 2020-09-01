@@ -1,4 +1,4 @@
-package controllers
+package runners
 
 import (
 	"path/filepath"
@@ -25,11 +25,11 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 
-func TestAPIs(t *testing.T) {
+func TestRunners(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
+		"Runner Suite",
 		[]Reporter{printer.NewlineReporter{}})
 }
 
@@ -63,4 +63,8 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
+})
+
+var _ = Describe("Test runners", func() {
+	Context("cluster-watcher", TestMySQLClusterWatcher)
 })

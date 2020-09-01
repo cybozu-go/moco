@@ -16,16 +16,18 @@ import (
 )
 
 // NewMySQLClusterWatcher creates new mySQLClusterWatcher
-func NewMySQLClusterWatcher(client client.Client, ch chan<- event.GenericEvent) manager.Runnable {
+func NewMySQLClusterWatcher(client client.Client, ch chan<- event.GenericEvent, tick time.Duration) manager.Runnable {
 	return &mySQLClusterWatcher{
 		client:  client,
 		channel: ch,
+		tick:    tick,
 	}
 }
 
 type mySQLClusterWatcher struct {
 	client  client.Client
 	channel chan<- event.GenericEvent
+	tick    time.Duration
 }
 
 // Start implements Runnable.Start

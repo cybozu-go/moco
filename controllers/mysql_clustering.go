@@ -22,6 +22,15 @@ type MySQLClusterStatus struct {
 	InstanceStatus []MySQLInstanceStatus
 }
 
+// MySQLInstanceStatus defines the observed state of a MySQL instance
+type MySQLInstanceStatus struct {
+	Available            bool
+	PrimaryStatus        *MySQLPrimaryStatus
+	ReplicaStatus        *MySQLReplicaStatus
+	GlobalVariableStatus *MySQLGlobalVariablesStatus
+	CloneStateStatus     *MySQLCloneStateStatus
+}
+
 // MySQLPrimaryStatus defines the observed state of a primary
 type MySQLPrimaryStatus struct {
 	ExecutedGtidSet sql.NullString `db:"Executed_Gtid_Set"`
@@ -41,25 +50,16 @@ type MySQLReplicaStatus struct {
 	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
 }
 
-// MySQLReplicaStatus defines the observed global variable state of a MySQL instance
+// MySQLGlobalVariablesStatus defines the observed global variable state of a MySQL instance
 type MySQLGlobalVariablesStatus struct {
 	ReadOnly                           bool `db:"@@read_only"`
 	SuperReadOnly                      bool `db:"@@super_read_only"`
 	RplSemiSyncMasterWaitForSlaveCount int  `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
 }
 
-// MySQLReplicaStatus defines the observed clone state of a MySQL instance
+// MySQLCloneStateStatus defines the observed clone state of a MySQL instance
 type MySQLCloneStateStatus struct {
 	State sql.NullString `db:"state"`
-}
-
-// MySQLReplicaStatus defines the observed state of a MySQL instance
-type MySQLInstanceStatus struct {
-	Available            bool
-	PrimaryStatus        *MySQLPrimaryStatus
-	ReplicaStatus        *MySQLReplicaStatus
-	GlobalVariableStatus *MySQLGlobalVariablesStatus
-	CloneStateStatus     *MySQLCloneStateStatus
 }
 
 // Operator is the interface for operations
@@ -176,14 +176,12 @@ func (r *MySQLClusterReconciler) setFailureCondition(ctx context.Context, cluste
 		Message: e.Error(),
 	})
 	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionAvailable,
-		Status:  corev1.ConditionFalse,
-		Message: e.Error(),
+		Type:   mocov1alpha1.ConditionAvailable,
+		Status: corev1.ConditionFalse,
 	})
 	setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionHealthy,
-		Status:  corev1.ConditionFalse,
-		Message: e.Error(),
+		Type:   mocov1alpha1.ConditionHealthy,
+		Status: corev1.ConditionFalse,
 	})
 	if len(outOfSyncInstances) != 0 {
 		msg := fmt.Sprintf("outOfSync instances: %#v", outOfSyncInstances)
@@ -209,19 +207,16 @@ func violationCondition(e error) []mocov1alpha1.MySQLClusterCondition {
 		Message: e.Error(),
 	})
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionFailure,
-		Status:  corev1.ConditionTrue,
-		Message: e.Error(),
+		Type:   mocov1alpha1.ConditionFailure,
+		Status: corev1.ConditionTrue,
 	})
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionAvailable,
-		Status:  corev1.ConditionFalse,
-		Message: e.Error(),
+		Type:   mocov1alpha1.ConditionAvailable,
+		Status: corev1.ConditionFalse,
 	})
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
-		Type:    mocov1alpha1.ConditionHealthy,
-		Status:  corev1.ConditionFalse,
-		Message: e.Error(),
+		Type:   mocov1alpha1.ConditionHealthy,
+		Status: corev1.ConditionFalse,
 	})
 	return conditions
 }
@@ -276,9 +271,8 @@ func availableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterCon
 			Message: msg,
 		})
 		setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
-			Type:    mocov1alpha1.ConditionHealthy,
-			Status:  corev1.ConditionFalse,
-			Message: msg,
+			Type:   mocov1alpha1.ConditionHealthy,
+			Status: corev1.ConditionFalse,
 		})
 	}
 	setCondition(&conditions, mocov1alpha1.MySQLClusterCondition{
@@ -359,7 +353,7 @@ func (r *MySQLClusterReconciler) getMySQLClusterStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
-	rows, err := db.Unsafe().Queryx(`show master status`)
+	rows, err := db.Unsafe().Queryx(`SHOW MASTER STATUS`)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +372,7 @@ func (r *MySQLClusterReconciler) getMySQLPrimaryStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReplicaStatus, error) {
-	rows, err := db.Unsafe().Queryx(`show slave status`)
+	rows, err := db.Unsafe().Queryx(`SHOW SLAVE STATUS`)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +391,7 @@ func (r *MySQLClusterReconciler) getMySQLReplicaStatus(ctx context.Context, log 
 }
 
 func (r *MySQLClusterReconciler) getMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLGlobalVariablesStatus, error) {
-	rows, err := db.Queryx(`select @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count`)
+	rows, err := db.Queryx(`SELECT @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count`)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +410,7 @@ func (r *MySQLClusterReconciler) getMySQLGlobalVariablesStatus(ctx context.Conte
 }
 
 func (r *MySQLClusterReconciler) getMySQLCloneStateStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLCloneStateStatus, error) {
-	rows, err := db.Queryx(` select state from performance_schema.clone_status`)
+	rows, err := db.Queryx(`SELECT state FROM performance_schema.clone_status`)
 	if err != nil {
 		return nil, err
 	}

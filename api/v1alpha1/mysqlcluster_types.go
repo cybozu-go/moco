@@ -158,7 +158,6 @@ const (
 	ConditionOutOfSync   MySQLClusterConditionType = "OutOfSync"
 	ConditionFailure     MySQLClusterConditionType = "Failure"
 	ConditionViolation   MySQLClusterConditionType = "Violation"
-	// and more
 )
 
 // +kubebuilder:object:root=true
