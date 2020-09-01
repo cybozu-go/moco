@@ -61,7 +61,10 @@ spec:
 			Expect(ev.Meta.GetNamespace()).Should(Equal("default"))
 			Expect(ev.Meta.GetName()).Should(Equal("mysqlcluster"))
 		case <-time.After(3 * time.Second):
-			Expect(true).Should(Equal(false))
+			Fail("Generic Event wasn't fired!!")
 		}
+	})
+	It("should not notify generic events with a no-initialized cluster", func() {
+		// TODO
 	})
 }

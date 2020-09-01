@@ -4,6 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/cybozu-go/moco"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,14 +57,17 @@ var _ = BeforeSuite(func(done Done) {
 	err = mocov1alpha1.AddToScheme(sch)
 	Expect(err).NotTo(HaveOccurred())
 
-	// +kubebuilder:scaffold:scheme
-
 	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: sch,
 	})
 	Expect(err).ToNot(HaveOccurred())
-	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
+
+	err = mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
 	Expect(err).ToNot(HaveOccurred())
+
+	go mgr.Start(ctrl.SetupSignalHandler())
+
+	k8sClient = mgr.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
 	close(done)
@@ -75,3 +82,14 @@ var _ = AfterSuite(func() {
 var _ = Describe("Test runners", func() {
 	Context("cluster-watcher", testMySQLClusterWatcher)
 })
+
+func selectInitializedCluster(obj runtime.Object) []string {
+	cluster := obj.(*mocov1alpha1.MySQLCluster)
+
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type == mocov1alpha1.ConditionInitialized {
+			return []string{string(cond.Status)}
+		}
+	}
+	return []string{string(corev1.ConditionUnknown)}
+}
