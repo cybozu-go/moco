@@ -4,12 +4,39 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func TestGetMySQLClusterStatus(t *testing.T) {
+	acc := NewMySQLAccessor(&MySQLAccessorConfig{
+		ConnMaxLifeTime:   30 * time.Minute,
+		ConnectionTimeout: 3 * time.Second,
+		ReadTimeout:       30 * time.Second,
+	})
+	// port number is fixed as moco.MySQLAdminPort = 33062
+	hosts := []string{"localhost"}
+	password := ""
+	inf := NewInfrastructure(nil, acc, password, hosts)
+	cluster := mocov1alpha1.MySQLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test",
+			ClusterName: "test-cluster",
+			Namespace:   "test-namespace",
+			UID:         "test-uid",
+		},
+		Spec: mocov1alpha1.MySQLClusterSpec{
+			Replicas: 3,
+		},
+	}
+	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
+
+	GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+
 	type args struct {
 		ctx     context.Context
 		log     logr.Logger

@@ -34,7 +34,11 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	infra := accessor.Infrastructure{r.Client, r.MySQLAccessor, password}
+	var hosts []string
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		hosts = append(hosts, moco.GetHost(cluster, i))
+	}
+	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, hosts)
 	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 
 	op, err := decideNextOperation(log, cluster, status)

@@ -12,7 +12,17 @@ import (
 type Infrastructure struct {
 	client.Client
 	MySQLAccessor *MySQLAccessor
-	Password      string
+	password      string
+	hosts         []string
+}
+
+func NewInfrastructure(cli client.Client, acc *MySQLAccessor, password string, hosts []string) Infrastructure {
+	return Infrastructure{
+		Client:        cli,
+		MySQLAccessor: acc,
+		password:      password,
+		hosts:         hosts,
+	}
 }
 
 func (i Infrastructure) GetClient() client.Client {
@@ -20,7 +30,7 @@ func (i Infrastructure) GetClient() client.Client {
 }
 
 func (i Infrastructure) GetDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	db, err := i.MySQLAccessor.Get(moco.GetHost(cluster, index), moco.OperatorAdminUser, i.Password)
+	db, err := i.MySQLAccessor.Get(i.hosts[index], moco.OperatorAdminUser, i.password)
 	if err != nil {
 		return nil, err
 	}
