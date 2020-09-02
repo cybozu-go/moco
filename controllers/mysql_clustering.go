@@ -30,7 +30,11 @@ type Operation struct {
 
 // reconcileMySQLCluster reconciles MySQL cluster
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
-	infra := accessor.Infrastructure{r.Client, r.MySQLAccessor}
+	password, err := moco.GetPassword(ctx, cluster, r.Client, moco.OperatorPasswordKey)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	infra := accessor.Infrastructure{r.Client, r.MySQLAccessor, password}
 	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 
 	op, err := decideNextOperation(log, cluster, status)
@@ -368,10 +372,11 @@ func (r configureReplicationOp) Name() string {
 }
 
 func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	password, err := infra.GetPassword(ctx, cluster, moco.ReplicationPasswordKey)
+	password, err := moco.GetPassword(ctx, cluster, infra.GetClient(), moco.ReplicationPasswordKey)
 	if err != nil {
 		return err
 	}
+
 	db, err := infra.GetDB(ctx, cluster, r.index)
 	if err != nil {
 		return err
