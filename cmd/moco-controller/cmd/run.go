@@ -9,6 +9,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/controllers"
 	// +kubebuilder:scaffold:imports
@@ -48,7 +49,7 @@ func subMain() error {
 		Scheme:                 mgr.GetScheme(),
 		ConfInitContainerImage: config.confInitContainerImage,
 		CurlContainerImage:     config.curlContainerImage,
-		MySQLAccessor: controllers.NewMySQLAccessor(&controllers.MySQLAccessorConfig{
+		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   30 * time.Minute,
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,

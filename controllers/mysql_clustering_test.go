@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -178,7 +179,7 @@ func TestDecideNextOperation(t *testing.T) {
 
 type testData struct {
 	Custer *mocov1alpha1.MySQLCluster
-	Status *MySQLClusterStatus
+	Status *accessor.MySQLClusterStatus
 }
 
 func newTestData() testData {
@@ -201,8 +202,8 @@ func newTestData() testData {
 }
 
 func (d testData) withUnAvailableInstances() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			unavailableIns(), readOnlyIns(1), readOnlyIns(1),
 		},
 	}
@@ -210,8 +211,8 @@ func (d testData) withUnAvailableInstances() testData {
 }
 
 func (d testData) withOneWritableInstance() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			readOnlyIns(1), writableIns(1), readOnlyIns(1),
 		},
 	}
@@ -219,8 +220,8 @@ func (d testData) withOneWritableInstance() testData {
 }
 
 func (d testData) withTwoWritableInstances() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			writableIns(1), writableIns(1), readOnlyIns(1),
 		},
 	}
@@ -228,8 +229,8 @@ func (d testData) withTwoWritableInstances() testData {
 }
 
 func (d testData) withReadableInstances() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			readOnlyIns(1), readOnlyIns(1), readOnlyIns(1),
 		},
 	}
@@ -237,8 +238,8 @@ func (d testData) withReadableInstances() testData {
 }
 
 func (d testData) withReplicas() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			readOnlyIns(1), readOnlyInsWithReplicaStatus(1, false), readOnlyInsWithReplicaStatus(1, false),
 		},
 	}
@@ -246,8 +247,8 @@ func (d testData) withReplicas() testData {
 }
 
 func (d testData) withLaggedReplica() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			writableIns(1), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false),
 		},
 	}
@@ -255,8 +256,8 @@ func (d testData) withLaggedReplica() testData {
 }
 
 func (d testData) withLaggedReplicas() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			readOnlyIns(1), readOnlyInsWithReplicaStatus(1, true), readOnlyInsWithReplicaStatus(1, true),
 		},
 	}
@@ -274,16 +275,16 @@ func (d testData) withSyncedReplicas(replicas int) testData {
 }
 
 func (d testData) withAvailableCluster() testData {
-	d.Status = &MySQLClusterStatus{
-		InstanceStatus: []MySQLInstanceStatus{
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
 			writableIns(1), readOnlyInsWithReplicaStatus(1, false), readOnlyInsWithReplicaStatus(1, false),
 		},
 	}
 	return d
 }
 
-func unavailableIns() MySQLInstanceStatus {
-	return MySQLInstanceStatus{
+func unavailableIns() accessor.MySQLInstanceStatus {
+	return accessor.MySQLInstanceStatus{
 		Available:            false,
 		PrimaryStatus:        nil,
 		ReplicaStatus:        nil,
@@ -292,15 +293,15 @@ func unavailableIns() MySQLInstanceStatus {
 	}
 }
 
-func writableIns(syncWaitCount int) MySQLInstanceStatus {
-	return MySQLInstanceStatus{
+func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
+	return accessor.MySQLInstanceStatus{
 		Available: true,
-		PrimaryStatus: &MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
 			String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
 			Valid:  true,
 		}},
 		ReplicaStatus: nil,
-		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           false,
 			SuperReadOnly:                      false,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -309,15 +310,15 @@ func writableIns(syncWaitCount int) MySQLInstanceStatus {
 	}
 }
 
-func readOnlyIns(syncWaitCount int) MySQLInstanceStatus {
-	return MySQLInstanceStatus{
+func readOnlyIns(syncWaitCount int) accessor.MySQLInstanceStatus {
+	return accessor.MySQLInstanceStatus{
 		Available: true,
-		PrimaryStatus: &MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
 			String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
 			Valid:  true,
 		}},
 		ReplicaStatus: nil,
-		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -326,16 +327,16 @@ func readOnlyIns(syncWaitCount int) MySQLInstanceStatus {
 	}
 }
 
-func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) MySQLInstanceStatus {
+func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) accessor.MySQLInstanceStatus {
 	exeGtid := "1-5"
 	if lagged {
 		exeGtid = "1"
 	}
 
-	return MySQLInstanceStatus{
+	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
-		ReplicaStatus: &MySQLReplicaStatus{
+		ReplicaStatus: &accessor.MySQLReplicaStatus{
 			ID:           0,
 			LastIoErrno:  0,
 			LastIoError:  sql.NullString{},
@@ -353,7 +354,7 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) MySQLInstanceS
 			SlaveIoRunning:  "Yes",
 			SlaveSqlRunning: "Yes",
 		},
-		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -362,11 +363,11 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) MySQLInstanceS
 	}
 }
 
-func outOfSyncIns(syncWaitCount int) MySQLInstanceStatus {
-	return MySQLInstanceStatus{
+func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
+	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
-		ReplicaStatus: &MySQLReplicaStatus{
+		ReplicaStatus: &accessor.MySQLReplicaStatus{
 			ID:           0,
 			LastIoErrno:  1,
 			LastIoError:  sql.NullString{},
@@ -384,7 +385,7 @@ func outOfSyncIns(syncWaitCount int) MySQLInstanceStatus {
 			SlaveIoRunning:  "Yes",
 			SlaveSqlRunning: "Yes",
 		},
-		GlobalVariableStatus: &MySQLGlobalVariablesStatus{
+		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,

@@ -5,6 +5,8 @@ WORKDIR /workspace
 
 # Copy the go source
 COPY go.mod go.mod
+COPY utils.go utils.go
+COPY accessor/ accessor/
 COPY api/ api/
 COPY controllers/ controllers/
 COPY cmd/ cmd/

@@ -5,11 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
@@ -67,7 +67,7 @@ type MySQLClusterReconciler struct {
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
-	MySQLAccessor          *MySQLAccessor
+	MySQLAccessor          *accessor.MySQLAccessor
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -252,7 +252,7 @@ func selectInitializedCluster(obj runtime.Object) []string {
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := getSecretNameForController(cluster)
+	myNS, mySecretName := moco.GetSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err == nil {
 		return false, nil
@@ -312,7 +312,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
-	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
+	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
 	secret.SetName(secretName)
@@ -351,7 +351,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 
 func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := getSecretNameForController(cluster)
+	myNS, mySecretName := moco.GetSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -366,12 +366,6 @@ func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.C
 		return err
 	}
 	return nil
-}
-
-func getSecretNameForController(cluster *mocov1alpha1.MySQLCluster) (string, string) {
-	myNS := os.Getenv("POD_NAMESPACE")
-	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
-	return myNS, mySecretName
 }
 
 func generateRandomBytes(n int) ([]byte, error) {
@@ -389,7 +383,7 @@ func generateRandomBytes(n int) ([]byte, error) {
 func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
-	cm.SetName(uniqueName(cluster))
+	cm.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
 		setLabels(&cm.ObjectMeta)
@@ -441,13 +435,13 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	headless := &corev1.Service{}
 	headless.SetNamespace(cluster.Namespace)
-	headless.SetName(uniqueName(cluster))
+	headless.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey:      uniqueName(cluster),
+			appNameKey:      moco.UniqueName(cluster),
 			appManagedByKey: myName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
@@ -469,7 +463,7 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 		return false, nil
 	}
 
-	saName := serviceAccountPrefix + uniqueName(cluster)
+	saName := serviceAccountPrefix + moco.UniqueName(cluster)
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
 	sa.SetName(saName)
@@ -494,16 +488,16 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(cluster.Namespace)
-	sts.SetName(uniqueName(cluster))
+	sts.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		setLabels(&sts.ObjectMeta)
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.ServiceName = uniqueName(cluster)
+		sts.Spec.ServiceName = moco.UniqueName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey:      uniqueName(cluster),
+			appNameKey:      moco.UniqueName(cluster),
 			appManagedByKey: myName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
@@ -547,13 +541,13 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = uniqueName(cluster)
+	newTemplate.Labels[appNameKey] = moco.UniqueName(cluster)
 	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
 	}
-	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + uniqueName(cluster)
+	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -592,7 +586,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: uniqueName(cluster),
+						Name: moco.UniqueName(cluster),
 					},
 				},
 			},
@@ -765,7 +759,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
-	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
+	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
@@ -842,7 +836,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 	for i := int32(0); i < cluster.Spec.Replicas; i++ {
 		cronJob := &batchv1beta1.CronJob{}
 		cronJob.SetNamespace(cluster.Namespace)
-		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), i)
+		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
 		cronJob.SetName(podName)
 
 		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
@@ -853,7 +847,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, uniqueName(cluster))},
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, moco.UniqueName(cluster))},
 				},
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
@@ -887,15 +881,6 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
-}
-
-func uniqueName(cluster *mocov1alpha1.MySQLCluster) string {
-	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
-}
-
-func getHost(cluster *mocov1alpha1.MySQLCluster, index int) string {
-	podName := fmt.Sprintf("%s-%d", uniqueName(cluster), index)
-	return fmt.Sprintf("%s.%s.%s.svc", podName, uniqueName(cluster), cluster.Namespace)
 }
 
 func setLabels(om *metav1.ObjectMeta) {

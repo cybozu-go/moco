@@ -1,4 +1,4 @@
-package controllers
+package accessor
 
 import (
 	"fmt"
@@ -13,7 +13,6 @@ import (
 
 	// MySQL Driver
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // MySQLAccessorConfig contains MySQL connection configurations
@@ -90,7 +89,7 @@ func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
 
 // Remove cleans staled connections
 func (acc *MySQLAccessor) Remove(cluster *mocov1alpha1.MySQLCluster) {
-	postfix := uniqueName(cluster) + "." + cluster.Namespace
+	postfix := moco.UniqueName(cluster) + "." + cluster.Namespace
 
 	acc.mu.Lock()
 	defer acc.mu.Unlock()
