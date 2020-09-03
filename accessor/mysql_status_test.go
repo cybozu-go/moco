@@ -66,7 +66,12 @@ func initializeOperatorAdminUser() error {
 	conf.Addr = host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	var db *sqlx.DB
+	var err error
+	for i := 0; i < 10; i++ {
+		db, err = sqlx.Connect("mysql", conf.FormatDSN())
+		time.Sleep(time.Second * 3)
+	}
 	if err != nil {
 		return err
 	}
