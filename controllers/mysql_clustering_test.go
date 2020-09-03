@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
@@ -295,11 +294,8 @@ func unavailableIns() accessor.MySQLInstanceStatus {
 
 func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
-		Available: true,
-		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
-			String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			Valid:  true,
-		}},
+		Available:     true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
 		ReplicaStatus: nil,
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           false,
@@ -312,11 +308,8 @@ func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 
 func readOnlyIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
-		Available: true,
-		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: sql.NullString{
-			String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			Valid:  true,
-		}},
+		Available:     true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
 		ReplicaStatus: nil,
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
@@ -337,22 +330,16 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) accessor.MySQL
 		Available:     true,
 		PrimaryStatus: nil,
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			ID:           0,
-			LastIoErrno:  0,
-			LastIoError:  sql.NullString{},
-			LastSqlErrno: 0,
-			LastSqlError: sql.NullString{},
-			MasterHost:   hostName(0),
-			RetrievedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-				Valid:  true,
-			},
-			ExecutedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:" + exeGtid,
-				Valid:  true,
-			},
-			SlaveIoRunning:  "Yes",
-			SlaveSqlRunning: "Yes",
+			ID:               0,
+			LastIoErrno:      0,
+			LastIoError:      "",
+			LastSQLErrno:     0,
+			LastSQLError:     "",
+			MasterHost:       hostName(0),
+			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:" + exeGtid,
+			SlaveIORunning:   "Yes",
+			SlaveSQLRunning:  "Yes",
 		},
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
@@ -368,22 +355,16 @@ func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 		Available:     true,
 		PrimaryStatus: nil,
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			ID:           0,
-			LastIoErrno:  1,
-			LastIoError:  sql.NullString{},
-			LastSqlErrno: 0,
-			LastSqlError: sql.NullString{},
-			MasterHost:   hostName(0),
-			RetrievedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-				Valid:  true,
-			},
-			ExecutedGtidSet: sql.NullString{
-				String: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-				Valid:  true,
-			},
-			SlaveIoRunning:  "Yes",
-			SlaveSqlRunning: "Yes",
+			ID:               0,
+			LastIoErrno:      1,
+			LastIoError:      "",
+			LastSQLErrno:     0,
+			LastSQLError:     "",
+			MasterHost:       hostName(0),
+			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+			SlaveIORunning:   "Yes",
+			SlaveSQLRunning:  "Yes",
 		},
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,

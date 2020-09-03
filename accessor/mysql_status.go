@@ -28,21 +28,21 @@ type MySQLInstanceStatus struct {
 
 // MySQLPrimaryStatus defines the observed state of a primary
 type MySQLPrimaryStatus struct {
-	ExecutedGtidSet sql.NullString `db:"Executed_Gtid_Set"`
+	ExecutedGtidSet string `db:"Executed_Gtid_Set"`
 }
 
 // MySQLReplicaStatus defines the observed state of a replica
 type MySQLReplicaStatus struct {
-	ID               int            `db:"id"`
-	LastIoErrno      int            `db:"Last_IO_Errno"`
-	LastIoError      sql.NullString `db:"Last_IO_Error"`
-	LastSqlErrno     int            `db:"Last_SQL_Errno"`
-	LastSqlError     sql.NullString `db:"Last_SQL_Error"`
-	MasterHost       string         `db:"Master_Host"`
-	RetrievedGtidSet sql.NullString `db:"Retrieved_Gtid_Set"`
-	ExecutedGtidSet  sql.NullString `db:"Executed_Gtid_Set"`
-	SlaveIoRunning   string         `db:"Slave_IO_Running"`
-	SlaveSqlRunning  string         `db:"Slave_SQL_Running"`
+	ID               int    `db:"id"`
+	LastIoErrno      int    `db:"Last_IO_Errno"`
+	LastIoError      string `db:"Last_IO_Error"`
+	LastSQLErrno     int    `db:"Last_SQL_Errno"`
+	LastSQLError     string `db:"Last_SQL_Error"`
+	MasterHost       string `db:"Master_Host"`
+	RetrievedGtidSet string `db:"Retrieved_Gtid_Set"`
+	ExecutedGtidSet  string `db:"Executed_Gtid_Set"`
+	SlaveIORunning   string `db:"Slave_IO_Running"`
+	SlaveSQLRunning  string `db:"Slave_SQL_Running"`
 }
 
 // MySQLGlobalVariablesStatus defines the observed global variable state of a MySQL instance
