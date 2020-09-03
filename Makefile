@@ -21,6 +21,7 @@ endif
 
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
+MYSQL_VERSION := 8.0.21
 
 all: build/moco-controller
 
@@ -36,6 +37,12 @@ test:
 	go test -race -v -coverprofile cover.out ./...
 	go vet ./...
 	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
+
+start-mysqld:
+	docker run --name moco-test-mysqld --rm -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION)
+
+stop-mysqld:
+	docker stop moco-test-mysqld
 
 # Build moco-controller binary
 build/moco-controller: generate
@@ -72,4 +79,4 @@ setup:
 	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
 	cd /tmp; env GO111MODULE=on GOFLAGS= go get honnef.co/go/tools/cmd/staticcheck
 
-.PHONY:	all test manifests generate mod setup
+.PHONY:	all test manifests generate mod setup start-mysqld stop-mysqld

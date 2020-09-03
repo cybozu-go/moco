@@ -2,7 +2,6 @@ package accessor
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,14 +32,13 @@ type MySQLAccessor struct {
 func NewMySQLAccessor(config *MySQLAccessorConfig) *MySQLAccessor {
 	return &MySQLAccessor{
 		config: config,
-		mu:     sync.Mutex{},
 		dbs:    make(map[string]*sqlx.DB),
 	}
 }
 
 // Get connects a database with specified parameters
-func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
-	uri := acc.getURI(host, user, password)
+func (acc *MySQLAccessor) Get(addr, user, password string) (*sqlx.DB, error) {
+	uri := acc.getURI(addr, user, password)
 	fmt.Println("uri = " + uri)
 
 	acc.mu.Lock()
@@ -63,12 +61,12 @@ func (acc *MySQLAccessor) Get(host, user, password string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-func (acc *MySQLAccessor) getURI(host, user, password string) string {
+func (acc *MySQLAccessor) getURI(addr, user, password string) string {
 	conf := mysql.NewConfig()
 	conf.User = user
 	conf.Passwd = password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(moco.MySQLAdminPort)
+	conf.Addr = addr
 	conf.Timeout = acc.config.ConnectionTimeout
 	conf.ReadTimeout = acc.config.ReadTimeout
 	conf.InterpolateParams = true

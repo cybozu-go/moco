@@ -132,7 +132,7 @@ func TestDecideNextOperation(t *testing.T) {
 					failure("False", ""),
 					outOfSync("True", "outOfSync instances: []int{1}"),
 					available("True", ""),
-					healthy(""),
+					healthy("False", ""),
 				},
 				SyncedReplicas: intPointer(2),
 			},
@@ -285,11 +285,11 @@ func (d testData) withAvailableCluster() testData {
 
 func unavailableIns() accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
-		Available:            false,
-		PrimaryStatus:        nil,
-		ReplicaStatus:        nil,
-		GlobalVariableStatus: nil,
-		CloneStateStatus:     nil,
+		Available:             false,
+		PrimaryStatus:         nil,
+		ReplicaStatus:         nil,
+		GlobalVariablesStatus: nil,
+		CloneStateStatus:      nil,
 	}
 }
 
@@ -301,7 +301,7 @@ func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 			Valid:  true,
 		}},
 		ReplicaStatus: nil,
-		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           false,
 			SuperReadOnly:                      false,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -318,7 +318,7 @@ func readOnlyIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 			Valid:  true,
 		}},
 		ReplicaStatus: nil,
-		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -354,7 +354,7 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) accessor.MySQL
 			SlaveIoRunning:  "Yes",
 			SlaveSqlRunning: "Yes",
 		},
-		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
@@ -385,7 +385,7 @@ func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 			SlaveIoRunning:  "Yes",
 			SlaveSqlRunning: "Yes",
 		},
-		GlobalVariableStatus: &accessor.MySQLGlobalVariablesStatus{
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,

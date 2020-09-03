@@ -38,7 +38,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
 		hosts = append(hosts, moco.GetHost(cluster, i))
 	}
-	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, hosts)
+	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, hosts, moco.MySQLAdminPort)
 	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 
 	op, err := decideNextOperation(log, cluster, status)
@@ -272,7 +272,7 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 	var writableInstanceCounts int
 	var primaryIndex int
 	for i, status := range status.InstanceStatus {
-		if !status.GlobalVariableStatus.ReadOnly {
+		if !status.GlobalVariablesStatus.ReadOnly {
 			writableInstanceCounts++
 			primaryIndex = i
 		}
@@ -339,7 +339,7 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 
 	expectedRplSemiSyncMasterWaitForSlaveCount := int(cluster.Spec.Replicas / 2)
 	st := status.InstanceStatus[o.newPrimaryIndex]
-	if st.GlobalVariableStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
+	if st.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount == expectedRplSemiSyncMasterWaitForSlaveCount {
 		return nil
 	}
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
@@ -425,7 +425,7 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 		}
 	}
 
-	if !primaryStatus.GlobalVariableStatus.ReadOnly {
+	if !primaryStatus.GlobalVariablesStatus.ReadOnly {
 		return false, outOfSyncIns
 	}
 
@@ -435,7 +435,7 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 
-	if !status.InstanceStatus[primaryIndex].GlobalVariableStatus.ReadOnly {
+	if !status.InstanceStatus[primaryIndex].GlobalVariablesStatus.ReadOnly {
 		return nil
 	}
 	return []Operator{

@@ -19,11 +19,11 @@ type MySQLClusterStatus struct {
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
 type MySQLInstanceStatus struct {
-	Available            bool
-	PrimaryStatus        *MySQLPrimaryStatus
-	ReplicaStatus        *MySQLReplicaStatus
-	GlobalVariableStatus *MySQLGlobalVariablesStatus
-	CloneStateStatus     *MySQLCloneStateStatus
+	Available             bool
+	PrimaryStatus         *MySQLPrimaryStatus
+	ReplicaStatus         *MySQLReplicaStatus
+	GlobalVariablesStatus *MySQLGlobalVariablesStatus
+	CloneStateStatus      *MySQLCloneStateStatus
 }
 
 // MySQLPrimaryStatus defines the observed state of a primary
@@ -91,7 +91,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 			log.Info("get readOnly status failed", "err", err, "podName", podName)
 			continue
 		}
-		status.InstanceStatus[instanceIdx].GlobalVariableStatus = readOnlyStatus
+		status.InstanceStatus[instanceIdx].GlobalVariablesStatus = readOnlyStatus
 
 		cloneStatus, err := GetMySQLCloneStateStatus(ctx, log, db)
 		if err != nil {

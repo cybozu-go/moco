@@ -2,6 +2,7 @@ package accessor
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -14,14 +15,16 @@ type Infrastructure struct {
 	MySQLAccessor *MySQLAccessor
 	password      string
 	hosts         []string
+	port          int
 }
 
-func NewInfrastructure(cli client.Client, acc *MySQLAccessor, password string, hosts []string) Infrastructure {
+func NewInfrastructure(cli client.Client, acc *MySQLAccessor, password string, hosts []string, port int) Infrastructure {
 	return Infrastructure{
 		Client:        cli,
 		MySQLAccessor: acc,
 		password:      password,
 		hosts:         hosts,
+		port:          port,
 	}
 }
 
@@ -30,7 +33,7 @@ func (i Infrastructure) GetClient() client.Client {
 }
 
 func (i Infrastructure) GetDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	db, err := i.MySQLAccessor.Get(i.hosts[index], moco.OperatorAdminUser, i.password)
+	db, err := i.MySQLAccessor.Get(i.hosts[index]+":"+strconv.Itoa(i.port), moco.OperatorAdminUser, i.password)
 	if err != nil {
 		return nil, err
 	}

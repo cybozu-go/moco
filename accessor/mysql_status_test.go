@@ -2,26 +2,38 @@ package accessor
 
 import (
 	"context"
-	"reflect"
+	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/go-logr/logr"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+const (
+	host     = "localhost"
+	password = "test-password"
+	port     = 3306
+)
+
 func TestGetMySQLClusterStatus(t *testing.T) {
+	err := initializeOperatorAdminUser()
+	if err != nil {
+		t.Fatalf("cannot create moco-admin user: err=%v", err)
+	}
+
 	acc := NewMySQLAccessor(&MySQLAccessorConfig{
 		ConnMaxLifeTime:   30 * time.Minute,
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	// port number is fixed as moco.MySQLAdminPort = 33062
-	hosts := []string{"localhost"}
-	password := ""
-	inf := NewInfrastructure(nil, acc, password, hosts)
+
+	inf := NewInfrastructure(nil, acc, password, []string{host}, 3306)
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",
@@ -30,31 +42,43 @@ func TestGetMySQLClusterStatus(t *testing.T) {
 			UID:         "test-uid",
 		},
 		Spec: mocov1alpha1.MySQLClusterSpec{
-			Replicas: 3,
+			Replicas: 1,
 		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 
-	GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+	sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+	if len(sts.InstanceStatus) != 1 {
+		t.Fatal("cannot get the MySQLClusterState")
+	}
 
-	type args struct {
-		ctx     context.Context
-		log     logr.Logger
-		infra   Infrastructure
-		cluster *mocov1alpha1.MySQLCluster
+	checkMySQLPrimaryStatus(sts.InstanceStatus[0].PrimaryStatus)
+}
+
+func checkMySQLPrimaryStatus(sts *MySQLPrimaryStatus) {
+	fmt.Printf("%#v", sts)
+}
+
+func initializeOperatorAdminUser() error {
+	conf := mysql.NewConfig()
+	conf.User = "root"
+	conf.Passwd = password
+	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.InterpolateParams = true
+
+	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	if err != nil {
+		return err
 	}
-	tests := []struct {
-		name string
-		args args
-		want *MySQLClusterStatus
-	}{
-		// TODO: Add test cases.
+
+	_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", moco.OperatorAdminUser, password)
+	if err != nil {
+		return err
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetMySQLClusterStatus(tt.args.ctx, tt.args.log, tt.args.infra, tt.args.cluster); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetMySQLClusterStatus() = %v, want %v", got, tt.want)
-			}
-		})
+	_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", moco.OperatorAdminUser)
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
