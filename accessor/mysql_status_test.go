@@ -70,6 +70,9 @@ func initializeOperatorAdminUser() error {
 	var err error
 	for i := 0; i < 10; i++ {
 		db, err = sqlx.Connect("mysql", conf.FormatDSN())
+		if err == nil {
+			break
+		}
 		time.Sleep(time.Second * 3)
 	}
 	if err != nil {
