@@ -330,7 +330,6 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool) accessor.MySQL
 		Available:     true,
 		PrimaryStatus: nil,
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			ID:               0,
 			LastIoErrno:      0,
 			LastIoError:      "",
 			LastSQLErrno:     0,
@@ -355,7 +354,6 @@ func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 		Available:     true,
 		PrimaryStatus: nil,
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			ID:               0,
 			LastIoErrno:      1,
 			LastIoError:      "",
 			LastSQLErrno:     0,
