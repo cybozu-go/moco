@@ -118,11 +118,14 @@ const (
 	InitializedClusterIndexField = ".status.conditions.type.initialized"
 )
 
+// TODO Move the constants to a new operation source file.
 const (
-	OperatorUpdatePrimary        = "update-primary"
+	// OperatorUpdatePrimary is a name of the update Primary operation
+	OperatorUpdatePrimary = "update-primary"
+	// OperatorConfigureReplication is a name of the configure replication operation
 	OperatorConfigureReplication = "configure-replication"
-	OperatorTurnOffReadOnly      = "turnoff-readonly"
-	UpdateSyncedReplicas         = "update-syncedreplicas"
+	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
+	OperatorTurnOffReadOnly = "turnoff-readonly"
 )
 
 var (
