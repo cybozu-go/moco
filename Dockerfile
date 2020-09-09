@@ -5,10 +5,13 @@ WORKDIR /workspace
 
 # Copy the go source
 COPY go.mod go.mod
+COPY utils.go utils.go
+COPY accessor/ accessor/
 COPY api/ api/
 COPY controllers/ controllers/
 COPY cmd/ cmd/
 COPY constants.go constants.go
+COPY runners/ runners/
 COPY version.go version.go
 COPY vendor/ vendor/
 

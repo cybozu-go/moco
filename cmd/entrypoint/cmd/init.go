@@ -95,6 +95,12 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Info("setup replication user", nil)
+	err = initializeReplicationUser(ctx, os.Getenv(moco.ReplicationPasswordEnvName))
+	if err != nil {
+		return err
+	}
+
 	log.Info("setup misc user", nil)
 	err = initializeMiscUser(ctx, os.Getenv(moco.MiscPasswordEnvName))
 	if err != nil {
@@ -266,6 +272,31 @@ GRANT
 	return nil
 }
 
+func initializeReplicationUser(ctx context.Context, password string) error {
+	// Use mysql_native_password because no ssl connections without sha-2 cache fail
+	// Will fix it when we work on replication with encrypted connection
+	// See https://yoku0825.blogspot.com/2018/10/mysql-80cachingsha2password-ssl.html
+	t := template.Must(template.New("sql").Parse(`
+CREATE USER '{{ .User }}'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Password }}' ;
+GRANT
+    REPLICATION SLAVE,
+    REPLICATION CLIENT
+  ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
+`))
+
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.ReplicatorUser, password})
+
+	out, err := execSQL(ctx, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+	return nil
+}
+
 func initializeMiscUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER misc@localhost IDENTIFIED BY '{{ .Password }}' ;
@@ -295,6 +326,7 @@ password=%s
 func installPlugins(ctx context.Context) error {
 	sql := `INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 `
 	out, err := execSQL(ctx, []byte(sql), "")
 	if err != nil {

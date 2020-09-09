@@ -20,7 +20,8 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 KUBEBUILDER_VERSION := 2.3.1
-CTRLTOOLS_VERSION := 0.2.9
+CTRLTOOLS_VERSION := 0.4.0
+MYSQL_VERSION := 8.0.21
 
 all: build/moco-controller
 
@@ -28,7 +29,7 @@ all: build/moco-controller
 test:
 	cd /tmp; GO111MODULE=on GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker
 	test -z "$$(gofmt -s -l . | grep -v '^vendor' | tee /dev/stderr)"
-	test -z "$$(golint $$(go list -mod=vendor ./... | grep -v /vendor/) | tee /dev/stderr)"
+	staticcheck ./...
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
 	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... | grep -v /vendor/ ) 2>&1 | tee /dev/stderr)"
 	ineffassign .
@@ -36,6 +37,12 @@ test:
 	go test -race -v -coverprofile cover.out ./...
 	go vet ./...
 	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
+
+start-mysqld:
+	docker run --name moco-test-mysqld --rm -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION)
+
+stop-mysqld:
+	docker stop moco-test-mysqld
 
 # Build moco-controller binary
 build/moco-controller: generate
@@ -70,5 +77,6 @@ setup:
 	$(SUDO) curl -o /usr/local/kubebuilder/bin/kustomize -sL https://go.kubebuilder.io/kustomize/$(GOOS)/$(GOARCH)
 	$(SUDO) chmod a+x /usr/local/kubebuilder/bin/kustomize
 	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
+	cd /tmp; env GO111MODULE=on GOFLAGS= go get honnef.co/go/tools/cmd/staticcheck
 
-.PHONY:	all test manifests generate mod setup
+.PHONY:	all test manifests generate mod setup start-mysqld stop-mysqld

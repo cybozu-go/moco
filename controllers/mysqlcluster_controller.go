@@ -5,11 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -20,7 +22,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -61,6 +67,7 @@ type MySQLClusterReconciler struct {
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
+	MySQLAccessor          *accessor.MySQLAccessor
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -101,37 +108,34 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		err := r.createSecretIfNotExist(ctx, log, cluster)
+		// initialize
+		isUpdated, err := r.reconcileInitialize(ctx, log, cluster)
 		if err != nil {
+			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionFalse, Reason: "reconcileInitializeFailed", Message: err.Error()})
+			if errUpdate := r.Status().Update(ctx, cluster); errUpdate != nil {
+				log.Error(err, "failed to status update")
+			}
+			log.Error(err, "failed to initialize MySQLCluster")
+			return ctrl.Result{}, err
+		}
+		if isUpdated {
+			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
+				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionTrue})
+			if err := r.Status().Update(ctx, cluster); err != nil {
+				log.Error(err, "failed to status update", "status", cluster.Status)
+				return ctrl.Result{}, err
+			}
+		}
+
+		// clustering
+		result, err := r.reconcileClustering(ctx, log, cluster)
+		if err != nil {
+			log.Error(err, "failed to ready MySQLCluster")
 			return ctrl.Result{}, err
 		}
 
-		err = r.createOrUpdateConfigMap(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateHeadlessService(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateRBAC(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateStatefulSet(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		err = r.createOrUpdateCronJob(ctx, log, cluster)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 
 	// finalization
@@ -153,11 +157,73 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
 		return ctrl.Result{}, err
 	}
+
+	r.MySQLAccessor.Remove(cluster)
+
 	return ctrl.Result{}, nil
+}
+
+func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+
+	isUpdatedAtLeastOnce := false
+	isUpdated, err := r.createSecretIfNotExist(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateConfigMap(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateHeadlessService(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateRBAC(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateStatefulSet(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateCronJob(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	return isUpdatedAtLeastOnce, nil
 }
 
 // SetupWithManager sets up the controller for reconciliation.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// SetupWithManager sets up the controller for reconciliation.
+
+	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
+	if err != nil {
+		return err
+	}
+
+	ch := make(chan event.GenericEvent)
+	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch, 30*time.Second)
+	err = mgr.Add(watcher)
+	if err != nil {
+		return err
+	}
+	src := source.Channel{
+		Source: ch,
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1alpha1.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -166,48 +232,63 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1beta1.CronJob{}).
+		Watches(&src, &handler.EnqueueRequestForObject{}).
+		WithOptions(
+			controller.Options{MaxConcurrentReconciles: 8},
+		).
 		Complete(r)
 }
 
-func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func selectInitializedCluster(obj runtime.Object) []string {
+	cluster := obj.(*mocov1alpha1.MySQLCluster)
+
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type == mocov1alpha1.ConditionInitialized {
+			return []string{string(cond.Status)}
+		}
+	}
+	return []string{string(corev1.ConditionUnknown)}
+}
+
+func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
+	myNS, mySecretName := moco.GetSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err == nil {
-		return nil
+		return false, nil
 	}
 	if !errors.IsNotFound(err) {
 		log.Error(err, "unable to get Secret")
-		return err
+		return false, err
 	}
 
 	operatorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
-		return err
+		return false, err
 	}
 	replicatorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
-		return err
+		return false, err
 	}
 	donorPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = r.createPasswordSecretForInit(ctx, cluster, operatorPass, replicatorPass, donorPass)
 	if err != nil {
 		log.Error(err, "unable to create Secret for user")
-		return err
+		return false, err
 	}
 
 	// Secret for controller must be created lastly, because its existence is checked at the beginning of the process
 	err = r.createPasswordSecretForController(ctx, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
 	if err != nil {
 		log.Error(err, "unable to create Secret for Controller")
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }
 
 func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, operatorPass, replicatorPass, donorPass []byte) error {
@@ -231,7 +312,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
-	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
+	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
 	secret.SetName(secretName)
@@ -270,7 +351,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 
 func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
 	secret := &corev1.Secret{}
-	myNS, mySecretName := r.getSecretNameForController(cluster)
+	myNS, mySecretName := moco.GetSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -287,12 +368,6 @@ func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.C
 	return nil
 }
 
-func (r *MySQLClusterReconciler) getSecretNameForController(cluster *mocov1alpha1.MySQLCluster) (string, string) {
-	myNS := os.Getenv("POD_NAMESPACE")
-	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
-	return myNS, mySecretName
-}
-
 func generateRandomBytes(n int) ([]byte, error) {
 	bytes := make([]byte, n)
 	_, err := rand.Read(bytes)
@@ -305,10 +380,10 @@ func generateRandomBytes(n int) ([]byte, error) {
 	return ret, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
-	cm.SetName(uniqueName(cluster))
+	cm.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
 		setLabels(&cm.ObjectMeta)
@@ -347,46 +422,48 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update ConfigMap")
-		return err
+		return false, err
 	}
 
 	if op != controllerutil.OperationResultNone {
 		log.Info("reconcile ConfigMap successfully", "op", op)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	headless := &corev1.Service{}
 	headless.SetNamespace(cluster.Namespace)
-	headless.SetName(uniqueName(cluster))
+	headless.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey:      uniqueName(cluster),
+			appNameKey:      moco.UniqueName(cluster),
 			appManagedByKey: myName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update headless Service")
-		return err
+		return false, err
 	}
 
 	if op != controllerutil.OperationResultNone {
 		log.Info("reconcile headless Service successfully", "op", op)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	if cluster.Spec.PodTemplate.Spec.ServiceAccountName != "" {
-		return nil
+		return false, nil
 	}
 
-	saName := serviceAccountPrefix + uniqueName(cluster)
+	saName := serviceAccountPrefix + moco.UniqueName(cluster)
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
 	sa.SetName(saName)
@@ -398,28 +475,29 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 
 	if err != nil {
 		log.Error(err, "unable to create-or-update ServiceAccount")
-		return err
+		return false, err
 	}
 
 	if op != controllerutil.OperationResultNone {
 		log.Info("reconcile ServiceAccount successfully", "op", op)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	sts.SetNamespace(cluster.Namespace)
-	sts.SetName(uniqueName(cluster))
+	sts.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
 		setLabels(&sts.ObjectMeta)
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.ServiceName = uniqueName(cluster)
+		sts.Spec.ServiceName = moco.UniqueName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey:      uniqueName(cluster),
+			appNameKey:      moco.UniqueName(cluster),
 			appManagedByKey: myName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
@@ -435,13 +513,14 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update StatefulSet")
-		return err
+		return false, err
 	}
 
 	if op != controllerutil.OperationResultNone {
 		log.Info("reconcile StatefulSet successfully", "op", op)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*corev1.PodTemplateSpec, error) {
@@ -462,13 +541,13 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
 		log.Info("overwriting Pod template's label", "label", appNameKey)
 	}
-	newTemplate.Labels[appNameKey] = uniqueName(cluster)
+	newTemplate.Labels[appNameKey] = moco.UniqueName(cluster)
 	newTemplate.Labels[appManagedByKey] = myName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
 	}
-	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + uniqueName(cluster)
+	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -507,7 +586,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: uniqueName(cluster),
+						Name: moco.UniqueName(cluster),
 					},
 				},
 			},
@@ -680,7 +759,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
-	secretName := rootPasswordSecretPrefix + uniqueName(cluster)
+	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
@@ -752,11 +831,12 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 }
 
 // createOrUpdateCronJob doesn't remove cron jobs when the replica number is decreased
-func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdated := false
 	for i := int32(0); i < cluster.Spec.Replicas; i++ {
 		cronJob := &batchv1beta1.CronJob{}
 		cronJob.SetNamespace(cluster.Namespace)
-		podName := fmt.Sprintf("%s-%d", uniqueName(cluster), i)
+		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
 		cronJob.SetName(podName)
 
 		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
@@ -767,20 +847,21 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, uniqueName(cluster))},
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, moco.UniqueName(cluster))},
 				},
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
 		})
 		if err != nil {
 			log.Error(err, "unable to create-or-update CronJob")
-			return err
+			return isUpdated, err
 		}
 		if op != controllerutil.OperationResultNone {
 			log.Info("reconcile CronJob successfully", "op", op)
+			isUpdated = true
 		}
 	}
-	return nil
+	return isUpdated, nil
 }
 
 func containsString(slice []string, s string) bool {
@@ -800,10 +881,6 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
-}
-
-func uniqueName(cluster *mocov1alpha1.MySQLCluster) string {
-	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
 }
 
 func setLabels(om *metav1.ObjectMeta) {
@@ -827,6 +904,33 @@ func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName
 			return &r
 		}
 		return nil
+	}
+	return nil
+}
+
+func setCondition(conditions *[]mocov1alpha1.MySQLClusterCondition, newCondition mocov1alpha1.MySQLClusterCondition) {
+	if conditions == nil {
+		conditions = &[]mocov1alpha1.MySQLClusterCondition{}
+	}
+	current := findCondition(*conditions, newCondition.Type)
+	if current == nil {
+		newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		*conditions = append(*conditions, newCondition)
+		return
+	}
+	if current.Status != newCondition.Status {
+		current.Status = newCondition.Status
+		current.LastTransitionTime = metav1.NewTime(time.Now())
+	}
+	current.Reason = newCondition.Reason
+	current.Message = newCondition.Message
+}
+
+func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionType mocov1alpha1.MySQLClusterConditionType) *mocov1alpha1.MySQLClusterCondition {
+	for i, c := range conditions {
+		if c.Type == conditionType {
+			return &conditions[i]
+		}
 	}
 	return nil
 }

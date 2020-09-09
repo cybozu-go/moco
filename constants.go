@@ -1,5 +1,7 @@
 package moco
 
+import "errors"
+
 const (
 	// OperatorUser is a name of MOCO operator user in the MySQL context.
 	OperatorUser = "moco"
@@ -44,6 +46,17 @@ const (
 	MySQLConfTemplatePath = "/etc/mysql_template"
 )
 
+const (
+	// MySQLPort is a port number for MySQL
+	MySQLPort = 3306
+
+	// MySQLAdminPort is a port number for MySQL Admin
+	MySQLAdminPort = 33062
+
+	// MySQLXPort is a port number for MySQL XProtocol
+	MySQLXPort = 33060
+)
+
 // env names must correspond to options in entrypoint/init.go
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.
@@ -76,6 +89,9 @@ const (
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
 	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
 
+	// ReplicationPasswordEnvName is a name of the environment variable of a password for replication user.
+	ReplicationPasswordEnvName = "REPLICATION_PASSWORD"
+
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
 )
@@ -95,4 +111,28 @@ const (
 
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"
+)
+
+const (
+	// InitializedClusterIndexField is an index name for Initialized MySQL Clusters
+	InitializedClusterIndexField = ".status.conditions.type.initialized"
+)
+
+// TODO Move the constants to a new operation source file.
+const (
+	// OperatorUpdatePrimary is a name of the update Primary operation
+	OperatorUpdatePrimary = "update-primary"
+	// OperatorConfigureReplication is a name of the configure replication operation
+	OperatorConfigureReplication = "configure-replication"
+	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
+	OperatorTurnOffReadOnly = "turnoff-readonly"
+)
+
+var (
+	// ErrConstraintsViolation is returned when the constraints violation occurs
+	ErrConstraintsViolation = errors.New("constraints violation occurs")
+	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
+	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
+	// ErrUnavailableHost is returned at least one MySQL instance is unavailable
+	ErrUnavailableHost = errors.New("unavailable host exists")
 )

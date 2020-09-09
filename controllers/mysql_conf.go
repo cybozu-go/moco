@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cybozu-go/moco"
@@ -94,7 +95,7 @@ var (
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"port":    "3306",
+			"port":    strconv.Itoa(moco.MySQLPort),
 			"socket":  filepath.Join(moco.VarRunPath, "mysqld.sock"),
 			"datadir": moco.MySQLDataPath,
 
@@ -107,19 +108,25 @@ var (
 			"gtid_mode":                "ON",
 			"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
-			"mysqlx_port": "33060",
-			"admin_port":  "33062",
+			"mysqlx_port": strconv.Itoa(moco.MySQLXPort),
+			"admin_port":  strconv.Itoa(moco.MySQLAdminPort),
 
 			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
 
 			"server_id":     "{{ .ServerID }}",
 			"admin_address": "{{ .AdminAddress }}",
+
+			"read_only":        "ON",
+			"super_read_only":  "ON",
+			"skip_slave_start": "ON",
+
+			"loose_rpl_semi_sync_master_timeout": strconv.Itoa(24 * 60 * 60 * 1000),
 		},
 		"client": {
-			"port":                        "3306",
+			"port":                        strconv.Itoa(moco.MySQLPort),
 			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
-			"loose-default_character_set": "utf8mb4",
+			"loose_default_character_set": "utf8mb4",
 		},
 		"mysql": {
 			"auto_rehash":  "OFF",

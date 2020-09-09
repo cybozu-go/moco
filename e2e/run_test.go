@@ -23,10 +23,12 @@ func kubectl(args ...string) ([]byte, []byte, error) {
 	return execAtLocal("kubectl", nil, args...)
 }
 
+//lint:ignore U1000 This func may be used in the future.
 func kubectlWithInput(input []byte, args ...string) ([]byte, []byte, error) {
 	return execAtLocal("kubectl", input, args...)
 }
 
+//lint:ignore U1000 This func may be used in the future.
 func containString(s []string, target string) bool {
 	for _, ss := range s {
 		if ss == target {

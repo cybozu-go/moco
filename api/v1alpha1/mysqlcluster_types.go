@@ -116,7 +116,7 @@ type MySQLClusterStatus struct {
 	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
 
 	// Ready represents the status of readiness.
-	Ready MySQLClusterReady `json:"ready"`
+	Ready corev1.ConditionStatus `json:"ready"`
 
 	// CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
 	// +optional
@@ -147,37 +147,32 @@ type MySQLClusterCondition struct {
 }
 
 // MySQLClusterConditionType is the type of MySQLCluster condition.
-// +kubebuilder:validation:Enum=Initialized
+// +kubebuilder:validation:Enum=Initialized;Healthy;Available;OutOfSync;Failure;Violation
 type MySQLClusterConditionType string
 
 // Valid values for MySQLClusterConditionType
 const (
 	ConditionInitialized MySQLClusterConditionType = "Initialized"
-	// and more
-)
-
-// MySQLClusterReady represents the status of readiness.
-// +kubebuilder:validation:Enum=True;False;Unknown
-type MySQLClusterReady string
-
-// Valid values for MySQLClusterReady.
-const (
-	ReadyTrue    MySQLClusterReady = "True"
-	ReadyFalse   MySQLClusterReady = "False"
-	ReadyUnknown MySQLClusterReady = "Unknown"
+	ConditionHealthy     MySQLClusterConditionType = "Healthy"
+	ConditionAvailable   MySQLClusterConditionType = "Available"
+	ConditionOutOfSync   MySQLClusterConditionType = "OutOfSync"
+	ConditionFailure     MySQLClusterConditionType = "Failure"
+	ConditionViolation   MySQLClusterConditionType = "Violation"
 )
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.ready"
+// +kubebuilder:printcolumn:name="PRIMARY",type="integer",JSONPath=".status.currentPrimaryIndex"
+// +kubebuilder:printcolumn:name="SYNCED",type="integer",JSONPath=".status.syncedReplicas"
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec MySQLClusterSpec `json:"spec"`
-	// +optional
-	Status *MySQLClusterStatus `json:"status,omitempty"`
+	Spec   MySQLClusterSpec   `json:"spec"`
+	Status MySQLClusterStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

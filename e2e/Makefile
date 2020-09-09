@@ -5,11 +5,11 @@ export GOFLAGS
 GINKGO=$(GOPATH)/bin/ginkgo
 KUBECTL=/usr/local/bin/kubectl
 KIND_VERSION=0.8.1
-KUSTOMIZE_VERSION=3.5.4
+KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE=/usr/local/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 
-KUBERNETES_VERSION=1.17.2
+KUBERNETES_VERSION=1.17.5
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
@@ -26,6 +26,9 @@ test: load-image
 	kubectl config use-context kind-$(KIND_CLUSTER_NAME)
 	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
 	env E2ETEST=1 $(GINKGO) --failFast -v .
+
+telepresence:
+	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run -mod=vendor ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.0
 
 load-image: moco.img mysql.img
 	kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img

@@ -32,6 +32,9 @@ jobs:
   build:
     docker:
       - image: quay.io/cybozu/golang:1.13-bionic
+      - image: mysql:8.0.21
+        environment:
+          MYSQL_ROOT_PASSWORD: test-password
     working_directory: /work
     steps:
       - checkout

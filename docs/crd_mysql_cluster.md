@@ -25,7 +25,7 @@ MySQLClusterSpec
 | `mysqlConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                 |
 | `rootPasswordSecretName`      | string                      | No       | `Secret` name for root user config.                                                                                                                                               |
 | `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary.            |
-| `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                    |
+| `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                   |
 | `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                         |
 
 The configMap specified with `mysqlConfigMapName` contains MySQL options of mysqld section as key-value pairs.
@@ -51,13 +51,27 @@ MySQLClusterStatus
 MySQLClusterCondition
 ---------------------
 
-| Field                | Type   | Required | Description                                                      |
-| -------------------- | ------ | -------- | ---------------------------------------------------------------- |
-| `type`               | Enum   | Yes      | The type of condition. Possible values are (TBD).                |
-| `status`             | Enum   | Yes      | Status of the condition. One of `True`, `False`, `Unknown`.      |
-| `reason`             | string | No       | One-word CamelCase reason for the condition's last transition.   |
-| `message`            | string | No       | Human-readable message indicating details about last transition. |
-| `lastTransitionTime` | [Time] | Yes      | The last time the condition transits from one status to another. |
+| Field                | Type   | Required | Description                                                                |
+| -------------------- | ------ | -------- | -------------------------------------------------------------------------- |
+| `type`               | Enum   | Yes      | The type of condition. Please see `MySQLClusterConditionType` for details. |
+| `status`             | Enum   | Yes      | Status of the condition. One of `True`, `False`, `Unknown`.                |
+| `reason`             | string | No       | One-word CamelCase reason for the condition's last transition.             |
+| `message`            | string | No       | Human-readable message indicating details about last transition.           |
+| `lastTransitionTime` | [Time] | Yes      | The last time the condition transits from one status to another.           |
+
+MySQLClusterConditionType
+------------------------
+
+| Value       | Description                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Initialized | All the objects needed to make up the cluster have been created successfully.                                                        |
+| Healthy     | As for all replicas, semi-sync replication is working without `OutOfSync`, and the primary is writable.                              |
+| Available   | In a minimum number of replicas (1 of 3, 2 of 5), semi-sync replication is working without `OutOfSync`, and the primary is writable. |
+| OutOfSync   | There are replicas whose data is out of sync (i.e., `Last_IO_Errno` not equal zero).                                                 |
+| Failure     | Any errors were detected. The primary is not writable.                                                                               |
+| Violation   | The constraints violation was detected. Once detected, it will not be changed.                                                       |
+
+
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta
 [Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta
