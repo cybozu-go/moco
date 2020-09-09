@@ -34,6 +34,10 @@ const (
 	appNameKey      = "app.kubernetes.io/name"
 	appManagedByKey = "app.kubernetes.io/managed-by"
 
+	roleKey     = "moco.cybozu.com/role"
+	primaryRole = "primary"
+	replicaRole = "replica"
+
 	mysqldContainerName = "mysqld"
 	mysqlPort           = 3306
 	mysqlAdminPort      = 33062
@@ -197,6 +201,12 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 	}
 
 	isUpdated, err = r.createOrUpdateCronJob(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateService(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
 		return false, err
@@ -861,6 +871,77 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 			isUpdated = true
 		}
 	}
+	return isUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdated := false
+	primaryService := &corev1.Service{}
+	primaryService.SetNamespace(cluster.Namespace)
+	primaryServiceName := fmt.Sprintf("%s-primary", moco.UniqueName(cluster))
+	primaryService.SetName(primaryServiceName)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
+		primaryService.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:     "mysql",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLPort,
+			},
+			{
+				Name:     "mysqlx",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLXPort,
+			},
+		}
+		primaryService.Spec.Selector = map[string]string{
+			appNameKey: moco.UniqueName(cluster),
+			roleKey:    primaryRole,
+		}
+		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update Primary Service")
+		return isUpdated, err
+	}
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile Primary Service successfully", "op", op)
+		isUpdated = true
+	}
+
+	replicaService := &corev1.Service{}
+	replicaService.SetNamespace(cluster.Namespace)
+	replicaServiceName := fmt.Sprintf("%s-replica", moco.UniqueName(cluster))
+	replicaService.SetName(replicaServiceName)
+
+	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
+		replicaService.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:     "mysql",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLPort,
+			},
+			{
+				Name:     "mysqlx",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLXPort,
+			},
+		}
+		replicaService.Spec.Selector = map[string]string{
+			appNameKey: moco.UniqueName(cluster),
+			roleKey:    replicaServiceName,
+		}
+		return ctrl.SetControllerReference(cluster, replicaService, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update Replica Service")
+		return isUpdated, err
+	}
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile Replica Service successfully", "op", op)
+		isUpdated = true
+	}
+
 	return isUpdated, nil
 }
 
