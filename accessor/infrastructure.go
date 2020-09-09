@@ -12,13 +12,13 @@ import (
 
 type Infrastructure struct {
 	client.Client
-	MySQLAccessor *MySQLAccessor
+	MySQLAccessor DataBaseAccessor
 	password      string
 	hosts         []string
 	port          int
 }
 
-func NewInfrastructure(cli client.Client, acc *MySQLAccessor, password string, hosts []string, port int) Infrastructure {
+func NewInfrastructure(cli client.Client, acc DataBaseAccessor, password string, hosts []string, port int) Infrastructure {
 	return Infrastructure{
 		Client:        cli,
 		MySQLAccessor: acc,

@@ -4,10 +4,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"k8s.io/client-go/deprecated/scheme"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
@@ -24,6 +29,30 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+
+type AccessorMock struct {
+}
+
+func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
+
+	conf := mysql.NewConfig()
+	conf.User = "root"
+	conf.Passwd = "test-password"
+	conf.Net = "tcp"
+	conf.Addr = "localhost:3306"
+	conf.Timeout = 3
+	conf.ReadTimeout = 3
+	conf.InterpolateParams = true
+
+	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+func (acc *AccessorMock) Remove(cluster *mocov1alpha1.MySQLCluster) {
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -51,6 +80,21 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
+
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	err = (&MySQLClusterReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Tenant"),
+		Scheme: mgr.GetScheme(),
+		ConfInitContainerImage: "dummy",
+		CurlContainerImage: "dummy",
+		MySQLAccessor: ,
+	}).SetupWithManager(mgr)
+	Expect(err).ToNot(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
 	Expect(err).ToNot(HaveOccurred())

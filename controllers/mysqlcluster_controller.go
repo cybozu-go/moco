@@ -71,7 +71,7 @@ type MySQLClusterReconciler struct {
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
-	MySQLAccessor          *accessor.MySQLAccessor
+	MySQLAccessor          accessor.DataBaseAccessor
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete

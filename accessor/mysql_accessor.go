@@ -14,6 +14,11 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+type DataBaseAccessor interface {
+	Get(addr, user, password string) (*sqlx.DB, error)
+	Remove(cluster *mocov1alpha1.MySQLCluster)
+}
+
 // MySQLAccessorConfig contains MySQL connection configurations
 type MySQLAccessorConfig struct {
 	ConnMaxLifeTime   time.Duration
