@@ -216,7 +216,7 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 }
 
 // SetupWithManager sets up the controller for reconciliation.
-func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInterval time.Duration) error {
 	// SetupWithManager sets up the controller for reconciliation.
 
 	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
@@ -225,7 +225,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	ch := make(chan event.GenericEvent)
-	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch, 30*time.Second)
+	watcher := runners.NewMySQLClusterWatcher(mgr.GetClient(), ch, watcherInterval)
 	err = mgr.Add(watcher)
 	if err != nil {
 		return err
@@ -904,6 +904,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 		log.Error(err, "unable to create-or-update Primary Service")
 		return isUpdated, err
 	}
+
 	if op != controllerutil.OperationResultNone {
 		log.Info("reconcile Primary Service successfully", "op", op)
 		isUpdated = true

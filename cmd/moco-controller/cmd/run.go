@@ -54,7 +54,7 @@ func subMain() error {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		}),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, 30*time.Second); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}

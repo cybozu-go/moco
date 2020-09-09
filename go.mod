@@ -8,11 +8,14 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/go-cmp v0.4.1
+	github.com/gostaticanalysis/nilerr v0.0.1 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
+	go.uber.org/zap v1.10.0
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.17.9
 	k8s.io/apimachinery v0.17.9
 	k8s.io/client-go v0.17.9
