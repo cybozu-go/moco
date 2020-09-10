@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/cybozu-go/moco"
@@ -10,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
@@ -36,14 +38,29 @@ spec:
     resources:
       requests:
         storage: 1Gi
-  mysqlConfigMapName: mycnf
 `
 			cluster := &mocov1alpha1.MySQLCluster{}
 			err := yaml.Unmarshal([]byte(manifest), cluster)
-			Expect(err).Should(Succeed())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			err = k8sClient.Create(ctx, cluster)
-			Expect(err).Should(Succeed())
+			Expect(err).ShouldNot(HaveOccurred())
+
+			ns := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "moco-system",
+				},
+			}
+
+			err = k8sClient.Create(ctx, ns)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = os.Setenv("POD_NAMESPACE", "moco-system")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.reconcileInitialize(ctx, reconciler.Log, cluster)
+			Expect(isUpdated).Should(BeTrue())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			createdPrimaryService := &corev1.Service{}
 			Eventually(func() error {

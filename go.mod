@@ -14,8 +14,6 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
-	go.uber.org/zap v1.10.0
-	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.17.9
 	k8s.io/apimachinery v0.17.9
 	k8s.io/client-go v0.17.9

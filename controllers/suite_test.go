@@ -3,7 +3,6 @@ package controllers
 import (
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -30,6 +29,7 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var reconciler *MySQLClusterReconciler
 
 type AccessorMock struct {
 }
@@ -86,25 +86,19 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		MetricsBindAddress: ":8081",
-		Scheme:             sch,
-	})
-	Expect(err).ToNot(HaveOccurred())
-
-	err = (&MySQLClusterReconciler{
-		Client:                 mgr.GetClient(),
-		Log:                    ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
-		Scheme:                 mgr.GetScheme(),
-		ConfInitContainerImage: "dummy",
-		CurlContainerImage:     "dummy",
-		MySQLAccessor:          &AccessorMock{},
-	}).SetupWithManager(mgr, time.Second)
-	Expect(err).ToNot(HaveOccurred())
-
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
+
+	reconciler = &MySQLClusterReconciler{
+		Client:                 k8sClient,
+		Log:                    ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
+		Scheme:                 sch,
+		ConfInitContainerImage: "dummy",
+		CurlContainerImage:     "dummy",
+		MySQLAccessor:          &AccessorMock{},
+	}
+	Expect(err).ToNot(HaveOccurred())
 
 	close(done)
 }, 60)

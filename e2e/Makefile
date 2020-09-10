@@ -51,6 +51,8 @@ setup: $(KUBECTL)
 	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar xzf - > kustomize
 	$(SUDO) mv kustomize $(KUSTOMIZE)
 	cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION)
+	GO111MODULE=off go get -u github.com/gostaticanalysis/nilerr/cmd/nilerr
+	GO111MODULE=off go get -u github.com/gordonklaus/ineffassign
 
 clean:
 	rm -f moco.img mysql.img
