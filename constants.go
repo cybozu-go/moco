@@ -126,6 +126,20 @@ const (
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
 	OperatorTurnOffReadOnly = "turnoff-readonly"
+	// OperatorSetLabels is a name of the set labels operatio
+	OperatorSetLabels = "set-labels"
+)
+
+const (
+	MyName          = "moco"
+	AppNameKey      = "app.kubernetes.io/name"
+	AppManagedByKey = "app.kubernetes.io/managed-by"
+
+	RoleKey     = "moco.cybozu.com/role"
+	PrimaryRole = "primary"
+	ReplicaRole = "replica"
+
+	MysqldContainerName = "mysqld"
 )
 
 var (

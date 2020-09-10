@@ -30,19 +30,6 @@ import (
 )
 
 const (
-	myName          = "moco"
-	appNameKey      = "app.kubernetes.io/name"
-	appManagedByKey = "app.kubernetes.io/managed-by"
-
-	roleKey     = "moco.cybozu.com/role"
-	primaryRole = "primary"
-	replicaRole = "replica"
-
-	mysqldContainerName = "mysqld"
-	mysqlPort           = 3306
-	mysqlAdminPort      = 33062
-	mysqlxPort          = 33060
-
 	rotateServerContainerName   = "rotate"
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
@@ -78,6 +65,8 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups="",resources=pods/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -239,6 +228,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInter
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
+		Owns(&corev1.Pod{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1beta1.CronJob{}).
@@ -451,8 +441,8 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.Selector = map[string]string{
-			appNameKey:      moco.UniqueName(cluster),
-			appManagedByKey: myName,
+			moco.AppNameKey:      moco.UniqueName(cluster),
+			moco.AppManagedByKey: moco.MyName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -507,8 +497,8 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		sts.Spec.ServiceName = moco.UniqueName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
 		sts.Spec.Selector.MatchLabels = map[string]string{
-			appNameKey:      moco.UniqueName(cluster),
-			appManagedByKey: myName,
+			moco.AppNameKey:      moco.UniqueName(cluster),
+			moco.AppManagedByKey: moco.MyName,
 		}
 		template, err := r.makePodTemplate(log, cluster)
 		if err != nil {
@@ -548,11 +538,11 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	if v, ok := newTemplate.Labels[appNameKey]; ok && v != myName {
-		log.Info("overwriting Pod template's label", "label", appNameKey)
+	if v, ok := newTemplate.Labels[moco.AppNameKey]; ok && v != moco.MyName {
+		log.Info("overwriting Pod template's label", "label", moco.AppNameKey)
 	}
-	newTemplate.Labels[appNameKey] = moco.UniqueName(cluster)
-	newTemplate.Labels[appManagedByKey] = myName
+	newTemplate.Labels[moco.AppNameKey] = moco.UniqueName(cluster)
+	newTemplate.Labels[moco.AppManagedByKey] = moco.MyName
 
 	if newTemplate.Spec.ServiceAccountName != "" {
 		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
@@ -607,7 +597,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	var mysqldContainer *corev1.Container
 	newTemplate.Spec.Containers = make([]corev1.Container, len(template.Spec.Containers))
 	for i, orig := range template.Spec.Containers {
-		if orig.Name != mysqldContainerName {
+		if orig.Name != moco.MysqldContainerName {
 			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
@@ -616,11 +606,11 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		c.Args = []string{"--defaults-file=" + filepath.Join(moco.MySQLConfPath, moco.MySQLConfName)}
 		c.Ports = []corev1.ContainerPort{
 			{
-				ContainerPort: mysqlPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLPort, Protocol: corev1.ProtocolTCP},
 			{
-				ContainerPort: mysqlxPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLXPort, Protocol: corev1.ProtocolTCP},
 			{
-				ContainerPort: mysqlAdminPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP},
 		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
@@ -649,7 +639,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	if mysqldContainer == nil {
-		return nil, fmt.Errorf("container named %q not found in podTemplate", mysqldContainerName)
+		return nil, fmt.Errorf("container named %q not found in podTemplate", moco.MysqldContainerName)
 	}
 
 	for _, orig := range template.Spec.Containers {
@@ -895,8 +885,8 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 			},
 		}
 		primaryService.Spec.Selector = map[string]string{
-			appNameKey: moco.UniqueName(cluster),
-			roleKey:    primaryRole,
+			moco.AppNameKey: moco.UniqueName(cluster),
+			moco.RoleKey:    moco.PrimaryRole,
 		}
 		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
 	})
@@ -929,8 +919,8 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 			},
 		}
 		replicaService.Spec.Selector = map[string]string{
-			appNameKey: moco.UniqueName(cluster),
-			roleKey:    replicaServiceName,
+			moco.AppNameKey: moco.UniqueName(cluster),
+			moco.RoleKey:    moco.ReplicaRole,
 		}
 		return ctrl.SetControllerReference(cluster, replicaService, r.Scheme)
 	})
@@ -967,14 +957,14 @@ func removeString(slice []string, s string) (result []string) {
 
 func setLabels(om *metav1.ObjectMeta) {
 	om.Labels = map[string]string{
-		appNameKey:      om.Name,
-		appManagedByKey: myName,
+		moco.AppNameKey:      om.Name,
+		moco.AppManagedByKey: moco.MyName,
 	}
 }
 
 func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {
 	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
-		if c.Name != mysqldContainerName {
+		if c.Name != moco.MysqldContainerName {
 			continue
 		}
 		r, ok := c.Resources.Requests[resourceName]

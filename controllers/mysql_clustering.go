@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cybozu-go/moco"
@@ -11,7 +13,9 @@ import (
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Operator is the interface for operations
@@ -357,9 +361,24 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 		}
 		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
 			operators = append(operators, &configureReplicationOp{
-				index:       i,
-				primaryHost: primaryHost,
+				Index:       i,
+				PrimaryHost: primaryHost,
 			})
+		}
+	}
+
+	for i, is := range status.InstanceStatus {
+		if i == *cluster.Status.CurrentPrimaryIndex {
+			if is.Role != moco.PrimaryRole {
+				operators = append(operators, &setLabelsOp{})
+				break
+			}
+			continue
+		}
+
+		if is.Role != moco.ReplicaRole {
+			operators = append(operators, &setLabelsOp{})
+			break
 		}
 	}
 
@@ -367,8 +386,8 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 }
 
 type configureReplicationOp struct {
-	index       int
-	primaryHost string
+	Index       int
+	PrimaryHost string
 }
 
 func (r configureReplicationOp) Name() string {
@@ -381,7 +400,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 		return err
 	}
 
-	db, err := infra.GetDB(ctx, cluster, r.index)
+	db, err := infra.GetDB(ctx, cluster, r.Index)
 	if err != nil {
 		return err
 	}
@@ -391,7 +410,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 		return err
 	}
 	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
-		r.primaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
+		r.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
 	if err != nil {
 		return err
 	}
@@ -440,6 +459,37 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	}
 	return []Operator{
 		&turnOffReadOnlyOp{primaryIndex: primaryIndex}}
+}
+
+type setLabelsOp struct{}
+
+func (setLabelsOp) Name() string {
+	return moco.OperatorSetLabels
+}
+
+func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	pods := corev1.PodList{}
+	err := infra.List(ctx, &pods, &client.ListOptions{
+		Namespace:     cluster.Namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{moco.AppNameKey: moco.UniqueName(cluster)}),
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range pods.Items {
+		if strings.HasSuffix(pod.Name, strconv.Itoa(*cluster.Status.CurrentPrimaryIndex)) {
+			pod.Labels[moco.RoleKey] = moco.PrimaryRole
+		} else {
+			pod.Labels[moco.RoleKey] = moco.ReplicaRole
+		}
+
+		if err := infra.Update(ctx, &pod); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type turnOffReadOnlyOp struct {

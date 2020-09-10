@@ -19,3 +19,4 @@
 
 # ignore binaries
 /bin
+/build
