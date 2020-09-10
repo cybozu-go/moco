@@ -63,8 +63,14 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred())
 
 			createdPrimaryService := &corev1.Service{}
+			createdReplicaService := &corev1.Service{}
 			Eventually(func() error {
 				err := k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: "default"}, createdPrimaryService)
+				if err != nil {
+					return err
+				}
+
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: "default"}, createdReplicaService)
 				if err != nil {
 					return err
 				}
