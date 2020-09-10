@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
@@ -77,6 +78,27 @@ spec:
 
 				return nil
 			}, 30*time.Second).Should(Succeed())
+
+			expectedPorts := []corev1.ServicePort{
+				{
+					Name:       "mysql",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       moco.MySQLPort,
+					TargetPort: intstr.FromInt(moco.MySQLPort),
+				},
+				{
+					Name:       "mysqlx",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       moco.MySQLXPort,
+					TargetPort: intstr.FromInt(moco.MySQLXPort),
+				},
+			}
+
+			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdPrimaryService.Spec.Ports).Should(ConsistOf(expectedPorts))
+
+			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdReplicaService.Spec.Ports).Should(ConsistOf(expectedPorts))
 		})
 	})
 })
