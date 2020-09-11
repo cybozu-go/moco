@@ -108,9 +108,10 @@ type MySQLReplicaStatus struct {
 
 // MySQLGlobalVariablesStatus defines the observed global variable state of a MySQL instance
 type MySQLGlobalVariablesStatus struct {
-	ReadOnly                           bool `db:"@@read_only"`
-	SuperReadOnly                      bool `db:"@@super_read_only"`
-	RplSemiSyncMasterWaitForSlaveCount int  `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
+	ReadOnly                           bool   `db:"@@read_only"`
+	SuperReadOnly                      bool   `db:"@@super_read_only"`
+	RplSemiSyncMasterWaitForSlaveCount int    `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
+	CloneValidDonorList                string `db:"@@clone_valid_donor_list"`
 }
 
 // MySQLCloneStateStatus defines the observed clone state of a MySQL instance
@@ -147,12 +148,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
-		readOnlyStatus, err := GetMySQLGlobalVariablesStatus(ctx, log, db)
+		globalVariablesStatus, err := GetMySQLGlobalVariablesStatus(ctx, log, db)
 		if err != nil {
-			log.Info("get readOnly status failed", "err", err, "podName", podName)
+			log.Info("get globalVariables status failed", "err", err, "podName", podName)
 			continue
 		}
-		status.InstanceStatus[instanceIdx].GlobalVariablesStatus = readOnlyStatus
+		status.InstanceStatus[instanceIdx].GlobalVariablesStatus = globalVariablesStatus
 
 		cloneStatus, err := GetMySQLCloneStateStatus(ctx, log, db)
 		if err != nil {
@@ -215,7 +216,7 @@ func GetMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*
 }
 
 func GetMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLGlobalVariablesStatus, error) {
-	rows, err := db.Queryx(`SELECT @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count`)
+	rows, err := db.Queryx(`SELECT @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count, @@clone_valid_donor_list`)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func GetMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sql
 		return &status, nil
 	}
 
-	return nil, errors.New("readOnly status is empty")
+	return nil, errors.New("globalVariables status is empty")
 }
 
 func GetMySQLCloneStateStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLCloneStateStatus, error) {

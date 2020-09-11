@@ -95,6 +95,12 @@ func initializeOnce(ctx context.Context) error {
 		return err
 	}
 
+	log.Info("setup donor user", nil)
+	err = initializeDonorUser(ctx, os.Getenv(moco.ClonePasswordEnvName))
+	if err != nil {
+		return err
+	}
+
 	log.Info("setup replication user", nil)
 	err = initializeReplicationUser(ctx, os.Getenv(moco.ReplicationPasswordEnvName))
 	if err != nil {
@@ -223,7 +229,8 @@ GRANT
     TRIGGER,
     LOCK TABLES,
     REPLICATION CLIENT,
-    BACKUP_ADMIN,
+	BACKUP_ADMIN,
+	CLONE_ADMIN,
     BINLOG_ADMIN,
     SYSTEM_VARIABLES_ADMIN,
     REPLICATION_SLAVE_ADMIN,
@@ -264,6 +271,27 @@ GRANT
 		User     string
 		Password string
 	}{moco.OperatorAdminUser, password})
+
+	out, err := execSQL(ctx, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+	return nil
+}
+
+func initializeDonorUser(ctx context.Context, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+	BACKUP_ADMIN
+  ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
+`))
+
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.DonorUser, password})
 
 	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {

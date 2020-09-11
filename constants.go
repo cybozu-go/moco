@@ -92,6 +92,9 @@ const (
 	// ReplicationPasswordEnvName is a name of the environment variable of a password for replication user.
 	ReplicationPasswordEnvName = "REPLICATION_PASSWORD"
 
+	// ClonePasswordEnvName is a name of the environment variable of a password for donor user.
+	ClonePasswordEnvName = "CLONE_DONOR_PASSWORD"
+
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
 )
@@ -122,6 +125,8 @@ const (
 const (
 	// OperatorUpdatePrimary is a name of the update Primary operation
 	OperatorUpdatePrimary = "update-primary"
+	// OperatorSetCloneDonorList is a name of the set clone donor list operation
+	OperatorSetCloneDonorList = "set-clone-donor-list"
 	// OperatorConfigureReplication is a name of the configure replication operation
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation

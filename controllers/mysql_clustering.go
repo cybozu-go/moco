@@ -350,9 +350,35 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	return err
 }
 
+func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
+	ops := make([]Operator, 0)
+
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+
+	for _, s := range status.InstanceStatus {
+		if s.GlobalVariablesStatus.CloneValidDonorList != primaryHostWithPort {
+			ops = append(ops, setCloneDonorListOp{})
+			break
+		}
+	}
+
+	return ops
+}
+
+type setCloneDonorListOp struct{}
+
+func (r setCloneDonorListOp) Name() string {
+	return moco.OperatorSetCloneDonorList
+}
+
+func (r setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+
+	return nil
+}
+
 func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
-	podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
-	primaryHost := fmt.Sprintf("%s.%s.%s.svc", podName, moco.UniqueName(cluster), cluster.Namespace)
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
 
 	var operators []Operator
 	for i, is := range status.InstanceStatus {
