@@ -23,6 +23,7 @@ var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
 	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
 	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
+	donorPasswordPath     = filepath.Join(moco.MySQLDataPath, "donor-password")
 )
 
 var initCmd = &cobra.Command{
@@ -297,7 +298,8 @@ GRANT
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
-	return nil
+
+	return ioutil.WriteFile(donorPasswordPath, []byte(password), 0400)
 }
 
 func initializeReplicationUser(ctx context.Context, password string) error {

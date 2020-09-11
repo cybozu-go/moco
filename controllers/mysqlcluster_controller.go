@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	rotateServerContainerName   = "rotate"
+	agentContainerName          = "agent"
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
@@ -643,17 +643,17 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	for _, orig := range template.Spec.Containers {
-		if orig.Name == rotateServerContainerName {
-			err := fmt.Errorf("cannot specify %s container in podTemplate", rotateServerContainerName)
+		if orig.Name == agentContainerName {
+			err := fmt.Errorf("cannot specify %s container in podTemplate", agentContainerName)
 			log.Error(err, "invalid container found")
 			return nil, err
 		}
 	}
 	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, corev1.Container{
-		Name:  rotateServerContainerName,
+		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			"/entrypoint", "rotate-server",
+			"/entrypoint", "agent",
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -847,7 +847,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080", podName, moco.UniqueName(cluster))},
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080/rotate", podName, moco.UniqueName(cluster))},
 				},
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
