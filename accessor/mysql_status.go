@@ -162,7 +162,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		status.InstanceStatus[instanceIdx].CloneStateStatus = cloneStatus
 
 		pod := corev1.Pod{}
-		err = infra.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: podName}, &pod)
+		err = infra.GetClient().Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: podName}, &pod)
 		if err != nil {
 			log.Info("get pod label failed", "err", err, "podName", podName)
 			continue

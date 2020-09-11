@@ -469,7 +469,7 @@ func (setLabelsOp) Name() string {
 
 func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	pods := corev1.PodList{}
-	err := infra.List(ctx, &pods, &client.ListOptions{
+	err := infra.GetClient().List(ctx, &pods, &client.ListOptions{
 		Namespace:     cluster.Namespace,
 		LabelSelector: labels.SelectorFromSet(map[string]string{moco.AppNameKey: moco.UniqueName(cluster)}),
 	})
@@ -484,7 +484,7 @@ func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, clust
 			pod.Labels[moco.RoleKey] = moco.ReplicaRole
 		}
 
-		if err := infra.Update(ctx, &pod); err != nil {
+		if err := infra.GetClient().Update(ctx, &pod); err != nil {
 			return err
 		}
 	}

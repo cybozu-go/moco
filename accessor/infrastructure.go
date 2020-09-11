@@ -2,6 +2,7 @@ package accessor
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/cybozu-go/moco"
@@ -11,8 +12,8 @@ import (
 )
 
 type Infrastructure struct {
-	client.Client
-	MySQLAccessor DataBaseAccessor
+	k8sClient     client.Client
+	mySQLAccessor DataBaseAccessor
 	password      string
 	hosts         []string
 	port          int
@@ -20,8 +21,8 @@ type Infrastructure struct {
 
 func NewInfrastructure(cli client.Client, acc DataBaseAccessor, password string, hosts []string, port int) Infrastructure {
 	return Infrastructure{
-		Client:        cli,
-		MySQLAccessor: acc,
+		k8sClient:     cli,
+		mySQLAccessor: acc,
 		password:      password,
 		hosts:         hosts,
 		port:          port,
@@ -29,11 +30,15 @@ func NewInfrastructure(cli client.Client, acc DataBaseAccessor, password string,
 }
 
 func (i Infrastructure) GetClient() client.Client {
-	return i.Client
+	return i.k8sClient
 }
 
 func (i Infrastructure) GetDB(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (*sqlx.DB, error) {
-	db, err := i.MySQLAccessor.Get(i.hosts[index]+":"+strconv.Itoa(i.port), moco.OperatorAdminUser, i.password)
+	if len(i.hosts) <= index {
+		return nil, errors.New("index is out of range")
+	}
+
+	db, err := i.mySQLAccessor.Get(i.hosts[index]+":"+strconv.Itoa(i.port), moco.OperatorAdminUser, i.password)
 	if err != nil {
 		return nil, err
 	}

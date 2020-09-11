@@ -92,8 +92,18 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "LabelsAreWrong",
-			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelInstances(),
+			name:  "ReadOnlyInstanceLabelsAreWrong",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelReadOnlyInstances(),
+			want: &Operation{
+				Wait: false,
+				Operators: []Operator{
+					&setLabelsOp{},
+				},
+			},
+		},
+		{
+			name:  "WritableInstanceLabelsAreWrong",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelWritableInstances(),
 			want: &Operation{
 				Wait: false,
 				Operators: []Operator{
@@ -223,7 +233,7 @@ func (d testData) withUnAvailableInstances() testData {
 func (d testData) withOneWritableInstance() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.ReplicaRole), writableIns(1), readOnlyIns(1, moco.ReplicaRole),
+			readOnlyIns(1, moco.ReplicaRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -232,7 +242,7 @@ func (d testData) withOneWritableInstance() testData {
 func (d testData) withTwoWritableInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1), writableIns(1), readOnlyIns(1, moco.ReplicaRole),
+			writableIns(1, moco.PrimaryRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -247,10 +257,19 @@ func (d testData) withReadableInstances() testData {
 	return d
 }
 
-func (d testData) withWrongLabelInstances() testData {
+func (d testData) withWrongLabelReadOnlyInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1), readOnlyInsWithReplicaStatus(1, false, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+		},
+	}
+	return d
+}
+
+func (d testData) withWrongLabelWritableInstances() testData {
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(1, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -268,7 +287,7 @@ func (d testData) withReplicas() testData {
 func (d testData) withLaggedReplica() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, moco.PrimaryRole), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -296,7 +315,7 @@ func (d testData) withSyncedReplicas(replicas int) testData {
 func (d testData) withAvailableCluster() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -312,7 +331,7 @@ func unavailableIns() accessor.MySQLInstanceStatus {
 	}
 }
 
-func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
+func writableIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
@@ -323,7 +342,7 @@ func writableIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
 		},
 		CloneStateStatus: nil,
-		Role:             moco.PrimaryRole,
+		Role:             role,
 	}
 }
 
