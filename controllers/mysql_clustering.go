@@ -102,6 +102,13 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
+	ops = restoreEmptyInstance(status, cluster)
+	if len(ops) != 0 {
+		return &Operation{
+			Operators: ops,
+		}, nil
+	}
+
 	ops = configureReplication(status, cluster)
 	if len(ops) != 0 {
 		return &Operation{
@@ -357,7 +364,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
 
 	for _, s := range status.InstanceStatus {
-		if s.GlobalVariablesStatus.CloneValidDonorList != primaryHostWithPort {
+		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
 			ops = append(ops, setCloneDonorListOp{})
 			break
 		}
@@ -368,11 +375,25 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 
 type setCloneDonorListOp struct{}
 
-func (r setCloneDonorListOp) Name() string {
+func (setCloneDonorListOp) Name() string {
 	return moco.OperatorSetCloneDonorList
 }
 
-func (r setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		db, err := infra.GetDB(ctx, cluster, i)
+		if err != nil {
+			return err
+		}
+
+		_, err = db.Exec(`SET GLOBAL clone_valid_donor_list = ?`, primaryHostWithPort)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -108,10 +108,10 @@ type MySQLReplicaStatus struct {
 
 // MySQLGlobalVariablesStatus defines the observed global variable state of a MySQL instance
 type MySQLGlobalVariablesStatus struct {
-	ReadOnly                           bool   `db:"@@read_only"`
-	SuperReadOnly                      bool   `db:"@@super_read_only"`
-	RplSemiSyncMasterWaitForSlaveCount int    `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
-	CloneValidDonorList                string `db:"@@clone_valid_donor_list"`
+	ReadOnly                           bool           `db:"@@read_only"`
+	SuperReadOnly                      bool           `db:"@@super_read_only"`
+	RplSemiSyncMasterWaitForSlaveCount int            `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
+	CloneValidDonorList                sql.NullString `db:"@@clone_valid_donor_list"`
 }
 
 // MySQLCloneStateStatus defines the observed clone state of a MySQL instance

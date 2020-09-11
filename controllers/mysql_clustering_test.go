@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
@@ -71,6 +72,14 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait:      false,
 				Operators: []Operator{&updatePrimaryOp{}},
+			},
+		},
+		{
+			name:  "DonorListIsWrong",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongDonorListInstances(),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}},
 			},
 		},
 		{
@@ -224,7 +233,7 @@ func newTestData() testData {
 func (d testData) withUnAvailableInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			unavailableIns(), readOnlyIns(1, ""), readOnlyIns(1, ""),
+			unavailableIns(), readOnlyIns(1, 0, ""), readOnlyIns(1, 0, ""),
 		},
 	}
 	return d
@@ -233,7 +242,7 @@ func (d testData) withUnAvailableInstances() testData {
 func (d testData) withOneWritableInstance() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.ReplicaRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
+			readOnlyIns(1, 1, moco.ReplicaRole), writableIns(1, 1, moco.PrimaryRole), readOnlyIns(1, 1, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -242,7 +251,7 @@ func (d testData) withOneWritableInstance() testData {
 func (d testData) withTwoWritableInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
+			writableIns(1, 0, moco.PrimaryRole), writableIns(1, 0, moco.PrimaryRole), readOnlyIns(1, 0, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -251,7 +260,16 @@ func (d testData) withTwoWritableInstances() testData {
 func (d testData) withReadableInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, ""), readOnlyIns(1, ""), readOnlyIns(1, ""),
+			readOnlyIns(1, 0, ""), readOnlyIns(1, 0, ""), readOnlyIns(1, 0, ""),
+		},
+	}
+	return d
+}
+
+func (d testData) withWrongDonorListInstances() testData {
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(1, 1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 1, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -260,7 +278,7 @@ func (d testData) withReadableInstances() testData {
 func (d testData) withWrongLabelReadOnlyInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, 0, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -269,7 +287,7 @@ func (d testData) withWrongLabelReadOnlyInstances() testData {
 func (d testData) withWrongLabelWritableInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, 0, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -278,7 +296,7 @@ func (d testData) withWrongLabelWritableInstances() testData {
 func (d testData) withReplicas() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			readOnlyIns(1, 0, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -287,7 +305,7 @@ func (d testData) withReplicas() testData {
 func (d testData) withLaggedReplica() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, 0, moco.PrimaryRole), outOfSyncIns(1, 0), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -296,7 +314,7 @@ func (d testData) withLaggedReplica() testData {
 func (d testData) withLaggedReplicas() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, true, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, true, moco.ReplicaRole),
+			readOnlyIns(1, 0, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, true, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 0, true, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -315,7 +333,7 @@ func (d testData) withSyncedReplicas(replicas int) testData {
 func (d testData) withAvailableCluster() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(1, 0, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -331,7 +349,7 @@ func unavailableIns() accessor.MySQLInstanceStatus {
 	}
 }
 
-func writableIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
+func writableIns(syncWaitCount, primaryIndex int, role string) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
@@ -340,13 +358,17 @@ func writableIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
 			ReadOnly:                           false,
 			SuperReadOnly:                      false,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+			CloneValidDonorList: sql.NullString{
+				String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+				Valid:  true,
+			},
 		},
 		CloneStateStatus: nil,
 		Role:             role,
 	}
 }
 
-func readOnlyIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
+func readOnlyIns(syncWaitCount, primaryIndex int, role string) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
@@ -355,13 +377,17 @@ func readOnlyIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+			CloneValidDonorList: sql.NullString{
+				String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+				Valid:  true,
+			},
 		},
 		CloneStateStatus: nil,
 		Role:             role,
 	}
 }
 
-func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool, role string) accessor.MySQLInstanceStatus {
+func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, role string) accessor.MySQLInstanceStatus {
 	exeGtid := "1-5"
 	if lagged {
 		exeGtid = "1"
@@ -385,13 +411,17 @@ func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool, role string) a
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+			CloneValidDonorList: sql.NullString{
+				String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+				Valid:  true,
+			},
 		},
 		CloneStateStatus: nil,
 		Role:             role,
 	}
 }
 
-func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
+func outOfSyncIns(syncWaitCount, primaryIndex int) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: nil,
@@ -410,6 +440,10 @@ func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
 			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+			CloneValidDonorList: sql.NullString{
+				String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+				Valid:  true,
+			},
 		},
 		CloneStateStatus: nil,
 		Role:             moco.ReplicaRole,
