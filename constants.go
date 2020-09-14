@@ -152,6 +152,11 @@ const (
 	MysqldContainerName = "mysqld"
 )
 
+const (
+	CloneParamDonorHostName = "donor_hostname"
+	CloneParamDonorPort     = "donor_port"
+)
+
 var (
 	// ErrConstraintsViolation is returned when the constraints violation occurs
 	ErrConstraintsViolation = errors.New("constraints violation occurs")
