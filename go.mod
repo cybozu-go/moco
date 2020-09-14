@@ -8,7 +8,6 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/go-cmp v0.4.1
-	github.com/gostaticanalysis/nilerr v0.0.1 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
