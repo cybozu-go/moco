@@ -1,45 +1,88 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/well"
-	"k8s.io/apimachinery/pkg/util/validation"
+	"github.com/cybozub.com/cybozu-go/moco"
+	"github.com/cybozulogs.io/apimachinery/pkg/util/validation"
+	"golang.org/x/sync/semaphore"
 )
 
-func Clone(w http.ResponseWriter, r *http.Request) {
+const maxCloneWorkers = 1
+
+func NewCloneAgent() *CloneAgent {
+	return &CloneAgent{
+		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),
+	}
+}
+
+type CloneAgent struct {
+	sem *semaphore.Weighted
+}
+
+func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
+	if !a.sem.TryAcquire(1) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+
 	var (
 		donorHostName = r.URL.Query().Get(moco.CloneParamDonorHostName)
-		donorPort     = r.URL.Query().Get(moco.CloneParamDonorPort)
+		rawDonorPort  = r.URL.Query().Get(moco.CloneParamDonorPort)
 	)
 
-	if validation.IsFullyQualifiedDomainName(donorHostName) {
+	if len(validation.IsFullyQualifiedDomainName(nil, donorHostName)) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	var donorPort int
+	if rawDonorPort == "" {
+		donorPort = moco.MySQLPort
+	} else {
+		var err error
+		donorPort, err = strconv.Atoi(rawDonorPort)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	buf, err := ioutil.ReadFile(moco.DonorPasswordPath)
 	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to read password file: %w", err))
+		internalServerError(w, fmt.Errorf("failed to read donor passsword file: %w", err))
 		return
 	}
 	password := strings.TrimSpace(string(buf))
 
-	cmd := well.CommandContext(r.Context(), "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
-	query := fmt.Sprintf("CLONE INSTANCE FROM '%s'@'10.244.1.9':%d IDENTIFIED BY '%s';\n", moco.DonorUser, moco.MySQLPort, password)
+	go func() {
+		defer a.sem.Release(1)
+		clone(r.Context(), password, donorHostName, donorPort)
+	}()
+}
+
+func clone(ctx context.Context, password, donorHostName string, donorPort int) {
+	cmd := well.CommandContext(ctx, "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
+	query := fmt.Sprintf("CLONE INSTANCE FROM '%s'@'%s':%d IDENTIFIED BY '%s';\n", moco.DonorUser, donorHostName, donorPort, password)
 	cmd.Stdin = strings.NewReader(query)
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to exec mysql FLUSH: %w", err))
+		log.Error("failed to exec mysql CLONE", map[string]interface{}{
+			log.FnError: err,
+		})
 		return
 	}
 }

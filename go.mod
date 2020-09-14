@@ -14,6 +14,7 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	k8s.io/api v0.17.9
 	k8s.io/apimachinery v0.17.9
 	k8s.io/client-go v0.17.9

@@ -5,6 +5,7 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY vendor/ vendor/
 COPY cmd/ cmd/
+COPY agent/ agent/
 COPY constants.go constants.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o entrypoint ./cmd/entrypoint
 

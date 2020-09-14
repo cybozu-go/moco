@@ -20,7 +20,7 @@ var agentCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/rotate", agent.RotateLog)
-		mux.HandleFunc("/clone", agent.Clone)
+		mux.HandleFunc("/clone", agent.NewCloneAgent().Clone)
 
 		serv := &well.HTTPServer{
 			Server: &http.Server{
