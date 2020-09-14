@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/cybozu-go/log"
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/well"
-	"github.com/cybozub.com/cybozu-go/moco"
-	"github.com/cybozulogs.io/apimachinery/pkg/util/validation"
 	"golang.org/x/sync/semaphore"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 const maxCloneWorkers = 1
@@ -31,11 +31,6 @@ type CloneAgent struct {
 func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	if !a.sem.TryAcquire(1) {
-		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 
@@ -67,6 +62,11 @@ func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	password := strings.TrimSpace(string(buf))
+
+	if !a.sem.TryAcquire(1) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
 
 	go func() {
 		defer a.sem.Release(1)
