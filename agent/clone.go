@@ -68,10 +68,11 @@ func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
+	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		clone(r.Context(), password, donorHostName, donorPort)
-	}()
+		clone(ctx, password, donorHostName, donorPort)
+		return nil
+	})
 }
 
 func clone(ctx context.Context, password, donorHostName string, donorPort int) {
@@ -80,6 +81,10 @@ func clone(ctx context.Context, password, donorHostName string, donorPort int) {
 	cmd.Stdin = strings.NewReader(query)
 	err := cmd.Run()
 	if err != nil {
+		if strings.HasPrefix(err.Error()) {
+
+		}
+
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
 			log.FnError: err,
 		})
