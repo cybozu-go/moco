@@ -10,6 +10,8 @@ import (
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/jmoiron/sqlx"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
@@ -24,6 +26,7 @@ type MySQLInstanceStatus struct {
 	ReplicaStatus         *MySQLReplicaStatus
 	GlobalVariablesStatus *MySQLGlobalVariablesStatus
 	CloneStateStatus      *MySQLCloneStateStatus
+	Role                  string
 }
 
 // MySQLPrimaryStatus defines the observed state of a primary
@@ -157,6 +160,16 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 			continue
 		}
 		status.InstanceStatus[instanceIdx].CloneStateStatus = cloneStatus
+
+		pod := corev1.Pod{}
+		err = infra.GetClient().Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: podName}, &pod)
+		if err != nil {
+			log.Info("get pod label failed", "err", err, "podName", podName)
+			continue
+		}
+		if len(pod.Labels) != 0 {
+			status.InstanceStatus[instanceIdx].Role = pod.Labels[moco.RoleKey]
+		}
 
 		status.InstanceStatus[instanceIdx].Available = true
 	}

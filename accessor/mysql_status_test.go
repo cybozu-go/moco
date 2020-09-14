@@ -3,13 +3,14 @@ package accessor
 import (
 	"context"
 	"strconv"
-	"testing"
 	"time"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -21,50 +22,38 @@ const (
 	port     = 3306
 )
 
-func TestGetMySQLClusterStatus(t *testing.T) {
-	err := initializeOperatorAdminUser()
-	if err != nil {
-		t.Fatalf("cannot create moco-admin user: err=%v", err)
-	}
+var _ = Describe("Get MySQLCluster status", func() {
+	It("Should get MySQL status", func() {
+		err := initializeOperatorAdminUser()
+		Expect(err).ShouldNot(HaveOccurred())
+		acc := NewMySQLAccessor(&MySQLAccessorConfig{
+			ConnMaxLifeTime:   30 * time.Minute,
+			ConnectionTimeout: 3 * time.Second,
+			ReadTimeout:       30 * time.Second,
+		})
 
-	acc := NewMySQLAccessor(&MySQLAccessorConfig{
-		ConnMaxLifeTime:   30 * time.Minute,
-		ConnectionTimeout: 3 * time.Second,
-		ReadTimeout:       30 * time.Second,
+		inf := NewInfrastructure(k8sClient, acc, password, []string{host}, 3306)
+		cluster := mocov1alpha1.MySQLCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "test",
+				ClusterName: "test-cluster",
+				Namespace:   "test-namespace",
+				UID:         "test-uid",
+			},
+			Spec: mocov1alpha1.MySQLClusterSpec{
+				Replicas: 1,
+			},
+		}
+		logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
+
+		sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		Expect(sts.InstanceStatus).Should(HaveLen(1))
+		Expect(sts.InstanceStatus[0].PrimaryStatus).ShouldNot(BeNil())
+		Expect(sts.InstanceStatus[0].ReplicaStatus).ShouldNot(BeNil())
+		Expect(sts.InstanceStatus[0].GlobalVariablesStatus).ShouldNot(BeNil())
+		Expect(sts.InstanceStatus[0].CloneStateStatus).ShouldNot(BeNil())
 	})
-
-	inf := NewInfrastructure(nil, acc, password, []string{host}, 3306)
-	cluster := mocov1alpha1.MySQLCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test",
-			ClusterName: "test-cluster",
-			Namespace:   "test-namespace",
-			UID:         "test-uid",
-		},
-		Spec: mocov1alpha1.MySQLClusterSpec{
-			Replicas: 1,
-		},
-	}
-	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-
-	sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
-	if len(sts.InstanceStatus) != 1 {
-		t.Fatal("cannot get the MySQLClusterState")
-	}
-
-	if sts.InstanceStatus[0].PrimaryStatus == nil {
-		t.Error("cannot get or parse PrimaryStatus")
-	}
-	if sts.InstanceStatus[0].ReplicaStatus == nil {
-		t.Error("cannot get or parse ReplicaStatus")
-	}
-	if sts.InstanceStatus[0].GlobalVariablesStatus == nil {
-		t.Error("cannot get or parse GlobalVariablesStatus")
-	}
-	if sts.InstanceStatus[0].CloneStateStatus == nil {
-		t.Error("cannot get or parse CloneStateStatus")
-	}
-}
+})
 
 func initializeOperatorAdminUser() error {
 	conf := mysql.NewConfig()

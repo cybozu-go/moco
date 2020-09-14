@@ -5,6 +5,9 @@ GOARCH := $(shell go env GOARCH)
 GOFLAGS := -mod=vendor
 export GO111MODULE GOFLAGS
 
+KUBEBUILDER_ASSETS := $(PWD)/bin
+export KUBEBUILDER_ASSETS
+
 SUDO=sudo
 
 # Image URL to use all building/pushing image targets
@@ -71,12 +74,15 @@ mod:
 
 setup:
 	$(SUDO) apt-get update
-	curl -sL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C /tmp/
-	$(SUDO) rm -rf /usr/local/kubebuilder
-	$(SUDO) mv /tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH) /usr/local/kubebuilder
-	$(SUDO) curl -o /usr/local/kubebuilder/bin/kustomize -sL https://go.kubebuilder.io/kustomize/$(GOOS)/$(GOARCH)
-	$(SUDO) chmod a+x /usr/local/kubebuilder/bin/kustomize
+	mkdir -p bin
+	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C /tmp/
+	mv /tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
+	rm -rf /tmp/kubebuilder_*
+	$(SUDO) curl -o ./bin/kustomize -sL https://go.kubebuilder.io/kustomize/$(GOOS)/$(GOARCH)
+	$(SUDO) chmod a+x ./bin/kustomize
 	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
 	cd /tmp; env GO111MODULE=on GOFLAGS= go get honnef.co/go/tools/cmd/staticcheck
+	GO111MODULE=off go get -u github.com/gostaticanalysis/nilerr/cmd/nilerr
+	GO111MODULE=off go get -u github.com/gordonklaus/ineffassign
 
 .PHONY:	all test manifests generate mod setup start-mysqld stop-mysqld

@@ -1,7 +1,6 @@
 package accessor
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +12,11 @@ import (
 	// MySQL Driver
 	"github.com/go-sql-driver/mysql"
 )
+
+type DataBaseAccessor interface {
+	Get(addr, user, password string) (*sqlx.DB, error)
+	Remove(cluster *mocov1alpha1.MySQLCluster)
+}
 
 // MySQLAccessorConfig contains MySQL connection configurations
 type MySQLAccessorConfig struct {
@@ -39,7 +43,6 @@ func NewMySQLAccessor(config *MySQLAccessorConfig) *MySQLAccessor {
 // Get connects a database with specified parameters
 func (acc *MySQLAccessor) Get(addr, user, password string) (*sqlx.DB, error) {
 	uri := acc.getURI(addr, user, password)
-	fmt.Println("uri = " + uri)
 
 	acc.mu.Lock()
 	defer acc.mu.Unlock()

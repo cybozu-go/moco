@@ -18,4 +18,5 @@
 /go.sum
 
 # ignore binaries
-/bin/*
+/bin
+/build
