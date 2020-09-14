@@ -1,6 +1,8 @@
 package moco
 
-import "errors"
+import (
+	"errors"
+)
 
 const (
 	// OperatorUser is a name of MOCO operator user in the MySQL context.
@@ -44,6 +46,9 @@ const (
 
 	// MySQLConfTemplatePath is
 	MySQLConfTemplatePath = "/etc/mysql_template"
+
+	// DonorPasswordPath is
+	DonorPasswordPath = MySQLDataPath + "/donor-password"
 )
 
 const (

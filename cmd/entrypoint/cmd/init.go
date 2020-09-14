@@ -23,7 +23,6 @@ var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
 	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
 	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
-	donorPasswordPath     = filepath.Join(moco.MySQLDataPath, "donor-password")
 )
 
 var initCmd = &cobra.Command{
@@ -299,7 +298,7 @@ GRANT
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	return ioutil.WriteFile(donorPasswordPath, []byte(password), 0400)
+	return ioutil.WriteFile(moco.DonorPasswordPath, []byte(password), 0400)
 }
 
 func initializeReplicationUser(ctx context.Context, password string) error {
@@ -331,7 +330,8 @@ func initializeMiscUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER misc@localhost IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	RELOAD
+	RELOAD,
+	CLONE_ADMIN
   ON *.* TO misc@localhost ;
 `))
 

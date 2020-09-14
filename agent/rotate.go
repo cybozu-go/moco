@@ -12,10 +12,6 @@ import (
 	"github.com/cybozu-go/well"
 )
 
-func internalServerError(w http.ResponseWriter, err error) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
-}
-
 func RotateLog(w http.ResponseWriter, r *http.Request) {
 	errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
