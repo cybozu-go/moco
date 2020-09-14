@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -76,18 +77,22 @@ func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 }
 
 func clone(ctx context.Context, password, donorHostName string, donorPort int) {
-	cmd := well.CommandContext(ctx, "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
+	cmd := exec.CommandContext(ctx, "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
 	query := fmt.Sprintf("CLONE INSTANCE FROM '%s'@'%s':%d IDENTIFIED BY '%s';\n", moco.DonorUser, donorHostName, donorPort, password)
 	cmd.Stdin = strings.NewReader(query)
 	err := cmd.Run()
 	if err != nil {
-		if strings.HasPrefix(err.Error()) {
-
+		if strings.HasPrefix(err.Error(), "ERROR 3707") {
+			log.Info("success to exec mysql CLONE", map[string]interface{}{"hostname": donorHostName, "port": donorPort, log.FnError: err})
+			return
 		}
 
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
+			"hostname":  donorHostName,
+			"port":      donorPort,
 			log.FnError: err,
 		})
 		return
 	}
+	log.Info("success to exec mysql CLONE", map[string]interface{}{"hostname": donorHostName, "port": donorPort})
 }
