@@ -136,12 +136,34 @@ func initializeOnce(ctx context.Context) error {
 }
 
 func initializeInstance(ctx context.Context) error {
+	f, err := ioutil.ReadFile(filepath.Join(moco.MySQLConfPath, moco.MySQLConfName))
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(f))
+
+	var stdOut, stdErr bytes.Buffer
+	cmd := well.CommandContext(ctx, "ls", moco.MySQLDataPath)
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+
+	err = cmd.Run()
+	fmt.Println(err, stdOut.String(), stdErr.String())
+
 	out, err := doExec(ctx, nil, "mysqld", "--defaults-file="+filepath.Join(moco.MySQLConfPath, moco.MySQLConfName), "--initialize-insecure")
 	if err != nil {
+		f, err := ioutil.ReadFile("/var/log/mysql/mysql.err")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(f))
+
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	cmd := well.CommandContext(ctx, "mysqld", "--skip-networking")
+	cmd = well.CommandContext(ctx, "mysqld", "--skip-networking")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
@@ -328,11 +350,11 @@ GRANT
 
 func initializeMiscUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
-CREATE USER misc@localhost IDENTIFIED BY '{{ .Password }}' ;
+CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
 	RELOAD,
 	CLONE_ADMIN
-  ON *.* TO misc@localhost ;
+  ON *.* TO misc@'%' ;
 `))
 
 	sql := new(bytes.Buffer)
@@ -392,7 +414,13 @@ func doExec(ctx context.Context, input []byte, command string, args ...string) (
 		cmd.Stdin = bytes.NewReader(input)
 	}
 
-	return cmd.Output()
+	var stdOut, stdErr bytes.Buffer
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+
+	err := cmd.Run()
+	return append(stdOut.Bytes(), stdErr.Bytes()...), err
+	// return cmd.Output()
 }
 
 func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, error) {

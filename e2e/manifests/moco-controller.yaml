@@ -7,14 +7,14 @@ spec:
   template:
     spec:
       containers:
-      - name: manager
-        command:
-        - /moco-controller
-        - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.0
-        image: controller:dev
-        imagePullPolicy: Never
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+        - name: manager
+          command:
+            - /moco-controller
+            - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.1
+          image: controller:dev
+          imagePullPolicy: Never
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
