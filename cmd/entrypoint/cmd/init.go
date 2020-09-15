@@ -22,6 +22,7 @@ const timeoutDuration = 30 * time.Second
 var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
 	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
+	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 )
 
 var initCmd = &cobra.Command{
@@ -342,6 +343,15 @@ GRANT
 	out, err := execSQL(ctx, sql.Bytes(), "")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+
+	conf := `
+[client]
+user=misc
+password=%s
+`
+	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400); err != nil {
+		return err
 	}
 
 	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)

@@ -66,6 +66,10 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
+		log.Error("failed to get database", map[string]interface{}{
+			"hostname": donorHostName,
+			"port":     donorPort,
+		})
 		return
 	}
 
@@ -73,6 +77,10 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get MySQL primary status: %w", err))
+		log.Error("failed to get MySQL primary status", map[string]interface{}{
+			"hostname": donorHostName,
+			"port":     donorPort,
+		})
 		return
 	}
 
