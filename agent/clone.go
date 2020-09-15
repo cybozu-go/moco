@@ -62,24 +62,27 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: log
 	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		a.sem.Release(1)
-		internalServerError(w, fmt.Errorf("failed to get database", err))
+		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		return
 	}
 
 	primaryStatus, err := accessor.GetMySQLPrimaryStatus(r.Context(), db)
 	if err != nil {
 		a.sem.Release(1)
-		internalServerError(w, fmt.Errorf("failed to get MySQL primary status", err))
+		internalServerError(w, fmt.Errorf("failed to get MySQL primary status: %w", err))
 		return
 	}
 
 	if primaryStatus.ExecutedGtidSet != "" {
 		a.sem.Release(1)
 		w.WriteHeader(http.StatusForbidden)
+		log.Error("recipient is not empty", map[string]interface{}{
+			"hostname": donorHostName,
+			"port":     donorPort,
+		})
 		return
 	}
 

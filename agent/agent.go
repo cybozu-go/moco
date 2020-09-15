@@ -9,7 +9,7 @@ import (
 
 const maxCloneWorkers = 1
 
-func NewAgent() *Agent {
+func New() *Agent {
 	return &Agent{
 		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),
 		acc: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{

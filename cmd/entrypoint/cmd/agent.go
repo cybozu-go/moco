@@ -19,8 +19,9 @@ var agentCmd = &cobra.Command{
 	Long:  `Start MySQL agent service.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mux := http.NewServeMux()
+		agent := agent.New()
 		mux.HandleFunc("/rotate", agent.RotateLog)
-		mux.HandleFunc("/clone", agent.NewCloneAgent().Clone)
+		mux.HandleFunc("/clone", agent.Clone)
 
 		serv := &well.HTTPServer{
 			Server: &http.Server{
