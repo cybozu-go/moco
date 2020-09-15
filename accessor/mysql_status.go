@@ -134,28 +134,28 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 			continue
 		}
 
-		primaryStatus, err := GetMySQLPrimaryStatus(ctx, log, db)
+		primaryStatus, err := GetMySQLPrimaryStatus(ctx, db)
 		if err != nil {
 			log.Info("get primary status failed", "err", err, "podName", podName)
 			continue
 		}
 		status.InstanceStatus[instanceIdx].PrimaryStatus = primaryStatus
 
-		replicaStatus, err := GetMySQLReplicaStatus(ctx, log, db)
+		replicaStatus, err := GetMySQLReplicaStatus(ctx, db)
 		if err != nil {
 			log.Info("get replica status failed", "err", err, "podName", podName)
 			continue
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
-		globalVariablesStatus, err := GetMySQLGlobalVariablesStatus(ctx, log, db)
+		globalVariablesStatus, err := GetMySQLGlobalVariablesStatus(ctx, db)
 		if err != nil {
 			log.Info("get globalVariables status failed", "err", err, "podName", podName)
 			continue
 		}
 		status.InstanceStatus[instanceIdx].GlobalVariablesStatus = globalVariablesStatus
 
-		cloneStatus, err := GetMySQLCloneStateStatus(ctx, log, db)
+		cloneStatus, err := GetMySQLCloneStateStatus(ctx, db)
 		if err != nil {
 			log.Info("get clone status failed", "err", err, "podName", podName)
 			continue
@@ -177,8 +177,8 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 	return status
 }
 
-func GetMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
-	rows, err := db.Queryx(`SHOW MASTER STATUS`)
+func GetMySQLPrimaryStatus(ctx context.Context, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
+	rows, err := db.QueryxContext(ctx, `SHOW MASTER STATUS`)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +196,8 @@ func GetMySQLPrimaryStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*
 	return nil, errors.New("primary status is empty")
 }
 
-func GetMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLReplicaStatus, error) {
-	rows, err := db.Queryx(`SHOW SLAVE STATUS`)
+func GetMySQLReplicaStatus(ctx context.Context, db *sqlx.DB) (*MySQLReplicaStatus, error) {
+	rows, err := db.QueryxContext(ctx, `SHOW SLAVE STATUS`)
 	if err != nil {
 		return nil, err
 	}
@@ -215,8 +215,8 @@ func GetMySQLReplicaStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*
 	return nil, nil
 }
 
-func GetMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLGlobalVariablesStatus, error) {
-	rows, err := db.Queryx(`SELECT @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count, @@clone_valid_donor_list`)
+func GetMySQLGlobalVariablesStatus(ctx context.Context, db *sqlx.DB) (*MySQLGlobalVariablesStatus, error) {
+	rows, err := db.QueryxContext(ctx, `SELECT @@read_only, @@super_read_only, @@rpl_semi_sync_master_wait_for_slave_count, @@clone_valid_donor_list`)
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +234,8 @@ func GetMySQLGlobalVariablesStatus(ctx context.Context, log logr.Logger, db *sql
 	return nil, errors.New("globalVariables status is empty")
 }
 
-func GetMySQLCloneStateStatus(ctx context.Context, log logr.Logger, db *sqlx.DB) (*MySQLCloneStateStatus, error) {
-	rows, err := db.Queryx(`SELECT state FROM performance_schema.clone_status`)
+func GetMySQLCloneStateStatus(ctx context.Context, db *sqlx.DB) (*MySQLCloneStateStatus, error) {
+	rows, err := db.QueryxContext(ctx, `SELECT state FROM performance_schema.clone_status`)
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/well"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -58,6 +59,27 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	if !a.sem.TryAcquire(1) {
 		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+
+	// TODO: log
+	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	if err != nil {
+		a.sem.Release(1)
+		internalServerError(w, fmt.Errorf("failed to get database", err))
+		return
+	}
+
+	primaryStatus, err := accessor.GetMySQLPrimaryStatus(r.Context(), db)
+	if err != nil {
+		a.sem.Release(1)
+		internalServerError(w, fmt.Errorf("failed to get MySQL primary status", err))
+		return
+	}
+
+	if primaryStatus.ExecutedGtidSet != "" {
+		a.sem.Release(1)
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
