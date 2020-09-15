@@ -17,6 +17,9 @@ const (
 
 	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
 	DonorUser = "moco-clone-donor"
+
+	// MiscUser is a name of MOCO misc user in the MySQL context.
+	MiscUser = "misc"
 )
 
 const (

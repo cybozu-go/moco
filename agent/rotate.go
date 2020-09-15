@@ -7,15 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/well"
-	"github.com/go-sql-driver/mysql"
 )
 
-func RotateLog(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 	errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
 	if err == nil {
@@ -61,17 +58,13 @@ func RotateLog(w http.ResponseWriter, r *http.Request) {
 	}
 	password := strings.TrimSpace(string(buf))
 
-	conf := mysql.NewConfig()
-	conf.User = user
-	conf.Passwd = password
-	conf.Addr = ""
-	conf.Timeout = 3 * time.Second
-	conf.ReadTimeout = 30 * time.Second
-
-	cmd := well.CommandContext(r.Context(), "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
-	cmd.Stdin = strings.NewReader("FLUSH LOCAL ERROR LOGS;\nFLUSH LOCAL SLOW LOGS;\n")
-	err = cmd.Run()
+	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, password)
 	if err != nil {
+		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
+		return
+	}
+
+	if _, err := db.ExecContext(r.Context(), "FLUSH LOCAL ERROR LOGS;\nFLUSH LOCAL SLOW LOGS;\n"); err != nil {
 		internalServerError(w, fmt.Errorf("failed to exec mysql FLUSH: %w", err))
 		return
 	}

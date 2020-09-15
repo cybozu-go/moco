@@ -3,8 +3,6 @@ package agent
 import (
 	"time"
 
-	"time"
-
 	"github.com/cybozu-go/moco/accessor"
 	"golang.org/x/sync/semaphore"
 )

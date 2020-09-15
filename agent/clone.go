@@ -5,29 +5,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/well"
-	"golang.org/x/sync/semaphore"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-func NewCloneAgent() *CloneAgent {
-	return &CloneAgent{
-		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),
-	}
-}
-
-type CloneAgent struct {
-	sem *semaphore.Weighted
-}
-
-func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
+func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -60,7 +47,14 @@ func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, fmt.Errorf("failed to read donor passsword file: %w", err))
 		return
 	}
-	password := strings.TrimSpace(string(buf))
+	donorPassword := strings.TrimSpace(string(buf))
+
+	buf, err = ioutil.ReadFile(moco.MiscPasswordPath)
+	if err != nil {
+		internalServerError(w, fmt.Errorf("failed to read misc passsword file: %w", err))
+		return
+	}
+	miscPassword := strings.TrimSpace(string(buf))
 
 	if !a.sem.TryAcquire(1) {
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -69,17 +63,23 @@ func (a *CloneAgent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		clone(ctx, password, donorHostName, donorPort)
+		a.clone(ctx, miscPassword, donorPassword, donorHostName, donorPort)
 		return nil
 	})
 }
 
-func clone(ctx context.Context, password, donorHostName string, donorPort int) {
-	cmd := exec.CommandContext(ctx, "mysql", "--defaults-extra-file="+filepath.Join(moco.MySQLDataPath, "misc.cnf"))
-	query := fmt.Sprintf("CLONE INSTANCE FROM '%s'@'%s':%d IDENTIFIED BY '%s';\n", moco.DonorUser, donorHostName, donorPort, password)
-	cmd.Stdin = strings.NewReader(query)
-	err := cmd.Run()
+func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
+	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
+		log.Error("failed to get database", map[string]interface{}{
+			"hostname":  donorHostName,
+			"port":      donorPort,
+			log.FnError: err,
+		})
+		return
+	}
+
+	if _, err := db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword); err != nil {
 		if strings.HasPrefix(err.Error(), "ERROR 3707") {
 			log.Info("success to exec mysql CLONE", map[string]interface{}{"hostname": donorHostName, "port": donorPort, log.FnError: err})
 			return
