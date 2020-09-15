@@ -405,7 +405,19 @@ func touchInitOnceCompleted(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return f.Close()
+	defer f.Close()
+
+	if err := f.Sync(); err != nil {
+		return err
+	}
+
+	dataDir, err := os.Open(moco.MySQLDataPath)
+	if err != nil {
+		return err
+	}
+	defer dataDir.Close()
+
+	return dataDir.Sync()
 }
 
 func doExec(ctx context.Context, input []byte, command string, args ...string) ([]byte, error) {
