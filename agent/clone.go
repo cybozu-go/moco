@@ -17,8 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-const maxCloneWorkers = 1
-
 func NewCloneAgent() *CloneAgent {
 	return &CloneAgent{
 		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),

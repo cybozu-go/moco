@@ -22,7 +22,6 @@ const timeoutDuration = 30 * time.Second
 var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
 	passwordFilePath      = filepath.Join(moco.TmpPath, "moco-root-password")
-	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 )
 
 var initCmd = &cobra.Command{
@@ -345,12 +344,7 @@ GRANT
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	conf := `
-[client]
-user=misc
-password=%s
-`
-	return ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400)
+	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)
 }
 
 func installPlugins(ctx context.Context) error {

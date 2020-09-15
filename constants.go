@@ -47,8 +47,11 @@ const (
 	// MySQLConfTemplatePath is
 	MySQLConfTemplatePath = "/etc/mysql_template"
 
-	// DonorPasswordPath is
+	// DonorPasswordPath is the path to donor user passsword file
 	DonorPasswordPath = MySQLDataPath + "/donor-password"
+
+	// MiscPasswordPath is the path to misc user passsword file
+	MiscPasswordPath = MySQLDataPath + "/misc-password"
 )
 
 const (
