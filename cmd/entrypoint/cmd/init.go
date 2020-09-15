@@ -36,6 +36,12 @@ var initCmd = &cobra.Command{
 			log.Info("start initialization", nil)
 			err := initializeOnce(ctx)
 			if err != nil {
+				f, err := ioutil.ReadFile("/var/log/mysql/mysql.err")
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(string(f))
 				return err
 			}
 
@@ -136,34 +142,12 @@ func initializeOnce(ctx context.Context) error {
 }
 
 func initializeInstance(ctx context.Context) error {
-	f, err := ioutil.ReadFile(filepath.Join(moco.MySQLConfPath, moco.MySQLConfName))
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(f))
-
-	var stdOut, stdErr bytes.Buffer
-	cmd := well.CommandContext(ctx, "ls", moco.MySQLDataPath)
-	cmd.Stdout = &stdOut
-	cmd.Stderr = &stdErr
-
-	err = cmd.Run()
-	fmt.Println(err, stdOut.String(), stdErr.String())
-
 	out, err := doExec(ctx, nil, "mysqld", "--defaults-file="+filepath.Join(moco.MySQLConfPath, moco.MySQLConfName), "--initialize-insecure")
 	if err != nil {
-		f, err := ioutil.ReadFile("/var/log/mysql/mysql.err")
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(string(f))
-
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	cmd = well.CommandContext(ctx, "mysqld", "--skip-networking")
+	cmd := well.CommandContext(ctx, "mysqld", "--skip-networking")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Start()
@@ -353,7 +337,8 @@ func initializeMiscUser(ctx context.Context, password string) error {
 CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
 	RELOAD,
-	CLONE_ADMIN
+	CLONE_ADMIN,
+	SERVICE_CONNECTION_ADMIN 
   ON *.* TO misc@'%' ;
 `))
 
@@ -425,14 +410,7 @@ func doExec(ctx context.Context, input []byte, command string, args ...string) (
 	if input != nil {
 		cmd.Stdin = bytes.NewReader(input)
 	}
-
-	var stdOut, stdErr bytes.Buffer
-	cmd.Stdout = &stdOut
-	cmd.Stderr = &stdErr
-
-	err := cmd.Run()
-	return append(stdOut.Bytes(), stdErr.Bytes()...), err
-	// return cmd.Output()
+	return cmd.Output()
 }
 
 func execSQL(ctx context.Context, input []byte, databaseName string) ([]byte, error) {
