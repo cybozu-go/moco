@@ -83,6 +83,21 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
+			name:  "ReplicaIsEmpty",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+			},
+		},
+		{
+			name:  "MostReplicasAreCloning",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withMostCloningReplicaInstances(),
+			want: &Operation{
+				Wait: true,
+			},
+		},
+		{
 			name:  "ReplicationIsNotYetConfigured",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withReadableInstances(),
 			want: &Operation{
@@ -275,6 +290,24 @@ func (d testData) withWrongDonorListInstances() testData {
 	return d
 }
 
+func (d testData) withEmptyReplicaInstances() testData {
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(1, 1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 1, false, moco.ReplicaRole), emptyIns(0, false),
+		},
+	}
+	return d
+}
+
+func (d testData) withMostCloningReplicaInstances() testData {
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(1, 1, moco.PrimaryRole), emptyIns(0, true), emptyIns(0, true),
+		},
+	}
+	return d
+}
+
 func (d testData) withWrongLabelReadOnlyInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
@@ -387,8 +420,35 @@ func readOnlyIns(syncWaitCount, primaryIndex int, role string) accessor.MySQLIns
 	}
 }
 
+func emptyIns(primaryIndex int, isCloning bool) accessor.MySQLInstanceStatus {
+	state := accessor.MySQLInstanceStatus{
+		Available:     true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
+		ReplicaStatus: nil,
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
+			ReadOnly:                           true,
+			SuperReadOnly:                      true,
+			RplSemiSyncMasterWaitForSlaveCount: 1,
+		},
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
+	}
+	if isCloning {
+		state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+			String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+			Valid:  true,
+		}
+		state.CloneStateStatus = &accessor.MySQLCloneStateStatus{
+			State: sql.NullString{
+				String: moco.CloneStatusInProgress,
+				Valid:  true,
+			},
+		}
+	}
+	return state
+}
+
 func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, role string) accessor.MySQLInstanceStatus {
-	primaryUUID := "3e11fa47-71ca-11e1-9e33-c80aa9429562"
+	primaryUUID := "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
 	exeGtid := "1-5"
 	if lagged {
 		exeGtid = "1"
@@ -405,7 +465,7 @@ func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, 
 			LastSQLErrno:     0,
 			LastSQLError:     "",
 			MasterHost:       hostName(0),
-			RetrievedGtidSet: primaryUUID + exeGtid,
+			RetrievedGtidSet: primaryUUID + "1-5",
 			ExecutedGtidSet:  primaryUUID + exeGtid,
 			SlaveIORunning:   "Yes",
 			SlaveSQLRunning:  "Yes",
@@ -425,17 +485,21 @@ func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, 
 }
 
 func outOfSyncIns(syncWaitCount, primaryIndex int) accessor.MySQLInstanceStatus {
+	primaryGTID := "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"
+
 	return accessor.MySQLInstanceStatus{
-		Available:     true,
-		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
+		Available: true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{
+			ExecutedGtidSet: primaryGTID,
+		},
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
 			LastIoErrno:      1,
 			LastIoError:      "",
 			LastSQLErrno:     0,
 			LastSQLError:     "",
 			MasterHost:       hostName(0),
-			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
+			RetrievedGtidSet: primaryGTID,
+			ExecutedGtidSet:  primaryGTID,
 			SlaveIORunning:   "Yes",
 			SlaveSQLRunning:  "Yes",
 		},
