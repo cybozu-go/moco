@@ -68,6 +68,11 @@ const (
 	MySQLXPort = 33060
 )
 
+const (
+	// AgentPort is a port number for agent container
+	AgentPort = 9080
+)
+
 // env names must correspond to options in entrypoint/init.go
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.
@@ -138,6 +143,8 @@ const (
 	OperatorUpdatePrimary = "update-primary"
 	// OperatorSetCloneDonorList is a name of the set clone donor list operation
 	OperatorSetCloneDonorList = "set-clone-donor-list"
+	// OperatorClone is a name of the clone primary instance operation
+	OperatorClone = "clone"
 	// OperatorConfigureReplication is a name of the configure replication operation
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation

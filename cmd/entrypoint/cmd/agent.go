@@ -54,7 +54,7 @@ var agentCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(agentCmd)
 
-	agentCmd.Flags().String(addressFlag, ":8080", "Listening address and port.")
+	agentCmd.Flags().String(addressFlag, fmt.Sprintf(":%d", moco.AgentPort), "Listening address and port.")
 
 	err := viper.BindPFlags(agentCmd.Flags())
 	if err != nil {

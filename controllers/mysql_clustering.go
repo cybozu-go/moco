@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/well"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
 	corev1 "k8s.io/api/core/v1"
@@ -393,6 +396,49 @@ func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructur
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+type cloneOp struct {
+	replicaIndex int
+}
+
+func (cloneOp) Name() string {
+	return moco.OperatorClone
+}
+
+func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	// replica := status.InstanceStatus[o.replicaIndex]
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	replicaHost := moco.GetHost(cluster, o.replicaIndex)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s:%d", replicaHost, moco.AgentPort),
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	queries := url.Values{
+		moco.CloneParamDonorHostName: []string{primaryHost},
+		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLPort)},
+	}
+	req.URL.RawQuery = queries.Encode()
+
+	client := &well.HTTPClient{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to clone: %s", resp.Status)
 	}
 
 	return nil
