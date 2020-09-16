@@ -363,7 +363,7 @@ func writableIns(syncWaitCount, primaryIndex int, role string) accessor.MySQLIns
 				Valid:  true,
 			},
 		},
-		CloneStateStatus: nil,
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
 		Role:             role,
 	}
 }
@@ -382,28 +382,31 @@ func readOnlyIns(syncWaitCount, primaryIndex int, role string) accessor.MySQLIns
 				Valid:  true,
 			},
 		},
-		CloneStateStatus: nil,
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
 		Role:             role,
 	}
 }
 
 func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, role string) accessor.MySQLInstanceStatus {
+	primaryUUID := "3e11fa47-71ca-11e1-9e33-c80aa9429562"
 	exeGtid := "1-5"
 	if lagged {
 		exeGtid = "1"
 	}
 
 	return accessor.MySQLInstanceStatus{
-		Available:     true,
-		PrimaryStatus: nil,
+		Available: true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{
+			ExecutedGtidSet: primaryUUID + exeGtid,
+		},
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
 			LastIoErrno:      0,
 			LastIoError:      "",
 			LastSQLErrno:     0,
 			LastSQLError:     "",
 			MasterHost:       hostName(0),
-			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:" + exeGtid,
+			RetrievedGtidSet: primaryUUID + exeGtid,
+			ExecutedGtidSet:  primaryUUID + exeGtid,
 			SlaveIORunning:   "Yes",
 			SlaveSQLRunning:  "Yes",
 		},
@@ -416,7 +419,7 @@ func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, 
 				Valid:  true,
 			},
 		},
-		CloneStateStatus: nil,
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
 		Role:             role,
 	}
 }
@@ -424,7 +427,7 @@ func readOnlyInsWithReplicaStatus(syncWaitCount, primaryIndex int, lagged bool, 
 func outOfSyncIns(syncWaitCount, primaryIndex int) accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:     true,
-		PrimaryStatus: nil,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
 		ReplicaStatus: &accessor.MySQLReplicaStatus{
 			LastIoErrno:      1,
 			LastIoError:      "",
@@ -445,7 +448,7 @@ func outOfSyncIns(syncWaitCount, primaryIndex int) accessor.MySQLInstanceStatus 
 				Valid:  true,
 			},
 		},
-		CloneStateStatus: nil,
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
 		Role:             moco.ReplicaRole,
 	}
 }

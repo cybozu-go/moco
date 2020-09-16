@@ -503,6 +503,11 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			continue
+		}
+
 		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
 			operators = append(operators, &configureReplicationOp{
 				Index:       i,
@@ -575,6 +580,11 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	var outOfSyncIns []int
 	for i, is := range status.InstanceStatus {
 		if i == primaryIndex {
+			continue
+		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			outOfSyncIns = append(outOfSyncIns, i)
 			continue
 		}
 

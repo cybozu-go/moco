@@ -250,5 +250,5 @@ func GetMySQLCloneStateStatus(ctx context.Context, db *sqlx.DB) (*MySQLCloneStat
 		return &status, nil
 	}
 
-	return nil, nil
+	return &status, nil
 }
