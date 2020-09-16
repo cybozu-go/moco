@@ -58,7 +58,9 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 	}
 	password := strings.TrimSpace(string(buf))
 
-	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, password)
+	podName := os.Getenv(moco.PodNameEnvName)
+
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, moco.MySQLAdminPort), moco.MiscUser, password)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		return

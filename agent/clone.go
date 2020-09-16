@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -62,7 +63,9 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	podName := os.Getenv(moco.PodNameEnvName)
+
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))

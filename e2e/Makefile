@@ -9,7 +9,7 @@ KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE=/usr/local/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 
-KUBERNETES_VERSION=1.17.5
+KUBERNETES_VERSION=1.17.11
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)

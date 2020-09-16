@@ -673,6 +673,16 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				Name:      varLogVolumeName,
 			},
 		},
+		Env: []corev1.EnvVar{
+			{
+				Name: moco.PodNameEnvName,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+		},
 	})
 
 	// create init containers and append them to Pod
