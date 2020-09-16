@@ -9,7 +9,7 @@ import (
 
 const maxCloneWorkers = 1
 
-func New() *Agent {
+func New(podName string) *Agent {
 	return &Agent{
 		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),
 		acc: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
@@ -17,10 +17,12 @@ func New() *Agent {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		}),
+		mysqlAdminHostname: podName,
 	}
 }
 
 type Agent struct {
-	sem *semaphore.Weighted
-	acc *accessor.MySQLAccessor
+	sem                *semaphore.Weighted
+	acc                *accessor.MySQLAccessor
+	mysqlAdminHostname string
 }

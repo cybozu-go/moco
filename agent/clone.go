@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -63,15 +62,13 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	podName := os.Getenv(moco.PodNameEnvName)
-
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		log.Error("failed to get database", map[string]interface{}{
-			"hostname":  donorHostName,
-			"port":      donorPort,
+			"hostname":  a.mysqlAdminHostname,
+			"port":      moco.MySQLAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -82,19 +79,19 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get MySQL primary status: %w", err))
 		log.Error("failed to get MySQL primary status", map[string]interface{}{
-			"hostname":  donorHostName,
-			"port":      donorPort,
+			"hostname":  a.mysqlAdminHostname,
+			"port":      moco.MySQLAdminPort,
 			log.FnError: err,
 		})
 		return
 	}
 
-	if primaryStatus.ExecutedGtidSet != "" {
+	gtid := primaryStatus.ExecutedGtidSet
+	if gtid != "" {
 		a.sem.Release(1)
 		w.WriteHeader(http.StatusForbidden)
 		log.Error("recipient is not empty", map[string]interface{}{
-			"hostname": donorHostName,
-			"port":     donorPort,
+			"gtid": gtid,
 		})
 		return
 	}
@@ -107,11 +104,12 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
-	db, err := a.acc.Get(fmt.Sprintf("localhost:%d", moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		log.Error("failed to get database", map[string]interface{}{
-			"hostname":  donorHostName,
-			"port":      donorPort,
+			"hostname":  a.mysqlAdminHostname,
+			"port":      moco.MySQLAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -119,16 +117,29 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 
 	if _, err := db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword); err != nil {
 		if strings.HasPrefix(err.Error(), "ERROR 3707") {
-			log.Info("success to exec mysql CLONE", map[string]interface{}{"hostname": donorHostName, "port": donorPort, log.FnError: err})
+			log.Info("success to exec mysql CLONE", map[string]interface{}{
+				"donor_hostname": donorHostName,
+				"donor_port":     donorPort,
+				"hostname":       a.mysqlAdminHostname,
+				"port":           moco.MySQLAdminPort,
+				log.FnError:      err,
+			})
 			return
 		}
 
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
-			"hostname":  donorHostName,
-			"port":      donorPort,
-			log.FnError: err,
+			"donor_hostname": donorHostName,
+			"donor_port":     donorPort,
+			"hostname":       a.mysqlAdminHostname,
+			"port":           moco.MySQLAdminPort,
+			log.FnError:      err,
 		})
 		return
 	}
-	log.Info("success to exec mysql CLONE", map[string]interface{}{"hostname": donorHostName, "port": donorPort})
+	log.Info("success to exec mysql CLONE", map[string]interface{}{
+		"donor_hostname": donorHostName,
+		"donor_port":     donorPort,
+		"hostname":       a.mysqlAdminHostname,
+		"port":           moco.MySQLAdminPort,
+	})
 }

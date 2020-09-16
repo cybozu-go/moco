@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/agent"
 	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
@@ -19,7 +22,11 @@ var agentCmd = &cobra.Command{
 	Long:  `Start MySQL agent service.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mux := http.NewServeMux()
-		agent := agent.New()
+		podName := os.Getenv(moco.PodNameEnvName)
+		if podName == "" {
+			return fmt.Errorf("%s is empty", moco.PodNameEnvName)
+		}
+		agent := agent.New(podName)
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 
