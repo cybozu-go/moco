@@ -116,7 +116,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 	}
 
 	if _, err := db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword); err != nil {
-		if strings.HasPrefix(err.Error(), "ERROR 3707") {
+		if strings.HasPrefix(err.Error(), "Error 3707") {
 			log.Info("success to exec mysql CLONE", map[string]interface{}{
 				"donor_hostname": donorHostName,
 				"donor_port":     donorPort,
