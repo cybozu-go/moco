@@ -170,6 +170,13 @@ const (
 	CloneParamDonorPort     = "donor_port"
 )
 
+const (
+	CloneStatusNotStarted = "Not Started"
+	CloneStatusInProgress = "In Progress"
+	CloneStatusCompleted  = "Completed"
+	CloneStatusFailed     = "Failed"
+)
+
 var (
 	// ErrConstraintsViolation is returned when the constraints violation occurs
 	ErrConstraintsViolation = errors.New("constraints violation occurs")

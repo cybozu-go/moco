@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -360,6 +361,18 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	return err
 }
 
+func isClonable(state sql.NullString) bool {
+	if !state.Valid {
+		return true
+	}
+
+	if state.String == moco.CloneStatusFailed {
+		return true
+	}
+
+	return false
+}
+
 func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
 	ops := make([]Operator, 0)
 
@@ -370,6 +383,18 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
 			ops = append(ops, setCloneDonorListOp{})
 			break
+		}
+	}
+
+	for i, s := range status.InstanceStatus {
+		if i == *cluster.Status.CurrentPrimaryIndex {
+			continue
+		}
+
+		if isClonable(s.CloneStateStatus.State) && s.PrimaryStatus.ExecutedGtidSet == "" {
+			ops = append(ops, cloneOp{
+				replicaIndex: i,
+			})
 		}
 	}
 
@@ -410,7 +435,6 @@ func (cloneOp) Name() string {
 }
 
 func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	// replica := status.InstanceStatus[o.replicaIndex]
 	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
 	replicaHost := moco.GetHost(cluster, o.replicaIndex)
 
@@ -430,8 +454,8 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	}
 	req.URL.RawQuery = queries.Encode()
 
-	client := &well.HTTPClient{}
-	resp, err := client.Do(req)
+	cli := &well.HTTPClient{}
+	resp, err := cli.Do(req)
 	if err != nil {
 		return err
 	}
