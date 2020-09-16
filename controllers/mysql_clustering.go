@@ -113,6 +113,13 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
+	wait := waitForClone(status, cluster)
+	if wait {
+		return &Operation{
+			Wait: true,
+		}, nil
+	}
+
 	ops = configureReplication(status, cluster)
 	if len(ops) != 0 {
 		return &Operation{
@@ -373,6 +380,10 @@ func isClonable(state sql.NullString) bool {
 	return false
 }
 
+func isCloning(state sql.NullString) bool {
+	return state.String == moco.CloneStatusNotStarted || state.String == moco.CloneStatusInProgress
+}
+
 func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
 	ops := make([]Operator, 0)
 
@@ -466,6 +477,22 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	}
 
 	return nil
+}
+
+func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) bool {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+	count := 0
+
+	for i, is := range status.InstanceStatus {
+		if i == primaryIndex {
+			continue
+		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			count++
+		}
+	}
+	return count > int(cluster.Spec.Replicas/2)
 }
 
 func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
