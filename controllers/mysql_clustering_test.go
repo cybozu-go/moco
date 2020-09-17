@@ -95,6 +95,12 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withMostCloningReplicaInstances(),
 			want: &Operation{
 				Wait: true,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure("False", ""),
+					outOfSync("True", "outOfSync instances: []int{1, 2}"),
+					available("False", ""),
+					healthy("False", ""),
+				},
 			},
 		},
 		{
@@ -104,7 +110,7 @@ func TestDecideNextOperation(t *testing.T) {
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
 					failure("False", ""),
-					outOfSync("True", "outOfSync instances: []int{1}"),
+					outOfSync("True", "outOfSync instances: []int{2}"),
 					available("True", ""),
 					healthy("False", ""),
 				},

@@ -113,10 +113,11 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait := waitForClone(status, cluster)
+	wait, outOfSyncInts := waitForClone(status, cluster)
 	if wait {
 		return &Operation{
-			Wait: true,
+			Wait:       true,
+			Conditions: unavailableCondition(outOfSyncInts),
 		}, nil
 	}
 
@@ -127,7 +128,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts := waitForReplication(status, cluster)
+	wait, outOfSyncInts = waitForReplication(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
@@ -385,9 +386,15 @@ func isCloning(state sql.NullString) bool {
 }
 
 func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+
+	if status.InstanceStatus[primaryIndex].PrimaryStatus.ExecutedGtidSet == "" {
+		return nil
+	}
+
 	ops := make([]Operator, 0)
 
-	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	primaryHost := moco.GetHost(cluster, primaryIndex)
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
 
 	for _, s := range status.InstanceStatus {
@@ -398,7 +405,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	}
 
 	for i, s := range status.InstanceStatus {
-		if i == *cluster.Status.CurrentPrimaryIndex {
+		if i == primaryIndex {
 			continue
 		}
 
@@ -479,9 +486,10 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	return nil
 }
 
-func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) bool {
+func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	count := 0
+	var outOfSyncIns []int
 
 	for i, is := range status.InstanceStatus {
 		if i == primaryIndex {
@@ -490,9 +498,11 @@ func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MyS
 
 		if isCloning(is.CloneStateStatus.State) {
 			count++
+			outOfSyncIns = append(outOfSyncIns, i)
 		}
 	}
-	return count > int(cluster.Spec.Replicas/2)
+
+	return count > int(cluster.Spec.Replicas/2), outOfSyncIns
 }
 
 func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
