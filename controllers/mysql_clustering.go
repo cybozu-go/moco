@@ -459,7 +459,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("%s:%d", replicaHost, moco.AgentPort),
+		fmt.Sprintf("http://%s:%d/clone", replicaHost, moco.AgentPort),
 		nil,
 	)
 	if err != nil {
