@@ -98,6 +98,20 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
+			name:  "FewReplicasAreCloning",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withFewCloningReplicaInstances(),
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure("False", ""),
+					outOfSync("True", "outOfSync instances: []int{1}"),
+					available("True", ""),
+					healthy("False", ""),
+				},
+				SyncedReplicas: intPointer(2),
+			},
+		},
+		{
 			name:  "ReplicationIsNotYetConfigured",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withReadableInstances(),
 			want: &Operation{
@@ -302,7 +316,16 @@ func (d testData) withEmptyReplicaInstances() testData {
 func (d testData) withMostCloningReplicaInstances() testData {
 	d.Status = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, 1, moco.PrimaryRole), emptyIns(0, true), emptyIns(0, true),
+			writableIns(1, 0, moco.PrimaryRole), emptyIns(0, true), emptyIns(0, true),
+		},
+	}
+	return d
+}
+
+func (d testData) withFewCloningReplicaInstances() testData {
+	d.Status = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(1, 0, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, 0, false, moco.ReplicaRole), emptyIns(0, true),
 		},
 	}
 	return d
@@ -431,6 +454,7 @@ func emptyIns(primaryIndex int, isCloning bool) accessor.MySQLInstanceStatus {
 			RplSemiSyncMasterWaitForSlaveCount: 1,
 		},
 		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
+		Role:             moco.ReplicaRole,
 	}
 	if isCloning {
 		state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
