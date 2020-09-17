@@ -472,7 +472,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	}
 	req.URL.RawQuery = queries.Encode()
 
-	cli := &well.HTTPClient{}
+	cli := &well.HTTPClient{Client: &http.Client{}}
 	resp, err := cli.Do(req)
 	if err != nil {
 		return err

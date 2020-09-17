@@ -857,7 +857,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:8080/rotate", podName, moco.UniqueName(cluster))},
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate", podName, moco.UniqueName(cluster), moco.AgentPort)},
 				},
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)

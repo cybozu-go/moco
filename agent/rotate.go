@@ -66,7 +66,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := db.ExecContext(r.Context(), "FLUSH LOCAL ERROR LOGS;\nFLUSH LOCAL SLOW LOGS;\n"); err != nil {
+	if _, err := db.ExecContext(r.Context(), "FLUSH LOCAL ERROR LOGS, SLOW LOGS"); err != nil {
 		internalServerError(w, fmt.Errorf("failed to exec mysql FLUSH: %w", err))
 		return
 	}
