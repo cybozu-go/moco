@@ -20,12 +20,12 @@ func execAtLocal(cmd string, input []byte, args ...string) ([]byte, []byte, erro
 }
 
 func kubectl(args ...string) ([]byte, []byte, error) {
-	return execAtLocal("kubectl", nil, args...)
+	return execAtLocal("./bin/kubectl", nil, args...)
 }
 
 //lint:ignore U1000 This func may be used in the future.
 func kubectlWithInput(input []byte, args ...string) ([]byte, []byte, error) {
-	return execAtLocal("kubectl", input, args...)
+	return execAtLocal("./bin/kubectl", input, args...)
 }
 
 //lint:ignore U1000 This func may be used in the future.

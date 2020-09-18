@@ -17,16 +17,10 @@ commands:
             GO_VERSION=1.13.4
             curl -fsL https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | sudo tar xzf - -C /usr/local
       - run:
-          name: Setup
-          command: |
-            make setup
-            cd e2e
-            make setup
-      - run:
           name: Run test
           command: |
             cd e2e
-            make launch-kind test
+            make test
 
 jobs:
   build:
@@ -38,13 +32,13 @@ jobs:
     working_directory: /work
     steps:
       - checkout
-      - run: make setup SUDO=""
       - run:
           name: Confirm manifests and api code were generated
           command: |
             make manifests generate
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
+      - run: make validate
       - run: make test
       - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/moco-controller
       - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/entrypoint

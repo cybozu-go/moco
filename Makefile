@@ -8,10 +8,8 @@ export GO111MODULE GOFLAGS
 KUBEBUILDER_ASSETS := $(PWD)/bin
 export KUBEBUILDER_ASSETS
 
-SUDO=sudo
-
-# Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+CONTROLLER_GEN := $(PWD)/bin/controller-gen
+KUBEBUILDER := $(PWD)/bin/kubebuilder
 # Produce CRDs with apiextensions.k8s.io/v1
 CRD_OPTIONS ?= "crd:crdVersions=v1"
 
@@ -26,26 +24,36 @@ KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
 MYSQL_VERSION := 8.0.21
 
+.PHONY: all
 all: build/moco-controller
 
-# Run tests
-test:
-	cd /tmp; GO111MODULE=on GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker
+.PHONY: validate
+validate: test-tools
 	test -z "$$(gofmt -s -l . | grep -v '^vendor' | tee /dev/stderr)"
 	staticcheck ./...
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
 	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... | grep -v /vendor/ ) 2>&1 | tee /dev/stderr)"
 	ineffassign .
 	go build -mod=vendor ./...
-	go test -race -v -coverprofile cover.out ./...
 	go vet ./...
 	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
 
-start-mysqld:
-	docker run --name moco-test-mysqld --rm -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION)
+# Run tests
+.PHONY: test
+test: $(KUBEBUILDER)
+	go test -race -v -coverprofile cover.out ./...
 
+.PHONY: start-mysqld
+start-mysqld:
+	if [ "$(shell docker inspect moco-test-mysqld --format='{{ .State.Running }}')" != "true" ]; then \
+		docker run --name moco-test-mysqld --rm -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION); \
+	fi
+
+.PHONY: stop-mysqld
 stop-mysqld:
-	docker stop moco-test-mysqld
+	if [ "$(shell docker inspect moco-test-mysqld --format='{{ .State.Running }}')" = "true" ]; then \
+		docker stop moco-test-mysqld; \
+	fi
 
 # Build moco-controller binary
 build/moco-controller: generate
@@ -58,31 +66,61 @@ build/entrypoint:
 	GO111MODULE=on go build -o $@ ./cmd/entrypoint
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests:
-	controller-gen $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+.PHONY: manifests
+manifests: $(CONTROLLER_GEN)
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	cp config/crd/bases/moco.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
 
 # Generate code
-generate:
-	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+.PHONY: generate
+generate: $(CONTROLLER_GEN)
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: mod
 mod:
 	go mod tidy
 	go mod vendor
 	git add -f vendor
 	git add go.mod
 
-setup:
-	$(SUDO) apt-get update
+$(KUBEBUILDER):
 	mkdir -p bin
 	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C /tmp/
 	mv /tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
 	rm -rf /tmp/kubebuilder_*
-	$(SUDO) curl -o ./bin/kustomize -sL https://go.kubebuilder.io/kustomize/$(GOOS)/$(GOARCH)
-	$(SUDO) chmod a+x ./bin/kustomize
-	cd /tmp; GO111MODULE=on GOFLAGS= go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
-	cd /tmp; env GO111MODULE=on GOFLAGS= go get honnef.co/go/tools/cmd/staticcheck
-	GO111MODULE=off go get -u github.com/gostaticanalysis/nilerr/cmd/nilerr
-	GO111MODULE=off go get -u github.com/gordonklaus/ineffassign
 
-.PHONY:	all test manifests generate mod setup start-mysqld stop-mysqld
+$(CONTROLLER_GEN):
+	mkdir -p bin
+	cd /tmp; env GOBIN=$(PWD)/bin GOFLAGS= GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
+
+.PHONY: test-tools
+test-tools: custom-checker staticcheck nilerr ineffassign
+
+.PHONY: custom-checker
+custom-checker:
+	if ! which custom-checker >/dev/null; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker; \
+	fi
+
+.PHONY: staticcheck
+staticcheck:
+	if ! which staticcheck >/dev/null; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get honnef.co/go/tools/cmd/staticcheck; \
+	fi
+
+.PHONY: nilerr
+nilerr:
+	if ! which nilerr >/dev/null; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/gostaticanalysis/nilerr/cmd/nilerr; \
+	fi
+
+.PHONY: ineffassign
+ineffassign:
+	if ! which ineffassign >/dev/null; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/gordonklaus/ineffassign; \
+	fi
+
+.PHONY: clean
+clean:
+	rm -rf build
+	rm -rf bin
