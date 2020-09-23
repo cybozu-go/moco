@@ -39,26 +39,26 @@ telepresence:
 load-image: load-moco-image load-mysql-image
 
 .PHONY: load-moco-image
-load-moco-image: moco.img
+load-moco-image: build-moco-image
 	ID=$$(docker image inspect --format='{{.ID}}' controller:dev); \
 	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
-		kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img; \
+		kind load docker-image --name=$(KIND_CLUSTER_NAME) controller:dev; \
 	fi
 
 .PHONY: load-mysql-image
-load-mysql-image: mysql.img
+load-mysql-image: build-mysql-image
 	ID=$$(docker image inspect --format='{{.ID}}' mysql:dev); \
 	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
-		kind load image-archive --name=$(KIND_CLUSTER_NAME) mysql.img; \
+		kind load docker-image --name=$(KIND_CLUSTER_NAME) mysql:dev; \
 	fi
 
-moco.img: $(GO_FILES) ../Dockerfile
+.PHONY: build-moco-image
+build-moco-image: $(GO_FILES) ../Dockerfile
 	docker build .. -f ../Dockerfile -t controller:dev
-	docker save -o $@ controller:dev
 
-mysql.img: $(GO_FILES) Dockerfile
+.PHONY: build-mysql-image
+build-mysql-image: $(GO_FILES) Dockerfile
 	docker build .. -f Dockerfile -t mysql:dev
-	docker save -o $@ mysql:dev
 
 $(KUBECTL):
 	mkdir -p bin
@@ -84,5 +84,4 @@ ginkgo:
 
 .PHONY: clean
 clean:
-	rm -f moco.img mysql.img
 	rm -rf bin

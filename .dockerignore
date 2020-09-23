@@ -1,1 +1,2 @@
-e2e/*.img
+/e2e/bin
+/bin
