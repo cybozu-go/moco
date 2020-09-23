@@ -78,16 +78,23 @@ func TestDecideNextOperation(t *testing.T) {
 			name:  "It should set clone donor list when the donor list is wrong",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongDonorListInstances(),
 			want: &Operation{
-				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}},
+				Wait: false,
+				Operators: []Operator{
+					&setCloneDonorListOp{},
+					&turnOnReadOnlyOp{},
+				},
 			},
 		},
 		{
 			name:  "It should clone when a replica instance is empty",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(),
 			want: &Operation{
-				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+				Wait: false,
+				Operators: []Operator{
+					&setCloneDonorListOp{},
+					&cloneOp{replicaIndex: 2},
+					&turnOnReadOnlyOp{},
+				},
 			},
 		},
 		{
@@ -100,6 +107,9 @@ func TestDecideNextOperation(t *testing.T) {
 					outOfSync(true, "outOfSync instances: []int{1, 2}"),
 					available(false, ""),
 					healthy(false, ""),
+				},
+				Operators: []Operator{
+					&turnOnReadOnlyOp{},
 				},
 			},
 		},
@@ -142,6 +152,7 @@ func TestDecideNextOperation(t *testing.T) {
 				Wait: false,
 				Operators: []Operator{
 					&setLabelsOp{},
+					&turnOnReadOnlyOp{},
 				},
 			},
 		},
@@ -152,6 +163,7 @@ func TestDecideNextOperation(t *testing.T) {
 				Wait: false,
 				Operators: []Operator{
 					&setLabelsOp{},
+					&turnOnReadOnlyOp{},
 				},
 			},
 		},

@@ -92,15 +92,16 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	err := validateConstraints(status, cluster)
 	if err != nil {
-		return &Operation{
+		op := &Operation{
 			Conditions: violationCondition(err),
-			Operators:  getReadOnlyOp(cluster, status),
-		}, err
+		}
+		setTurnOnReadOnlyOpIfNeeded(cluster, status, &op.Operators)
+		return op, err
 	}
 
 	primaryIndex := selectPrimary(status, cluster)
 
-	ops := updatePrimary(cluster, primaryIndex)
+	ops := updatePrimary(status, cluster, primaryIndex)
 	if len(ops) != 0 {
 		return &Operation{
 			Operators: ops,
@@ -116,10 +117,12 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	wait, outOfSyncInts := waitForClone(status, cluster)
 	if wait {
-		return &Operation{
+		op := &Operation{
 			Wait:       true,
 			Conditions: unavailableCondition(outOfSyncInts),
-		}, nil
+		}
+		setTurnOnReadOnlyOpIfNeeded(cluster, status, &op.Operators)
+		return op, nil
 	}
 
 	ops = configureReplication(status, cluster)
@@ -131,10 +134,12 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	wait, outOfSyncInts = waitForReplication(status, cluster)
 	if wait {
-		return &Operation{
+		op := &Operation{
 			Wait:       true,
 			Conditions: unavailableCondition(outOfSyncInts),
-		}, nil
+		}
+		setTurnOnReadOnlyOpIfNeeded(cluster, status, &op.Operators)
+		return op, nil
 	}
 
 	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncInts)
@@ -324,17 +329,20 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 	return 0
 }
 
-func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []Operator {
+func updatePrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []Operator {
 	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
 	if currentPrimaryIndex != nil && *currentPrimaryIndex == newPrimaryIndex {
 		return nil
 	}
 
-	return []Operator{
+	ops := []Operator{
 		&updatePrimaryOp{
 			newPrimaryIndex: newPrimaryIndex,
 		},
 	}
+	setTurnOnReadOnlyOpIfNeeded(cluster, status, &ops)
+
+	return ops
 }
 
 type updatePrimaryOp struct {
@@ -415,6 +423,9 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 				replicaIndex: i,
 			})
 		}
+	}
+	if len(ops) > 0 {
+		setTurnOnReadOnlyOpIfNeeded(cluster, status, &ops)
 	}
 
 	return ops
@@ -541,6 +552,9 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 			break
 		}
 	}
+	if len(operators) > 0 {
+		setTurnOnReadOnlyOpIfNeeded(cluster, status, &operators)
+	}
 
 	return operators
 }
@@ -623,7 +637,8 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 		return nil
 	}
 	return []Operator{
-		&turnOffReadOnlyOp{primaryIndex: primaryIndex}}
+		&turnOffReadOnlyOp{primaryIndex: primaryIndex},
+	}
 }
 
 type setLabelsOp struct{}
@@ -691,23 +706,21 @@ func (o turnOnReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructure
 	return err
 }
 
-func getReadOnlyOp(cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) []Operator {
+func setTurnOnReadOnlyOpIfNeeded(cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus, ops *[]Operator) {
 	if cluster.Status.CurrentPrimaryIndex == nil {
-		return nil
+		return
 	}
 
 	s := status.InstanceStatus[*cluster.Status.CurrentPrimaryIndex]
 	if !s.Available {
-		return nil
+		return
 	}
 
 	if s.GlobalVariablesStatus.ReadOnly {
-		return nil
+		return
 	}
 
-	return []Operator{
-		turnOnReadOnlyOp{
-			primaryIndex: *cluster.Status.CurrentPrimaryIndex,
-		},
-	}
+	*ops = append(*ops, turnOnReadOnlyOp{
+		primaryIndex: *cluster.Status.CurrentPrimaryIndex,
+	})
 }
