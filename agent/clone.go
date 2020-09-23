@@ -33,14 +33,15 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	var donorPort int
 	if rawDonorPort == "" {
-		donorPort = moco.MySQLPort
-	} else {
-		var err error
-		donorPort, err = strconv.Atoi(rawDonorPort)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	donorPort, err = strconv.Atoi(rawDonorPort)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	buf, err := ioutil.ReadFile(moco.DonorPasswordPath)

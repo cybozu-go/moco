@@ -289,7 +289,8 @@ func initializeDonorUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	BACKUP_ADMIN
+	BACKUP_ADMIN,
+	SERVICE_CONNECTION_ADMIN
   ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
 `))
 

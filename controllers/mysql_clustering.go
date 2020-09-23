@@ -427,7 +427,7 @@ func (setCloneDonorListOp) Name() string {
 
 func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
-	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
 		db, err := infra.GetDB(ctx, cluster, i)
@@ -468,7 +468,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 
 	queries := url.Values{
 		moco.CloneParamDonorHostName: []string{primaryHost},
-		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLPort)},
+		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLAdminPort)},
 	}
 	req.URL.RawQuery = queries.Encode()
 
