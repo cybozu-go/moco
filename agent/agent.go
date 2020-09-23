@@ -1,22 +1,16 @@
 package agent
 
 import (
-	"time"
-
 	"github.com/cybozu-go/moco/accessor"
 	"golang.org/x/sync/semaphore"
 )
 
 const maxCloneWorkers = 1
 
-func New(podName string) *Agent {
+func New(podName string, config *accessor.MySQLAccessorConfig) *Agent {
 	return &Agent{
-		sem: semaphore.NewWeighted(int64(maxCloneWorkers)),
-		acc: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   30 * time.Minute,
-			ConnectionTimeout: 3 * time.Second,
-			ReadTimeout:       30 * time.Second,
-		}),
+		sem:                semaphore.NewWeighted(int64(maxCloneWorkers)),
+		acc:                accessor.NewMySQLAccessor(config),
 		mysqlAdminHostname: podName,
 	}
 }

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/agent"
 	"github.com/cybozu-go/well"
 	"github.com/spf13/cobra"
@@ -13,7 +15,10 @@ import (
 )
 
 const (
-	addressFlag = "address"
+	addressFlag           = "address"
+	connMaxLifetimeFlag   = "conn-max-lifetime"
+	connectionTimeoutFlag = "connection-timeout"
+	readTimeoutFlag       = "read-timeout"
 )
 
 var agentCmd = &cobra.Command{
@@ -26,7 +31,11 @@ var agentCmd = &cobra.Command{
 		if podName == "" {
 			return fmt.Errorf("%s is empty", moco.PodNameEnvName)
 		}
-		agent := agent.New(podName)
+		agent := agent.New(podName, &accessor.MySQLAccessorConfig{
+			ConnMaxLifeTime:   viper.GetDuration(connMaxLifetimeFlag),
+			ConnectionTimeout: viper.GetDuration(connectionTimeoutFlag),
+			ReadTimeout:       viper.GetDuration(readTimeoutFlag),
+		})
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 
@@ -55,6 +64,9 @@ func init() {
 	rootCmd.AddCommand(agentCmd)
 
 	agentCmd.Flags().String(addressFlag, fmt.Sprintf(":%d", moco.AgentPort), "Listening address and port.")
+	agentCmd.Flags().Duration(connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
+	agentCmd.Flags().Duration(connectionTimeoutFlag, 3*time.Second, "Dial timeout")
+	agentCmd.Flags().Duration(readTimeoutFlag, 30*time.Second, "I/O read timeout")
 
 	err := viper.BindPFlags(agentCmd.Flags())
 	if err != nil {
