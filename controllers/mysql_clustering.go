@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +13,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/well"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
 	corev1 "k8s.io/api/core/v1"
@@ -102,6 +106,21 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
+	ops = restoreEmptyInstance(status, cluster)
+	if len(ops) != 0 {
+		return &Operation{
+			Operators: ops,
+		}, nil
+	}
+
+	wait, outOfSyncInts := waitForClone(status, cluster)
+	if wait {
+		return &Operation{
+			Wait:       true,
+			Conditions: unavailableCondition(outOfSyncInts),
+		}, nil
+	}
+
 	ops = configureReplication(status, cluster)
 	if len(ops) != 0 {
 		return &Operation{
@@ -109,7 +128,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts := waitForReplication(status, cluster)
+	wait, outOfSyncInts = waitForReplication(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
@@ -350,15 +369,155 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	return err
 }
 
+func isClonable(state sql.NullString) bool {
+	if !state.Valid {
+		return true
+	}
+
+	if state.String == moco.CloneStatusFailed {
+		return true
+	}
+
+	return false
+}
+
+func isCloning(state sql.NullString) bool {
+	return state.String == moco.CloneStatusNotStarted || state.String == moco.CloneStatusInProgress
+}
+
+func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+
+	if status.InstanceStatus[primaryIndex].PrimaryStatus.ExecutedGtidSet == "" {
+		return nil
+	}
+
+	ops := make([]Operator, 0)
+
+	primaryHost := moco.GetHost(cluster, primaryIndex)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+
+	for _, s := range status.InstanceStatus {
+		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
+			ops = append(ops, setCloneDonorListOp{})
+			break
+		}
+	}
+
+	for i, s := range status.InstanceStatus {
+		if i == primaryIndex {
+			continue
+		}
+
+		if isClonable(s.CloneStateStatus.State) && s.PrimaryStatus.ExecutedGtidSet == "" {
+			ops = append(ops, cloneOp{
+				replicaIndex: i,
+			})
+		}
+	}
+
+	return ops
+}
+
+type setCloneDonorListOp struct{}
+
+func (setCloneDonorListOp) Name() string {
+	return moco.OperatorSetCloneDonorList
+}
+
+func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
+
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		db, err := infra.GetDB(ctx, cluster, i)
+		if err != nil {
+			return err
+		}
+
+		_, err = db.Exec(`SET GLOBAL clone_valid_donor_list = ?`, primaryHostWithPort)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type cloneOp struct {
+	replicaIndex int
+}
+
+func (cloneOp) Name() string {
+	return moco.OperatorClone
+}
+
+func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+	replicaHost := moco.GetHost(cluster, o.replicaIndex)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("http://%s:%d/clone", replicaHost, moco.AgentPort),
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	queries := url.Values{
+		moco.CloneParamDonorHostName: []string{primaryHost},
+		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLAdminPort)},
+	}
+	req.URL.RawQuery = queries.Encode()
+
+	cli := &well.HTTPClient{Client: &http.Client{}}
+	resp, err := cli.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to clone: %s", resp.Status)
+	}
+
+	return nil
+}
+
+func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int) {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+	count := 0
+	var outOfSyncIns []int
+
+	for i, is := range status.InstanceStatus {
+		if i == primaryIndex {
+			continue
+		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			count++
+			outOfSyncIns = append(outOfSyncIns, i)
+		}
+	}
+
+	return count > int(cluster.Spec.Replicas/2), outOfSyncIns
+}
+
 func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []Operator {
-	podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), *cluster.Status.CurrentPrimaryIndex)
-	primaryHost := fmt.Sprintf("%s.%s.%s.svc", podName, moco.UniqueName(cluster), cluster.Namespace)
+	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
 
 	var operators []Operator
 	for i, is := range status.InstanceStatus {
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			continue
+		}
+
 		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
 			operators = append(operators, &configureReplicationOp{
 				Index:       i,
@@ -431,6 +590,11 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	var outOfSyncIns []int
 	for i, is := range status.InstanceStatus {
 		if i == primaryIndex {
+			continue
+		}
+
+		if isCloning(is.CloneStateStatus.State) {
+			outOfSyncIns = append(outOfSyncIns, i)
 			continue
 		}
 

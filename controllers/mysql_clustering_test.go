@@ -1,26 +1,27 @@
 package controllers
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
 	"testing"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/accessor"
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
-	CLUSTER   = "test-cluster"
-	NAMESPACE = "test-namespace"
-	UID       = "test-uid"
-	REPLICAS  = 3
+	CLUSTER      = "test-cluster"
+	NAMESPACE    = "test-namespace"
+	UID          = "test-uid"
+	REPLICAS     = 3
+	PRIMARY_UUID = "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
 )
 
 func TestDecideNextOperation(t *testing.T) {
@@ -32,41 +33,41 @@ func TestDecideNextOperation(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "IncludeUnavailableInstance",
+			name:    "It should be unavailable error when it contains unavailable instance",
 			input:   newTestData().withUnAvailableInstances(),
 			want:    nil,
 			wantErr: moco.ErrUnavailableHost,
 		},
 		{
-			name:  "ConstraintsViolationWrongInstanceIsWritable",
+			name:  "It should be constraints violation error when the writable instance is wrong",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withOneWritableInstance(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					violation("True", moco.ErrConstraintsViolation.Error()),
-					failure("True", ""),
-					available("False", ""),
-					healthy("False", ""),
+					violation(true, moco.ErrConstraintsViolation.Error()),
+					failure(true, ""),
+					available(false, ""),
+					healthy(false, ""),
 				},
 			},
 			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
-			name:  "ConstraintsViolationIncludeTwoWritableInstances",
+			name:  "It should be constraints violation error when it includes multiple writable instances",
 			input: newTestData().withTwoWritableInstances(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					violation("True", moco.ErrConstraintsViolation.Error()),
-					failure("True", ""),
-					available("False", ""),
-					healthy("False", ""),
+					violation(true, moco.ErrConstraintsViolation.Error()),
+					failure(true, ""),
+					available(false, ""),
+					healthy(false, ""),
 				},
 			},
 			wantErr: moco.ErrConstraintsViolation,
 		},
 		{
-			name:  "PrimaryIsNotYetSelected",
+			name:  "It should update primary index when the primary is not yet selected",
 			input: newTestData().withReadableInstances(),
 			want: &Operation{
 				Wait:      false,
@@ -74,7 +75,66 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "ReplicationIsNotYetConfigured",
+			name:  "It should set clone donor list when the donor list is wrong",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongDonorListInstances(),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}},
+			},
+		},
+		{
+			name:  "It should clone when a replica instance is empty and not yet cloned",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(false),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+			},
+		},
+		{
+			name:  "It should clone when a replica instance is empty and cloning is failed",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(true),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+			},
+		},
+		{
+			name:  "It should not clone when a replica instance is NOT empty",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withNotEmptyReplicaInstances(false),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}},
+			},
+		},
+		{
+			name:  "It should be wait for clone when the most replicas are cloning",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withMostCloningReplicaInstances(),
+			want: &Operation{
+				Wait: true,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(true, "outOfSync instances: []int{1, 2}"),
+					available(false, ""),
+					healthy(false, ""),
+				},
+			},
+		},
+		{
+			name:  "It should be available when few replicas are cloning",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withFewCloningReplicaInstances(),
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(true, "outOfSync instances: []int{2}"),
+					available(true, ""),
+					healthy(false, ""),
+				},
+				SyncedReplicas: intPointer(2),
+			},
+		},
+		{
+			name:  "It should configure replications when the replication is not yet configured",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withReadableInstances(),
 			want: &Operation{
 				Wait: false,
@@ -92,7 +152,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "ReadOnlyInstanceLabelsAreWrong",
+			name:  "It should set service labels when readonly instance labels are wrong",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelReadOnlyInstances(),
 			want: &Operation{
 				Wait: false,
@@ -102,7 +162,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "WritableInstanceLabelsAreWrong",
+			name:  "It should set service labels when writable instance labels are wrong",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelWritableInstances(),
 			want: &Operation{
 				Wait: false,
@@ -112,28 +172,28 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "ReplicasAreLagged",
+			name:  "It should wait for replication when replicas are lagged",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withLaggedReplicas(),
 			want: &Operation{
 				Wait: true,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					failure("False", ""),
-					outOfSync("False", ""),
-					available("False", ""),
-					healthy("False", ""),
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
 				},
 			},
 		},
 		{
-			name:  "ReadyToAcceptWriteRequestWithSyncedInstances",
+			name:  "It should be writable when it ready to accept write request",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withReplicas(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					failure("False", ""),
-					outOfSync("False", ""),
-					available("True", ""),
-					healthy("True", ""),
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(true, ""),
+					healthy(true, ""),
 				},
 				Operators: []Operator{
 					turnOffReadOnlyOp{
@@ -144,29 +204,29 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "WorkingProperlyWithLaggedOneReplica",
+			name:  "It should be available when it contains few lagged replica",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withSyncedReplicas(2).withLaggedReplica(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					failure("False", ""),
-					outOfSync("True", "outOfSync instances: []int{1}"),
-					available("True", ""),
-					healthy("False", ""),
+					failure(false, ""),
+					outOfSync(true, "outOfSync instances: []int{1}"),
+					available(true, ""),
+					healthy(false, ""),
 				},
 				SyncedReplicas: intPointer(2),
 			},
 		},
 		{
-			name:  "WorkingProperly",
+			name:  "It should be healthy when all replicas are synced",
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withSyncedReplicas(3).withAvailableCluster(),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
-					failure("False", ""),
-					outOfSync("False", ""),
-					available("True", ""),
-					healthy("True", ""),
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(true, ""),
+					healthy(true, ""),
 				},
 				SyncedReplicas: intPointer(3),
 			},
@@ -175,7 +235,7 @@ func TestDecideNextOperation(t *testing.T) {
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := decideNextOperation(logger, tt.input.Cluster, tt.input.Status)
+			got, err := decideNextOperation(logger, tt.input.ClusterResource, tt.input.ClusterStatus)
 
 			if !assertOperation(got, tt.want) {
 				sortOp(got)
@@ -198,13 +258,13 @@ func TestDecideNextOperation(t *testing.T) {
 }
 
 type testData struct {
-	Cluster *mocov1alpha1.MySQLCluster
-	Status  *accessor.MySQLClusterStatus
+	ClusterResource *mocov1alpha1.MySQLCluster
+	ClusterStatus   *accessor.MySQLClusterStatus
 }
 
 func newTestData() testData {
 	return testData{
-		Cluster: &mocov1alpha1.MySQLCluster{
+		ClusterResource: &mocov1alpha1.MySQLCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      CLUSTER,
 				Namespace: NAMESPACE,
@@ -217,105 +277,195 @@ func newTestData() testData {
 				CurrentPrimaryIndex: nil,
 			},
 		},
-		Status: nil,
+		ClusterStatus: nil,
 	}
 }
 
 func (d testData) withUnAvailableInstances() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			unavailableIns(), readOnlyIns(1, ""), readOnlyIns(1, ""),
+			unavailableIns(),
+			readOnlyIns(primaryIndex, ""),
+			readOnlyIns(primaryIndex, ""),
 		},
 	}
 	return d
 }
 
 func (d testData) withOneWritableInstance() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 1
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.ReplicaRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
+			readOnlyIns(primaryIndex, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyIns(primaryIndex, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withTwoWritableInstances() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), writableIns(1, moco.PrimaryRole), readOnlyIns(1, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyIns(primaryIndex, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withReadableInstances() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, ""), readOnlyIns(1, ""), readOnlyIns(1, ""),
+			readOnlyIns(primaryIndex, ""),
+			readOnlyIns(primaryIndex, ""),
+			readOnlyIns(primaryIndex, ""),
+		},
+	}
+	return d
+}
+
+func (d testData) withWrongDonorListInstances() testData {
+	wrongPrimaryIndex := 1
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(wrongPrimaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(wrongPrimaryIndex, false, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(wrongPrimaryIndex, false, moco.ReplicaRole),
+		},
+	}
+	return d
+}
+
+func (d testData) withEmptyReplicaInstances(cloneFailed bool) testData {
+	primaryIndex := 1
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			emptyIns(cloneFailed),
+		},
+	}
+	return d
+}
+
+func (d testData) withNotEmptyReplicaInstances(cloneFailed bool) testData {
+	primaryIndex := 1
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			notEmptyIns(cloneFailed),
+		},
+	}
+	return d
+}
+
+func (d testData) withMostCloningReplicaInstances() testData {
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(primaryIndex, moco.PrimaryRole),
+			cloningIns(primaryIndex),
+			cloningIns(primaryIndex),
+		},
+	}
+	return d
+}
+
+func (d testData) withFewCloningReplicaInstances() testData {
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			cloningIns(primaryIndex),
 		},
 	}
 	return d
 }
 
 func (d testData) withWrongLabelReadOnlyInstances() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withWrongLabelWritableInstances() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withReplicas() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			readOnlyIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withLaggedReplica() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), outOfSyncIns(1), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			outOfSyncIns(primaryIndex),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withLaggedReplicas() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			readOnlyIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, true, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, true, moco.ReplicaRole),
+			readOnlyIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, true, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, true, moco.ReplicaRole),
 		},
 	}
 	return d
 }
 
 func (d testData) withCurrentPrimaryIndex(primaryIndex *int) testData {
-	d.Cluster.Status.CurrentPrimaryIndex = primaryIndex
+	d.ClusterResource.Status.CurrentPrimaryIndex = primaryIndex
 	return d
 }
 
 func (d testData) withSyncedReplicas(replicas int) testData {
-	d.Cluster.Status.SyncedReplicas = replicas
+	d.ClusterResource.Status.SyncedReplicas = replicas
 	return d
 }
 
 func (d testData) withAvailableCluster() testData {
-	d.Status = &accessor.MySQLClusterStatus{
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
-			writableIns(1, moco.PrimaryRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole), readOnlyInsWithReplicaStatus(1, false, moco.ReplicaRole),
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
 	}
 	return d
@@ -331,127 +481,171 @@ func unavailableIns() accessor.MySQLInstanceStatus {
 	}
 }
 
-func writableIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
-	return accessor.MySQLInstanceStatus{
+func emptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
+	state := accessor.MySQLInstanceStatus{
 		Available:     true,
-		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
-		ReplicaStatus: nil,
-		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
-			ReadOnly:                           false,
-			SuperReadOnly:                      false,
-			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
-		},
-		CloneStateStatus: nil,
-		Role:             role,
-	}
-}
-
-func readOnlyIns(syncWaitCount int, role string) accessor.MySQLInstanceStatus {
-	return accessor.MySQLInstanceStatus{
-		Available:     true,
-		PrimaryStatus: &accessor.MySQLPrimaryStatus{ExecutedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5"},
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
 		ReplicaStatus: nil,
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
 			ReadOnly:                           true,
 			SuperReadOnly:                      true,
-			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
+			RplSemiSyncMasterWaitForSlaveCount: 1,
 		},
-		CloneStateStatus: nil,
-		Role:             role,
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
+		Role:             moco.ReplicaRole,
 	}
+
+	if cloneFailed {
+		state.CloneStateStatus.State = sql.NullString{
+			Valid:  true,
+			String: moco.CloneStatusFailed,
+		}
+	}
+
+	return state
 }
 
-func readOnlyInsWithReplicaStatus(syncWaitCount int, lagged bool, role string) accessor.MySQLInstanceStatus {
+func notEmptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
+	state := accessor.MySQLInstanceStatus{
+		Available: true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{
+			ExecutedGtidSet: PRIMARY_UUID + ":1",
+		},
+		ReplicaStatus: nil,
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
+			ReadOnly:                           true,
+			SuperReadOnly:                      true,
+			RplSemiSyncMasterWaitForSlaveCount: 1,
+		},
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
+		Role:             moco.ReplicaRole,
+	}
+
+	if cloneFailed {
+		state.CloneStateStatus.State = sql.NullString{
+			Valid:  true,
+			String: moco.CloneStatusFailed,
+		}
+	}
+
+	return state
+}
+
+func cloningIns(primaryIndex int) accessor.MySQLInstanceStatus {
+	state := emptyIns(false)
+	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		Valid:  true,
+	}
+	state.CloneStateStatus = &accessor.MySQLCloneStateStatus{
+		State: sql.NullString{
+			String: moco.CloneStatusInProgress,
+			Valid:  true,
+		},
+	}
+	return state
+}
+
+func readOnlyIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
+	state := emptyIns(false)
+	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARY_UUID + "1-5"}
+	state.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
+	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		Valid:  true,
+	}
+	state.Role = role
+	return state
+}
+
+func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) accessor.MySQLInstanceStatus {
+	state := readOnlyIns(primaryIndex, role)
 	exeGtid := "1-5"
 	if lagged {
 		exeGtid = "1"
 	}
 
-	return accessor.MySQLInstanceStatus{
-		Available:     true,
-		PrimaryStatus: nil,
-		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			LastIoErrno:      0,
-			LastIoError:      "",
-			LastSQLErrno:     0,
-			LastSQLError:     "",
-			MasterHost:       hostName(0),
-			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:" + exeGtid,
-			SlaveIORunning:   "Yes",
-			SlaveSQLRunning:  "Yes",
-		},
-		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
-			ReadOnly:                           true,
-			SuperReadOnly:                      true,
-			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
-		},
-		CloneStateStatus: nil,
-		Role:             role,
+	state.ReplicaStatus = &accessor.MySQLReplicaStatus{
+		LastIoErrno:      0,
+		LastIoError:      "",
+		LastSQLErrno:     0,
+		LastSQLError:     "",
+		MasterHost:       hostName(0),
+		RetrievedGtidSet: PRIMARY_UUID + "1-5",
+		ExecutedGtidSet:  PRIMARY_UUID + exeGtid,
+		SlaveIORunning:   "Yes",
+		SlaveSQLRunning:  "Yes",
 	}
+	return state
 }
 
-func outOfSyncIns(syncWaitCount int) accessor.MySQLInstanceStatus {
-	return accessor.MySQLInstanceStatus{
-		Available:     true,
-		PrimaryStatus: nil,
-		ReplicaStatus: &accessor.MySQLReplicaStatus{
-			LastIoErrno:      1,
-			LastIoError:      "",
-			LastSQLErrno:     0,
-			LastSQLError:     "",
-			MasterHost:       hostName(0),
-			RetrievedGtidSet: "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			ExecutedGtidSet:  "3e11fa47-71ca-11e1-9e33-c80aa9429562:1-5",
-			SlaveIORunning:   "Yes",
-			SlaveSQLRunning:  "Yes",
-		},
-		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
-			ReadOnly:                           true,
-			SuperReadOnly:                      true,
-			RplSemiSyncMasterWaitForSlaveCount: syncWaitCount,
-		},
-		CloneStateStatus: nil,
-		Role:             moco.ReplicaRole,
-	}
+func writableIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
+	state := readOnlyIns(primaryIndex, role)
+	state.GlobalVariablesStatus.ReadOnly = false
+	state.GlobalVariablesStatus.SuperReadOnly = false
+	return state
 }
 
-func violation(status string, message string) mocov1alpha1.MySQLClusterCondition {
+func outOfSyncIns(primaryIndex int) accessor.MySQLInstanceStatus {
+	state := readOnlyIns(primaryIndex, moco.ReplicaRole)
+	primaryGTID := PRIMARY_UUID + ":1-5"
+	state.ReplicaStatus = &accessor.MySQLReplicaStatus{
+		LastIoErrno:      1,
+		LastIoError:      "",
+		LastSQLErrno:     0,
+		LastSQLError:     "",
+		MasterHost:       hostName(0),
+		RetrievedGtidSet: primaryGTID,
+		ExecutedGtidSet:  primaryGTID,
+		SlaveIORunning:   "Yes",
+		SlaveSQLRunning:  "Yes",
+	}
+	return state
+}
+
+func status(s bool) corev1.ConditionStatus {
+	if s {
+		return corev1.ConditionTrue
+	}
+	return corev1.ConditionFalse
+}
+
+func violation(s bool, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionViolation,
-		Status:  corev1.ConditionStatus(status),
+		Status:  status(s),
 		Message: message,
 	}
 }
 
-func available(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+func available(s bool, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionAvailable,
-		Status:  status,
+		Status:  status(s),
 		Message: message,
 	}
 }
 
-func failure(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+func failure(s bool, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionFailure,
-		Status:  status,
+		Status:  status(s),
 		Message: message,
 	}
 }
 
-func healthy(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+func healthy(s bool, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionHealthy,
-		Status:  status,
+		Status:  status(s),
 		Message: message,
 	}
 }
 
-func outOfSync(status corev1.ConditionStatus, message string) mocov1alpha1.MySQLClusterCondition {
+func outOfSync(s bool, message string) mocov1alpha1.MySQLClusterCondition {
 	return mocov1alpha1.MySQLClusterCondition{
 		Type:    mocov1alpha1.ConditionOutOfSync,
-		Status:  status,
+		Status:  status(s),
 		Message: message,
 	}
 }

@@ -20,6 +20,12 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const (
+	connMaxLifetimeFlag   = "conn-max-lifetime"
+	connectionTimeoutFlag = "connection-timeout"
+	readTimeoutFlag       = "read-timeout"
+)
+
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
@@ -50,9 +56,9 @@ func subMain() error {
 		ConfInitContainerImage: config.confInitContainerImage,
 		CurlContainerImage:     config.curlContainerImage,
 		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   30 * time.Minute,
-			ConnectionTimeout: 3 * time.Second,
-			ReadTimeout:       30 * time.Second,
+			ConnMaxLifeTime:   config.connMaxLifeTime,
+			ConnectionTimeout: config.connectionTimeout,
+			ReadTimeout:       config.readTimeout,
 		}),
 	}).SetupWithManager(mgr, 30*time.Second); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")

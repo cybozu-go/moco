@@ -1,38 +1,56 @@
-SUDO=sudo
 GOFLAGS=-mod=vendor
 export GOFLAGS
 
 GINKGO=$(GOPATH)/bin/ginkgo
-KUBECTL=/usr/local/bin/kubectl
+KUBECTL := $(PWD)/bin/kubectl
 KIND_VERSION=0.8.1
 KUSTOMIZE_VERSION=3.7.0
-KUSTOMIZE=/usr/local/bin/kustomize
+KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 
-KUBERNETES_VERSION=1.17.5
+MOCO_CONF_GEN_VERSION=0.2.1
+KUBERNETES_VERSION=1.17.11
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
 
-launch-kind:
-	sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
-		-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster.yaml > /tmp/kind-cluster.yaml
-	kind create cluster --name=$(KIND_CLUSTER_NAME) --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION)
+launch-kind: kind
+	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
+		sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
+			-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster.yaml > /tmp/kind-cluster.yaml; \
+		kind create cluster --name=$(KIND_CLUSTER_NAME) --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION); \
+	fi
 
-shutdown-kind:
-	kind delete cluster --name=$(KIND_CLUSTER_NAME) || true
+shutdown-kind: kind
+	if [ "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
+		kind delete cluster --name=$(KIND_CLUSTER_NAME) || true; \
+	fi
 
-test: load-image
-	kubectl config use-context kind-$(KIND_CLUSTER_NAME)
-	kustomize build --load_restrictor='none' ./manifests | kubectl apply -f -
+test: launch-kind load-image $(KUBECTL) $(KUSTOMIZE) ginkgo
+	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
+	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
 	env E2ETEST=1 $(GINKGO) --failFast -v .
 
+.PHONY: telepresence
 telepresence:
-	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run -mod=vendor ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.0
+	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run -mod=vendor ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:$(MOCO_CONF_GEN_VERSION)
 
-load-image: moco.img mysql.img
-	kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img
-	kind load image-archive --name=$(KIND_CLUSTER_NAME) mysql.img
+.PHONY: load-image
+load-image: load-moco-image load-mysql-image
+
+.PHONY: load-moco-image
+load-moco-image: moco.img
+	ID=$$(docker image inspect --format='{{.ID}}' controller:dev); \
+	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
+		kind load image-archive --name=$(KIND_CLUSTER_NAME) moco.img; \
+	fi
+
+.PHONY: load-mysql-image
+load-mysql-image: mysql.img
+	ID=$$(docker image inspect --format='{{.ID}}' mysql:dev); \
+	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
+		kind load image-archive --name=$(KIND_CLUSTER_NAME) mysql.img; \
+	fi
 
 moco.img: $(GO_FILES) ../Dockerfile
 	docker build .. -f ../Dockerfile -t controller:dev
@@ -43,16 +61,28 @@ mysql.img: $(GO_FILES) Dockerfile
 	docker save -o $@ mysql:dev
 
 $(KUBECTL):
-	$(SUDO) curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
-	$(SUDO) chmod 755 $(KUBECTL)
+	mkdir -p bin
+	curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
+	chmod 755 $(KUBECTL)
 
-setup: $(KUBECTL)
-	GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
+$(KUSTOMIZE):
+	mkdir -p bin
 	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar xzf - > kustomize
-	$(SUDO) mv kustomize $(KUSTOMIZE)
-	cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION)
+	mv kustomize $(KUSTOMIZE)
 
+.PHONY: kind
+kind:
+	if [ ! "$(shell kind version | grep $(KIND_VERSION))" ]; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION); \
+	fi
+
+.PHONY: ginkgo
+ginkgo:
+	if ! which ginkgo >/dev/null; then \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get -u github.com/onsi/ginkgo/ginkgo; \
+	fi
+
+.PHONY: clean
 clean:
 	rm -f moco.img mysql.img
-
-.PHONY: launch-kind shutdown-kind test load-image setup clean
+	rm -rf bin

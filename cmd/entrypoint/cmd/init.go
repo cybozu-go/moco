@@ -36,6 +36,12 @@ var initCmd = &cobra.Command{
 			log.Info("start initialization", nil)
 			err := initializeOnce(ctx)
 			if err != nil {
+				f, err := ioutil.ReadFile("/var/log/mysql/mysql.err")
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(string(f))
 				return err
 			}
 
@@ -91,6 +97,12 @@ func initializeOnce(ctx context.Context) error {
 	log.Info("setup operator-admin users", nil)
 	// use the password for an operator-admin user which is the same with the one for operator user
 	err = initializeOperatorAdminUser(ctx, os.Getenv(moco.OperatorPasswordEnvName))
+	if err != nil {
+		return err
+	}
+
+	log.Info("setup donor user", nil)
+	err = initializeDonorUser(ctx, os.Getenv(moco.ClonePasswordEnvName))
 	if err != nil {
 		return err
 	}
@@ -223,7 +235,8 @@ GRANT
     TRIGGER,
     LOCK TABLES,
     REPLICATION CLIENT,
-    BACKUP_ADMIN,
+	BACKUP_ADMIN,
+	CLONE_ADMIN,
     BINLOG_ADMIN,
     SYSTEM_VARIABLES_ADMIN,
     REPLICATION_SLAVE_ADMIN,
@@ -272,6 +285,29 @@ GRANT
 	return nil
 }
 
+func initializeDonorUser(ctx context.Context, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+	BACKUP_ADMIN,
+	SERVICE_CONNECTION_ADMIN
+  ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
+`))
+
+	sql := new(bytes.Buffer)
+	t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.DonorUser, password})
+
+	out, err := execSQL(ctx, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+
+	return ioutil.WriteFile(moco.DonorPasswordPath, []byte(password), 0400)
+}
+
 func initializeReplicationUser(ctx context.Context, password string) error {
 	// Use mysql_native_password because no ssl connections without sha-2 cache fail
 	// Will fix it when we work on replication with encrypted connection
@@ -299,10 +335,13 @@ GRANT
 
 func initializeMiscUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
-CREATE USER misc@localhost IDENTIFIED BY '{{ .Password }}' ;
+CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	RELOAD
-  ON *.* TO misc@localhost ;
+	RELOAD,
+	CLONE_ADMIN,
+	SERVICE_CONNECTION_ADMIN,
+	REPLICATION CLIENT
+  ON *.* TO misc@'%' ;
 `))
 
 	sql := new(bytes.Buffer)
@@ -320,7 +359,11 @@ GRANT
 user=misc
 password=%s
 `
-	return ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400)
+	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400); err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)
 }
 
 func installPlugins(ctx context.Context) error {
@@ -349,7 +392,19 @@ func touchInitOnceCompleted(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return f.Close()
+	defer f.Close()
+
+	if err := f.Sync(); err != nil {
+		return err
+	}
+
+	dataDir, err := os.Open(moco.MySQLDataPath)
+	if err != nil {
+		return err
+	}
+	defer dataDir.Close()
+
+	return dataDir.Sync()
 }
 
 func doExec(ctx context.Context, input []byte, command string, args ...string) ([]byte, error) {
@@ -357,7 +412,6 @@ func doExec(ctx context.Context, input []byte, command string, args ...string) (
 	if input != nil {
 		cmd.Stdin = bytes.NewReader(input)
 	}
-
 	return cmd.Output()
 }
 

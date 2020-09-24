@@ -1,6 +1,8 @@
 package moco
 
-import "errors"
+import (
+	"errors"
+)
 
 const (
 	// OperatorUser is a name of MOCO operator user in the MySQL context.
@@ -15,6 +17,9 @@ const (
 
 	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
 	DonorUser = "moco-clone-donor"
+
+	// MiscUser is a name of MOCO misc user in the MySQL context.
+	MiscUser = "misc"
 )
 
 const (
@@ -44,6 +49,12 @@ const (
 
 	// MySQLConfTemplatePath is
 	MySQLConfTemplatePath = "/etc/mysql_template"
+
+	// DonorPasswordPath is the path to donor user passsword file
+	DonorPasswordPath = MySQLDataPath + "/donor-password"
+
+	// MiscPasswordPath is the path to misc user passsword file
+	MiscPasswordPath = MySQLDataPath + "/misc-password"
 )
 
 const (
@@ -55,6 +66,11 @@ const (
 
 	// MySQLXPort is a port number for MySQL XProtocol
 	MySQLXPort = 33060
+)
+
+const (
+	// AgentPort is a port number for agent container
+	AgentPort = 9080
 )
 
 // env names must correspond to options in entrypoint/init.go
@@ -92,6 +108,9 @@ const (
 	// ReplicationPasswordEnvName is a name of the environment variable of a password for replication user.
 	ReplicationPasswordEnvName = "REPLICATION_PASSWORD"
 
+	// ClonePasswordEnvName is a name of the environment variable of a password for donor user.
+	ClonePasswordEnvName = "CLONE_DONOR_PASSWORD"
+
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
 )
@@ -122,6 +141,10 @@ const (
 const (
 	// OperatorUpdatePrimary is a name of the update Primary operation
 	OperatorUpdatePrimary = "update-primary"
+	// OperatorSetCloneDonorList is a name of the set clone donor list operation
+	OperatorSetCloneDonorList = "set-clone-donor-list"
+	// OperatorClone is a name of the clone primary instance operation
+	OperatorClone = "clone"
 	// OperatorConfigureReplication is a name of the configure replication operation
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
@@ -140,6 +163,18 @@ const (
 	ReplicaRole = "replica"
 
 	MysqldContainerName = "mysqld"
+)
+
+const (
+	CloneParamDonorHostName = "donor_hostname"
+	CloneParamDonorPort     = "donor_port"
+)
+
+const (
+	CloneStatusNotStarted = "Not Started"
+	CloneStatusInProgress = "In Progress"
+	CloneStatusCompleted  = "Completed"
+	CloneStatusFailed     = "Failed"
 )
 
 var (

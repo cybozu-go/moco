@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/spf13/cobra"
@@ -16,6 +17,9 @@ var config struct {
 	leaderElectionID       string
 	confInitContainerImage string
 	curlContainerImage     string
+	connMaxLifeTime        time.Duration
+	connectionTimeout      time.Duration
+	readTimeout            time.Duration
 }
 
 var rootCmd = &cobra.Command{
@@ -56,6 +60,9 @@ func init() {
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
 	fs.StringVar(&config.curlContainerImage, "curl-container-image", defaultCurlContainerImage, "The container image name of curl")
+	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
+	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")
+	fs.DurationVar(&config.readTimeout, readTimeoutFlag, 30*time.Second, "I/O read timeout")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)
