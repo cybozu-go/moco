@@ -13,6 +13,12 @@ import (
 )
 
 func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get(moco.AgentTokenParam)
+	if token != a.token {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
 	if err == nil {

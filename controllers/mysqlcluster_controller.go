@@ -689,6 +689,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 					},
 				},
 			},
+			{
+				Name:  moco.AgentTokenEnvName,
+				Value: cluster.Status.AgentToken,
+			},
 		},
 	})
 
@@ -864,7 +868,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate", podName, moco.UniqueName(cluster), moco.AgentPort)},
+					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", podName, moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
 				},
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)

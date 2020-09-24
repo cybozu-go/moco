@@ -469,6 +469,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	queries := url.Values{
 		moco.CloneParamDonorHostName: []string{primaryHost},
 		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLAdminPort)},
+		moco.AgentTokenParam:         []string{cluster.Status.AgentToken},
 	}
 	req.URL.RawQuery = queries.Encode()
 
