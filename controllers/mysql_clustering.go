@@ -88,7 +88,6 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if unavailable {
 		return nil, moco.ErrUnavailableHost
 	}
-	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
 	err := validateConstraints(status, cluster)
 	if err != nil {
