@@ -13,6 +13,7 @@ import (
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -178,6 +179,12 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 	}
 
 	isUpdated, err = r.createOrUpdateRBAC(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.generateAgentToken(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
 		return false, err
@@ -944,6 +951,20 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	}
 
 	return isUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) generateAgentToken(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	if len(cluster.Status.AgentToken) != 0 {
+		return false, nil
+	}
+
+	cluster.Status.AgentToken = uuid.New().String()
+	err := r.Client.Status().Update(ctx, cluster)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func containsString(slice []string, s string) bool {

@@ -124,6 +124,9 @@ type MySQLClusterStatus struct {
 
 	// SyncedReplicas is the number of synced instances including the primary.
 	SyncedReplicas int `json:"syncedReplicas"`
+
+	// AgentToken is the token to call API exposed by the agent sidecar
+	AgentToken string `json:"agentToken"`
 }
 
 // MySQLClusterCondition defines the condition of MySQLCluster.
