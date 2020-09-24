@@ -337,6 +337,7 @@ func initializeMiscUser(ctx context.Context, password string) error {
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
+	SELECT,
 	RELOAD,
 	CLONE_ADMIN,
 	SERVICE_CONNECTION_ADMIN,

@@ -1,1 +1,6 @@
-e2e/*.img
+/bin
+/config
+/docs
+/e2e
+/hack
+/.git

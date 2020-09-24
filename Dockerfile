@@ -4,16 +4,7 @@ FROM quay.io/cybozu/golang:1.13-bionic as builder
 WORKDIR /workspace
 
 # Copy the go source
-COPY go.mod go.mod
-COPY utils.go utils.go
-COPY accessor/ accessor/
-COPY api/ api/
-COPY controllers/ controllers/
-COPY cmd/ cmd/
-COPY constants.go constants.go
-COPY runners/ runners/
-COPY version.go version.go
-COPY vendor/ vendor/
+COPY ./ .
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o moco-controller ./cmd/moco-controller/main.go

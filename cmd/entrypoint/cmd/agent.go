@@ -38,6 +38,7 @@ var agentCmd = &cobra.Command{
 		})
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
+		mux.HandleFunc("/health", agent.Health)
 
 		serv := &well.HTTPServer{
 			Server: &http.Server{
