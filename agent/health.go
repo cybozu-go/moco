@@ -35,6 +35,22 @@ func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	replicaStatus, err := accessor.GetMySQLReplicaStatus(r.Context(), db)
+	if err != nil {
+		internalServerError(w, fmt.Errorf("failed to get replica status: %w", err))
+		log.Error("failed to get replica status", map[string]interface{}{
+			"hostname":  a.mysqlAdminHostname,
+			"port":      moco.MySQLAdminPort,
+			log.FnError: err,
+		})
+		return
+	}
+
+	if replicaStatus != nil && replicaStatus.LastIoErrno != 0 {
+		internalServerError(w, fmt.Errorf("replica is out of sync: %d", replicaStatus.LastIoErrno))
+		return
+	}
+
 	cloneStatus, err := accessor.GetMySQLCloneStateStatus(r.Context(), db)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get clone status: %w", err))
