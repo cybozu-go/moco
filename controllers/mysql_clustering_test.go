@@ -83,11 +83,27 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:  "It should clone when a replica instance is empty",
-			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(),
+			name:  "It should clone when a replica instance is empty and not yet cloned",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(false),
 			want: &Operation{
 				Wait:      false,
 				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+			},
+		},
+		{
+			name:  "It should clone when a replica instance is empty and cloning is failed",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(true),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+			},
+		},
+		{
+			name:  "It should not clone when a replica instance is NOT empty",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withNotEmptyReplicaInstances(false),
+			want: &Operation{
+				Wait:      false,
+				Operators: []Operator{&setCloneDonorListOp{}},
 			},
 		},
 		{
@@ -325,13 +341,25 @@ func (d testData) withWrongDonorListInstances() testData {
 	return d
 }
 
-func (d testData) withEmptyReplicaInstances() testData {
+func (d testData) withEmptyReplicaInstances(cloneFailed bool) testData {
 	primaryIndex := 1
 	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
 			writableIns(primaryIndex, moco.PrimaryRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
-			emptyIns(),
+			emptyIns(cloneFailed),
+		},
+	}
+	return d
+}
+
+func (d testData) withNotEmptyReplicaInstances(cloneFailed bool) testData {
+	primaryIndex := 1
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			writableIns(primaryIndex, moco.PrimaryRole),
+			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
+			notEmptyIns(cloneFailed),
 		},
 	}
 	return d
@@ -453,7 +481,7 @@ func unavailableIns() accessor.MySQLInstanceStatus {
 	}
 }
 
-func emptyIns() accessor.MySQLInstanceStatus {
+func emptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
 	state := accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
@@ -466,11 +494,45 @@ func emptyIns() accessor.MySQLInstanceStatus {
 		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
 		Role:             moco.ReplicaRole,
 	}
+
+	if cloneFailed {
+		state.CloneStateStatus.State = sql.NullString{
+			Valid:  true,
+			String: moco.CloneStatusFailed,
+		}
+	}
+
+	return state
+}
+
+func notEmptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
+	state := accessor.MySQLInstanceStatus{
+		Available: true,
+		PrimaryStatus: &accessor.MySQLPrimaryStatus{
+			ExecutedGtidSet: PRIMARY_UUID + ":1",
+		},
+		ReplicaStatus: nil,
+		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
+			ReadOnly:                           true,
+			SuperReadOnly:                      true,
+			RplSemiSyncMasterWaitForSlaveCount: 1,
+		},
+		CloneStateStatus: &accessor.MySQLCloneStateStatus{},
+		Role:             moco.ReplicaRole,
+	}
+
+	if cloneFailed {
+		state.CloneStateStatus.State = sql.NullString{
+			Valid:  true,
+			String: moco.CloneStatusFailed,
+		}
+	}
+
 	return state
 }
 
 func cloningIns(primaryIndex int) accessor.MySQLInstanceStatus {
-	state := emptyIns()
+	state := emptyIns(false)
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
 		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
 		Valid:  true,
@@ -485,7 +547,7 @@ func cloningIns(primaryIndex int) accessor.MySQLInstanceStatus {
 }
 
 func readOnlyIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
-	state := emptyIns()
+	state := emptyIns(false)
 	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARY_UUID + "1-5"}
 	state.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
