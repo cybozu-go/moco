@@ -94,7 +94,6 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if err != nil {
 		return &Operation{
 			Conditions: violationCondition(err),
-			Operators:  getReadOnlyOp(cluster, status),
 		}, err
 	}
 
@@ -672,42 +671,4 @@ func (o turnOffReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructur
 	}
 	_, err = db.Exec("set global read_only=0")
 	return err
-}
-
-type turnOnReadOnlyOp struct {
-	primaryIndex int
-}
-
-func (o turnOnReadOnlyOp) Name() string {
-	return moco.OperatorTurnOffReadOnly
-}
-
-func (o turnOnReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	db, err := infra.GetDB(ctx, cluster, o.primaryIndex)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("set global read_only=1")
-	return err
-}
-
-func getReadOnlyOp(cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) []Operator {
-	if cluster.Status.CurrentPrimaryIndex == nil {
-		return nil
-	}
-
-	s := status.InstanceStatus[*cluster.Status.CurrentPrimaryIndex]
-	if !s.Available {
-		return nil
-	}
-
-	if s.GlobalVariablesStatus.ReadOnly {
-		return nil
-	}
-
-	return []Operator{
-		turnOnReadOnlyOp{
-			primaryIndex: *cluster.Status.CurrentPrimaryIndex,
-		},
-	}
 }
