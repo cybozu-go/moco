@@ -2,29 +2,21 @@ package agent
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 )
 
+// Health returns the health check result of own MySQL
 func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	buf, err := ioutil.ReadFile(moco.MiscPasswordPath)
-	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to read misc passsword file: %w", err))
-		return
-	}
-
-	miscPassword := strings.TrimSpace(string(buf))
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		log.Error("failed to get database", map[string]interface{}{

@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco"
 )
 
+// RotateLog rotes log files
 func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get(moco.AgentTokenParam)
 	if token != a.token {
