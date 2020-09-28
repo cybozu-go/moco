@@ -32,11 +32,15 @@ jobs:
           MYSQL_ROOT_PASSWORD: test-password
       - image: mysql:8.0.21
         name: moco-test-mysqld-donor
+        command:
+          - --gtid-mode=ON
         environment:
           MYSQL_ROOT_PASSWORD: test-password
           MYSQL_TCP_PORT: "3307"
       - image: mysql:8.0.21
         name: moco-test-mysqld-replica
+        command:
+          - --gtid-mode=ON
         environment:
           MYSQL_ROOT_PASSWORD: test-password
           MYSQL_TCP_PORT: "3308"

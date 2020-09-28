@@ -53,10 +53,10 @@ start-mysqld:
 		docker network create moco-mysql-net; \
 	fi
 	if [ "$(shell docker inspect moco-test-mysqld-donor --format='{{ .State.Running }}')" != "true" ]; then \
-		docker run --name moco-test-mysqld-donor --network=moco-mysql-net --rm -d -p 3307:3307 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION) --port=3307; \
+		docker run --name moco-test-mysqld-donor --network=moco-mysql-net --rm -d -p 3307:3307 -v $(PWD)/my.cnf:/etc/mysql/conf.d/my.cnf -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION) --port=3307; \
 	fi
 	if [ "$(shell docker inspect moco-test-mysqld-replica --format='{{ .State.Running }}')" != "true" ]; then \
-		docker run --name moco-test-mysqld-replica --restart always --network=moco-mysql-net -d -p 3308:3308 -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION) --port=3308; \
+		docker run --name moco-test-mysqld-replica --restart always --network=moco-mysql-net -d -p 3308:3308 -v $(PWD)/my.cnf:/etc/mysql/conf.d/my.cnf -e MYSQL_ROOT_PASSWORD=test-password mysql:$(MYSQL_VERSION) --port=3308; \
 	fi
 	echo "127.0.0.1\tmoco-test-mysqld-donor\n127.0.0.1\tmoco-test-mysqld-replica\n" | sudo tee -a /etc/hosts > /dev/null
 

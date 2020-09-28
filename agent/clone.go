@@ -27,7 +27,6 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	donorHostName := r.URL.Query().Get(moco.CloneParamDonorHostName)
-	// if len(validation.IsFullyQualifiedDomainName(nil, donorHostName)) > 0 {
 	if len(donorHostName) <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return

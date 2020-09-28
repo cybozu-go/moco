@@ -64,34 +64,40 @@ func initializeMySQL(host string, port int) error {
 		return err
 	}
 
-	for _, user := range []string{moco.DonorUser, moco.MiscUser} {
-		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
-		if err != nil {
-			return err
-		}
-		_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user)
-		if err != nil {
-			return err
-		}
+	tx, err := db.Begin()
+	_, err = tx.Exec("SET @@SESSION.SQL_LOG_BIN=0")
+	if err != nil {
+		return err
 	}
 
-	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
-	if err != nil {
-		if err.Error() != "Error 1125: Function 'rpl_semi_sync_master' already exists" {
+	for _, user := range []string{moco.DonorUser, moco.MiscUser} {
+		_, err = tx.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
+		if err != nil {
 			return err
 		}
+		_, err = tx.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user)
+		if err != nil {
+			return err
+		}
+
 	}
-	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'")
+
+	_, err = tx.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
 	if err != nil {
-		if err.Error() != "Error 1125: Function 'rpl_semi_sync_slave' already exists" {
-			return err
-		}
+		return err
 	}
-	_, err = db.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
+	_, err = tx.Exec("INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'")
 	if err != nil {
-		if err.Error() != "Error 1125: Function 'clone' already exists" {
-			return err
-		}
+		return err
+	}
+	_, err = tx.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
