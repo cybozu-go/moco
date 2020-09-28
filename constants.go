@@ -71,6 +71,12 @@ const (
 const (
 	// AgentPort is a port number for agent container
 	AgentPort = 9080
+
+	// AgentTokenEnvName is a name of the environment variable of agent token.
+	AgentTokenEnvName = "MOCO_AGENT_TOKEN"
+
+	// AgentTokenParam is a name of the param of agent token.
+	AgentTokenParam = "token"
 )
 
 // env names must correspond to options in entrypoint/init.go

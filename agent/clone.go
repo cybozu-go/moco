@@ -21,24 +21,26 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var (
-		donorHostName = r.URL.Query().Get(moco.CloneParamDonorHostName)
-		rawDonorPort  = r.URL.Query().Get(moco.CloneParamDonorPort)
-	)
+	token := r.URL.Query().Get(moco.AgentTokenParam)
+	if token != a.token {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	donorHostName := r.URL.Query().Get(moco.CloneParamDonorHostName)
 	if len(validation.IsFullyQualifiedDomainName(nil, donorHostName)) > 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	rawDonorPort := r.URL.Query().Get(moco.CloneParamDonorPort)
 	var donorPort int
 	if rawDonorPort == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	var err error
-	donorPort, err = strconv.Atoi(rawDonorPort)
+	donorPort, err := strconv.Atoi(rawDonorPort)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return

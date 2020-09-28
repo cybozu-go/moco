@@ -31,7 +31,11 @@ var agentCmd = &cobra.Command{
 		if podName == "" {
 			return fmt.Errorf("%s is empty", moco.PodNameEnvName)
 		}
-		agent := agent.New(podName, &accessor.MySQLAccessorConfig{
+		token := os.Getenv(moco.AgentTokenEnvName)
+		if token == "" {
+			return fmt.Errorf("%s is empty", moco.AgentTokenEnvName)
+		}
+		agent := agent.New(podName, token, &accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   viper.GetDuration(connMaxLifetimeFlag),
 			ConnectionTimeout: viper.GetDuration(connectionTimeoutFlag),
 			ReadTimeout:       viper.GetDuration(readTimeoutFlag),

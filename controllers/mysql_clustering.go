@@ -88,7 +88,6 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if unavailable {
 		return nil, moco.ErrUnavailableHost
 	}
-	log.Info("MySQLClusterStatus", "ClusterStatus", status)
 
 	err := validateConstraints(status, cluster)
 	if err != nil {
@@ -469,6 +468,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	queries := url.Values{
 		moco.CloneParamDonorHostName: []string{primaryHost},
 		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLAdminPort)},
+		moco.AgentTokenParam:         []string{cluster.Status.AgentToken},
 	}
 	req.URL.RawQuery = queries.Encode()
 

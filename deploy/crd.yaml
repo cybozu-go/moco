@@ -6502,6 +6502,10 @@ spec:
           status:
             description: MySQLClusterStatus defines the observed state of MySQLCluster
             properties:
+              agentToken:
+                description: AgentToken is the token to call API exposed by the agent
+                  sidecar
+                type: string
               conditions:
                 description: Conditions is an array of conditions.
                 items:
@@ -6551,6 +6555,7 @@ spec:
                   the primary.
                 type: integer
             required:
+            - agentToken
             - ready
             - syncedReplicas
             type: object
