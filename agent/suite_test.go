@@ -27,15 +27,15 @@ func TestAgent(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	err := initializeMySQL("localhost", donorPort)
+	err := initializeMySQL(donorHost, donorPort)
 	Expect(err).ShouldNot(HaveOccurred())
-	err = initializeMySQL("localhost", replicaPort)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = prepareTestData("localhost", donorPort)
+	err = initializeMySQL(replicaHost, replicaPort)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = setValidDonorList("localhost", replicaPort)
+	err = prepareTestData(donorHost, donorPort)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	err = setValidDonorList(replicaHost, replicaPort)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)
