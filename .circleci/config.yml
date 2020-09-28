@@ -34,12 +34,12 @@ jobs:
         name: moco-test-mysqld-donor
         environment:
           MYSQL_ROOT_PASSWORD: test-password
-          MYSQL_TCP_PORT: 3307
+          MYSQL_TCP_PORT: "3307"
       - image: mysql:8.0.21
         name: moco-test-mysqld-replica
         environment:
           MYSQL_ROOT_PASSWORD: test-password
-          MYSQL_TCP_PORT: 3308
+          MYSQL_TCP_PORT: "3308"
     working_directory: /work
     steps:
       - checkout
