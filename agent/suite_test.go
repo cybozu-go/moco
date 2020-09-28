@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"log"
 	"strconv"
 	"testing"
 	"time"
@@ -27,6 +28,8 @@ func TestAgent(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
+	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
+
 	err := initializeMySQL(donorHost, donorPort)
 	Expect(err).ShouldNot(HaveOccurred())
 	err = initializeMySQL(replicaHost, replicaPort)
@@ -36,6 +39,11 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ShouldNot(HaveOccurred())
 
 	err = setValidDonorList(replicaHost, replicaPort)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	err = resetMaster(donorHost, donorPort)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = resetMaster(replicaHost, replicaPort)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)
@@ -64,38 +72,27 @@ func initializeMySQL(host string, port int) error {
 		return err
 	}
 
-	tx, err := db.Begin()
-	_, err = tx.Exec("SET @@SESSION.SQL_LOG_BIN=0")
-	if err != nil {
-		return err
-	}
-
 	for _, user := range []string{moco.DonorUser, moco.MiscUser} {
-		_, err = tx.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
+		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user)
+		_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user)
 		if err != nil {
 			return err
 		}
 
 	}
 
-	_, err = tx.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
+	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'")
+	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'")
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
+	_, err = db.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
 	if err != nil {
 		return err
 	}
@@ -151,6 +148,22 @@ func setValidDonorList(host string, port int) error {
 	}
 
 	return nil
+}
+
+func resetMaster(host string, port int) error {
+	conf := mysql.NewConfig()
+	conf.User = "root"
+	conf.Passwd = password
+	conf.Net = "tcp"
+	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.InterpolateParams = true
+
+	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("RESET MASTER")
+	return err
 }
 
 var _ = Describe("Test Agent", func() {

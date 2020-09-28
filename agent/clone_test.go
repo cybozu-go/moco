@@ -19,10 +19,6 @@ import (
 )
 
 func testAgentClone() {
-	It("should return 500 if token is invalid", func() {
-
-	})
-
 	It("should return 400 with bad requests", func() {
 		By("preparing agent")
 		agent := New(replicaHost, token, password, password, replicaPort,
@@ -71,7 +67,7 @@ func testAgentClone() {
 		Expect(res).Should(HaveHTTPStatus(http.StatusBadRequest))
 	})
 
-	It("should clone from donor successfly and should fail once cloned", func() {
+	It("should clone from donor successfully", func() {
 		By("preparing agent")
 		agent := New(replicaHost, token, password, password, replicaPort,
 			&accessor.MySQLAccessorConfig{
@@ -119,9 +115,32 @@ func testAgentClone() {
 			}
 			return nil
 		}, 30*time.Second).Should(Succeed())
+	})
 
-		By("challenging cloning again")
-		res = httptest.NewRecorder()
+	It("should not clone if recipient has some data", func() {
+		By("write data to recipient")
+		err := prepareTestData(replicaHost, replicaPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		By("preparing agent")
+		agent := New(replicaHost, token, password, password, replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+
+		By("cloning from donor")
+		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries := url.Values{
+			moco.CloneParamDonorHostName: []string{donorHost},
+			moco.CloneParamDonorPort:     []string{strconv.Itoa(donorPort)},
+			moco.AgentTokenParam:         []string{token},
+		}
+		req.URL.RawQuery = queries.Encode()
+
+		res := httptest.NewRecorder()
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusForbidden))
 	})
