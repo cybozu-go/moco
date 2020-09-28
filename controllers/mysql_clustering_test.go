@@ -10,6 +10,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	ops "github.com/cybozu-go/moco/operators"
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,11 +18,11 @@ import (
 )
 
 const (
-	CLUSTER      = "test-cluster"
-	NAMESPACE    = "test-namespace"
-	UID          = "test-uid"
-	REPLICAS     = 3
-	PRIMARY_UUID = "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
+	CLUSTER     = "test-cluster"
+	NAMESPACE   = "test-namespace"
+	UID         = "test-uid"
+	REPLICAS    = 3
+	PRIMARYUUID = "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
 )
 
 func TestDecideNextOperation(t *testing.T) {
@@ -71,7 +72,7 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withReadableInstances(),
 			want: &Operation{
 				Wait:      false,
-				Operators: []Operator{&updatePrimaryOp{}},
+				Operators: []ops.Operator{ops.UpdatePrimaryOp(0)},
 			},
 		},
 		{
@@ -79,7 +80,7 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongDonorListInstances(),
 			want: &Operation{
 				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp()},
 			},
 		},
 		{
@@ -87,7 +88,7 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(false),
 			want: &Operation{
 				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(2)},
 			},
 		},
 		{
@@ -95,7 +96,7 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyReplicaInstances(true),
 			want: &Operation{
 				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}, &cloneOp{replicaIndex: 2}},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(2)},
 			},
 		},
 		{
@@ -103,7 +104,7 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withNotEmptyReplicaInstances(false),
 			want: &Operation{
 				Wait:      false,
-				Operators: []Operator{&setCloneDonorListOp{}},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp()},
 			},
 		},
 		{
@@ -138,16 +139,10 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withReadableInstances(),
 			want: &Operation{
 				Wait: false,
-				Operators: []Operator{
-					&configureReplicationOp{
-						Index:       1,
-						PrimaryHost: hostName(0),
-					},
-					&configureReplicationOp{
-						Index:       2,
-						PrimaryHost: hostName(0),
-					},
-					&setLabelsOp{},
+				Operators: []ops.Operator{
+					ops.ConfigureReplicationOp(2, hostName(0)),
+					ops.ConfigureReplicationOp(2, hostName(0)),
+					ops.SetLabelsOp(),
 				},
 			},
 		},
@@ -156,8 +151,8 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelReadOnlyInstances(),
 			want: &Operation{
 				Wait: false,
-				Operators: []Operator{
-					&setLabelsOp{},
+				Operators: []ops.Operator{
+					ops.SetLabelsOp(),
 				},
 			},
 		},
@@ -166,8 +161,8 @@ func TestDecideNextOperation(t *testing.T) {
 			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withWrongLabelWritableInstances(),
 			want: &Operation{
 				Wait: false,
-				Operators: []Operator{
-					&setLabelsOp{},
+				Operators: []ops.Operator{
+					ops.SetLabelsOp(),
 				},
 			},
 		},
@@ -195,11 +190,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(true, ""),
 					healthy(true, ""),
 				},
-				Operators: []Operator{
-					turnOffReadOnlyOp{
-						primaryIndex: 0,
-					},
-				},
+				Operators:      []ops.Operator{ops.TurnOffReadOnlyOp(0)},
 				SyncedReplicas: intPointer(3),
 			},
 		},
@@ -509,7 +500,7 @@ func notEmptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
 	state := accessor.MySQLInstanceStatus{
 		Available: true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{
-			ExecutedGtidSet: PRIMARY_UUID + ":1",
+			ExecutedGtidSet: PRIMARYUUID + ":1",
 		},
 		ReplicaStatus: nil,
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
@@ -548,7 +539,7 @@ func cloningIns(primaryIndex int) accessor.MySQLInstanceStatus {
 
 func readOnlyIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
 	state := emptyIns(false)
-	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARY_UUID + "1-5"}
+	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + "1-5"}
 	state.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
 		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
@@ -571,8 +562,8 @@ func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) ac
 		LastSQLErrno:     0,
 		LastSQLError:     "",
 		MasterHost:       hostName(0),
-		RetrievedGtidSet: PRIMARY_UUID + "1-5",
-		ExecutedGtidSet:  PRIMARY_UUID + exeGtid,
+		RetrievedGtidSet: PRIMARYUUID + "1-5",
+		ExecutedGtidSet:  PRIMARYUUID + exeGtid,
 		SlaveIORunning:   "Yes",
 		SlaveSQLRunning:  "Yes",
 	}
@@ -588,7 +579,7 @@ func writableIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
 
 func outOfSyncIns(primaryIndex int) accessor.MySQLInstanceStatus {
 	state := readOnlyIns(primaryIndex, moco.ReplicaRole)
-	primaryGTID := PRIMARY_UUID + ":1-5"
+	primaryGTID := PRIMARYUUID + ":1-5"
 	state.ReplicaStatus = &accessor.MySQLReplicaStatus{
 		LastIoErrno:      1,
 		LastIoError:      "",
@@ -661,7 +652,7 @@ func assertOperation(expected, actual *Operation) bool {
 		cmp.Equal(expected.SyncedReplicas, actual.SyncedReplicas)
 }
 
-func assertOperators(expected, actual []Operator) bool {
+func assertOperators(expected, actual []ops.Operator) bool {
 	if len(expected) != len(actual) {
 		return false
 	}
@@ -702,7 +693,7 @@ func intPointer(i int) *int {
 	return &i
 }
 
-type Operators []Operator
+type Operators []ops.Operator
 
 func (o Operators) Len() int {
 	return len(o)
