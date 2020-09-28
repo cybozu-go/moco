@@ -17,7 +17,7 @@ import (
 func testAgentClone() {
 	It("should clone from donor successfly", func() {
 		By("preparing agent")
-		agent := New(replicaHost, token, password, password, replicaPort,
+		agent := New("localhost", token, password, password, replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -28,7 +28,7 @@ func testAgentClone() {
 		By("cloning from donor")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries := url.Values{
-			moco.CloneParamDonorHostName: []string{"172.17.0.1"},
+			moco.CloneParamDonorHostName: []string{donorHost},
 			moco.CloneParamDonorPort:     []string{strconv.Itoa(donorPort)},
 			moco.AgentTokenParam:         []string{token},
 		}

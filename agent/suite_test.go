@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	donorHost   = "localhost"
+	donorHost   = "moco-test-mysqld-donor"
 	donorPort   = 3307
-	replicaHost = "localhost"
+	replicaHost = "moco-test-mysqld-replica"
 	replicaPort = 3308
 	password    = "test-password"
 	token       = "dummy-token"
@@ -27,15 +27,15 @@ func TestAgent(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	err := initializeMySQL(donorHost, donorPort)
+	err := initializeMySQL("localhost", donorPort)
 	Expect(err).ShouldNot(HaveOccurred())
-	err = initializeMySQL(replicaHost, replicaPort)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = prepareTestData(donorHost, donorPort)
+	err = initializeMySQL("localhost", replicaPort)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = setValidDonorList(replicaHost, replicaPort)
+	err = prepareTestData("localhost", donorPort)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	err = setValidDonorList("localhost", replicaPort)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)
@@ -139,7 +139,7 @@ func setValidDonorList(host string, port int) error {
 		return err
 	}
 
-	_, err = db.Exec(`SET GLOBAL clone_valid_donor_list = ?`, "172.17.0.1:"+strconv.Itoa(donorPort))
+	_, err = db.Exec(`SET GLOBAL clone_valid_donor_list = ?`, donorHost+":"+strconv.Itoa(donorPort))
 	if err != nil {
 		return err
 	}
