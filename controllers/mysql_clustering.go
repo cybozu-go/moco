@@ -321,7 +321,7 @@ func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []op
 	}
 }
 
-func isClonable(state sql.NullString) bool {
+func isCloneable(state sql.NullString) bool {
 	if !state.Valid {
 		return true
 	}
@@ -361,7 +361,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 			continue
 		}
 
-		if isClonable(s.CloneStateStatus.State) && s.PrimaryStatus.ExecutedGtidSet == "" {
+		if isCloneable(s.CloneStateStatus.State) && s.PrimaryStatus.ExecutedGtidSet == "" {
 			op = append(op, ops.CloneOp(i))
 		}
 	}
