@@ -155,8 +155,10 @@ const (
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
 	OperatorTurnOffReadOnly = "turnoff-readonly"
-	// OperatorSetLabels is a name of the set labels operatio
+	// OperatorSetLabels is a name of the set labels operation
 	OperatorSetLabels = "set-labels"
+	// OperatorStopReplicaIOThread is a name of the stop replicas' io-thread operation
+	OperatorStopReplicaIOThread = "stop-replica-io-thread"
 )
 
 const (
@@ -177,6 +179,9 @@ const (
 )
 
 const (
+	ReplicaRunConnect     = "Yes"
+	ReplicaNotRun         = "No"
+	ReplicaRunNotConnect  = "Connecting"
 	CloneStatusNotStarted = "Not Started"
 	CloneStatusInProgress = "In Progress"
 	CloneStatusCompleted  = "Completed"

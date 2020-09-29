@@ -84,9 +84,18 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, err
 	}
 
-	primaryIndex := selectPrimary(status, cluster)
+	op, wait := waitForRelayLogExecution(status, cluster)
+	if wait || len(op) != 0 {
+		return &Operation{
+			Operators: op,
+			Wait:      wait,
+		}, nil
+	}
 
-	op := updatePrimary(cluster, primaryIndex)
+	// currentPrimaryIndex が空 -> 0
+	// それ以外 -> 一番 GTID が進んでいるインスタンス
+	primaryIndex := selectPrimary(status, cluster)
+	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
 		return &Operation{
 			Operators: op,
@@ -307,6 +316,13 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 
 // TODO: Implementation for failover
 func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) int {
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		return 0
+	}
+
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		// TODO: select latest GTID instance
+	}
 	return 0
 }
 
@@ -466,4 +482,61 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	}
 	return []ops.Operator{
 		ops.TurnOffReadOnlyOp(primaryIndex)}
+}
+
+func waitForRelayLogExecution(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]ops.Operator, bool) {
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		return nil, false
+	}
+
+	primary := *cluster.Status.CurrentPrimaryIndex
+	if status.InstanceStatus[primary].PrimaryStatus.ExecutedGtidSet != "" {
+		return nil, false
+	}
+
+	var hasData bool
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet != "" {
+			hasData = true
+		}
+	}
+	if !hasData {
+		return nil, false
+	}
+
+	var op []ops.Operator
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus == nil {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+			op = append(op, ops.StopReplicaIOThread())
+		}
+	}
+	if len(op) != 0 {
+		return op, true
+	}
+
+	var wait bool
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus == nil {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet == status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet {
+			continue
+		}
+
+		wait = true
+	}
+
+	return nil, wait
 }
