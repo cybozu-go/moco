@@ -129,6 +129,31 @@ func prepareTestData(host string, port int) error {
 	return nil
 }
 
+func startSlaveWithInvalidSettings(host string, port int) error {
+	conf := mysql.NewConfig()
+	conf.User = "root"
+	conf.Passwd = password
+	conf.Net = "tcp"
+	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.InterpolateParams = true
+
+	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, "dummy", 3306, "dummy", "dummy")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`START SLAVE`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func setValidDonorList(host string, port int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
@@ -168,4 +193,5 @@ func resetMaster(host string, port int) error {
 
 var _ = Describe("Test Agent", func() {
 	testAgentClone()
+	testAgentHealth()
 })

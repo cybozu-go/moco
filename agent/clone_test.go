@@ -12,7 +12,6 @@ import (
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
-	"github.com/cybozu-go/well"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,7 +45,7 @@ func testAgentClone() {
 		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries = url.Values{
 			moco.CloneParamDonorPort: []string{strconv.Itoa(donorPort)},
-			moco.AgentTokenParam:     []string{"token"},
+			moco.AgentTokenParam:     []string{token},
 		}
 		req.URL.RawQuery = queries.Encode()
 
@@ -58,7 +57,7 @@ func testAgentClone() {
 		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries = url.Values{
 			moco.CloneParamDonorHostName: []string{donorHost},
-			moco.AgentTokenParam:         []string{"invalid-token"},
+			moco.AgentTokenParam:         []string{token},
 		}
 		req.URL.RawQuery = queries.Encode()
 
@@ -93,10 +92,6 @@ func testAgentClone() {
 		res = httptest.NewRecorder()
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusTooManyRequests))
-
-		well.Stop()
-		err := well.Wait()
-		Expect(err).ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
 			db, err := agent.acc.Get(replicaHost+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)

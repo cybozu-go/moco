@@ -16,7 +16,7 @@ func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, a.miscUserPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		log.Error("failed to get database", map[string]interface{}{
