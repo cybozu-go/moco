@@ -18,7 +18,7 @@ import (
 )
 
 func testAgentHealth() {
-	var agent = New(replicaHost, token, password, password, replicaPort,
+	var agent = New(replicaHost, token, password, password, "", replicaPort,
 		&accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   30 * time.Minute,
 			ConnectionTimeout: 3 * time.Second,
@@ -26,7 +26,7 @@ func testAgentHealth() {
 		},
 	)
 
-	It("should return 200 if no errors or cloning is in progress", func() {
+	It("should return 200 if no errors or cloning is not in progress", func() {
 		By("getting health")
 		res := getHealth(agent)
 		Expect(res).Should(HaveHTTPStatus(http.StatusOK))

@@ -20,7 +20,7 @@ import (
 func testAgentClone() {
 	It("should return 400 with bad requests", func() {
 		By("preparing agent")
-		agent := New(replicaHost, token, password, password, replicaPort,
+		agent := New(replicaHost, token, password, password, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -68,7 +68,7 @@ func testAgentClone() {
 
 	It("should clone from donor successfully", func() {
 		By("preparing agent")
-		agent := New(replicaHost, token, password, password, replicaPort,
+		agent := New(replicaHost, token, password, password, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -118,7 +118,7 @@ func testAgentClone() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("preparing agent")
-		agent := New(replicaHost, token, password, password, replicaPort,
+		agent := New(replicaHost, token, password, password, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,

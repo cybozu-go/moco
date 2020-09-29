@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,13 +16,25 @@ import (
 )
 
 func testAgentRotate() {
-	var agent = New(replicaHost, token, password, password, replicaPort,
-		&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   30 * time.Minute,
-			ConnectionTimeout: 3 * time.Second,
-			ReadTimeout:       30 * time.Second,
-		},
-	)
+	var tmpDir string
+	var agent *Agent
+
+	BeforeEach(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "moco-test-agent-")
+		Expect(err).ShouldNot(HaveOccurred())
+		agent = New(replicaHost, token, password, password, tmpDir, replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+	})
+
+	AfterEach(func() {
+		os.RemoveAll(tmpDir)
+	})
 
 	It("should return 400 with bad requests", func() {
 		By("passing invalid token")
@@ -32,22 +45,15 @@ func testAgentRotate() {
 		req.URL.RawQuery = queries.Encode()
 
 		res := httptest.NewRecorder()
-		agent.Clone(res, req)
+		agent.RotateLog(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusBadRequest))
 	})
 
 	It("should rotate log files", func() {
 		By("preparing log files for testing")
-		slowFile := filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName)
-		errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
+		slowFile := filepath.Join(tmpDir, moco.MySQLSlowLogName)
+		errFile := filepath.Join(tmpDir, moco.MySQLErrorLogName)
 		logFiles := []string{slowFile, errFile}
-
-		defer func() {
-			for _, file := range logFiles {
-				os.Remove(file)
-				os.Remove(file + ".0")
-			}
-		}()
 
 		for _, file := range logFiles {
 			_, err := os.Create(file)
@@ -62,8 +68,10 @@ func testAgentRotate() {
 		req.URL.RawQuery = queries.Encode()
 
 		res := httptest.NewRecorder()
-		agent.Clone(res, req)
-		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
+		agent.RotateLog(res, req)
+		body, err := ioutil.ReadAll(res.Body)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(res).Should(HaveHTTPStatus(http.StatusOK), "body: %s", body)
 
 		for _, file := range logFiles {
 			_, err := os.Stat(file + ".0")

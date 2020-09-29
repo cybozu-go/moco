@@ -86,11 +86,12 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		return a.clone(ctx, a.miscUserPassword, a.donorUserPassword, donorHostName, donorPort)
+		a.clone(ctx, a.miscUserPassword, a.donorUserPassword, donorHostName, donorPort)
+		return nil
 	})
 }
 
-func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) error {
+func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
 
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
@@ -99,7 +100,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
-		return err
+		return
 	}
 
 	if _, err := db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword); err != nil {
@@ -111,7 +112,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 				"port":           a.mysqlAdminPort,
 				log.FnError:      err,
 			})
-			return nil
+			return
 		}
 
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
@@ -121,7 +122,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 			"port":           a.mysqlAdminPort,
 			log.FnError:      err,
 		})
-		return err
+		return
 	}
 	log.Info("success to exec mysql CLONE", map[string]interface{}{
 		"donor_hostname": donorHostName,
@@ -129,6 +130,4 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 		"hostname":       a.mysqlAdminHostname,
 		"port":           a.mysqlAdminPort,
 	})
-
-	return nil
 }
