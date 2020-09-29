@@ -1,12 +1,10 @@
 package agent
 
 import (
-	"log"
 	"strconv"
 	"testing"
 	"time"
 
-	cybozulog "github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -29,9 +27,6 @@ func TestAgent(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	cybozulog.DefaultLogger().SetOutput(GinkgoWriter)
-	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
-
 	err := initializeMySQL(donorHost, donorPort)
 	Expect(err).ShouldNot(HaveOccurred())
 	err = initializeMySQL(replicaHost, replicaPort)
