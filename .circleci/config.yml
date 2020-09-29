@@ -1,8 +1,8 @@
 version: 2.1
 
 commands:
-  e2e-command:
-    description: "e2e test"
+  setup-golang:
+    description: "setup golang env"
     steps:
       - run:
           name: Update PATH and Define Environment Variable at Runtime
@@ -16,39 +16,16 @@ commands:
             sudo rm -rf /usr/local/go
             GO_VERSION=1.13.4
             curl -fsL https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz | sudo tar xzf - -C /usr/local
-      - run:
-          name: Run test
-          command: |
-            cd e2e
-            make test
 
 jobs:
-  build:
-    docker:
-      - image: quay.io/cybozu/golang:1.13-bionic
-      - image: mysql:8.0.21
-        name: moco-test-mysqld
-        environment:
-          MYSQL_ROOT_PASSWORD: test-password
-      - image: mysql:8.0.21
-        name: moco-test-mysqld-donor
-        command:
-          - --gtid-mode=ON
-          - --enforce-gtid-consistency=ON
-        environment:
-          MYSQL_ROOT_PASSWORD: test-password
-          MYSQL_TCP_PORT: "3307"
-      - image: mysql:8.0.21
-        name: moco-test-mysqld-replica
-        command:
-          - --gtid-mode=ON
-          - --enforce-gtid-consistency=ON
-        environment:
-          MYSQL_ROOT_PASSWORD: test-password
-          MYSQL_TCP_PORT: "3308"
-    working_directory: /work
+  test:
+    machine:
+      image: ubuntu-1604:201903-01
+    resource_class: large
+    working_directory: /home/circleci/work
     steps:
       - checkout
+      - setup-golang
       - run:
           name: Confirm manifests and api code were generated
           command: |
@@ -56,12 +33,21 @@ jobs:
             diffs=$(git diff --name-only)
             if [ "$diffs" != "" ]; then printf "%s\n" "$diffs"; exit 1; fi
       - run: make validate
+      - run: make start-mysqld
       - run: make test
+
+  build:
+    docker:
+      - image: quay.io/cybozu/golang:1.13-bionic
+    working_directory: /work
+    steps:
+      - checkout
       - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/moco-controller
       - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/entrypoint
       - persist_to_workspace:
           root: build
           paths: ["*"]
+
   image:
     docker:
       - image: docker:stable
@@ -88,6 +74,7 @@ jobs:
             BRANCH=$(echo $TAG | cut -d "." -f 1-2)
             docker tag quay.io/cybozu/moco:latest quay.io/cybozu/moco:$BRANCH
             docker push quay.io/cybozu/moco:$BRANCH
+
   e2e:
     machine:
       image: ubuntu-1604:201903-01
@@ -95,7 +82,9 @@ jobs:
     working_directory: /home/circleci/work
     steps:
       - checkout
-      - e2e-command
+      - setup-golang
+      - run:  cd e2e && make test
+
   publish-github-release:
     docker:
       - image: quay.io/cybozu/golang:1.13-bionic
@@ -104,16 +93,21 @@ jobs:
           at: ./artifacts
       - run: ghr -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} ${CIRCLE_TAG} ./artifacts/entrypoint
 
+
 workflows:
   version: 2
   main:
     jobs:
-      - build
+      - test
+      - e2e
+      - build:
+          requires:
+            - test
+            - e2e
       - image:
           requires:
             - build
-            - e2e
-      - e2e
+
   release:
     jobs:
       - build:
