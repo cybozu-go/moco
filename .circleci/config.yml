@@ -34,6 +34,7 @@ jobs:
         name: moco-test-mysqld-donor
         command:
           - --gtid-mode=ON
+          - --enforce-gtid-consistency=ON
         environment:
           MYSQL_ROOT_PASSWORD: test-password
           MYSQL_TCP_PORT: "3307"
@@ -41,6 +42,7 @@ jobs:
         name: moco-test-mysqld-replica
         command:
           - --gtid-mode=ON
+          - --enforce-gtid-consistency=ON
         environment:
           MYSQL_ROOT_PASSWORD: test-password
           MYSQL_TCP_PORT: "3308"
