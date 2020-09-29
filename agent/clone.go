@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,9 +11,9 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/well"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// Clone executes MySQL CLONE command
 func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -28,7 +27,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	donorHostName := r.URL.Query().Get(moco.CloneParamDonorHostName)
-	if len(validation.IsFullyQualifiedDomainName(nil, donorHostName)) > 0 {
+	if len(donorHostName) <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -46,32 +45,18 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf, err := ioutil.ReadFile(moco.DonorPasswordPath)
-	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to read donor passsword file: %w", err))
-		return
-	}
-	donorPassword := strings.TrimSpace(string(buf))
-
-	buf, err = ioutil.ReadFile(moco.MiscPasswordPath)
-	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to read misc passsword file: %w", err))
-		return
-	}
-	miscPassword := strings.TrimSpace(string(buf))
-
 	if !a.sem.TryAcquire(1) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		a.sem.Release(1)
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		log.Error("failed to get database", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -83,7 +68,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, fmt.Errorf("failed to get MySQL primary status: %w", err))
 		log.Error("failed to get MySQL primary status", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -101,18 +86,18 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		a.clone(ctx, miscPassword, donorPassword, donorHostName, donorPort)
+		a.clone(ctx, a.miscUserPassword, a.donorUserPassword, donorHostName, donorPort)
 		return nil
 	})
 }
 
 func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
 
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, moco.MySQLAdminPort), moco.MiscUser, miscPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		log.Error("failed to get database", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -124,7 +109,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 				"donor_hostname": donorHostName,
 				"donor_port":     donorPort,
 				"hostname":       a.mysqlAdminHostname,
-				"port":           moco.MySQLAdminPort,
+				"port":           a.mysqlAdminPort,
 				log.FnError:      err,
 			})
 			return
@@ -134,7 +119,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 			"donor_hostname": donorHostName,
 			"donor_port":     donorPort,
 			"hostname":       a.mysqlAdminHostname,
-			"port":           moco.MySQLAdminPort,
+			"port":           a.mysqlAdminPort,
 			log.FnError:      err,
 		})
 		return
@@ -143,6 +128,6 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 		"donor_hostname": donorHostName,
 		"donor_port":     donorPort,
 		"hostname":       a.mysqlAdminHostname,
-		"port":           moco.MySQLAdminPort,
+		"port":           a.mysqlAdminPort,
 	})
 }

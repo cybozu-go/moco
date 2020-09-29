@@ -24,7 +24,7 @@ const (
 
 var _ = Describe("Get MySQLCluster status", func() {
 	It("Should get MySQL status", func() {
-		err := initializeOperatorAdminUser()
+		err := initializeMySQL()
 		Expect(err).ShouldNot(HaveOccurred())
 		acc := NewMySQLAccessor(&MySQLAccessorConfig{
 			ConnMaxLifeTime:   30 * time.Minute,
@@ -55,10 +55,11 @@ var _ = Describe("Get MySQLCluster status", func() {
 	})
 })
 
-func initializeOperatorAdminUser() error {
+func initializeMySQL() error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
 	conf.Passwd = password
+	conf.Net = "tcp"
 	conf.Addr = host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 

@@ -2,16 +2,15 @@ package agent
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 )
 
+// RotateLog rotes log files
 func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get(moco.AgentTokenParam)
 	if token != a.token {
@@ -19,7 +18,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	errFile := filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName)
+	errFile := filepath.Join(a.logDir, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
 	if err == nil {
 		err := os.Rename(errFile, errFile+".0")
@@ -38,7 +37,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slowFile := filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName)
+	slowFile := filepath.Join(a.logDir, moco.MySQLSlowLogName)
 	_, err = os.Stat(slowFile)
 	if err == nil {
 		err := os.Rename(slowFile, slowFile+".0")
@@ -57,16 +56,9 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf, err := ioutil.ReadFile(moco.MiscPasswordPath)
-	if err != nil {
-		internalServerError(w, fmt.Errorf("failed to read misc passsword file: %w", err))
-		return
-	}
-	password := strings.TrimSpace(string(buf))
-
 	podName := os.Getenv(moco.PodNameEnvName)
 
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, moco.MySQLAdminPort), moco.MiscUser, password)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		return
