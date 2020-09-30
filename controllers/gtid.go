@@ -10,14 +10,14 @@ import (
 type MySQLGTIDSet map[string][]Interval
 
 type Interval struct {
-	start, end int64
+	Start, End int64
 }
 
 func latestTransactionID(intervals []Interval) int64 {
 	latest := int64(0)
 	for _, interval := range intervals {
-		if latest < interval.end {
-			latest = interval.end
+		if latest < interval.End {
+			latest = interval.End
 		}
 	}
 	return latest
@@ -36,7 +36,7 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 	set1IsLater := false
 	for k := range keys {
 		if _, ok := set1[k]; !ok {
-			if compared {
+			if compared && set1IsLater {
 				return 0, errors.New("cannot compare")
 			}
 			compared = true
@@ -44,7 +44,7 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 			continue
 		}
 		if _, ok := set2[k]; !ok {
-			if compared {
+			if compared && !set1IsLater {
 				return 0, errors.New("cannot compare")
 			}
 			compared = true
@@ -57,16 +57,19 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 			continue
 		}
 
-		if compared {
-			return 0, errors.New("cannot compare")
-		}
-		compared = true
 		if latest1 > latest2 {
+			if compared && !set1IsLater {
+				return 0, errors.New("cannot compare")
+			}
 			set1IsLater = true
 		} else {
+			if compared && set1IsLater {
+				return 0, errors.New("cannot compare")
+			}
 			set1IsLater = false
 		}
 
+		compared = true
 	}
 	if !compared {
 		return 0, nil
@@ -78,7 +81,7 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 }
 
 func ParseGTIDSet(input string) (MySQLGTIDSet, error) {
-	gtids := make(MySQLGTIDSet, 0)
+	gtids := make(MySQLGTIDSet)
 
 	for _, gtid := range strings.Split(input, ",") {
 		gtid = strings.TrimSpace(gtid)
@@ -99,8 +102,8 @@ func ParseGTIDSet(input string) (MySQLGTIDSet, error) {
 				if err != nil {
 					return nil, fmt.Errorf("invalid GTID: %s", input)
 				}
-				interval.start = start
-				interval.end = start
+				interval.Start = start
+				interval.End = start
 			case 2:
 				start, err := strconv.ParseInt(intervals[0], 10, 64)
 				if err != nil {
@@ -110,8 +113,8 @@ func ParseGTIDSet(input string) (MySQLGTIDSet, error) {
 				if err != nil {
 					return nil, fmt.Errorf("invalid GTID: %s", input)
 				}
-				interval.start = start
-				interval.end = end
+				interval.Start = start
+				interval.End = end
 			default:
 				return nil, fmt.Errorf("invalid GTID: %s", input)
 			}
