@@ -21,7 +21,7 @@ func SetLabelsOp() Operator {
 }
 
 func (setLabelsOp) Name() string {
-	return moco.OperatorSetLabels
+	return OperatorSetLabels
 }
 
 func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {

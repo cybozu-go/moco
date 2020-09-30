@@ -22,7 +22,7 @@ func ConfigureReplicationOp(index int, primaryHost string) Operator {
 }
 
 func (r configureReplicationOp) Name() string {
-	return moco.OperatorConfigureReplication
+	return OperatorConfigureReplication
 }
 
 func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {

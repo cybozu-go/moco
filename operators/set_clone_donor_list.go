@@ -17,7 +17,7 @@ func SetCloneDonorListOp() Operator {
 }
 
 func (setCloneDonorListOp) Name() string {
-	return moco.OperatorSetCloneDonorList
+	return OperatorSetCloneDonorList
 }
 
 func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {

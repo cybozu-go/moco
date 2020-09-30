@@ -3,7 +3,6 @@ package operators
 import (
 	"context"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 )
@@ -20,7 +19,7 @@ func TurnOffReadOnlyOp(primaryIndex int) Operator {
 }
 
 func (o turnOffReadOnlyOp) Name() string {
-	return moco.OperatorTurnOffReadOnly
+	return OperatorTurnOffReadOnly
 }
 
 func (o turnOffReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
