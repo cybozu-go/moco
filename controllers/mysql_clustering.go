@@ -87,8 +87,9 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	op, wait := waitForRelayLogExecution(status, cluster)
 	if wait || len(op) != 0 {
 		return &Operation{
-			Operators: op,
-			Wait:      wait,
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
+			Wait:       wait,
 		}, nil
 	}
 
@@ -99,7 +100,8 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
 		return &Operation{
-			Operators: op,
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
 		}, nil
 	}
 

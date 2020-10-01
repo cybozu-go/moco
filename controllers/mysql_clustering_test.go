@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -71,7 +73,13 @@ func TestDecideNextOperation(t *testing.T) {
 			name:  "It should update primary index when the primary is not yet selected",
 			input: newTestData().withReadableInstances(),
 			want: &Operation{
-				Wait:      false,
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(0)},
 			},
 		},
@@ -223,17 +231,28 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name: "It should update primary index which has latest GTID set",
+			name:  "It should update primary index which has latest GTID set",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyPrimary(),
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
+			},
 		},
-		{
-			name: "It should not update primary index because primary has data",
-		},
-		{
-			name: "It should return error if there are few data replicas",
-		},
-		{
-			name: "It should return error if cannot performe GTID comparsion",
-		},
+		//{
+		//	name: "It should not update primary index because primary has data",
+		//},
+		//{
+		//	name: "It should return error if there are few data replicas",
+		//},
+		//{
+		//	name: "It should return error if cannot performe GTID comparsion",
+		//},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
@@ -243,8 +262,19 @@ func TestDecideNextOperation(t *testing.T) {
 			if !assertOperation(got, tt.want) {
 				sortOp(got)
 				sortOp(tt.want)
-				diff := cmp.Diff(tt.want, got)
-				t.Errorf("decideNextOperation() diff: %s", diff)
+
+				var buf bytes.Buffer
+				diff := cmp.Diff(got, tt.want, cmpopts.IgnoreInterfaces(struct{ ops.Operator }{}))
+				buf.WriteString(fmt.Sprintf("diff: %s\n", diff))
+				buf.WriteString("got:\n")
+				for _, op := range got.Operators {
+					buf.WriteString(fmt.Sprintf("- %#v\n", op))
+				}
+				buf.WriteString("want:\n")
+				for _, op := range tt.want.Operators {
+					buf.WriteString(fmt.Sprintf("- %#v\n", op))
+				}
+				t.Errorf("decideNextOperation() diff: %s", buf.String())
 			}
 
 			if !errors.Is(err, tt.wantErr) {
@@ -474,6 +504,18 @@ func (d testData) withAvailableCluster() testData {
 	return d
 }
 
+func (d testData) withEmptyPrimary() testData {
+	primaryIndex := 0
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			emptyIns(false),
+			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, "1-5", "1-5"),
+		},
+	}
+	return d
+}
+
 func unavailableIns() accessor.MySQLInstanceStatus {
 	return accessor.MySQLInstanceStatus{
 		Available:             false,
@@ -577,6 +619,23 @@ func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) ac
 		RetrievedGtidSet: PRIMARYUUID + "1-5",
 		ExecutedGtidSet:  PRIMARYUUID + exeGtid,
 		SlaveIORunning:   "Yes",
+		SlaveSQLRunning:  "Yes",
+	}
+	return state
+}
+
+func stoppedReadOnlyIns(primaryIndex int, role string, retGtid, exeGtid string) accessor.MySQLInstanceStatus {
+	state := readOnlyIns(primaryIndex, role)
+	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + exeGtid}
+	state.ReplicaStatus = &accessor.MySQLReplicaStatus{
+		LastIoErrno:      0,
+		LastIoError:      "",
+		LastSQLErrno:     0,
+		LastSQLError:     "",
+		MasterHost:       hostName(0),
+		RetrievedGtidSet: PRIMARYUUID + retGtid,
+		ExecutedGtidSet:  PRIMARYUUID + exeGtid,
+		SlaveIORunning:   "No",
 		SlaveSQLRunning:  "Yes",
 	}
 	return state
