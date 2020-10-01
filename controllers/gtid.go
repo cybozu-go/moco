@@ -1,10 +1,11 @@
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/cybozu-go/moco"
 )
 
 type MySQLGTIDSet map[string][]Interval
@@ -37,7 +38,7 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 	for k := range keys {
 		if _, ok := set1[k]; !ok {
 			if compared && set1IsLater {
-				return 0, errors.New("cannot compare")
+				return 0, moco.ErrCannotCompareGITDs
 			}
 			compared = true
 			set1IsLater = false
@@ -45,7 +46,7 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 		}
 		if _, ok := set2[k]; !ok {
 			if compared && !set1IsLater {
-				return 0, errors.New("cannot compare")
+				return 0, moco.ErrCannotCompareGITDs
 			}
 			compared = true
 			set1IsLater = true
@@ -59,12 +60,12 @@ func Compare(set1, set2 MySQLGTIDSet) (int, error) {
 
 		if latest1 > latest2 {
 			if compared && !set1IsLater {
-				return 0, errors.New("cannot compare")
+				return 0, moco.ErrCannotCompareGITDs
 			}
 			set1IsLater = true
 		} else {
 			if compared && set1IsLater {
-				return 0, errors.New("cannot compare")
+				return 0, moco.ErrCannotCompareGITDs
 			}
 			set1IsLater = false
 		}

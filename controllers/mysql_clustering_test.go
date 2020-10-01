@@ -232,7 +232,7 @@ func TestDecideNextOperation(t *testing.T) {
 		},
 		{
 			name:  "It should update primary index which has latest GTID set",
-			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyPrimary(),
+			input: newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyPrimary(true),
 			want: &Operation{
 				Wait: false,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
@@ -244,15 +244,32 @@ func TestDecideNextOperation(t *testing.T) {
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
 			},
 		},
-		//{
-		//	name: "It should not update primary index because primary has data",
-		//},
-		//{
-		//	name: "It should return error if there are few data replicas",
-		//},
-		//{
-		//	name: "It should return error if cannot performe GTID comparsion",
-		//},
+		{
+			name:  "It should update primary index because primary is behind of others",
+			input: newTestData().withCurrentPrimaryIndex(intPointer(2)).withLaggedPrimary(2),
+			want: &Operation{
+				Wait: false,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				Operators: []ops.Operator{ops.UpdatePrimaryOp(0)},
+			},
+		},
+		{
+			name:    "It should return error if there are few data replicas",
+			input:   newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyPrimary(false),
+			want:    nil,
+			wantErr: moco.ErrTooFewDataReplicas,
+		},
+		{
+			name:    "It should return error if cannot performe GTID comparsion",
+			input:   newTestData().withCurrentPrimaryIndex(intPointer(0)).withInconsistentGTIDs(0),
+			want:    nil,
+			wantErr: moco.ErrCannotCompareGITDs,
+		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {
@@ -504,15 +521,47 @@ func (d testData) withAvailableCluster() testData {
 	return d
 }
 
-func (d testData) withEmptyPrimary() testData {
+func (d testData) withEmptyPrimary(synced bool) testData {
 	primaryIndex := 0
+
+	gtid := "1-5"
+	if !synced {
+		gtid = "1-4"
+	}
+
 	d.ClusterStatus = &accessor.MySQLClusterStatus{
 		InstanceStatus: []accessor.MySQLInstanceStatus{
 			emptyIns(false),
 			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, "1-5", "1-5"),
-			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, gtid, gtid),
 		},
 	}
+
+	return d
+}
+
+func (d testData) withLaggedPrimary(primary int) testData {
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			stoppedReadOnlyIns(primary, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primary, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primary, moco.PrimaryRole, "1-5", "1-5"),
+		},
+	}
+	d.ClusterStatus.InstanceStatus[primary] = stoppedReadOnlyIns(primary, moco.PrimaryRole, "1-4", "1-4")
+	return d
+}
+
+func (d testData) withInconsistentGTIDs(primary int) testData {
+	d.ClusterStatus = &accessor.MySQLClusterStatus{
+		InstanceStatus: []accessor.MySQLInstanceStatus{
+			stoppedReadOnlyIns(primary, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primary, moco.ReplicaRole, "1-5", "1-5"),
+			stoppedReadOnlyIns(primary, moco.ReplicaRole, "1-4", "1-4"),
+		},
+	}
+	d.ClusterStatus.InstanceStatus[primary].Role = moco.PrimaryRole
+	d.ClusterStatus.InstanceStatus[0].PrimaryStatus.ExecutedGtidSet = "dummy-source-id:1-5"
 	return d
 }
 
@@ -554,7 +603,7 @@ func notEmptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
 	state := accessor.MySQLInstanceStatus{
 		Available: true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{
-			ExecutedGtidSet: PRIMARYUUID + ":1",
+			ExecutedGtidSet: PRIMARYUUID + "1",
 		},
 		ReplicaStatus: nil,
 		GlobalVariablesStatus: &accessor.MySQLGlobalVariablesStatus{
@@ -627,6 +676,10 @@ func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) ac
 func stoppedReadOnlyIns(primaryIndex int, role string, retGtid, exeGtid string) accessor.MySQLInstanceStatus {
 	state := readOnlyIns(primaryIndex, role)
 	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + exeGtid}
+	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		Valid:  true,
+	}
 	state.ReplicaStatus = &accessor.MySQLReplicaStatus{
 		LastIoErrno:      0,
 		LastIoError:      "",

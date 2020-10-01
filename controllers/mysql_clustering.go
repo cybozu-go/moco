@@ -112,11 +112,11 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts := waitForClone(status, cluster)
+	wait, outOfSyncIns := waitForClone(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
-			Conditions: unavailableCondition(outOfSyncInts),
+			Conditions: unavailableCondition(outOfSyncIns),
 		}, nil
 	}
 
@@ -127,26 +127,26 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts = waitForReplication(status, cluster)
+	wait, outOfSyncIns = waitForReplication(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
-			Conditions: unavailableCondition(outOfSyncInts),
+			Conditions: unavailableCondition(outOfSyncIns),
 		}, nil
 	}
 
-	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncInts)
+	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncIns)
 	op = acceptWriteRequest(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
-			Conditions:     availableCondition(outOfSyncInts),
+			Conditions:     availableCondition(outOfSyncIns),
 			Operators:      op,
 			SyncedReplicas: &syncedReplicas,
 		}, nil
 	}
 
 	return &Operation{
-		Conditions:     availableCondition(outOfSyncInts),
+		Conditions:     availableCondition(outOfSyncIns),
 		SyncedReplicas: &syncedReplicas,
 	}, nil
 }
@@ -322,17 +322,13 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 		return 0, nil
 	}
 
-	primary := *cluster.Status.CurrentPrimaryIndex
-	if status.InstanceStatus[primary].PrimaryStatus.ExecutedGtidSet != "" {
+	if !status.InstanceStatus[*cluster.Status.CurrentPrimaryIndex].GlobalVariablesStatus.ReadOnly {
 		return *cluster.Status.CurrentPrimaryIndex, nil
 	}
 
 	latestGTIDSet := make(MySQLGTIDSet)
 	var latest, count int
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		if i == primary {
-			continue
-		}
 		gtidSet, err := ParseGTIDSet(status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet)
 		if err != nil {
 			return 0, err
@@ -449,7 +445,8 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 			continue
 		}
 
-		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
+		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost ||
+			is.ReplicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
 			operators = append(operators, ops.ConfigureReplicationOp(i, primaryHost))
 		}
 	}

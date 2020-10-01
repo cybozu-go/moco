@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/cybozu-go/moco"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -157,7 +157,7 @@ func TestCompare(t *testing.T) {
 			set1:    "2174B383-5441-11E8-B90A-C80AA9429562:1-3",
 			set2:    "24DA167-0C0C-11E8-8442-00059A3C7B00:1-19",
 			want:    0,
-			wantErr: errors.New("cannot compare"),
+			wantErr: moco.ErrCannotCompareGITDs,
 		},
 	}
 	for _, tt := range tests {
