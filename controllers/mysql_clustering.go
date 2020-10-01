@@ -545,7 +545,7 @@ func waitForRelayLogExecution(status *accessor.MySQLClusterStatus, cluster *moco
 			continue
 		}
 		if status.InstanceStatus[i].ReplicaStatus.SlaveIORunning != moco.ReplicaNotRun {
-			op = append(op, ops.StopReplicaIOThread())
+			op = append(op, ops.StopReplicaIOThread(i))
 		}
 	}
 	if len(op) != 0 {

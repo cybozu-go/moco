@@ -8,19 +8,30 @@ import (
 )
 
 type stopReplicaIOThread struct {
-	// TODO: field of target name
+	Index int
 }
 
 // StopReplicaIOThread returns the StopReplicaIOThread Operator
-func StopReplicaIOThread() Operator {
-	return &stopReplicaIOThread{}
+func StopReplicaIOThread(index int) Operator {
+	return &stopReplicaIOThread{
+		Index: index,
+	}
 }
 
-func (stopReplicaIOThread) Name() string {
+func (s stopReplicaIOThread) Name() string {
 	return OperatorStopReplicaIOThread
 }
 
-func (stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	// TODO: Stop IO Thread
+func (s stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	db, err := infra.GetDB(ctx, cluster, s.Index)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`STOP SLAVE IO_THREAD`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
