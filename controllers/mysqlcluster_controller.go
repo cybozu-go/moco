@@ -447,6 +447,7 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
+		headless.Spec.PublishNotReadyAddresses = true
 		headless.Spec.Selector = map[string]string{
 			moco.AppNameKey:      moco.UniqueName(cluster),
 			moco.AppManagedByKey: moco.MyName,

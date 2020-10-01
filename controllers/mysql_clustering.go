@@ -47,6 +47,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	}
 
 	for _, o := range op.Operators {
+		log.Info("Run operation", "name", o.Name())
 		err = o.Run(ctx, infra, cluster, status)
 		if err != nil {
 			condErr := r.setFailureCondition(ctx, cluster, err, nil)
@@ -57,12 +58,19 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 	}
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
-
-	if err == nil && op.Wait {
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if op.Wait {
+		log.Info("Waiting")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
-
-	return ctrl.Result{}, err
+	if len(op.Operators) > 0 {
+		return ctrl.Result{
+			Requeue: true,
+		}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) (*Operation, error) {
@@ -391,7 +399,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	op := make([]ops.Operator, 0)
 
 	primaryHost := moco.GetHost(cluster, primaryIndex)
-	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
 	for _, s := range status.InstanceStatus {
 		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
