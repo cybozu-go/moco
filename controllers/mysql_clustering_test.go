@@ -222,6 +222,18 @@ func TestDecideNextOperation(t *testing.T) {
 				SyncedReplicas: intPointer(3),
 			},
 		},
+		{
+			name: "It should update primary index which has latest GTID set",
+		},
+		{
+			name: "It should not update primary index because primary has data",
+		},
+		{
+			name: "It should return error if there are few data replicas",
+		},
+		{
+			name: "It should return error if cannot performe GTID comparsion",
+		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 	for _, tt := range tests {

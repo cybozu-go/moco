@@ -92,9 +92,10 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	// currentPrimaryIndex が空 -> 0
-	// それ以外 -> 一番 GTID が進んでいるインスタンス
-	primaryIndex := selectPrimary(status, cluster)
+	primaryIndex, err := selectPrimary(status, cluster)
+	if err != nil {
+		return nil, err
+	}
 	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
 		return &Operation{
@@ -314,16 +315,45 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 	return nil
 }
 
-// TODO: Implementation for failover
-func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) int {
+func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
 	if cluster.Status.CurrentPrimaryIndex == nil {
-		return 0
+		return 0, nil
 	}
 
-	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		// TODO: select latest GTID instance
+	primary := *cluster.Status.CurrentPrimaryIndex
+	if status.InstanceStatus[primary].PrimaryStatus.ExecutedGtidSet != "" {
+		return *cluster.Status.CurrentPrimaryIndex, nil
 	}
-	return 0
+
+	latestGTIDSet := make(MySQLGTIDSet)
+	var latest, count int
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		gtidSet, err := ParseGTIDSet(status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet)
+		if err != nil {
+			return 0, err
+		}
+		cmp, err := Compare(latestGTIDSet, gtidSet)
+		if err != nil {
+			return 0, err
+		}
+		switch {
+		case cmp < 0:
+			latest = i
+			latestGTIDSet = gtidSet
+			count = 1
+		case cmp == 0:
+			count++
+		}
+	}
+
+	if count <= int(cluster.Spec.Replicas/2) {
+		return 0, moco.ErrTooFewDataReplicas
+	}
+
+	return latest, nil
 }
 
 func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []ops.Operator {
