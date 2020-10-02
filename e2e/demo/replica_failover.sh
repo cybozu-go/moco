@@ -2,6 +2,8 @@
 
 cat 00_create_table.sql | ../mysql.sh 2> /dev/null
 
+cat insert_records.sql | ../mysql.sh 2> /dev/null
+
 for i in {0..2}
 do 
     cat 01_display_table.sql | ../mysql.sh ${i} 

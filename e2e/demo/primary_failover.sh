@@ -1,6 +1,11 @@
 #!/bin/bash
 
-cat 00_create_table.sql | ../mysql.sh 2> /dev/null
+cat 00_create_table.sql | ../mysql.sh
+
+for i in {0..10}
+do
+    cat insert_records.sql | ../mysql.sh 2> /dev/null
+done
 
 for i in {0..2}
 do

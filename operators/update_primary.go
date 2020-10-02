@@ -39,6 +39,11 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 		return err
 	}
 
+	_, err = db.Exec("RESET SLAVE")
+	if err != nil {
+		return err
+	}
+
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=ON,GLOBAL rpl_semi_sync_slave_enabled=OFF")
 	if err != nil {
 		return err
