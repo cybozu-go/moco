@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -18,12 +19,12 @@ func StopReplicaIOThread(index int) Operator {
 	}
 }
 
-func (s stopReplicaIOThread) Name() string {
+func (o stopReplicaIOThread) Name() string {
 	return OperatorStopReplicaIOThread
 }
 
-func (s stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	db, err := infra.GetDB(ctx, cluster, s.Index)
+func (o stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+	db, err := infra.GetDB(ctx, cluster, o.Index)
 	if err != nil {
 		return err
 	}
@@ -34,4 +35,8 @@ func (s stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastruct
 	}
 
 	return nil
+}
+
+func (o stopReplicaIOThread) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -33,6 +34,11 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 		return err
 	}
 
+	_, err = db.Exec("STOP SLAVE")
+	if err != nil {
+		return err
+	}
+
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_enabled=ON,GLOBAL rpl_semi_sync_slave_enabled=OFF")
 	if err != nil {
 		return err
@@ -45,4 +51,8 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	}
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
 	return err
+}
+
+func (o updatePrimaryOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

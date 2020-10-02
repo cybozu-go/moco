@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -21,17 +22,17 @@ func ConfigureReplicationOp(index int, primaryHost string) Operator {
 	}
 }
 
-func (r configureReplicationOp) Name() string {
+func (o configureReplicationOp) Name() string {
 	return OperatorConfigureReplication
 }
 
-func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	password, err := moco.GetPassword(ctx, cluster, infra.GetClient(), moco.ReplicationPasswordKey)
 	if err != nil {
 		return err
 	}
 
-	db, err := infra.GetDB(ctx, cluster, r.Index)
+	db, err := infra.GetDB(ctx, cluster, o.Index)
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 		return err
 	}
 	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
-		r.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
+		o.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
 	if err != nil {
 		return err
 	}
@@ -51,4 +52,8 @@ func (r configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 	}
 	_, err = db.Exec(`START SLAVE`)
 	return err
+}
+
+func (o configureReplicationOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

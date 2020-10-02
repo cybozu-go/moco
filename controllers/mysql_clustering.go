@@ -47,7 +47,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	}
 
 	for _, o := range op.Operators {
-		log.Info("Run operation", "name", o.Name())
+		log.Info("Run operation", "name", o.Name(), "description", o.Describe())
 		err = o.Run(ctx, infra, cluster, status)
 		if err != nil {
 			condErr := r.setFailureCondition(ctx, cluster, err, nil)

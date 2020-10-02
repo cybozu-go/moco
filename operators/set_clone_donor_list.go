@@ -16,11 +16,11 @@ func SetCloneDonorListOp() Operator {
 	return &setCloneDonorListOp{}
 }
 
-func (setCloneDonorListOp) Name() string {
+func (o setCloneDonorListOp) Name() string {
 	return OperatorSetCloneDonorList
 }
 
-func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
@@ -37,4 +37,8 @@ func (setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructur
 	}
 
 	return nil
+}
+
+func (o setCloneDonorListOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

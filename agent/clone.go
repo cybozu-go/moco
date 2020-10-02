@@ -92,7 +92,6 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
-
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		log.Error("failed to get database", map[string]interface{}{
