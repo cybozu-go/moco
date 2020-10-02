@@ -614,11 +614,14 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		c.Args = []string{"--defaults-file=" + filepath.Join(moco.MySQLConfPath, moco.MySQLConfName)}
 		c.Ports = []corev1.ContainerPort{
 			{
-				ContainerPort: moco.MySQLPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLPort, Protocol: corev1.ProtocolTCP,
+			},
 			{
-				ContainerPort: moco.MySQLXPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLXPort, Protocol: corev1.ProtocolTCP,
+			},
 			{
-				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP,
+			},
 		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
@@ -865,13 +868,20 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 			setLabels(&cronJob.ObjectMeta)
 			cronJob.Spec.Schedule = cluster.Spec.LogRotationSchedule
 			cronJob.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
-			cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = []corev1.Container{
-				{
-					Name:    "curl",
-					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", podName, moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
-				},
+			var curlContainer *corev1.Container
+			for i, c := range cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers {
+				if c.Name == "curl" {
+					curlContainer = &(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[i])
+					break
+				}
 			}
+			if curlContainer == nil {
+				cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = append([]corev1.Container{{}}, cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers...)
+				curlContainer = &(cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers[0])
+			}
+			curlContainer.Name = "curl"
+			curlContainer.Image = r.CurlContainerImage
+			curlContainer.Command = []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", podName, moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
 		})
 		if err != nil {
@@ -894,22 +904,37 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	primaryService.SetName(primaryServiceName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
-		primaryService.Spec.Ports = []corev1.ServicePort{
-			{
-				Name:     "mysql",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLPort,
-			},
-			{
-				Name:     "mysqlx",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLXPort,
-			},
+		var mysqlPort *corev1.ServicePort
+		var mysqlxPort *corev1.ServicePort
+		for i, port := range primaryService.Spec.Ports {
+			if port.Name == "mysql" {
+				mysqlPort = &primaryService.Spec.Ports[i]
+			}
+			if port.Name == "mysqlx" {
+				mysqlxPort = &primaryService.Spec.Ports[i]
+			}
 		}
-		primaryService.Spec.Selector = map[string]string{
-			moco.AppNameKey: moco.UniqueName(cluster),
-			moco.RoleKey:    moco.PrimaryRole,
+		if mysqlPort == nil {
+			primaryService.Spec.Ports = append([]corev1.ServicePort{{}}, primaryService.Spec.Ports...)
+			mysqlPort = &(primaryService.Spec.Ports[0])
 		}
+		mysqlPort.Name = "mysql"
+		mysqlPort.Protocol = corev1.ProtocolTCP
+		mysqlPort.Port = moco.MySQLPort
+
+		if mysqlxPort == nil {
+			primaryService.Spec.Ports = append([]corev1.ServicePort{{}}, primaryService.Spec.Ports...)
+			mysqlxPort = &(primaryService.Spec.Ports[0])
+		}
+		mysqlxPort.Name = "mysqlx"
+		mysqlxPort.Protocol = corev1.ProtocolTCP
+		mysqlxPort.Port = moco.MySQLXPort
+
+		if primaryService.Spec.Selector == nil {
+			primaryService.Spec.Selector = make(map[string]string)
+		}
+		primaryService.Spec.Selector[moco.AppNameKey] = moco.UniqueName(cluster)
+		primaryService.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
 		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
 	})
 	if err != nil {
