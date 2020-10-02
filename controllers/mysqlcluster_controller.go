@@ -992,10 +992,11 @@ func removeString(slice []string, s string) (result []string) {
 }
 
 func setLabels(om *metav1.ObjectMeta) {
-	om.Labels = map[string]string{
-		moco.AppNameKey:      om.Name,
-		moco.AppManagedByKey: moco.MyName,
+	if om.Labels == nil {
+		om.Labels = make(map[string]string)
 	}
+	om.Labels[moco.AppNameKey] = om.Name
+	om.Labels[moco.AppManagedByKey] = moco.MyName
 }
 
 func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {
