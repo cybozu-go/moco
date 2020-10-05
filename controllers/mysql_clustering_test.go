@@ -660,7 +660,7 @@ func assertOperators(expected, actual []ops.Operator) bool {
 	sort.Sort(Operators(expected))
 	sort.Sort(Operators(actual))
 	for i := range expected {
-		if expected[i].Name() != actual[i].Name() {
+		if expected[i].Describe() != actual[i].Describe() {
 			return false
 		}
 	}
