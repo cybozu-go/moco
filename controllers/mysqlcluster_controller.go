@@ -62,6 +62,7 @@ type MySQLClusterReconciler struct {
 	ConfInitContainerImage string
 	CurlContainerImage     string
 	MySQLAccessor          accessor.DataBaseAccessor
+	WaitTime               time.Duration
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete

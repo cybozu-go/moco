@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -63,7 +62,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	}
 	if op.Wait {
 		log.Info("Waiting")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: r.WaitTime}, nil
 	}
 	if len(op.Operators) > 0 {
 		return ctrl.Result{
@@ -82,7 +81,10 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}
 	}
 	if unavailable {
-		return nil, moco.ErrUnavailableHost
+		return &Operation{
+			Conditions: unavailableCondition(nil),
+			Wait:       true,
+		}, nil
 	}
 
 	err := validateConstraints(status, cluster)

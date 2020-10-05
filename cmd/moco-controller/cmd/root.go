@@ -20,6 +20,7 @@ var config struct {
 	connMaxLifeTime        time.Duration
 	connectionTimeout      time.Duration
 	readTimeout            time.Duration
+	waitTime               time.Duration
 }
 
 var rootCmd = &cobra.Command{
@@ -63,6 +64,7 @@ func init() {
 	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
 	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")
 	fs.DurationVar(&config.readTimeout, readTimeoutFlag, 30*time.Second, "I/O read timeout")
+	fs.DurationVar(&config.waitTime, waitTimeFlag, 10*time.Second, "The waiting time which some tasks are under processing")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)
