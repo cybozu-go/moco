@@ -451,8 +451,9 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.PublishNotReadyAddresses = true
 		headless.Spec.Selector = map[string]string{
-			moco.AppNameKey:      moco.UniqueName(cluster),
-			moco.AppManagedByKey: moco.MyName,
+			moco.ClusterKey:   moco.UniqueName(cluster),
+			moco.ManagedByKey: moco.MyName,
+			moco.AppName:      moco.AppName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -509,8 +510,8 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		if sts.Spec.Selector.MatchLabels == nil {
 			sts.Spec.Selector.MatchLabels = make(map[string]string)
 		}
-		sts.Spec.Selector.MatchLabels[moco.AppNameKey] = moco.UniqueName(cluster)
-		sts.Spec.Selector.MatchLabels[moco.AppManagedByKey] = moco.MyName
+		sts.Spec.Selector.MatchLabels[moco.ClusterKey] = moco.UniqueName(cluster)
+		sts.Spec.Selector.MatchLabels[moco.ManagedByKey] = moco.MyName
 
 		podTemplate, err := r.makePodTemplate(log, cluster)
 		if err != nil {
@@ -586,8 +587,8 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	newTemplate.Labels[moco.AppNameKey] = moco.UniqueName(cluster)
-	newTemplate.Labels[moco.AppManagedByKey] = moco.MyName
+	newTemplate.Labels[moco.ClusterKey] = moco.UniqueName(cluster)
+	newTemplate.Labels[moco.ManagedByKey] = moco.MyName
 
 	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
@@ -933,6 +934,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	primaryService.SetName(primaryServiceName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
+		setLabels(&primaryService.ObjectMeta)
 		ports := []corev1.ServicePort{
 			{
 				Name:       "mysql",
@@ -954,8 +956,9 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 		if primaryService.Spec.Selector == nil {
 			primaryService.Spec.Selector = make(map[string]string)
 		}
-		primaryService.Spec.Selector[moco.AppNameKey] = moco.UniqueName(cluster)
+		primaryService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
 		primaryService.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
+		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
 		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
 	})
 	if err != nil {
@@ -974,6 +977,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	replicaService.SetName(replicaServiceName)
 
 	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
+		setLabels(&replicaService.ObjectMeta)
 		ports := []corev1.ServicePort{
 			{
 				Name:       "mysql",
@@ -996,8 +1000,9 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 		if replicaService.Spec.Selector == nil {
 			replicaService.Spec.Selector = make(map[string]string)
 		}
-		replicaService.Spec.Selector[moco.AppNameKey] = moco.UniqueName(cluster)
+		replicaService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
 		replicaService.Spec.Selector[moco.RoleKey] = moco.ReplicaRole
+		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
 		return ctrl.SetControllerReference(cluster, replicaService, r.Scheme)
 	})
 	if err != nil {
@@ -1049,8 +1054,9 @@ func setLabels(om *metav1.ObjectMeta) {
 	if om.Labels == nil {
 		om.Labels = make(map[string]string)
 	}
-	om.Labels[moco.AppNameKey] = om.Name
-	om.Labels[moco.AppManagedByKey] = moco.MyName
+	om.Labels[moco.ClusterKey] = om.Name
+	om.Labels[moco.ManagedByKey] = moco.MyName
+	om.Labels[moco.AppNameKey] = moco.AppName
 }
 
 func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {

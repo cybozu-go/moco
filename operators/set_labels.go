@@ -29,7 +29,7 @@ func (o setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, clu
 	pods := corev1.PodList{}
 	err := infra.GetClient().List(ctx, &pods, &client.ListOptions{
 		Namespace:     cluster.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{moco.AppNameKey: moco.UniqueName(cluster)}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{moco.ClusterKey: moco.UniqueName(cluster)}),
 	})
 	if err != nil {
 		return err

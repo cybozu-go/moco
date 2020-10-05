@@ -628,7 +628,7 @@ func notEmptyIns(cloneFailed bool) accessor.MySQLInstanceStatus {
 func cloningIns(primaryIndex int) accessor.MySQLInstanceStatus {
 	state := emptyIns(false)
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
-		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLAdminPort),
 		Valid:  true,
 	}
 	state.CloneStateStatus = &accessor.MySQLCloneStateStatus{
@@ -645,7 +645,7 @@ func readOnlyIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
 	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + "1-5"}
 	state.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
-		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLAdminPort),
 		Valid:  true,
 	}
 	state.Role = role
@@ -677,7 +677,7 @@ func stoppedReadOnlyIns(primaryIndex int, role string, retGtid, exeGtid string) 
 	state := readOnlyIns(primaryIndex, role)
 	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + exeGtid}
 	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
-		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLPort),
+		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLAdminPort),
 		Valid:  true,
 	}
 	state.ReplicaStatus = &accessor.MySQLReplicaStatus{

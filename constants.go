@@ -144,9 +144,11 @@ const (
 )
 
 const (
-	MyName          = "moco"
-	AppNameKey      = "app.kubernetes.io/name"
-	AppManagedByKey = "app.kubernetes.io/managed-by"
+	MyName       = "moco"
+	AppName      = "moco-mysql"
+	ClusterKey   = "app.kubernetes.io/instance"
+	ManagedByKey = "app.kubernetes.io/managed-by"
+	AppNameKey   = "app.kubernetes.io/name"
 
 	RoleKey     = "moco.cybozu.com/role"
 	PrimaryRole = "primary"
