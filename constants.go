@@ -181,6 +181,6 @@ var (
 	ErrUnavailableHost = errors.New("unavailable host exists")
 	// ErrCannotCompareGITDs is returned if GTID comparesion returns error
 	ErrCannotCompareGITDs = errors.New("cannot compare gtids")
-	// ErrTooFewDataReplicas is returned if one more transactions' replica num is not enough
+	// ErrTooFewDataReplicas is returned if more than one transactions' replica num is not enough
 	ErrTooFewDataReplicas = errors.New("too few data replicas")
 )
