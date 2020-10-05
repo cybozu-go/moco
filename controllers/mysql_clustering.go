@@ -337,7 +337,7 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 	}
 
 	latestGTIDSet := make(MySQLGTIDSet)
-	var latest, count int
+	var latestIndex, latestCount int
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
 		gtidSet, err := ParseGTIDSet(status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet)
 		if err != nil {
@@ -349,19 +349,19 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 		}
 		switch {
 		case cmp < 0:
-			latest = i
+			latestIndex = i
 			latestGTIDSet = gtidSet
-			count = 1
+			latestCount = 1
 		case cmp == 0:
-			count++
+			latestCount++
 		}
 	}
 
-	if count <= int(cluster.Spec.Replicas/2) {
+	if latestCount <= int(cluster.Spec.Replicas/2) {
 		return 0, moco.ErrTooFewDataReplicas
 	}
 
-	return latest, nil
+	return latestIndex, nil
 }
 
 func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []ops.Operator {
@@ -559,7 +559,7 @@ func waitForRelayLogExecution(log logr.Logger, status *accessor.MySQLClusterStat
 		}
 	}
 	if len(op) != 0 {
-		return op, true
+		return op, false
 	}
 
 	var wait bool
