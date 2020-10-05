@@ -40,9 +40,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(nil),
 				mySQLStatus(
-					unavailableIns(),
-					readOnlyIns(0, moco.ReplicaRole),
-					readOnlyIns(0, moco.ReplicaRole),
+					unavailableIns().build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
@@ -61,9 +61,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					readOnlyIns(0, moco.ReplicaRole),
-					writableIns(0, moco.PrimaryRole),
-					readOnlyIns(0, moco.ReplicaRole),
+					readOnlyIns(0, moco.ReplicaRole).build(),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
@@ -82,9 +82,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					writableIns(0, moco.PrimaryRole),
-					readOnlyIns(0, moco.ReplicaRole),
+					writableIns(0, moco.PrimaryRole).build(),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
@@ -103,9 +103,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(nil),
 				mySQLStatus(
-					emptyIns("", false),
-					emptyIns("", false),
-					emptyIns("", false),
+					emptyIns("", false).build(),
+					emptyIns("", false).build(),
+					emptyIns("", false).build(),
 				),
 			},
 			want: &Operation{
@@ -124,9 +124,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					setDonorList(readOnlyIns(0, moco.ReplicaRole), 1),
-					readOnlyIns(0, moco.ReplicaRole),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setDonorList(1).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
@@ -139,14 +139,14 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					emptyIns(moco.ReplicaRole, false),
-					readOnlyIns(0, moco.ReplicaRole),
+					writableIns(0, moco.PrimaryRole).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(2)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
 			},
 		},
 		{
@@ -154,14 +154,14 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					emptyIns(moco.ReplicaRole, false),
-					readOnlyIns(0, moco.ReplicaRole),
+					writableIns(0, moco.PrimaryRole).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+					readOnlyIns(0, moco.ReplicaRole).build(),
 				),
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(2)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
 			},
 		},
 		{
@@ -169,9 +169,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					setDonorList(writableIns(0, moco.PrimaryRole), 0),
-					setCloneInProgress(setDonorList(emptyIns(moco.ReplicaRole, false), 0)),
-					setCloneInProgress(setDonorList(emptyIns(moco.ReplicaRole, false), 0)),
+					writableIns(0, moco.PrimaryRole).setDonorList(0).build(),
+					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
+					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
 				),
 			},
 			want: &Operation{
@@ -189,9 +189,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setCloneInProgress(setDonorList(emptyIns(moco.ReplicaRole, false), 0)),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
 				),
 			},
 			want: &Operation{
@@ -210,15 +210,15 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					readOnlyIns(0, ""),
-					readOnlyIns(0, ""),
-					readOnlyIns(0, ""),
+					readOnlyIns(0, "").build(),
+					readOnlyIns(0, "").build(),
+					readOnlyIns(0, "").build(),
 				),
 			},
 			want: &Operation{
 				Wait: false,
 				Operators: []ops.Operator{
-					ops.ConfigureReplicationOp(2, hostName(0)),
+					ops.ConfigureReplicationOp(1, hostName(0)),
 					ops.ConfigureReplicationOp(2, hostName(0)),
 					ops.SetLabelsOp(),
 				},
@@ -229,9 +229,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setReplicaStatus(readOnlyIns(0, moco.PrimaryRole), 0, true),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().build(),
 				),
 			},
 			want: &Operation{
@@ -246,9 +246,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.ReplicaRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
+					writableIns(0, moco.ReplicaRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 				),
 			},
 			want: &Operation{
@@ -263,9 +263,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					emptyIns(moco.PrimaryRole, false),
-					setIOThreadStopped(setGTIDLagged(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true))),
-					setIOThreadStopped(setGTIDLagged(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true))),
+					emptyIns(moco.PrimaryRole, false).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setGTIDLagged().setIOThreadStopped().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setGTIDLagged().setIOThreadStopped().build(),
 				),
 			},
 			want: &Operation{
@@ -283,9 +283,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					readOnlyIns(0, moco.PrimaryRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
+					readOnlyIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 				),
 			},
 			want: &Operation{
@@ -305,9 +305,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, false),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOError().build(),
 				),
 			},
 			want: &Operation{
@@ -326,9 +326,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					writableIns(0, moco.PrimaryRole),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
-					setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true),
+					writableIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 				),
 			},
 			want: &Operation{
@@ -347,9 +347,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					emptyIns(moco.PrimaryRole, false),
-					setIOThreadStopped(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true)),
-					setIOThreadStopped(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true)),
+					emptyIns(moco.PrimaryRole, false).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
 				),
 			},
 			want: &Operation{
@@ -368,9 +368,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					setGTIDLagged(readOnlyIns(0, moco.PrimaryRole)),
-					setIOThreadStopped(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true)),
-					setIOThreadStopped(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true)),
+					readOnlyIns(0, moco.PrimaryRole).setGTIDBehind().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
 				),
 			},
 			want: &Operation{
@@ -381,7 +381,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
-				Operators: []ops.Operator{ops.UpdatePrimaryOp(0)},
+				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
 			},
 		},
 		{
@@ -389,9 +389,9 @@ func TestDecideNextOperation(t *testing.T) {
 			input: testData{
 				cluster(intPointer(0)),
 				mySQLStatus(
-					emptyIns(moco.PrimaryRole, false),
-					setIOThreadStopped(setGTIDInconsistent(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true))),
-					setIOThreadStopped(setReplicaStatus(readOnlyIns(0, moco.ReplicaRole), 0, true)),
+					emptyIns(moco.PrimaryRole, false).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().setGTIDInconsistent().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
 				),
 			},
 			want:    nil,
@@ -408,13 +408,18 @@ func TestDecideNextOperation(t *testing.T) {
 				sortOp(tt.want)
 
 				var buf bytes.Buffer
-				diff := cmp.Diff(got, tt.want, cmpopts.IgnoreInterfaces(struct{ ops.Operator }{}))
-				buf.WriteString(fmt.Sprintf("diff: %s\n", diff))
-				buf.WriteString("got:\n")
+				opts := cmp.Options{cmpopts.IgnoreFields(mocov1alpha1.MySQLClusterCondition{}, "LastTransitionTime"), cmpopts.IgnoreInterfaces(struct{ ops.Operator }{})}
+				if !cmp.Equal(got, tt.want, opts) {
+					buf.WriteString("\n" + cmp.Diff(got, tt.want, opts))
+				}
+				buf.WriteString("\nOperators:\ngot:\n")
 				if got != nil {
 					for _, op := range got.Operators {
 						buf.WriteString(fmt.Sprintf("- %#v\n", op.Describe()))
 					}
+				}
+				if got == nil || len(got.Operators) == 0 {
+					buf.WriteString("  <empty>\n")
 				}
 				buf.WriteString("want:\n")
 				if tt.want != nil {
@@ -422,17 +427,14 @@ func TestDecideNextOperation(t *testing.T) {
 						buf.WriteString(fmt.Sprintf("- %#v\n", op.Describe()))
 					}
 				}
-				t.Errorf("decideNextOperation() diff: %s", buf.String())
+				if tt.want == nil || len(tt.want.Operators) == 0 {
+					buf.WriteString("  <empty>\n")
+				}
+				t.Errorf("%s", buf.String())
 			}
 
 			if !errors.Is(err, tt.wantErr) {
-				if err != nil && tt.wantErr == nil {
-					t.Errorf("decideNextOperation() error = %v, want = nil", err)
-				}
-				if err == nil && tt.wantErr != nil {
-					t.Errorf("decideNextOperation() error = nil, want = %v", tt.wantErr)
-				}
-				t.Errorf("decideNextOperation() error = %v, want = %v", err, tt.wantErr)
+				t.Errorf("error = %v, want = %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -460,24 +462,32 @@ func cluster(primary *int) *mocov1alpha1.MySQLCluster {
 	}
 }
 
+type mySQLStatusBuilder struct {
+	primary int
+	status  accessor.MySQLInstanceStatus
+}
+
 func mySQLStatus(ss ...accessor.MySQLInstanceStatus) *accessor.MySQLClusterStatus {
 	return &accessor.MySQLClusterStatus{
 		InstanceStatus: ss,
 	}
 }
 
-func unavailableIns() accessor.MySQLInstanceStatus {
-	return accessor.MySQLInstanceStatus{
-		Available:             false,
-		PrimaryStatus:         nil,
-		ReplicaStatus:         nil,
-		GlobalVariablesStatus: nil,
-		CloneStateStatus:      nil,
+func unavailableIns() *mySQLStatusBuilder {
+	return &mySQLStatusBuilder{
+		primary: 0,
+		status: accessor.MySQLInstanceStatus{
+			Available:             false,
+			PrimaryStatus:         nil,
+			ReplicaStatus:         nil,
+			GlobalVariablesStatus: nil,
+			CloneStateStatus:      nil,
+		},
 	}
 }
 
-func emptyIns(role string, cloneFailed bool) accessor.MySQLInstanceStatus {
-	state := accessor.MySQLInstanceStatus{
+func emptyIns(role string, cloneFailed bool) *mySQLStatusBuilder {
+	status := accessor.MySQLInstanceStatus{
 		Available:     true,
 		PrimaryStatus: &accessor.MySQLPrimaryStatus{},
 		ReplicaStatus: nil,
@@ -491,104 +501,114 @@ func emptyIns(role string, cloneFailed bool) accessor.MySQLInstanceStatus {
 	}
 
 	if cloneFailed {
-		state.CloneStateStatus.State = sql.NullString{
+		status.CloneStateStatus.State = sql.NullString{
 			Valid:  true,
 			String: moco.CloneStatusFailed,
 		}
 	}
 
-	return state
+	return &mySQLStatusBuilder{
+		primary: 0,
+		status:  status,
+	}
 }
 
-func writableIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
-	state := readOnlyIns(primaryIndex, role)
-	state.GlobalVariablesStatus.ReadOnly = false
-	state.GlobalVariablesStatus.SuperReadOnly = false
-	return state
+func writableIns(primaryIndex int, role string) *mySQLStatusBuilder {
+	b := readOnlyIns(primaryIndex, role)
+	b.status.GlobalVariablesStatus.ReadOnly = false
+	b.status.GlobalVariablesStatus.SuperReadOnly = false
+
+	return b
 }
 
-func readOnlyIns(primaryIndex int, role string) accessor.MySQLInstanceStatus {
-	state := emptyIns(role, false)
-	state.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + "1-5"}
-	state.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
-	state.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+func readOnlyIns(primaryIndex int, role string) *mySQLStatusBuilder {
+	b := emptyIns(role, false)
+	b.status.PrimaryStatus = &accessor.MySQLPrimaryStatus{ExecutedGtidSet: PRIMARYUUID + "1-5"}
+	b.status.GlobalVariablesStatus.RplSemiSyncMasterWaitForSlaveCount = 1
+	b.status.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
 		String: fmt.Sprintf("%s:%d", hostName(primaryIndex), moco.MySQLAdminPort),
 		Valid:  true,
 	}
-	return state
+
+	return b
 }
 
-func setDonorList(s accessor.MySQLInstanceStatus, primary int) accessor.MySQLInstanceStatus {
-	s.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
-		String: fmt.Sprintf("%s:%d", hostName(primary), moco.MySQLAdminPort),
+func (b *mySQLStatusBuilder) build() accessor.MySQLInstanceStatus {
+	return b.status
+}
+
+func (b *mySQLStatusBuilder) setDonorList(donor int) *mySQLStatusBuilder {
+	b.status.GlobalVariablesStatus.CloneValidDonorList = sql.NullString{
+		String: fmt.Sprintf("%s:%d", hostName(donor), moco.MySQLAdminPort),
 		Valid:  true,
 	}
-	return s
+	return b
 }
 
-func setCloneInProgress(s accessor.MySQLInstanceStatus) accessor.MySQLInstanceStatus {
-	s.CloneStateStatus.State = sql.NullString{
+func (b *mySQLStatusBuilder) setCloneInProgress() *mySQLStatusBuilder {
+	b.status.CloneStateStatus.State = sql.NullString{
 		String: moco.CloneStatusInProgress,
 		Valid:  true,
 	}
-	return s
+	return b
 }
 
-func setReplicaStatus(s accessor.MySQLInstanceStatus, primary int, synced bool) accessor.MySQLInstanceStatus {
-	var ioErrno int
-	if !synced {
-		ioErrno = 1
-	}
-
-	s.ReplicaStatus = &accessor.MySQLReplicaStatus{
-		LastIoErrno:      ioErrno,
+func (b *mySQLStatusBuilder) setReplicaStatus() *mySQLStatusBuilder {
+	b.status.ReplicaStatus = &accessor.MySQLReplicaStatus{
+		LastIoErrno:      0,
 		LastIoError:      "",
 		LastSQLErrno:     0,
 		LastSQLError:     "",
-		MasterHost:       hostName(primary),
+		MasterHost:       hostName(b.primary),
 		RetrievedGtidSet: PRIMARYUUID + "1-5",
 		ExecutedGtidSet:  PRIMARYUUID + "1-5",
 		SlaveIORunning:   "Yes",
 		SlaveSQLRunning:  "Yes",
 	}
 
-	return s
+	return b
 }
 
-func setGTIDLagged(s accessor.MySQLInstanceStatus) accessor.MySQLInstanceStatus {
-	s.PrimaryStatus.ExecutedGtidSet = PRIMARYUUID + "1"
-	if s.ReplicaStatus != nil {
-		s.ReplicaStatus.ExecutedGtidSet = PRIMARYUUID + "1"
+func (b *mySQLStatusBuilder) setIOError() *mySQLStatusBuilder {
+	b.status.ReplicaStatus.LastIoErrno = 1
+	return b
+}
+
+func (b *mySQLStatusBuilder) setGTIDLagged() *mySQLStatusBuilder {
+	b.status.PrimaryStatus.ExecutedGtidSet = PRIMARYUUID + "1"
+	if b.status.ReplicaStatus != nil {
+		b.status.ReplicaStatus.ExecutedGtidSet = PRIMARYUUID + "1"
 	}
 
-	state.AllRelayLogExecuted = retGtid == exeGtid
-	return s
+	b.status.AllRelayLogExecuted = false
+	return b
 }
 
-func setGTIDBehind(s accessor.MySQLInstanceStatus) accessor.MySQLInstanceStatus {
-	s.PrimaryStatus.ExecutedGtidSet = PRIMARYUUID + "1-4"
-	if s.ReplicaStatus != nil {
-		s.ReplicaStatus.ExecutedGtidSet = PRIMARYUUID + "1-4"
-		s.ReplicaStatus.RetrievedGtidSet = PRIMARYUUID + "1-4"
+func (b *mySQLStatusBuilder) setGTIDBehind() *mySQLStatusBuilder {
+	b.status.PrimaryStatus.ExecutedGtidSet = PRIMARYUUID + "1-4"
+	if b.status.ReplicaStatus != nil {
+		b.status.ReplicaStatus.ExecutedGtidSet = PRIMARYUUID + "1-4"
+		b.status.ReplicaStatus.RetrievedGtidSet = PRIMARYUUID + "1-4"
 	}
 
-	return s
+	b.status.AllRelayLogExecuted = true
+	return b
 }
 
-func setGTIDInconsistent(s accessor.MySQLInstanceStatus) accessor.MySQLInstanceStatus {
-	s.PrimaryStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-	if s.ReplicaStatus != nil {
-		s.ReplicaStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-		s.ReplicaStatus.RetrievedGtidSet = "dummy-uuid:1-5"
+func (b *mySQLStatusBuilder) setGTIDInconsistent() *mySQLStatusBuilder {
+	b.status.PrimaryStatus.ExecutedGtidSet = "dummy-uuid:1-5"
+	if b.status.ReplicaStatus != nil {
+		b.status.ReplicaStatus.ExecutedGtidSet = "dummy-uuid:1-5"
+		b.status.ReplicaStatus.RetrievedGtidSet = "dummy-uuid:1-5"
 	}
 
-	state.AllRelayLogExecuted = true
-	return s
+	b.status.AllRelayLogExecuted = true
+	return b
 }
 
-func setIOThreadStopped(s accessor.MySQLInstanceStatus) accessor.MySQLInstanceStatus {
-	s.ReplicaStatus.SlaveIORunning = moco.ReplicaNotRun
-	return s
+func (b *mySQLStatusBuilder) setIOThreadStopped() *mySQLStatusBuilder {
+	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaNotRun
+	return b
 }
 
 func status(s bool) corev1.ConditionStatus {
