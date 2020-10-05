@@ -170,7 +170,7 @@ func TestCompare(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			got, err := Compare(set1GTID, set2GTID)
+			got, err := CompareGTIDSet(set1GTID, set2GTID)
 			if tt.wantErr != nil {
 				if err == nil {
 					t.Errorf("wantErr: %v, err: nil", tt.wantErr)

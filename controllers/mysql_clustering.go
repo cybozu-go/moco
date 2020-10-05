@@ -94,7 +94,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, err
 	}
 
-	op, wait := waitForRelayLogExecution(status, cluster)
+	op, wait := waitForRelayLogExecution(log, status, cluster)
 	if wait || len(op) != 0 {
 		return &Operation{
 			Operators:  op,
@@ -343,7 +343,7 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 		if err != nil {
 			return 0, err
 		}
-		cmp, err := Compare(latestGTIDSet, gtidSet)
+		cmp, err := CompareGTIDSet(latestGTIDSet, gtidSet)
 		if err != nil {
 			return 0, err
 		}
@@ -523,7 +523,7 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 		ops.TurnOffReadOnlyOp(primaryIndex)}
 }
 
-func waitForRelayLogExecution(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]ops.Operator, bool) {
+func waitForRelayLogExecution(log logr.Logger, status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]ops.Operator, bool) {
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return nil, false
 	}
@@ -570,7 +570,22 @@ func waitForRelayLogExecution(status *accessor.MySQLClusterStatus, cluster *moco
 		if status.InstanceStatus[i].ReplicaStatus == nil {
 			continue
 		}
-		if status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet == status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet {
+		execGtidSet, err := ParseGTIDSet(status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet)
+		if err != nil {
+			log.Error(err, "failed to parse gtid", "gtid", status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet)
+			return nil, true
+		}
+		retGtidSet, err := ParseGTIDSet(status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet)
+		if err != nil {
+			log.Error(err, "failed to parse gtid", "gtid", status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet)
+			return nil, true
+		}
+		played, err := CompareGTIDSet(execGtidSet, retGtidSet)
+		if err != nil {
+			log.Error(err, "failed to compare gtid", "executed_gtid", execGtidSet, "retrieved_gtid", retGtidSet)
+			return nil, true
+		}
+		if played >= 0 {
 			continue
 		}
 

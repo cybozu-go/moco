@@ -24,7 +24,7 @@ func latestTransactionID(intervals []Interval) int64 {
 	return latest
 }
 
-func Compare(set1, set2 MySQLGTIDSet) (int, error) {
+func CompareGTIDSet(set1, set2 MySQLGTIDSet) (int, error) {
 	keys := map[string]struct{}{}
 	for k := range set1 {
 		keys[k] = struct{}{}
