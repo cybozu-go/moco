@@ -453,7 +453,7 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 		headless.Spec.Selector = map[string]string{
 			moco.ClusterKey:   moco.UniqueName(cluster),
 			moco.ManagedByKey: moco.MyName,
-			moco.AppName:      moco.AppName,
+			moco.AppNameKey:   moco.AppName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -589,6 +589,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	// add labels to describe application
 	newTemplate.Labels[moco.ClusterKey] = moco.UniqueName(cluster)
 	newTemplate.Labels[moco.ManagedByKey] = moco.MyName
+	newTemplate.Labels[moco.AppNameKey] = moco.AppName
 
 	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
