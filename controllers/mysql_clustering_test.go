@@ -36,10 +36,18 @@ func TestDecideNextOperation(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "It should be unavailable error when it contains unavailable instance",
-			input:   newTestData().withUnAvailableInstances(),
-			want:    nil,
-			wantErr: moco.ErrUnavailableHost,
+			name:  "It should be unavailable error when it contains unavailable instance",
+			input: newTestData().withUnAvailableInstances(),
+			want: &Operation{
+				Wait: true,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					outOfSync(false, ""),
+					failure(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+			},
+			wantErr: nil,
 		},
 		{
 			name:  "It should be constraints violation error when the writable instance is wrong",
