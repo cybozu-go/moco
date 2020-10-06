@@ -94,9 +94,9 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	if cluster.DeletionTimestamp == nil {
-		if !containsString(cluster.Finalizers, mysqlClusterFinalizer) {
+		if !controllerutil.ContainsFinalizer(cluster, mysqlClusterFinalizer) {
 			cluster2 := cluster.DeepCopy()
-			cluster2.Finalizers = append(cluster2.Finalizers, mysqlClusterFinalizer)
+			controllerutil.AddFinalizer(cluster2, mysqlClusterFinalizer)
 			patch := client.MergeFrom(cluster)
 			if err := r.Patch(ctx, cluster2, patch); err != nil {
 				log.Error(err, "failed to add finalizer", "name", cluster.Name)
@@ -136,7 +136,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	// finalization
-	if !containsString(cluster.Finalizers, mysqlClusterFinalizer) {
+	if !controllerutil.ContainsFinalizer(cluster, mysqlClusterFinalizer) {
 		// Our finalizer has finished, so the reconciler can do nothing.
 		return ctrl.Result{}, nil
 	}
@@ -148,7 +148,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	cluster2 := cluster.DeepCopy()
-	cluster2.Finalizers = removeString(cluster2.Finalizers, mysqlClusterFinalizer)
+	controllerutil.RemoveFinalizer(cluster2, mysqlClusterFinalizer)
 	patch := client.MergeFrom(cluster)
 	if err := r.Patch(ctx, cluster2, patch); err != nil {
 		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
@@ -218,7 +218,8 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInterval time.Duration) error {
 	// SetupWithManager sets up the controller for reconciliation.
 
-	err := mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
+	ctx := context.Background()
+	err := mgr.GetFieldIndexer().IndexField(ctx, &mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
 	if err != nil {
 		return err
 	}
@@ -1031,25 +1032,6 @@ func (r *MySQLClusterReconciler) generateAgentToken(ctx context.Context, log log
 	}
 
 	return true, nil
-}
-
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }
 
 func setLabels(om *metav1.ObjectMeta) {

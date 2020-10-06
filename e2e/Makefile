@@ -1,3 +1,5 @@
+include ../common.mk
+
 GOFLAGS=-mod=vendor
 export GOFLAGS
 
@@ -9,7 +11,6 @@ KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 
 MOCO_CONF_GEN_VERSION=0.2.1
-KUBERNETES_VERSION=1.17.11
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
