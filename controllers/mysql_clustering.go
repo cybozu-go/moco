@@ -328,6 +328,10 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 }
 
 func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
+	if status.Latest == nil {
+		return 0, moco.ErrCannotCompareGITDs
+	}
+
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return 0, nil
 	}
@@ -336,32 +340,7 @@ func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.My
 		return *cluster.Status.CurrentPrimaryIndex, nil
 	}
 
-	latestGTIDSet := make(MySQLGTIDSet)
-	var latestIndex, latestCount int
-	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		gtidSet, err := ParseGTIDSet(status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet)
-		if err != nil {
-			return 0, err
-		}
-		cmp, err := CompareGTIDSet(latestGTIDSet, gtidSet)
-		if err != nil {
-			return 0, err
-		}
-		switch {
-		case cmp < 0:
-			latestIndex = i
-			latestGTIDSet = gtidSet
-			latestCount = 1
-		case cmp == 0:
-			latestCount++
-		}
-	}
-
-	if latestCount <= int(cluster.Spec.Replicas/2) {
-		return 0, moco.ErrTooFewDataReplicas
-	}
-
-	return latestIndex, nil
+	return *status.Latest, nil
 }
 
 func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []ops.Operator {
@@ -570,22 +549,7 @@ func waitForRelayLogExecution(log logr.Logger, status *accessor.MySQLClusterStat
 		if status.InstanceStatus[i].ReplicaStatus == nil {
 			continue
 		}
-		execGtidSet, err := ParseGTIDSet(status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet)
-		if err != nil {
-			log.Error(err, "failed to parse gtid", "gtid", status.InstanceStatus[i].ReplicaStatus.ExecutedGtidSet)
-			return nil, true
-		}
-		retGtidSet, err := ParseGTIDSet(status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet)
-		if err != nil {
-			log.Error(err, "failed to parse gtid", "gtid", status.InstanceStatus[i].ReplicaStatus.RetrievedGtidSet)
-			return nil, true
-		}
-		played, err := CompareGTIDSet(execGtidSet, retGtidSet)
-		if err != nil {
-			log.Error(err, "failed to compare gtid", "executed_gtid", execGtidSet, "retrieved_gtid", retGtidSet)
-			return nil, true
-		}
-		if played >= 0 {
+		if status.InstanceStatus[i].AllRelayLogExecuted {
 			continue
 		}
 

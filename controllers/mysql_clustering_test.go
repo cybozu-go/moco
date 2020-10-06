@@ -347,6 +347,7 @@ func (d testData) withUnAvailableInstances() testData {
 			readOnlyIns(primaryIndex, ""),
 			readOnlyIns(primaryIndex, ""),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -359,6 +360,7 @@ func (d testData) withOneWritableInstance() testData {
 			writableIns(primaryIndex, moco.PrimaryRole),
 			readOnlyIns(primaryIndex, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -371,6 +373,7 @@ func (d testData) withTwoWritableInstances() testData {
 			writableIns(primaryIndex, moco.PrimaryRole),
 			readOnlyIns(primaryIndex, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -383,6 +386,7 @@ func (d testData) withReadableInstances() testData {
 			readOnlyIns(primaryIndex, ""),
 			readOnlyIns(primaryIndex, ""),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -395,6 +399,7 @@ func (d testData) withWrongDonorListInstances() testData {
 			readOnlyInsWithReplicaStatus(wrongPrimaryIndex, false, moco.ReplicaRole),
 			readOnlyInsWithReplicaStatus(wrongPrimaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -407,6 +412,7 @@ func (d testData) withEmptyReplicaInstances(cloneFailed bool) testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			emptyIns(cloneFailed),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -419,6 +425,7 @@ func (d testData) withNotEmptyReplicaInstances(cloneFailed bool) testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			notEmptyIns(cloneFailed),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -431,6 +438,7 @@ func (d testData) withMostCloningReplicaInstances() testData {
 			cloningIns(primaryIndex),
 			cloningIns(primaryIndex),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -443,6 +451,7 @@ func (d testData) withFewCloningReplicaInstances() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			cloningIns(primaryIndex),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -455,6 +464,7 @@ func (d testData) withWrongLabelReadOnlyInstances() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.PrimaryRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -467,6 +477,7 @@ func (d testData) withWrongLabelWritableInstances() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -479,6 +490,7 @@ func (d testData) withReplicas() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -491,6 +503,7 @@ func (d testData) withLaggedReplica() testData {
 			outOfSyncIns(primaryIndex),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -503,6 +516,7 @@ func (d testData) withLaggedReplicas() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, true, moco.ReplicaRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, true, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -525,6 +539,7 @@ func (d testData) withAvailableCluster() testData {
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 			readOnlyInsWithReplicaStatus(primaryIndex, false, moco.ReplicaRole),
 		},
+		Latest: intPointer(0),
 	}
 	return d
 }
@@ -543,6 +558,7 @@ func (d testData) withEmptyPrimary(synced bool) testData {
 			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, "1-5", "1-5"),
 			stoppedReadOnlyIns(primaryIndex, moco.ReplicaRole, gtid, gtid),
 		},
+		Latest: intPointer(1),
 	}
 
 	return d
@@ -557,6 +573,12 @@ func (d testData) withLaggedPrimary(primary int) testData {
 		},
 	}
 	d.ClusterStatus.InstanceStatus[primary] = stoppedReadOnlyIns(primary, moco.PrimaryRole, "1-4", "1-4")
+	latest := 0
+	if primary == 0 {
+		latest = 1
+	}
+	d.ClusterStatus.Latest = &latest
+
 	return d
 }
 
@@ -570,6 +592,7 @@ func (d testData) withInconsistentGTIDs(primary int) testData {
 	}
 	d.ClusterStatus.InstanceStatus[primary].Role = moco.PrimaryRole
 	d.ClusterStatus.InstanceStatus[0].PrimaryStatus.ExecutedGtidSet = "dummy-source-id:1-5"
+	d.ClusterStatus.Latest = nil
 	return d
 }
 
