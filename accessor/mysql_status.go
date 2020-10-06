@@ -244,6 +244,9 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 	}
 
 	cmp, err = compareGTIDs(ctx, db, executed, relay)
+	if err != nil {
+		return false, err
+	}
 	if cmp == 1 {
 		return false, nil
 	}
@@ -253,6 +256,9 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 
 func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
 	rows, err := db.QueryxContext(ctx, `SELECT GTID_SUBSET(?,?)`, src, dst)
+	if err != nil {
+		return 0, err
+	}
 	if !rows.Next() {
 		return 0, errors.New("cannot obtain compasion result of GTIDs")
 	}

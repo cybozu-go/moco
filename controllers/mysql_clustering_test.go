@@ -695,7 +695,7 @@ func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) ac
 		SlaveIORunning:   "Yes",
 		SlaveSQLRunning:  "Yes",
 	}
-	state.AllRelayLogExecuted = "1-5" == exeGtid
+	state.AllRelayLogExecuted = exeGtid == "1-5"
 	return state
 }
 
