@@ -267,13 +267,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name:    "It should return error if there are few data replicas",
-			input:   newTestData().withCurrentPrimaryIndex(intPointer(0)).withEmptyPrimary(false),
-			want:    nil,
-			wantErr: moco.ErrTooFewDataReplicas,
-		},
-		{
-			name:    "It should return error if cannot performe GTID comparsion",
+			name:    "It should return error if cannot perform GTID comparison",
 			input:   newTestData().withCurrentPrimaryIndex(intPointer(0)).withInconsistentGTIDs(0),
 			want:    nil,
 			wantErr: moco.ErrCannotCompareGITDs,
@@ -701,6 +695,7 @@ func readOnlyInsWithReplicaStatus(primaryIndex int, lagged bool, role string) ac
 		SlaveIORunning:   "Yes",
 		SlaveSQLRunning:  "Yes",
 	}
+	state.AllRelayLogExecuted = "1-5" == exeGtid
 	return state
 }
 
@@ -722,6 +717,7 @@ func stoppedReadOnlyIns(primaryIndex int, role string, retGtid, exeGtid string) 
 		SlaveIORunning:   "No",
 		SlaveSQLRunning:  "Yes",
 	}
+	state.AllRelayLogExecuted = retGtid == exeGtid
 	return state
 }
 
@@ -746,6 +742,7 @@ func outOfSyncIns(primaryIndex int) accessor.MySQLInstanceStatus {
 		SlaveIORunning:   "Yes",
 		SlaveSQLRunning:  "Yes",
 	}
+	state.AllRelayLogExecuted = true
 	return state
 }
 

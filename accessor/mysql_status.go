@@ -151,7 +151,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
-		executed, err := CheckAllRelayLogsExecuted(ctx, db, *replicaStatus)
+		executed, err := CheckAllRelayLogsExecuted(ctx, db, replicaStatus)
 		if err != nil {
 			log.Info("cannot check if all relay logs are executed", "err", err)
 			continue
@@ -229,7 +229,10 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 	return &latest, nil
 }
 
-func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status MySQLReplicaStatus) (bool, error) {
+func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLReplicaStatus) (bool, error) {
+	if status == nil {
+		return true, nil
+	}
 	executed := status.ExecutedGtidSet
 	relay := status.RetrievedGtidSet
 	cmp, err := compareGTIDs(ctx, db, relay, executed)
