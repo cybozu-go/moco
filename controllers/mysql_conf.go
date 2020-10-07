@@ -150,9 +150,6 @@ func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string
 	for k, v := range conf {
 		nk := normalizeConfKey(k)
 		for _, kk := range listConfKeyVariations(nk) {
-			if _, ok := g.conf[section][kk]; ok && warn {
-				g.log.Info("overriding MySQL configuration", "key", kk)
-			}
 			delete(g.conf[section], kk)
 		}
 		g.conf[section][nk] = v

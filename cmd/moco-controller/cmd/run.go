@@ -24,6 +24,7 @@ const (
 	connMaxLifetimeFlag   = "conn-max-lifetime"
 	connectionTimeoutFlag = "connection-timeout"
 	readTimeoutFlag       = "read-timeout"
+	waitTimeFlag          = "wait-time"
 )
 
 func init() {
@@ -60,6 +61,7 @@ func subMain() error {
 			ConnectionTimeout: config.connectionTimeout,
 			ReadTimeout:       config.readTimeout,
 		}),
+		WaitTime: config.waitTime,
 	}).SetupWithManager(mgr, 30*time.Second); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err

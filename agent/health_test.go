@@ -92,7 +92,7 @@ func testAgentHealth() {
 				return fmt.Errorf("doesn't occur internal server error: %+v", res.Result().Status)
 			}
 			return nil
-		}, 5*time.Second).Should(Succeed())
+		}, 10*time.Second).Should(Succeed())
 	})
 }
 

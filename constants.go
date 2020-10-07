@@ -143,26 +143,12 @@ const (
 	InitializedClusterIndexField = ".status.conditions.type.initialized"
 )
 
-// TODO Move the constants to a new operation source file.
 const (
-	// OperatorUpdatePrimary is a name of the update Primary operation
-	OperatorUpdatePrimary = "update-primary"
-	// OperatorSetCloneDonorList is a name of the set clone donor list operation
-	OperatorSetCloneDonorList = "set-clone-donor-list"
-	// OperatorClone is a name of the clone primary instance operation
-	OperatorClone = "clone"
-	// OperatorConfigureReplication is a name of the configure replication operation
-	OperatorConfigureReplication = "configure-replication"
-	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
-	OperatorTurnOffReadOnly = "turnoff-readonly"
-	// OperatorSetLabels is a name of the set labels operatio
-	OperatorSetLabels = "set-labels"
-)
-
-const (
-	MyName          = "moco"
-	AppNameKey      = "app.kubernetes.io/name"
-	AppManagedByKey = "app.kubernetes.io/managed-by"
+	MyName       = "moco"
+	AppName      = "moco-mysql"
+	ClusterKey   = "app.kubernetes.io/instance"
+	ManagedByKey = "app.kubernetes.io/managed-by"
+	AppNameKey   = "app.kubernetes.io/name"
 
 	RoleKey     = "moco.cybozu.com/role"
 	PrimaryRole = "primary"
@@ -177,6 +163,9 @@ const (
 )
 
 const (
+	ReplicaRunConnect     = "Yes"
+	ReplicaNotRun         = "No"
+	ReplicaRunNotConnect  = "Connecting"
 	CloneStatusNotStarted = "Not Started"
 	CloneStatusInProgress = "In Progress"
 	CloneStatusCompleted  = "Completed"
@@ -188,6 +177,6 @@ var (
 	ErrConstraintsViolation = errors.New("constraints violation occurs")
 	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
 	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
-	// ErrUnavailableHost is returned at least one MySQL instance is unavailable
-	ErrUnavailableHost = errors.New("unavailable host exists")
+	// ErrCannotCompareGITDs is returned if GTID comparison returns error
+	ErrCannotCompareGITDs = errors.New("cannot compare gtids")
 )

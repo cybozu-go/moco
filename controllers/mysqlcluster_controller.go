@@ -17,10 +17,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -60,6 +62,7 @@ type MySQLClusterReconciler struct {
 	ConfInitContainerImage string
 	CurlContainerImage     string
 	MySQLAccessor          accessor.DataBaseAccessor
+	WaitTime               time.Duration
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -447,9 +450,11 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
 		setLabels(&headless.ObjectMeta)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
+		headless.Spec.PublishNotReadyAddresses = true
 		headless.Spec.Selector = map[string]string{
-			moco.AppNameKey:      moco.UniqueName(cluster),
-			moco.AppManagedByKey: moco.MyName,
+			moco.ClusterKey:   moco.UniqueName(cluster),
+			moco.ManagedByKey: moco.MyName,
+			moco.AppNameKey:   moco.AppName,
 		}
 		return ctrl.SetControllerReference(cluster, headless, r.Scheme)
 	})
@@ -503,19 +508,28 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 		sts.Spec.ServiceName = moco.UniqueName(cluster)
 		sts.Spec.Selector = &metav1.LabelSelector{}
-		sts.Spec.Selector.MatchLabels = map[string]string{
-			moco.AppNameKey:      moco.UniqueName(cluster),
-			moco.AppManagedByKey: moco.MyName,
+		if sts.Spec.Selector.MatchLabels == nil {
+			sts.Spec.Selector.MatchLabels = make(map[string]string)
 		}
-		template, err := r.makePodTemplate(log, cluster)
+		sts.Spec.Selector.MatchLabels[moco.ClusterKey] = moco.UniqueName(cluster)
+		sts.Spec.Selector.MatchLabels[moco.ManagedByKey] = moco.MyName
+
+		podTemplate, err := r.makePodTemplate(log, cluster)
 		if err != nil {
 			return err
 		}
-		sts.Spec.Template = *template
-		sts.Spec.VolumeClaimTemplates = append(
+		if !equality.Semantic.DeepDerivative(podTemplate, &sts.Spec.Template) {
+			sts.Spec.Template = *podTemplate
+		}
+
+		volumeClaimTemplates := append(
 			r.makeVolumeClaimTemplates(cluster),
 			r.makeDataVolumeClaimTemplate(cluster),
 		)
+		if !equality.Semantic.DeepDerivative(volumeClaimTemplates, sts.Spec.VolumeClaimTemplates) {
+			sts.Spec.VolumeClaimTemplates = volumeClaimTemplates
+		}
+
 		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
 	})
 	if err != nil {
@@ -530,8 +544,37 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	return false, nil
 }
 
+func defaultProbe(probe *corev1.Probe) {
+	if probe == nil {
+		return
+	}
+	if probe.TimeoutSeconds == 0 {
+		probe.TimeoutSeconds = 1
+	}
+	if probe.PeriodSeconds == 0 {
+		probe.PeriodSeconds = 10
+	}
+	if probe.SuccessThreshold == 0 {
+		probe.SuccessThreshold = 1
+	}
+	if probe.FailureThreshold == 0 {
+		probe.FailureThreshold = 3
+	}
+}
+
 func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*corev1.PodTemplateSpec, error) {
 	template := cluster.Spec.PodTemplate
+
+	// Workaround: equality.Semantic.DeepDerivative cannot ignore numeric field.
+	for _, c := range template.Spec.Containers {
+		defaultProbe(c.LivenessProbe)
+		defaultProbe(c.ReadinessProbe)
+	}
+	for _, c := range template.Spec.InitContainers {
+		defaultProbe(c.LivenessProbe)
+		defaultProbe(c.ReadinessProbe)
+	}
+
 	newTemplate := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: template.Annotations,
@@ -545,15 +588,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	if v, ok := newTemplate.Labels[moco.AppNameKey]; ok && v != moco.MyName {
-		log.Info("overwriting Pod template's label", "label", moco.AppNameKey)
-	}
-	newTemplate.Labels[moco.AppNameKey] = moco.UniqueName(cluster)
-	newTemplate.Labels[moco.AppManagedByKey] = moco.MyName
+	newTemplate.Labels[moco.ClusterKey] = moco.UniqueName(cluster)
+	newTemplate.Labels[moco.ManagedByKey] = moco.MyName
+	newTemplate.Labels[moco.AppNameKey] = moco.AppName
 
-	if newTemplate.Spec.ServiceAccountName != "" {
-		log.Info("overwriting Pod template's serviceAccountName", "ServiceAccountName", newTemplate.Spec.ServiceAccountName)
-	}
 	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
@@ -608,16 +646,18 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
-
 		c := orig.DeepCopy()
 		c.Args = []string{"--defaults-file=" + filepath.Join(moco.MySQLConfPath, moco.MySQLConfName)}
 		c.Ports = []corev1.ContainerPort{
 			{
-				ContainerPort: moco.MySQLPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLPort, Protocol: corev1.ProtocolTCP,
+			},
 			{
-				ContainerPort: moco.MySQLXPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLXPort, Protocol: corev1.ProtocolTCP,
+			},
 			{
-				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP},
+				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP,
+			},
 		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
@@ -864,12 +904,15 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 			setLabels(&cronJob.ObjectMeta)
 			cronJob.Spec.Schedule = cluster.Spec.LogRotationSchedule
 			cronJob.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
-			cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = []corev1.Container{
+			containers := []corev1.Container{
 				{
 					Name:    "curl",
 					Image:   r.CurlContainerImage,
 					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", podName, moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
 				},
+			}
+			if !equality.Semantic.DeepDerivative(containers, cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers) {
+				cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = containers
 			}
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
 		})
@@ -893,22 +936,31 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	primaryService.SetName(primaryServiceName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
-		primaryService.Spec.Ports = []corev1.ServicePort{
+		setLabels(&primaryService.ObjectMeta)
+		ports := []corev1.ServicePort{
 			{
-				Name:     "mysql",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLPort,
+				Name:       "mysql",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       moco.MySQLPort,
+				TargetPort: intstr.FromInt(moco.MySQLPort),
 			},
 			{
-				Name:     "mysqlx",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLXPort,
+				Name:       "mysqlx",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       moco.MySQLXPort,
+				TargetPort: intstr.FromInt(moco.MySQLXPort),
 			},
 		}
-		primaryService.Spec.Selector = map[string]string{
-			moco.AppNameKey: moco.UniqueName(cluster),
-			moco.RoleKey:    moco.PrimaryRole,
+		if !equality.Semantic.DeepDerivative(ports, primaryService.Spec.Ports) {
+			primaryService.Spec.Ports = ports
 		}
+
+		if primaryService.Spec.Selector == nil {
+			primaryService.Spec.Selector = make(map[string]string)
+		}
+		primaryService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
+		primaryService.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
+		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
 		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
 	})
 	if err != nil {
@@ -927,22 +979,32 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	replicaService.SetName(replicaServiceName)
 
 	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
-		replicaService.Spec.Ports = []corev1.ServicePort{
+		setLabels(&replicaService.ObjectMeta)
+		ports := []corev1.ServicePort{
 			{
-				Name:     "mysql",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLPort,
+				Name:       "mysql",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       moco.MySQLPort,
+				TargetPort: intstr.FromInt(moco.MySQLPort),
 			},
 			{
-				Name:     "mysqlx",
-				Protocol: corev1.ProtocolTCP,
-				Port:     moco.MySQLXPort,
+				Name:       "mysqlx",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       moco.MySQLXPort,
+				TargetPort: intstr.FromInt(moco.MySQLXPort),
 			},
 		}
-		replicaService.Spec.Selector = map[string]string{
-			moco.AppNameKey: moco.UniqueName(cluster),
-			moco.RoleKey:    moco.ReplicaRole,
+
+		if !equality.Semantic.DeepDerivative(ports, replicaService.Spec.Ports) {
+			log.Info("not equla!", "ports", ports, "spec", replicaService.Spec.Ports)
+			replicaService.Spec.Ports = ports
 		}
+		if replicaService.Spec.Selector == nil {
+			replicaService.Spec.Selector = make(map[string]string)
+		}
+		replicaService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
+		replicaService.Spec.Selector[moco.RoleKey] = moco.ReplicaRole
+		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
 		return ctrl.SetControllerReference(cluster, replicaService, r.Scheme)
 	})
 	if err != nil {
@@ -991,10 +1053,12 @@ func removeString(slice []string, s string) (result []string) {
 }
 
 func setLabels(om *metav1.ObjectMeta) {
-	om.Labels = map[string]string{
-		moco.AppNameKey:      om.Name,
-		moco.AppManagedByKey: moco.MyName,
+	if om.Labels == nil {
+		om.Labels = make(map[string]string)
 	}
+	om.Labels[moco.ClusterKey] = om.Name
+	om.Labels[moco.ManagedByKey] = moco.MyName
+	om.Labels[moco.AppNameKey] = moco.AppName
 }
 
 func getMysqldContainerRequests(cluster *mocov1alpha1.MySQLCluster, resourceName corev1.ResourceName) *resource.Quantity {

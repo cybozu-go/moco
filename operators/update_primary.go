@@ -2,8 +2,8 @@ package operators
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 )
@@ -20,7 +20,7 @@ func UpdatePrimaryOp(newPrimaryIndex int) Operator {
 }
 
 func (o *updatePrimaryOp) Name() string {
-	return moco.OperatorUpdatePrimary
+	return OperatorUpdatePrimary
 }
 
 func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
@@ -30,6 +30,16 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	}
 	cluster.Status.CurrentPrimaryIndex = &o.newPrimaryIndex
 	err = infra.GetClient().Status().Update(ctx, cluster)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("STOP SLAVE")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("RESET SLAVE")
 	if err != nil {
 		return err
 	}
@@ -46,4 +56,8 @@ func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure
 	}
 	_, err = db.Exec("SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", expectedRplSemiSyncMasterWaitForSlaveCount)
 	return err
+}
+
+func (o updatePrimaryOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

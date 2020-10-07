@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -47,6 +46,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	}
 
 	for _, o := range op.Operators {
+		log.Info("Run operation", "name", o.Name(), "description", o.Describe())
 		err = o.Run(ctx, infra, cluster, status)
 		if err != nil {
 			condErr := r.setFailureCondition(ctx, cluster, err, nil)
@@ -57,12 +57,19 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 	}
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
-
-	if err == nil && op.Wait {
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	if err != nil {
+		return ctrl.Result{}, err
 	}
-
-	return ctrl.Result{}, err
+	if op.Wait {
+		log.Info("Waiting")
+		return ctrl.Result{RequeueAfter: r.WaitTime}, nil
+	}
+	if len(op.Operators) > 0 {
+		return ctrl.Result{
+			Requeue: true,
+		}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) (*Operation, error) {
@@ -74,7 +81,10 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}
 	}
 	if unavailable {
-		return nil, moco.ErrUnavailableHost
+		return &Operation{
+			Conditions: unavailableCondition(nil),
+			Wait:       true,
+		}, nil
 	}
 
 	err := validateConstraints(status, cluster)
@@ -84,12 +94,24 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, err
 	}
 
-	primaryIndex := selectPrimary(status, cluster)
+	op, wait := waitForRelayLogExecution(log, status, cluster)
+	if wait || len(op) != 0 {
+		return &Operation{
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
+			Wait:       wait,
+		}, nil
+	}
 
-	op := updatePrimary(cluster, primaryIndex)
+	primaryIndex, err := selectPrimary(status, cluster)
+	if err != nil {
+		return nil, err
+	}
+	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
 		return &Operation{
-			Operators: op,
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
 		}, nil
 	}
 
@@ -100,11 +122,11 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts := waitForClone(status, cluster)
+	wait, outOfSyncIns := waitForClone(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
-			Conditions: unavailableCondition(outOfSyncInts),
+			Conditions: unavailableCondition(outOfSyncIns),
 		}, nil
 	}
 
@@ -115,26 +137,26 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncInts = waitForReplication(status, cluster)
+	wait, outOfSyncIns = waitForReplication(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
-			Conditions: unavailableCondition(outOfSyncInts),
+			Conditions: unavailableCondition(outOfSyncIns),
 		}, nil
 	}
 
-	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncInts)
+	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncIns)
 	op = acceptWriteRequest(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
-			Conditions:     availableCondition(outOfSyncInts),
+			Conditions:     availableCondition(outOfSyncIns),
 			Operators:      op,
 			SyncedReplicas: &syncedReplicas,
 		}, nil
 	}
 
 	return &Operation{
-		Conditions:     availableCondition(outOfSyncInts),
+		Conditions:     availableCondition(outOfSyncIns),
 		SyncedReplicas: &syncedReplicas,
 	}, nil
 }
@@ -305,9 +327,20 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 	return nil
 }
 
-// TODO: Implementation for failover
-func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) int {
-	return 0
+func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
+	if status.Latest == nil {
+		return 0, moco.ErrCannotCompareGITDs
+	}
+
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		return 0, nil
+	}
+
+	if !status.InstanceStatus[*cluster.Status.CurrentPrimaryIndex].GlobalVariablesStatus.ReadOnly {
+		return *cluster.Status.CurrentPrimaryIndex, nil
+	}
+
+	return *status.Latest, nil
 }
 
 func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []ops.Operator {
@@ -347,7 +380,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	op := make([]ops.Operator, 0)
 
 	primaryHost := moco.GetHost(cluster, primaryIndex)
-	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLPort)
+	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
 	for _, s := range status.InstanceStatus {
 		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
@@ -401,7 +434,8 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 			continue
 		}
 
-		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost {
+		if is.ReplicaStatus == nil || is.ReplicaStatus.MasterHost != primaryHost ||
+			is.ReplicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
 			operators = append(operators, ops.ConfigureReplicationOp(i, primaryHost))
 		}
 	}
@@ -466,4 +500,61 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	}
 	return []ops.Operator{
 		ops.TurnOffReadOnlyOp(primaryIndex)}
+}
+
+func waitForRelayLogExecution(log logr.Logger, status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]ops.Operator, bool) {
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		return nil, false
+	}
+
+	primary := *cluster.Status.CurrentPrimaryIndex
+	if status.InstanceStatus[primary].PrimaryStatus.ExecutedGtidSet != "" {
+		return nil, false
+	}
+
+	var hasData bool
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].PrimaryStatus.ExecutedGtidSet != "" {
+			hasData = true
+		}
+	}
+	if !hasData {
+		return nil, false
+	}
+
+	var op []ops.Operator
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus == nil {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+			op = append(op, ops.StopReplicaIOThread(i))
+		}
+	}
+	if len(op) != 0 {
+		return op, false
+	}
+
+	var wait bool
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == primary {
+			continue
+		}
+		if status.InstanceStatus[i].ReplicaStatus == nil {
+			continue
+		}
+		if status.InstanceStatus[i].AllRelayLogExecuted {
+			continue
+		}
+
+		wait = true
+	}
+
+	return nil, wait
 }

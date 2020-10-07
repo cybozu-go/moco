@@ -50,8 +50,10 @@ var _ = Describe("Get MySQLCluster status", func() {
 		Expect(sts.InstanceStatus).Should(HaveLen(1))
 		Expect(sts.InstanceStatus[0].PrimaryStatus).ShouldNot(BeNil())
 		Expect(sts.InstanceStatus[0].ReplicaStatus).ShouldNot(BeNil())
+		Expect(sts.InstanceStatus[0].AllRelayLogExecuted).Should(BeTrue())
 		Expect(sts.InstanceStatus[0].GlobalVariablesStatus).ShouldNot(BeNil())
 		Expect(sts.InstanceStatus[0].CloneStateStatus).ShouldNot(BeNil())
+		Expect(*sts.Latest).Should(Equal(0))
 	})
 })
 

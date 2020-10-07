@@ -24,8 +24,8 @@ func CloneOp(replicaIndex int) Operator {
 	}
 }
 
-func (cloneOp) Name() string {
-	return moco.OperatorClone
+func (o cloneOp) Name() string {
+	return OperatorClone
 }
 
 func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
@@ -61,4 +61,8 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	}
 
 	return nil
+}
+
+func (o cloneOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

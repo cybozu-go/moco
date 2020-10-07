@@ -3,6 +3,7 @@ package controllers
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -96,6 +97,7 @@ var _ = BeforeSuite(func(done Done) {
 		ConfInitContainerImage: "dummy",
 		CurlContainerImage:     "dummy",
 		MySQLAccessor:          &AccessorMock{},
+		WaitTime:               10 * time.Second,
 	}
 	Expect(err).ToNot(HaveOccurred())
 

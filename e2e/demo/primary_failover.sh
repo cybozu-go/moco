@@ -1,26 +1,20 @@
 #!/bin/bash
 
-cat 00_create_table.sql | ../mysql.sh 2> /dev/null
+cat 00_create_table.sql | ../mysql.sh
 
-cat insert_records.sql | ../mysql.sh 2> /dev/null
-
-for i in {0..2}
-do 
-    cat 01_display_table.sql | ../mysql.sh ${i} 
+for i in {0..10}
+do
+    cat insert_records.sql | ../mysql.sh 2> /dev/null
 done
 
-cat show_binlog.sql | ../mysql.sh 2> /dev/null
-
-cat 02_flush.sql | ../mysql.sh 2> /dev/null
-
 for i in {0..2}
-do 
-    cat show_binlog.sql | ../mysql.sh $i 2> /dev/null
+do
+    cat 01_display_table.sql | ../mysql.sh ${i}
 done
 
 CLUSTER_UID=$(kubectl -n e2e-test get mysqlcluster mysqlcluster -o json | jq -r .metadata.uid)
 
-INSTANCE=2
+INSTANCE=0
 kubectl delete pvc -n e2e-test mysql-data-mysqlcluster-${CLUSTER_UID}-${INSTANCE} &
 kubectl patch pvc -n e2e-test mysql-data-mysqlcluster-${CLUSTER_UID}-${INSTANCE} -p '{"metadata": {"finalizers" : null}}'
 

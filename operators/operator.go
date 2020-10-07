@@ -11,4 +11,5 @@ import (
 type Operator interface {
 	Name() string
 	Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error
+	Describe() string
 }

@@ -1,1 +1,1 @@
-select * from `test`.`t1`;
+select * from `test`.`t1` limit 10;

@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -20,15 +21,15 @@ func SetLabelsOp() Operator {
 	return &setLabelsOp{}
 }
 
-func (setLabelsOp) Name() string {
-	return moco.OperatorSetLabels
+func (o setLabelsOp) Name() string {
+	return OperatorSetLabels
 }
 
-func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	pods := corev1.PodList{}
 	err := infra.GetClient().List(ctx, &pods, &client.ListOptions{
 		Namespace:     cluster.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{moco.AppNameKey: moco.UniqueName(cluster)}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{moco.ClusterKey: moco.UniqueName(cluster)}),
 	})
 	if err != nil {
 		return err
@@ -47,4 +48,8 @@ func (setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, clust
 	}
 
 	return nil
+}
+
+func (o setLabelsOp) Describe() string {
+	return fmt.Sprintf("%#v", o)
 }

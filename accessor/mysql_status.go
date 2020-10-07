@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -17,6 +18,7 @@ import (
 // MySQLClusterStatus defines the observed state of MySQLCluster
 type MySQLClusterStatus struct {
 	InstanceStatus []MySQLInstanceStatus
+	Latest         *int
 }
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
@@ -27,6 +29,7 @@ type MySQLInstanceStatus struct {
 	GlobalVariablesStatus *MySQLGlobalVariablesStatus
 	CloneStateStatus      *MySQLCloneStateStatus
 	Role                  string
+	AllRelayLogExecuted   bool
 }
 
 // MySQLPrimaryStatus defines the observed state of a primary
@@ -148,6 +151,13 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		}
 		status.InstanceStatus[instanceIdx].ReplicaStatus = replicaStatus
 
+		executed, err := CheckAllRelayLogsExecuted(ctx, db, replicaStatus)
+		if err != nil {
+			log.Info("cannot check if all relay logs are executed", "err", err)
+			continue
+		}
+		status.InstanceStatus[instanceIdx].AllRelayLogExecuted = executed
+
 		globalVariablesStatus, err := GetMySQLGlobalVariablesStatus(ctx, db)
 		if err != nil {
 			log.Info("get globalVariables status failed", "err", err, "podName", podName)
@@ -174,7 +184,104 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 		status.InstanceStatus[instanceIdx].Available = true
 	}
+
+	db, err := infra.GetDB(ctx, cluster, 0)
+	if err != nil {
+		log.Info("cannot obtain index of latext instance")
+		return status
+	}
+	latest, err := GetLatestInstance(ctx, db, status.InstanceStatus)
+	if err != nil {
+		log.Info("cannot obtain index of latext instance")
+		return status
+	}
+	status.Latest = latest
+
 	return status
+}
+
+func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceStatus) (*int, error) {
+	var latest int
+	latestGTID := status[latest].PrimaryStatus.ExecutedGtidSet
+	for i := 1; i < len(status); i++ {
+		gtid := status[i].PrimaryStatus.ExecutedGtidSet
+		cmp, err := compareGTIDs(ctx, db, gtid, latestGTID)
+		if err != nil {
+			return nil, err
+		}
+		if cmp == 1 {
+			continue
+		}
+
+		cmp, err = compareGTIDs(ctx, db, latestGTID, gtid)
+		if err != nil {
+			return nil, err
+		}
+		if cmp == 1 {
+			latest = i
+			latestGTID = gtid
+			continue
+		}
+
+		return nil, errors.New("cannot compare retrieved/executed GTIDs")
+	}
+
+	return &latest, nil
+}
+
+func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLReplicaStatus) (bool, error) {
+	if status == nil {
+		return true, nil
+	}
+	executed := status.ExecutedGtidSet
+	relay := status.RetrievedGtidSet
+	cmp, err := compareGTIDs(ctx, db, relay, executed)
+	if err != nil {
+		return false, err
+	}
+	if cmp == 1 {
+		return true, nil
+	}
+
+	cmp, err = compareGTIDs(ctx, db, executed, relay)
+	if err != nil {
+		return false, err
+	}
+	if cmp == 1 {
+		return false, nil
+	}
+
+	return false, errors.New("cannot compare retrieved/executed GTIDs")
+}
+
+func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
+	rows, err := db.QueryxContext(ctx, `SELECT GTID_SUBSET(?,?)`, src, dst)
+	if err != nil {
+		return 0, err
+	}
+	if !rows.Next() {
+		return 0, errors.New("cannot obtain compasion result of GTIDs")
+	}
+
+	res := make(map[string]interface{})
+	err = rows.MapScan(res)
+	if err != nil {
+		return 0, err
+	}
+	v, ok := res[fmt.Sprintf("GTID_SUBSET('%s','%s')", src, dst)]
+	if !ok {
+		return 0, errors.New("cannot obtain comparison result of GTIDs")
+	}
+	str, ok := v.([]uint8)
+	if !ok {
+		return 0, errors.New("wrong type value returns when comparing GTIDs")
+	}
+	cmp, err := strconv.Atoi(string(str))
+	if err != nil {
+		return 0, err
+	}
+
+	return cmp, nil
 }
 
 func GetMySQLPrimaryStatus(ctx context.Context, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
