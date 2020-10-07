@@ -31,6 +31,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
 [Unreleased]: https://github.com/cybozu-go/moco/compare/v0.2.0...HEAD
-[0.1.1]: https://github.com/cybozu-go/moco/compare/v0.1.1...v0.2.0
+[0.2.0]: https://github.com/cybozu-go/moco/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/cybozu-go/moco/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cybozu-go/moco/compare/5256088a31e70f2d29649b8b69b0c8e208eb1c70...v0.1.0
