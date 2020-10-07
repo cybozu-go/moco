@@ -283,7 +283,7 @@ spec:
     spec:
       containers:
       - name: err-filebeat
-        image: quay.io/cybozu/filebeat:7.8.0.1
+        image: quay.io/cybozu/filebeat:7.9.2.1
         args: [
           "-c", "/etc/filebeat.yml",
         ]
@@ -300,7 +300,7 @@ spec:
         - name: tmp
           mountPath: /tmp
       - name: slow-filebeat
-        image: quay.io/cybozu/filebeat:7.8.0.1
+        image: quay.io/cybozu/filebeat:7.9.2.1
         args: [
           "-c", "/etc/filebeat.yml",
         ]
