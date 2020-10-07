@@ -79,7 +79,7 @@ kind:
 .PHONY: ginkgo
 ginkgo:
 	if ! which ginkgo >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get -u github.com/onsi/ginkgo/ginkgo; \
+		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/onsi/ginkgo/ginkgo; \
 	fi
 
 .PHONY: clean
