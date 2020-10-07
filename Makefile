@@ -1,3 +1,5 @@
+include common.mk
+
 # For Go
 GO111MODULE = on
 GOOS := $(shell go env GOOS)
@@ -92,6 +94,14 @@ build/entrypoint:
 .PHONY: manifests
 manifests: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+	# workaround for CRD issue with k8s 1.18 & controller-gen 0.4
+	# ref: https://github.com/kubernetes/kubernetes/issues/91395
+	# sed -i -r 's/^( +)  or SCTP\. Defaults to "TCP"\./\0\n\1default: TCP/' \
+	sed -i -r 's/^( +)description: Protocol for port\. Must be UDP, TCP, or SCTP\. Defaults to "TCP"\./\0\n\1default: TCP/' \
+	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
+	sed  -i -r 's/^( +)description: The IP protocol for this port\. Supports "TCP", "UDP", and "SCTP"\. Default is TCP\./\0\n\1default: TCP/' \
+	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 	cp config/crd/bases/moco.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
 
 # Generate code
@@ -107,14 +117,19 @@ mod:
 	git add go.mod
 
 $(KUBEBUILDER):
+	rm -rf tmp && mkdir -p tmp
 	mkdir -p bin
-	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C /tmp/
-	mv /tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
-	rm -rf /tmp/kubebuilder_*
+	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C tmp/
+	mv tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
+	curl -sfL https://github.com/kubernetes/kubernetes/archive/v$(KUBERNETES_VERSION).tar.gz | tar zxf - -C tmp/
+	mv tmp/kubernetes-$(KUBERNETES_VERSION) tmp/kubernetes
+	cd tmp/kubernetes; make all WHAT="cmd/kube-apiserver"
+	mv tmp/kubernetes/_output/bin/kube-apiserver bin/
+	rm -rf tmp
 
 $(CONTROLLER_GEN):
 	mkdir -p bin
-	cd /tmp; env GOBIN=$(PWD)/bin GOFLAGS= GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
+	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen
 
 .PHONY: test-tools
 test-tools: custom-checker staticcheck nilerr ineffassign

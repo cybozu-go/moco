@@ -1,6 +1,7 @@
 package runners
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -62,7 +63,7 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = mgr.GetFieldIndexer().IndexField(&mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
 	Expect(err).ToNot(HaveOccurred())
 
 	go mgr.Start(ctrl.SetupSignalHandler())
