@@ -938,6 +938,11 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
 		setLabels(&primaryService.ObjectMeta)
+
+		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, primaryService.Spec) {
+			primaryService.Spec = *cluster.Spec.ServiceTemplate
+		}
+
 		ports := []corev1.ServicePort{
 			{
 				Name:       "mysql",
@@ -952,16 +957,13 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 				TargetPort: intstr.FromInt(moco.MySQLXPort),
 			},
 		}
-		if !equality.Semantic.DeepDerivative(ports, primaryService.Spec.Ports) {
-			primaryService.Spec.Ports = ports
-		}
+		primaryService.Spec.Ports = ports
 
-		if primaryService.Spec.Selector == nil {
-			primaryService.Spec.Selector = make(map[string]string)
-		}
+		primaryService.Spec.Selector = make(map[string]string)
 		primaryService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
 		primaryService.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
 		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
+
 		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
 	})
 	if err != nil {
@@ -981,6 +983,11 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 
 	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
 		setLabels(&replicaService.ObjectMeta)
+
+		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, replicaService.Spec) {
+			replicaService.Spec = *cluster.Spec.ServiceTemplate
+		}
+
 		ports := []corev1.ServicePort{
 			{
 				Name:       "mysql",
@@ -995,14 +1002,9 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 				TargetPort: intstr.FromInt(moco.MySQLXPort),
 			},
 		}
+		replicaService.Spec.Ports = ports
 
-		if !equality.Semantic.DeepDerivative(ports, replicaService.Spec.Ports) {
-			log.Info("not equla!", "ports", ports, "spec", replicaService.Spec.Ports)
-			replicaService.Spec.Ports = ports
-		}
-		if replicaService.Spec.Selector == nil {
-			replicaService.Spec.Selector = make(map[string]string)
-		}
+		replicaService.Spec.Selector = make(map[string]string)
 		replicaService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
 		replicaService.Spec.Selector[moco.RoleKey] = moco.ReplicaRole
 		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
