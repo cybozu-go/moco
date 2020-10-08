@@ -1,7 +1,6 @@
 GOFLAGS=-mod=vendor
 export GOFLAGS
 
-GINKGO=$(GOPATH)/bin/ginkgo
 KUBECTL := $(PWD)/bin/kubectl
 KIND_VERSION=0.9.0
 KUSTOMIZE_VERSION=3.7.0
@@ -26,10 +25,10 @@ shutdown-kind: kind
 		kind delete cluster --name=$(KIND_CLUSTER_NAME) || true; \
 	fi
 
-test: launch-kind load-image $(KUBECTL) $(KUSTOMIZE) ginkgo
+test: launch-kind load-image $(KUBECTL) $(KUSTOMIZE)
 	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
 	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
-	env E2ETEST=1 $(GINKGO) --failFast -v .
+	env E2ETEST=1 go test -count=1 -v . -args -ginkgo.progress -ginkgo.v
 
 .PHONY: telepresence
 telepresence:
@@ -74,12 +73,6 @@ $(KUSTOMIZE):
 kind:
 	if [ ! "$(shell kind version | grep $(KIND_VERSION))" ]; then \
 		cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION); \
-	fi
-
-.PHONY: ginkgo
-ginkgo:
-	if ! which ginkgo >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/onsi/ginkgo/ginkgo; \
 	fi
 
 .PHONY: clean
