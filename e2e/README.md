@@ -2,15 +2,18 @@
 
 ## Strategy
 
-We try to maximize coverage of unit tests even if it needs "real" MySQL instances.  The tests using real MySQL instances can be divided into the unit tests and the e2e tests as follows:
-- test by unit test
+We try to maximize coverage of unit tests even if it needs "real" MySQL instances.
+The tests using real MySQL instances can be divided into the small tests and the e2e tests as follows:
+
+- by small test
   - initialization of MySQL instance
   - status retrieval
   - cloning
   - metrics collection
   - log file management (rotate)
-- test by e2e test
-  - failover/switchover
+- by e2e test
+  - failover
+  - switchover
   - replication
   - backup/restore
   - point-in-time recovery
@@ -18,7 +21,7 @@ We try to maximize coverage of unit tests even if it needs "real" MySQL instance
   - blackout recovery
   - failure injection
 
-The unit tests are written in each `_test.go` file.
+The small tests are written in each `_test.go` file.
 
 The remains are:
 - YAML manifests
@@ -29,7 +32,9 @@ The remains are:
 ### Feature functions
 
 The following feature functions should be examined by checking the status of `MySQLCluster` custom resource and MySQL instances.
-- failover/switchover
+
+- failover
+- switchover
 - replication
 - backup/restore
 - point-in-time recovery
@@ -39,9 +44,10 @@ The following feature functions should be examined by checking the status of `My
 
 ### YAML manifests
 
-`MySQLCluster` custom resource accepts some flexible settings such as the templates of Pod, Volume, and Service.  So, we should examine the settings are correctly applied to the resources made by MOCO.
+MOCO's custom resources accept some flexible settings such as the templates of Pod, Volume, and Service.
+These manifests should be tested with small tests.
 
-Functions represented by MOCO's custom resource (i.e., `MySQLBackup`, `MySQLSwitchOver`) also should be confirmed.
+The other manifests to deploy MOCO are mostly tested together with e2e tests.
 
 ### `main` functions
 
