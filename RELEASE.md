@@ -61,20 +61,10 @@ Bump version
     $ git push origin v$VERSION
     ```
 
-Publish GitHub release page
----------------------------
+## (Option) Edit GitHub release page
 
-Go to https://github.com/cybozu-go/moco/releases and edit the tag.
-Finally, press `Publish release` button.
-
-
-Once a new tag is pushed to GitHub, [CircleCI][] automatically
-builds a tar archive for the new release, and uploads it to GitHub
-releases page.
-
-Visit https://github.com/cybozu-go/moco/releases to check
-the result.  You may manually edit the page to describe the release.
+If you would like to give further descriptions of the new release,
+edit [the GitHub release page](https://github.com/cybozu-go/moco/releases/latest).
 
 [semver]: https://semver.org/spec/v2.0.0.html
 [example]: https://github.com/cybozu-go/etcdpasswd/commit/77d95384ac6c97e7f48281eaf23cb94f68867f79
-[CircleCI]: https://circleci.com/gh/cybozu-go/moco
