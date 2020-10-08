@@ -30,7 +30,7 @@ MYSQL_VERSION := 8.0.21
 all: build/moco-controller
 
 .PHONY: validate
-validate: test-tools
+validate: setup
 	test -z "$$(gofmt -s -l . | grep -v '^vendor' | tee /dev/stderr)"
 	staticcheck ./...
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
@@ -131,8 +131,8 @@ $(CONTROLLER_GEN):
 	mkdir -p bin
 	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen
 
-.PHONY: test-tools
-test-tools: custom-checker staticcheck nilerr ineffassign
+.PHONY: setup
+setup: custom-checker staticcheck nilerr ineffassign
 
 .PHONY: custom-checker
 custom-checker:

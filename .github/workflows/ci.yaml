@@ -1,0 +1,36 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - 'master'
+env:
+  go-version: 1.13
+  cache-version: 1
+jobs:
+  test:
+    name: Small Tests
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.go-version }}
+      - name: Cache Tools
+        id: cache-tools
+        uses: actions/cache@v2
+        with:
+          path: |
+            bin
+          key: cache-${{ env.cache-version }}-go-${{ env.go-version }}-${{ hashFiles('Makefile') }}
+      - run: make setup
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+      - run: make validate
+      - run: make start-mysqld
+      - run: make test
+  e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cd e2e && make test
