@@ -939,7 +939,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
 		setLabels(&primaryService.ObjectMeta)
 
-		if !equality.Semantic.DeepDerivative(cluster.Spec.ServiceTemplate, primaryService.Spec) {
+		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, primaryService.Spec) {
 			primaryService.Spec = *cluster.Spec.ServiceTemplate
 		}
 
@@ -984,7 +984,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log 
 	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
 		setLabels(&replicaService.ObjectMeta)
 
-		if !equality.Semantic.DeepDerivative(cluster.Spec.ServiceTemplate, replicaService.Spec) {
+		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, replicaService.Spec) {
 			replicaService.Spec = *cluster.Spec.ServiceTemplate
 		}
 
