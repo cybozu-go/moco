@@ -502,6 +502,10 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 }
 
 func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
+	if status.IntermediatePrimaryOptions != nil {
+		return nil
+	}
+
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 
 	if !status.InstanceStatus[primaryIndex].GlobalVariablesStatus.ReadOnly {
@@ -512,7 +516,7 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 }
 
 func configureIntermediatePrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
-	if cluster.Spec.ReplicationSourceSecretName == nil {
+	if len(status.IntermediatePrimaryOptions) == 0 {
 		return nil
 	}
 	if cluster.Status.CurrentPrimaryIndex == nil {
