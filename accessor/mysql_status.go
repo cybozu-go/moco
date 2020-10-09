@@ -17,8 +17,9 @@ import (
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
 type MySQLClusterStatus struct {
-	InstanceStatus []MySQLInstanceStatus
-	Latest         *int
+	InstanceStatus             []MySQLInstanceStatus
+	Latest                     *int
+	IntermediatePrimaryOptions map[string]string
 }
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
@@ -184,6 +185,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 		status.InstanceStatus[instanceIdx].Available = true
 	}
+
+	options, err := GetIntermediatePrimaryOptions(ctx, infra.GetClient(), cluster)
+	if err != nil {
+		log.Info("cannot obtain or invalid options for intermediate primary", "err", err)
+	}
+	status.IntermediatePrimaryOptions = options
 
 	db, err := infra.GetDB(ctx, cluster, 0)
 	if err != nil {
@@ -358,4 +365,76 @@ func GetMySQLCloneStateStatus(ctx context.Context, db *sqlx.DB) (*MySQLCloneStat
 	}
 
 	return &status, nil
+}
+
+func GetIntermediatePrimaryOptions(ctx context.Context, cli client.Client, cluster *mocov1alpha1.MySQLCluster) (map[string]string, error) {
+	if cluster.Spec.ReplicationSourceSecretName == nil {
+		return nil, nil
+	}
+
+	var secret corev1.Secret
+	err := cli.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Namespace, Name: *cluster.Spec.ReplicationSourceSecretName}, &secret)
+	if err != nil {
+		return nil, err
+	}
+	options := make(map[string]string)
+	for k, v := range secret.Data {
+		options[k] = string(v)
+	}
+	if !validateOptions(options) {
+		return nil, errors.New("unknown option for CHANGE MASTER TO")
+	}
+
+	if _, ok := options["MASTER_HOST"]; !ok {
+		return nil, errors.New("intermediate primary must have MASTER_HOST")
+	}
+
+	return options, nil
+}
+
+func validateOptions(options map[string]string) bool {
+	var validOptionKeys = map[string]struct{}{
+		"MASTER_BIND":                     {},
+		"MASTER_HOST":                     {},
+		"MASTER_USER":                     {},
+		"MASTER_PASSWORD":                 {},
+		"MASTER_PORT":                     {},
+		"PRIVILEGE_CHECKS_USER":           {},
+		"REQUIRE_ROW_FORMAT":              {},
+		"REQUIRE_TABLE_PRIMARY_KEY_CHECK": {},
+		"MASTER_LOG_FILE":                 {},
+		"MASTER_LOG_POS":                  {},
+		"MASTER_AUTO_POSITION":            {},
+		"RELAY_LOG_FILE":                  {},
+		"RELAY_LOG_POS":                   {},
+		"MASTER_HEARTBEAT_PERIOD":         {},
+		"MASTER_CONNECT_RETRY":            {},
+		"MASTER_RETRY_COUNT":              {},
+		"SOURCE_CONNECTION_AUTO_FAILOVER": {},
+		"MASTER_DELAY":                    {},
+		"MASTER_COMPRESSION_ALGORITHMS":   {},
+		"MASTER_ZSTD_COMPRESSION_LEVEL":   {},
+		"MASTER_SSL":                      {},
+		"MASTER_SSL_CA":                   {},
+		"MASTER_SSL_CAPATH":               {},
+		"MASTER_SSL_CERT":                 {},
+		"MASTER_SSL_CRL":                  {},
+		"MASTER_SSL_CRLPATH":              {},
+		"MASTER_SSL_KEY":                  {},
+		"MASTER_SSL_CIPHER":               {},
+		"MASTER_SSL_VERIFY_SERVER_CERT":   {},
+		"MASTER_TLS_VERSION":              {},
+		"MASTER_TLS_CIPHERSUITES":         {},
+		"MASTER_PUBLIC_KEY_PATH":          {},
+		"GET_MASTER_PUBLIC_KEY":           {},
+		"NETWORK_NAMESPACE":               {},
+		"IGNORE_SERVER_IDS":               {},
+	}
+
+	for k := range options {
+		if _, ok := validOptionKeys[k]; !ok {
+			return false
+		}
+	}
+	return true
 }

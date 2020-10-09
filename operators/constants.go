@@ -15,4 +15,6 @@ const (
 	OperatorSetLabels = "set-labels"
 	// OperatorStopReplicaIOThread is a name of the stop replicas' io-thread operation
 	OperatorStopReplicaIOThread = "stop-replica-io-thread"
+	// OperatorConfigureIntermediatePrimary is a name of the configure intermediate primary operation
+	OperatorConfigureIntermediatePrimary = "configure-intermediate-primary"
 )
