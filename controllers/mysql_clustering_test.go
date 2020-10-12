@@ -407,7 +407,7 @@ func TestDecideNextOperation(t *testing.T) {
 		{
 			name: "It should configure intermediate primary",
 			input: testData{
-				cluster(intPointer(0)),
+				intermediate(cluster(intPointer(0))),
 				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
 					readOnlyIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -430,7 +430,7 @@ func TestDecideNextOperation(t *testing.T) {
 		{
 			name: "It should be healthy when intermediate primary mode works fine",
 			input: testData{
-				cluster(intPointer(0)),
+				intermediate(cluster(intPointer(0))),
 				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
 					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(&intermediatePrimaryOptions).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -509,6 +509,12 @@ func cluster(primary *int) *mocov1alpha1.MySQLCluster {
 			CurrentPrimaryIndex: primary,
 		},
 	}
+}
+
+func intermediate(c *mocov1alpha1.MySQLCluster) *mocov1alpha1.MySQLCluster {
+	secret := "dummy-secret"
+	c.Spec.ReplicationSourceSecretName = &secret
+	return c
 }
 
 type mySQLStatusBuilder struct {
