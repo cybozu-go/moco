@@ -35,7 +35,11 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 		return err
 	}
 
-	_, err = db.NamedExec(`CHANGE MASTER TO MASTER_HOST = :MasterHost, MASTER_USER = :MasterUser, MASTER_PORT = :MasterPort, MASTER_PASSWORD = :MasterPassword, MASTER_AUTOPOSTION = 1`, *o.Options)
+	_, err = db.Exec("STOP SLAVE")
+	if err != nil {
+		return err
+	}
+	_, err = db.NamedExec(`CHANGE MASTER TO MASTER_HOST = :MasterHost, MASTER_USER = :MasterUser, MASTER_PORT = :MasterPort, MASTER_PASSWORD = :MasterPassword, MASTER_AUTO_POSITION = 1`, *o.Options)
 	if err != nil {
 		return err
 	}

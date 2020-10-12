@@ -23,10 +23,10 @@ type MySQLClusterStatus struct {
 }
 
 type IntermediatePrimaryOptions struct {
-	MasterHost     string
-	MasterUser     string
-	MasterPassword string
-	MasterPort     int
+	MasterHost     string `db:"MasterHost"`
+	MasterUser     string `db:"MasterUser"`
+	MasterPassword string `db:"MasterPassword"`
+	MasterPort     int    `db:"MasterPort"`
 }
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
