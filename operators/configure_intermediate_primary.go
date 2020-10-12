@@ -10,11 +10,11 @@ import (
 
 type configureIntermediatePrimaryOp struct {
 	Index   int
-	Options map[string]string
+	Options *accessor.IntermediatePrimaryOptions
 }
 
 // ConfigureIntermediatePrimaryOp returns the ConfigureIntermediatePrimaryOp Operator
-func ConfigureIntermediatePrimaryOp(index int, options map[string]string) Operator {
+func ConfigureIntermediatePrimaryOp(index int, options *accessor.IntermediatePrimaryOptions) Operator {
 	return &configureIntermediatePrimaryOp{
 		Index:   index,
 		Options: options,
@@ -35,13 +35,7 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 		return err
 	}
 
-	query := "CHANGE MASTER TO "
-	for k, v := range o.Options {
-		query += fmt.Sprintf("%s = %s, ", k, v)
-	}
-	query = query[:len(query)-2]
-
-	_, err = db.Exec(query)
+	_, err = db.NamedExec(`CHANGE MASTER TO MASTER_HOST = :MasterHost, MASTER_USER = :MasterUser, MASTER_PORT = :MasterPort, MASTER_PASSWORD = :MasterPassword, MASTER_AUTOPOSTION = 1`, *o.Options)
 	if err != nil {
 		return err
 	}

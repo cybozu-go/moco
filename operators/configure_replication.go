@@ -41,8 +41,7 @@ func (o configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`,
-		o.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
+	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`, o.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
 	if err != nil {
 		return err
 	}

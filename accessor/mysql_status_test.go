@@ -54,35 +54,37 @@ var _ = Describe("Get MySQLCluster status", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("setting valid options to api server")
-		data := map[string]string{
-			"MASTER_HOST": "dummy-master",
-			"MASTER_PORT": "3306",
+		data := map[string][]byte{
+			"MASTER_HOST":     []byte("dummy-master"),
+			"MASTER_PORT":     []byte("3306"),
+			"MASTER_USER":     []byte("dummy-user"),
+			"MASTER_PASSWORD": []byte("dummy-password"),
 		}
 		var ipSecret corev1.Secret
 		ipSecret.ObjectMeta.Name = intermediateSecret
 		ipSecret.ObjectMeta.Namespace = namespace
-		ipSecret.Data = make(map[string][]byte)
-		for k, v := range data {
-			ipSecret.Data[k] = []byte(v)
-		}
+		ipSecret.Data = data
 		err = k8sClient.Create(context.Background(), &ipSecret)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("getting and validating intermediate primary options")
 		logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 		sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
-		Expect(sts.IntermediatePrimaryOptions).Should(Equal(data))
+		expect := &IntermediatePrimaryOptions{
+			MasterHost:     "dummy-master",
+			MasterPassword: "dummy-password",
+			MasterPort:     3306,
+			MasterUser:     "dummy-user",
+		}
+		Expect(sts.IntermediatePrimaryOptions).Should(Equal(expect))
 
 		By("setting options without MASTER_HOST to api server")
-		data = map[string]string{
-			"MASTER_PORT": "3306",
+		data = map[string][]byte{
+			"MASTER_PORT": []byte("3306"),
 		}
 		ipSecret.ObjectMeta.Name = intermediateSecret
 		ipSecret.ObjectMeta.Namespace = namespace
-		ipSecret.Data = make(map[string][]byte)
-		for k, v := range data {
-			ipSecret.Data[k] = []byte(v)
-		}
+		ipSecret.Data = data
 		err = k8sClient.Update(context.Background(), &ipSecret)
 		Expect(err).ShouldNot(HaveOccurred())
 
@@ -92,17 +94,14 @@ var _ = Describe("Get MySQLCluster status", func() {
 		Expect(sts.IntermediatePrimaryOptions).Should(BeNil())
 
 		By("setting options without INVALID_OPTION to api server")
-		data = map[string]string{
-			"MASTER_HOST":    "dummy-master",
-			"MASTER_PORT":    "3306",
-			"INVALID_OPTION": "invalid",
+		data = map[string][]byte{
+			"MASTER_HOST":    []byte("dummy-master"),
+			"MASTER_PORT":    []byte("3306"),
+			"INVALID_OPTION": []byte("invalid"),
 		}
 		ipSecret.ObjectMeta.Name = intermediateSecret
 		ipSecret.ObjectMeta.Namespace = namespace
-		ipSecret.Data = make(map[string][]byte)
-		for k, v := range data {
-			ipSecret.Data[k] = []byte(v)
-		}
+		ipSecret.Data = data
 		err = k8sClient.Update(context.Background(), &ipSecret)
 		Expect(err).ShouldNot(HaveOccurred())
 

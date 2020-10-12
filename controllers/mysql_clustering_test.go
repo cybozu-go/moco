@@ -27,10 +27,11 @@ const (
 	PRIMARYUUID = "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
 )
 
-var intermediatePrimaryOptions = map[string]string{
-	"MASTER_HOST":     "intermediate-master-host",
-	"MASTER_PORT":     "3306",
-	"MASTER_PASSWORD": "intermediate-password",
+var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
+	MasterHost:     "intermediate-master-host",
+	MasterPort:     3306,
+	MasterPassword: "intermediate-password",
+	MasterUser:     moco.ReplicatorUser,
 }
 
 func TestDecideNextOperation(t *testing.T) {
@@ -407,7 +408,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should configure intermediate primary",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0), intermediatePrimaryOptions,
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
 					readOnlyIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -415,7 +416,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Operators: []ops.Operator{
-					ops.ConfigureIntermediatePrimaryOp(0, intermediatePrimaryOptions),
+					ops.ConfigureIntermediatePrimaryOp(0, &intermediatePrimaryOptions),
 				},
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
 					failure(false, ""),
@@ -430,8 +431,8 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be healthy when intermediate primary mode works fine",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0), intermediatePrimaryOptions,
-					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(intermediatePrimaryOptions).build(),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
+					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(&intermediatePrimaryOptions).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 				),
@@ -515,7 +516,7 @@ type mySQLStatusBuilder struct {
 	status  accessor.MySQLInstanceStatus
 }
 
-func mySQLStatus(latest *int, intermediatePrimaryOptions map[string]string, ss ...accessor.MySQLInstanceStatus) *accessor.MySQLClusterStatus {
+func mySQLStatus(latest *int, intermediatePrimaryOptions *accessor.IntermediatePrimaryOptions, ss ...accessor.MySQLInstanceStatus) *accessor.MySQLClusterStatus {
 	return &accessor.MySQLClusterStatus{
 		InstanceStatus:             ss,
 		Latest:                     latest,
@@ -662,8 +663,8 @@ func (b *mySQLStatusBuilder) setIOThreadStopped() *mySQLStatusBuilder {
 	return b
 }
 
-func (b *mySQLStatusBuilder) setIntermediate(options map[string]string) *mySQLStatusBuilder {
-	b.status.ReplicaStatus.MasterHost = options["MASTER_HOST"]
+func (b *mySQLStatusBuilder) setIntermediate(options *accessor.IntermediatePrimaryOptions) *mySQLStatusBuilder {
+	b.status.ReplicaStatus.MasterHost = options.MasterHost
 	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaRunConnect
 	b.status.ReplicaStatus.LastErrno = 0
 	return b

@@ -516,7 +516,7 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 }
 
 func configureIntermediatePrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
-	if len(status.IntermediatePrimaryOptions) == 0 {
+	if status.IntermediatePrimaryOptions == nil {
 		return nil
 	}
 	if cluster.Status.CurrentPrimaryIndex == nil {
@@ -525,13 +525,10 @@ func configureIntermediatePrimary(status *accessor.MySQLClusterStatus, cluster *
 	primary := *cluster.Status.CurrentPrimaryIndex
 
 	options := status.IntermediatePrimaryOptions
-	if len(options) == 0 {
-		return nil
-	}
 
 	rs := status.InstanceStatus[primary].ReplicaStatus
 	if rs != nil &&
-		rs.MasterHost == options["MASTER_HOST"] &&
+		rs.MasterHost == options.MasterHost &&
 		rs.SlaveIORunning != moco.ReplicaNotRun &&
 		rs.LastIoErrno == 0 {
 		return nil
