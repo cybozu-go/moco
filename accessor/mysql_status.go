@@ -216,6 +216,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceStatus) (*int, error) {
 	var latest int
+	for i := 1; i < len(status); i++ {
+		if status[i].PrimaryStatus == nil {
+			return nil, errors.New("cannot compare retrieved/executed GTIDs")
+		}
+	}
+
 	latestGTID := status[latest].PrimaryStatus.ExecutedGtidSet
 	for i := 1; i < len(status); i++ {
 		gtid := status[i].PrimaryStatus.ExecutedGtidSet

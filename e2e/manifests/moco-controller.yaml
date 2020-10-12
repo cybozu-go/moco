@@ -10,7 +10,8 @@ spec:
         - name: manager
           command:
             - /moco-controller
-            - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.1
+            - --conf-init-container-image=ghcr.io/kfyharukz/moco-conf-gen:server-id-2
+#            - --conf-init-container-image=quay.io/cybozu/moco-conf-gen:0.2.1
           image: controller:dev
           imagePullPolicy: Never
           env:

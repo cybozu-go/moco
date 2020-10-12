@@ -4034,6 +4034,10 @@ spec:
               ready:
                 description: Ready represents the status of readiness.
                 type: string
+              serverIDBase:
+                description: ServerIDBase is the number, which is used as server-id base number of each MySQL instance.
+                format: int32
+                type: integer
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances including the primary.
                 type: integer

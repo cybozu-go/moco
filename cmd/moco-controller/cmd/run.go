@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"math/rand"
 	"os"
 	"time"
 
@@ -36,6 +37,7 @@ func init() {
 
 func subMain() error {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	rand.Seed(time.Now().UnixNano())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,

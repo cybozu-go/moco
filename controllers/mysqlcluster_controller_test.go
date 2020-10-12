@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -19,7 +20,7 @@ import (
 
 var _ = Describe("MySQLCluster controller", func() {
 	Context("when creating MySQLCluster resource", func() {
-		It("Should create resources", func() {
+		It("should create resources", func() {
 			ctx := context.Background()
 
 			manifest := `apiVersion: moco.cybozu.com/v1alpha1
@@ -62,6 +63,20 @@ spec:
 			isUpdated, err := reconciler.reconcileInitialize(ctx, reconciler.Log, cluster)
 			Expect(isUpdated).Should(BeTrue())
 			Expect(err).ShouldNot(HaveOccurred())
+
+			Eventually(func() error {
+				var actual mocov1alpha1.MySQLCluster
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: "mysqlcluster", Namespace: "default"}, &actual)
+				if err != nil {
+					return err
+				}
+
+				if actual.Status.ServerIDBase == nil {
+					return errors.New("status.ServerIDBase is not yet assigned")
+				}
+
+				return nil
+			}, 30*time.Second).Should(Succeed())
 
 			createdPrimaryService := &corev1.Service{}
 			createdReplicaService := &corev1.Service{}

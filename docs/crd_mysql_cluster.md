@@ -41,12 +41,13 @@ RestoreSpec
 MySQLClusterStatus
 ------------------
 
-| Field                 | Type                                                | Required | Description                                             |
-| --------------------- | --------------------------------------------------- | -------- | ------------------------------------------------------- |
-| `conditions`          | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                    |
-| `ready`               | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`. |
-| `currentPrimaryIndex` | int                                                 | No       | Ordinal of the current primary in `StatefulSet`.        |
-| `syncedReplicas`      | int                                                 | Yes      | Number of synced instances including the primary.       |
+| Field                 | Type                                                | Required | Description                                                                                                             |
+| --------------------- | --------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `conditions`          | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                                                                                    |
+| `ready`               | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`.                                                                 |
+| `currentPrimaryIndex` | int                                                 | No       | Ordinal of the current primary in `StatefulSet`.                                                                        |
+| `syncedReplicas`      | int                                                 | Yes      | Number of synced instances including the primary.                                                                       |
+| `serverIDBase`        | uint32                                              | No       | This value plus the Pod index number is used as the server-id for each Pod. This value is automatically filled by MOCO. |
 
 MySQLClusterCondition
 ---------------------
