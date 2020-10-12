@@ -202,12 +202,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 	db, err := infra.GetDB(ctx, cluster, 0)
 	if err != nil {
-		log.Info("cannot obtain index of latext instance")
+		log.Info("cannot obtain index of latest instance")
 		return status
 	}
 	latest, err := GetLatestInstance(ctx, db, status.InstanceStatus)
 	if err != nil {
-		log.Info("cannot obtain index of latext instance")
+		log.Info("cannot obtain index of latest instance")
 		return status
 	}
 	status.Latest = latest
