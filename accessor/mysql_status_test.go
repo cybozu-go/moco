@@ -140,7 +140,7 @@ var _ = Describe("Get MySQLCluster status", func() {
 				PrimaryStatus: nil,
 			},
 		}
-		idx, err = GetLatestInstance(ctx, db, status)
+		_, err = GetLatestInstance(ctx, db, status)
 		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
 
 		By("comparing the same GTIDs")
@@ -190,7 +190,7 @@ var _ = Describe("Get MySQLCluster status", func() {
 				},
 			},
 		}
-		idx, err = GetLatestInstance(ctx, db, status)
+		_, err = GetLatestInstance(ctx, db, status)
 		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
 	})
 })
