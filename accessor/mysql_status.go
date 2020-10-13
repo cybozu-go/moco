@@ -17,8 +17,17 @@ import (
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
 type MySQLClusterStatus struct {
-	InstanceStatus []MySQLInstanceStatus
-	Latest         *int
+	InstanceStatus             []MySQLInstanceStatus
+	Latest                     *int
+	IntermediatePrimaryOptions *IntermediatePrimaryOptions
+}
+
+// IntermediatePrimaryOptions is the parameters to connect the external instance
+type IntermediatePrimaryOptions struct {
+	PrimaryHost     string `db:"MasterHost"`
+	PrimaryUser     string `db:"MasterUser"`
+	PrimaryPassword string `db:"MasterPassword"`
+	PrimaryPort     int    `db:"MasterPort"`
 }
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
@@ -185,6 +194,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		status.InstanceStatus[instanceIdx].Available = true
 	}
 
+	options, err := GetIntermediatePrimaryOptions(ctx, infra.GetClient(), cluster)
+	if err != nil {
+		log.Info("cannot obtain or invalid options for intermediate primary", "err", err)
+	}
+	status.IntermediatePrimaryOptions = options
+
 	db, err := infra.GetDB(ctx, cluster, 0)
 	if err != nil {
 		log.Info("cannot obtain index of latext instance")
@@ -202,6 +217,12 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceStatus) (*int, error) {
 	var latest int
+	for i := 0; i < len(status); i++ {
+		if status[i].PrimaryStatus == nil {
+			return nil, errors.New("cannot compare retrieved/executed GTIDs")
+		}
+	}
+
 	latestGTID := status[latest].PrimaryStatus.ExecutedGtidSet
 	for i := 1; i < len(status); i++ {
 		gtid := status[i].PrimaryStatus.ExecutedGtidSet
@@ -358,4 +379,47 @@ func GetMySQLCloneStateStatus(ctx context.Context, db *sqlx.DB) (*MySQLCloneStat
 	}
 
 	return &status, nil
+}
+
+func GetIntermediatePrimaryOptions(ctx context.Context, cli client.Client, cluster *mocov1alpha1.MySQLCluster) (*IntermediatePrimaryOptions, error) {
+	if cluster.Spec.ReplicationSourceSecretName == nil {
+		return nil, nil
+	}
+
+	var secret corev1.Secret
+	err := cli.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Namespace, Name: *cluster.Spec.ReplicationSourceSecretName}, &secret)
+	if err != nil {
+		return nil, err
+	}
+
+	options, err := parseIntermediatePrimaryOptions(secret.Data)
+	return options, err
+}
+
+func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePrimaryOptions, error) {
+	var result IntermediatePrimaryOptions
+	for k, v := range options {
+		switch k {
+		case "PRIMARY_HOST":
+			result.PrimaryHost = string(v)
+		case "PRIMARY_USER":
+			result.PrimaryUser = string(v)
+		case "PRIMARY_PASSWORD":
+			result.PrimaryPassword = string(v)
+		case "PRIMARY_PORT":
+			port, err := strconv.Atoi(string(v))
+			if err != nil {
+				return nil, err
+			}
+			result.PrimaryPort = port
+		default:
+			return nil, errors.New("unknown option for intermediate primary")
+		}
+	}
+
+	if len(result.PrimaryHost) == 0 || len(result.PrimaryUser) == 0 || len(result.PrimaryPassword) == 0 || result.PrimaryPort == 0 {
+		return nil, errors.New("empty value(s) in mandatory intermediate primary options")
+	}
+
+	return &result, nil
 }

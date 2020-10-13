@@ -15,18 +15,18 @@ The cluster does not mean [NDB cluster](https://dev.mysql.com/doc/refman/8.0/en/
 MySQLClusterSpec
 ----------------
 
-| Field                         | Type                        | Required | Description                                                                                                                                                                       |
-| ----------------------------- | --------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replicas`                    | int                         | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                                    |
-| `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                            |
-| `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec] | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                       |
-| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta]. |
-| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields.                                                         |
-| `mysqlConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                 |
-| `rootPasswordSecretName`      | string                      | No       | `Secret` name for root user config.                                                                                                                                               |
-| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary.            |
-| `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                   |
-| `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                         |
+| Field                         | Type                        | Required | Description                                                                                                                                                                                                |
+| ----------------------------- | --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replicas`                    | int                         | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                                                             |
+| `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                                                     |
+| `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec] | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                                                |
+| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta].                          |
+| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields.                                                                                  |
+| `mysqlConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                                          |
+| `rootPasswordSecretName`      | string                      | No       | `Secret` name for root user config.                                                                                                                                                                        |
+| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary (i.e., works as read-only replicas). |
+| `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                                            |
+| `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                                                  |
 
 The configMap specified with `mysqlConfigMapName` contains MySQL options of mysqld section as key-value pairs.
 
@@ -41,12 +41,13 @@ RestoreSpec
 MySQLClusterStatus
 ------------------
 
-| Field                 | Type                                                | Required | Description                                             |
-| --------------------- | --------------------------------------------------- | -------- | ------------------------------------------------------- |
-| `conditions`          | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                    |
-| `ready`               | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`. |
-| `currentPrimaryIndex` | int                                                 | No       | Ordinal of the current primary in `StatefulSet`.        |
-| `syncedReplicas`      | int                                                 | Yes      | Number of synced instances including the primary.       |
+| Field                 | Type                                                | Required | Description                                                                                                             |
+| --------------------- | --------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `conditions`          | \[\][MySQLClusterCondition](#MySQLClusterCondition) | No       | Array of conditions.                                                                                                    |
+| `ready`               | Enum                                                | Yes      | Status of readiness. One of `True`, `False`, `Unknown`.                                                                 |
+| `currentPrimaryIndex` | int                                                 | No       | Ordinal of the current primary in `StatefulSet`.                                                                        |
+| `syncedReplicas`      | int                                                 | Yes      | Number of synced instances including the primary.                                                                       |
+| `serverIDBase`        | uint32                                              | No       | This value plus the Pod index number is used as the server-id for each Pod. This value is automatically filled by MOCO. |
 
 MySQLClusterCondition
 ---------------------

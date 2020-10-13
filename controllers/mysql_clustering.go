@@ -146,6 +146,16 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	}
 
 	syncedReplicas := int(cluster.Spec.Replicas) - len(outOfSyncIns)
+
+	op = configureIntermediatePrimary(status, cluster)
+	if len(op) != 0 {
+		return &Operation{
+			Conditions:     unavailableCondition(outOfSyncIns),
+			Operators:      op,
+			SyncedReplicas: &syncedReplicas,
+		}, nil
+	}
+
 	op = acceptWriteRequest(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
@@ -493,6 +503,10 @@ func waitForReplication(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 }
 
 func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
+	if status.IntermediatePrimaryOptions != nil {
+		return nil
+	}
+
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 
 	if !status.InstanceStatus[primaryIndex].GlobalVariablesStatus.ReadOnly {
@@ -500,6 +514,41 @@ func acceptWriteRequest(status *accessor.MySQLClusterStatus, cluster *mocov1alph
 	}
 	return []ops.Operator{
 		ops.TurnOffReadOnlyOp(primaryIndex)}
+}
+
+func configureIntermediatePrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		panic("unreachable code")
+	}
+	primary := *cluster.Status.CurrentPrimaryIndex
+	options := status.IntermediatePrimaryOptions
+
+	rs := status.InstanceStatus[primary].ReplicaStatus
+	// Stop slave if ReplicationSourceSecretName has been deleted
+	if cluster.Spec.ReplicationSourceSecretName == nil &&
+		rs != nil &&
+		(rs.SlaveIORunning != moco.ReplicaNotRun || rs.SlaveSQLRunning != moco.ReplicaNotRun) {
+		return []ops.Operator{
+			ops.ConfigureIntermediatePrimaryOp(primary, options),
+		}
+	}
+
+	// Do nothing if ReplicationSourceSecretName is not given
+	if cluster.Spec.ReplicationSourceSecretName == nil {
+		return nil
+	}
+
+	// Do nothing if intermediate primary works fine
+	if cluster.Spec.ReplicationSourceSecretName != nil && rs != nil &&
+		rs.MasterHost == options.PrimaryHost &&
+		rs.SlaveIORunning != moco.ReplicaNotRun &&
+		rs.LastIoErrno == 0 {
+		return nil
+	}
+
+	return []ops.Operator{
+		ops.ConfigureIntermediatePrimaryOp(primary, options),
+	}
 }
 
 func waitForRelayLogExecution(log logr.Logger, status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) ([]ops.Operator, bool) {

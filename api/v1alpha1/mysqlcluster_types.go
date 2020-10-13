@@ -127,6 +127,10 @@ type MySQLClusterStatus struct {
 
 	// AgentToken is the token to call API exposed by the agent sidecar
 	AgentToken string `json:"agentToken"`
+
+	// ServerIDBase is the number, which is used as server-id base number of each MySQL instance.
+	// +optional
+	ServerIDBase *uint32 `json:"serverIDBase,omitempty"`
 }
 
 // MySQLClusterCondition defines the condition of MySQLCluster.

@@ -27,6 +27,13 @@ const (
 	PRIMARYUUID = "3e11fa47-71ca-11e1-9e33-c80aa9429562:"
 )
 
+var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
+	PrimaryHost:     "intermediate-primary-host",
+	PrimaryPort:     3306,
+	PrimaryPassword: "intermediate-password",
+	PrimaryUser:     moco.ReplicatorUser,
+}
+
 func TestDecideNextOperation(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -39,7 +46,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be unavailable error when it contains unavailable instance",
 			input: testData{
 				cluster(nil),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					unavailableIns().build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -60,7 +67,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be constraints violation error when the writable instance is wrong",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					readOnlyIns(0, moco.ReplicaRole).build(),
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -81,7 +88,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be constraints violation error when it includes multiple writable instances",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -102,7 +109,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should update primary index when the primary is not yet selected",
 			input: testData{
 				cluster(nil),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					emptyIns("", false).build(),
 					emptyIns("", false).build(),
 					emptyIns("", false).build(),
@@ -123,7 +130,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should set clone donor list when the donor list is wrong",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setDonorList(1).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -138,7 +145,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should clone when a replica instance is empty and not yet cloned",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					emptyIns(moco.ReplicaRole, false).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -153,7 +160,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should clone when a replica instance is empty and cloning is failed",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					emptyIns(moco.ReplicaRole, false).build(),
 					readOnlyIns(0, moco.ReplicaRole).build(),
@@ -168,7 +175,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should wait for clone when the most replicas are cloning",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).setDonorList(0).build(),
 					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
 					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
@@ -188,7 +195,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be available when few replicas are cloning",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					emptyIns(moco.ReplicaRole, false).setDonorList(0).setCloneInProgress().build(),
@@ -209,7 +216,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should configure replications when the replication is not yet configured",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					readOnlyIns(0, "").build(),
 					readOnlyIns(0, "").build(),
 					readOnlyIns(0, "").build(),
@@ -228,7 +235,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should set service labels when readonly instance labels are wrong",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().build(),
@@ -245,7 +252,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should set service labels when writable instance labels are wrong",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.ReplicaRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -262,7 +269,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should wait for applying relay log when most replicas are lagged",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(1),
+				mySQLStatus(intPointer(1), nil,
 					emptyIns(moco.PrimaryRole, false).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setGTIDLagged().setIOThreadStopped().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setGTIDLagged().setIOThreadStopped().build(),
@@ -282,7 +289,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be writable when it ready to accept write request",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					readOnlyIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -304,7 +311,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be available when it contains few outOfSync replica",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOError().build(),
@@ -325,7 +332,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should be healthy when all replicas are synced",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(0),
+				mySQLStatus(intPointer(0), nil,
 					writableIns(0, moco.PrimaryRole).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
@@ -346,7 +353,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should update primary index which has latest GTID set",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(1),
+				mySQLStatus(intPointer(1), nil,
 					emptyIns(moco.PrimaryRole, false).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
@@ -367,7 +374,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should update primary index because primary is behind of others",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(intPointer(1),
+				mySQLStatus(intPointer(1), nil,
 					readOnlyIns(0, moco.PrimaryRole).setGTIDBehind().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
@@ -388,7 +395,7 @@ func TestDecideNextOperation(t *testing.T) {
 			name: "It should return error if cannot performe GTID comparsion",
 			input: testData{
 				cluster(intPointer(0)),
-				mySQLStatus(nil,
+				mySQLStatus(nil, nil,
 					emptyIns(moco.PrimaryRole, false).build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().setGTIDInconsistent().build(),
 					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
@@ -396,6 +403,72 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: moco.ErrCannotCompareGITDs,
+		},
+		{
+			name: "It should configure intermediate primary",
+			input: testData{
+				intermediate(cluster(intPointer(0))),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
+					readOnlyIns(0, moco.PrimaryRole).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+				),
+			},
+			want: &Operation{
+				Operators: []ops.Operator{
+					ops.ConfigureIntermediatePrimaryOp(0, &intermediatePrimaryOptions),
+				},
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				SyncedReplicas: intPointer(3),
+			},
+		},
+		{
+			name: "It should be healthy when intermediate primary mode works fine",
+			input: testData{
+				intermediate(cluster(intPointer(0))),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
+					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(&intermediatePrimaryOptions).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+				),
+			},
+			want: &Operation{
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(true, ""),
+					healthy(true, ""),
+				},
+				SyncedReplicas: intPointer(3),
+			},
+		},
+		{
+			name: "It should stop slave when intermediate primary secret name is deleted",
+			input: testData{
+				cluster(intPointer(0)),
+				mySQLStatus(intPointer(0), nil,
+					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(&intermediatePrimaryOptions).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+				),
+			},
+			want: &Operation{
+				Operators: []ops.Operator{
+					ops.ConfigureIntermediatePrimaryOp(0, nil),
+				},
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				SyncedReplicas: intPointer(3),
+			},
 		},
 	}
 	logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
@@ -461,15 +534,22 @@ func cluster(primary *int) *mocov1alpha1.MySQLCluster {
 	}
 }
 
+func intermediate(c *mocov1alpha1.MySQLCluster) *mocov1alpha1.MySQLCluster {
+	secret := "dummy-secret"
+	c.Spec.ReplicationSourceSecretName = &secret
+	return c
+}
+
 type mySQLStatusBuilder struct {
 	primary int
 	status  accessor.MySQLInstanceStatus
 }
 
-func mySQLStatus(latest *int, ss ...accessor.MySQLInstanceStatus) *accessor.MySQLClusterStatus {
+func mySQLStatus(latest *int, intermediatePrimaryOptions *accessor.IntermediatePrimaryOptions, ss ...accessor.MySQLInstanceStatus) *accessor.MySQLClusterStatus {
 	return &accessor.MySQLClusterStatus{
-		InstanceStatus: ss,
-		Latest:         latest,
+		InstanceStatus:             ss,
+		Latest:                     latest,
+		IntermediatePrimaryOptions: intermediatePrimaryOptions,
 	}
 }
 
@@ -609,6 +689,13 @@ func (b *mySQLStatusBuilder) setGTIDInconsistent() *mySQLStatusBuilder {
 
 func (b *mySQLStatusBuilder) setIOThreadStopped() *mySQLStatusBuilder {
 	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaNotRun
+	return b
+}
+
+func (b *mySQLStatusBuilder) setIntermediate(options *accessor.IntermediatePrimaryOptions) *mySQLStatusBuilder {
+	b.status.ReplicaStatus.MasterHost = options.PrimaryHost
+	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaRunConnect
+	b.status.ReplicaStatus.LastErrno = 0
 	return b
 }
 

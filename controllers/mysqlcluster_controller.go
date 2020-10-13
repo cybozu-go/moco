@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	mathrand "math/rand"
 	"path/filepath"
 	"time"
 
@@ -161,9 +162,15 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 }
 
 func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
-
 	isUpdatedAtLeastOnce := false
-	isUpdated, err := r.createSecretIfNotExist(ctx, log, cluster)
+
+	isUpdated, err := r.setServerIDBaseIfNotAssigned(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createSecretIfNotExist(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
 		return false, err
@@ -259,6 +266,21 @@ func selectInitializedCluster(obj runtime.Object) []string {
 		}
 	}
 	return []string{string(corev1.ConditionUnknown)}
+}
+
+func (r *MySQLClusterReconciler) setServerIDBaseIfNotAssigned(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	if cluster.Status.ServerIDBase != nil {
+		return false, nil
+	}
+
+	serverIDBase := mathrand.Uint32()
+	cluster.Status.ServerIDBase = &serverIDBase
+	if err := r.Status().Update(ctx, cluster); err != nil {
+		log.Error(err, "failed to status update", "status", cluster.Status)
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
@@ -752,7 +774,8 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 
 	c.Image = r.ConfInitContainerImage
 
-	c.Command = []string{"/moco-conf-gen"}
+	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
+	c.Command = []string{"/moco-conf-gen", serverIDOption}
 	c.Env = append(c.Env,
 		corev1.EnvVar{
 			Name: moco.PodNameEnvName,
