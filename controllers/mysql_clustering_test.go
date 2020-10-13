@@ -28,10 +28,10 @@ const (
 )
 
 var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
-	MasterHost:     "intermediate-master-host",
-	MasterPort:     3306,
-	MasterPassword: "intermediate-password",
-	MasterUser:     moco.ReplicatorUser,
+	PrimaryHost:     "intermediate-primary-host",
+	PrimaryPort:     3306,
+	PrimaryPassword: "intermediate-password",
+	PrimaryUser:     moco.ReplicatorUser,
 }
 
 func TestDecideNextOperation(t *testing.T) {
@@ -693,7 +693,7 @@ func (b *mySQLStatusBuilder) setIOThreadStopped() *mySQLStatusBuilder {
 }
 
 func (b *mySQLStatusBuilder) setIntermediate(options *accessor.IntermediatePrimaryOptions) *mySQLStatusBuilder {
-	b.status.ReplicaStatus.MasterHost = options.MasterHost
+	b.status.ReplicaStatus.MasterHost = options.PrimaryHost
 	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaRunConnect
 	b.status.ReplicaStatus.LastErrno = 0
 	return b

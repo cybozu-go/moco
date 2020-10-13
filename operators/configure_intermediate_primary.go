@@ -43,6 +43,10 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 		return nil
 	}
 
+	_, err = db.Exec("SET GLOBAL read_only=1")
+	if err != nil {
+		return err
+	}
 	_, err = db.NamedExec(`CHANGE MASTER TO MASTER_HOST = :MasterHost, MASTER_USER = :MasterUser, MASTER_PORT = :MasterPort, MASTER_PASSWORD = :MasterPassword, MASTER_AUTO_POSITION = 1`, *o.Options)
 	if err != nil {
 		return err
@@ -56,5 +60,5 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 }
 
 func (o configureIntermediatePrimaryOp) Describe() string {
-	return fmt.Sprintf("%#v", o)
+	return fmt.Sprintf("operators.%s{Index:%d, Options:<masked>}", o.Name(), o.Index)
 }

@@ -55,10 +55,10 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("setting valid options to api server")
 		data := map[string][]byte{
-			"MASTER_HOST":     []byte("dummy-master"),
-			"MASTER_PORT":     []byte("3306"),
-			"MASTER_USER":     []byte("dummy-user"),
-			"MASTER_PASSWORD": []byte("dummy-password"),
+			"PRIMARY_HOST":     []byte("dummy-primary"),
+			"PRIMARY_PORT":     []byte("3306"),
+			"PRIMARY_USER":     []byte("dummy-user"),
+			"PRIMARY_PASSWORD": []byte("dummy-password"),
 		}
 		var ipSecret corev1.Secret
 		ipSecret.ObjectMeta.Name = intermediateSecret
@@ -71,16 +71,16 @@ var _ = Describe("Get MySQLCluster status", func() {
 		logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
 		sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
 		expect := &IntermediatePrimaryOptions{
-			MasterHost:     "dummy-master",
-			MasterPassword: "dummy-password",
-			MasterPort:     3306,
-			MasterUser:     "dummy-user",
+			PrimaryHost:     "dummy-primary",
+			PrimaryPassword: "dummy-password",
+			PrimaryPort:     3306,
+			PrimaryUser:     "dummy-user",
 		}
 		Expect(sts.IntermediatePrimaryOptions).Should(Equal(expect))
 
-		By("setting options without MASTER_HOST to api server")
+		By("setting options without PRIMARY_HOST to api server")
 		data = map[string][]byte{
-			"MASTER_PORT": []byte("3306"),
+			"PRIMARY_PORT": []byte("3306"),
 		}
 		ipSecret.ObjectMeta.Name = intermediateSecret
 		ipSecret.ObjectMeta.Namespace = namespace
@@ -95,8 +95,8 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("setting options without INVALID_OPTION to api server")
 		data = map[string][]byte{
-			"MASTER_HOST":    []byte("dummy-master"),
-			"MASTER_PORT":    []byte("3306"),
+			"PRIMARY_HOST":   []byte("dummy-primary"),
+			"PRIMARY_PORT":   []byte("3306"),
 			"INVALID_OPTION": []byte("invalid"),
 		}
 		ipSecret.ObjectMeta.Name = intermediateSecret

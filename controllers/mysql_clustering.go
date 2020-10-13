@@ -540,7 +540,7 @@ func configureIntermediatePrimary(status *accessor.MySQLClusterStatus, cluster *
 
 	// Do nothing if intermediate primary works fine
 	if cluster.Spec.ReplicationSourceSecretName != nil && rs != nil &&
-		rs.MasterHost == options.MasterHost &&
+		rs.MasterHost == options.PrimaryHost &&
 		rs.SlaveIORunning != moco.ReplicaNotRun &&
 		rs.LastIoErrno == 0 {
 		return nil

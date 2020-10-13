@@ -22,11 +22,12 @@ type MySQLClusterStatus struct {
 	IntermediatePrimaryOptions *IntermediatePrimaryOptions
 }
 
+// IntermediatePrimaryOptions is the parameters to connect the external instance
 type IntermediatePrimaryOptions struct {
-	MasterHost     string `db:"MasterHost"`
-	MasterUser     string `db:"MasterUser"`
-	MasterPassword string `db:"MasterPassword"`
-	MasterPort     int    `db:"MasterPort"`
+	PrimaryHost     string `db:"MasterHost"`
+	PrimaryUser     string `db:"MasterUser"`
+	PrimaryPassword string `db:"MasterPassword"`
+	PrimaryPort     int    `db:"MasterPort"`
 }
 
 // MySQLInstanceStatus defines the observed state of a MySQL instance
@@ -216,7 +217,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceStatus) (*int, error) {
 	var latest int
-	for i := 1; i < len(status); i++ {
+	for i := 0; i < len(status); i++ {
 		if status[i].PrimaryStatus == nil {
 			return nil, errors.New("cannot compare retrieved/executed GTIDs")
 		}
@@ -399,24 +400,24 @@ func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePr
 	var result IntermediatePrimaryOptions
 	for k, v := range options {
 		switch k {
-		case "MASTER_HOST":
-			result.MasterHost = string(v)
-		case "MASTER_USER":
-			result.MasterUser = string(v)
-		case "MASTER_PASSWORD":
-			result.MasterPassword = string(v)
-		case "MASTER_PORT":
+		case "PRIMARY_HOST":
+			result.PrimaryHost = string(v)
+		case "PRIMARY_USER":
+			result.PrimaryUser = string(v)
+		case "PRIMARY_PASSWORD":
+			result.PrimaryPassword = string(v)
+		case "PRIMARY_PORT":
 			port, err := strconv.Atoi(string(v))
 			if err != nil {
 				return nil, err
 			}
-			result.MasterPort = port
+			result.PrimaryPort = port
 		default:
 			return nil, errors.New("unknown option for intermediate primary")
 		}
 	}
 
-	if len(result.MasterHost) == 0 || len(result.MasterUser) == 0 || len(result.MasterPassword) == 0 || result.MasterPort == 0 {
+	if len(result.PrimaryHost) == 0 || len(result.PrimaryUser) == 0 || len(result.PrimaryPassword) == 0 || result.PrimaryPort == 0 {
 		return nil, errors.New("empty value(s) in mandatory intermediate primary options")
 	}
 
