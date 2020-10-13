@@ -110,6 +110,89 @@ var _ = Describe("Get MySQLCluster status", func() {
 		sts = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
 		Expect(sts.IntermediatePrimaryOptions).Should(BeNil())
 	})
+
+	It("should get latest instance by comparing GTIDs", func() {
+		ctx := context.Background()
+		_, inf, cluster := getAccessorInfraCluster()
+		db, err := inf.GetDB(ctx, &cluster, 0)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		By("comarping empty instances")
+		status := []MySQLInstanceStatus{
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "",
+				},
+			},
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "",
+				},
+			},
+		}
+		idx, err := GetLatestInstance(ctx, db, status)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*idx).Should(Equal(0))
+
+		By("including instance which has empty PrimaryStatus")
+		status = []MySQLInstanceStatus{
+			{
+				PrimaryStatus: nil,
+			},
+		}
+		_, err = GetLatestInstance(ctx, db, status)
+		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
+
+		By("comparing the same GTIDs")
+		status = []MySQLInstanceStatus{
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:23",
+				},
+			},
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:23",
+				},
+			},
+		}
+		idx, err = GetLatestInstance(ctx, db, status)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*idx).Should(Equal(0))
+
+		By("comparing the GTIDs")
+		status = []MySQLInstanceStatus{
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:23",
+				},
+			},
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57",
+				},
+			},
+		}
+		idx, err = GetLatestInstance(ctx, db, status)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*idx).Should(Equal(1))
+
+		By("comparing the inconsistent GTIDs")
+		status = []MySQLInstanceStatus{
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:20-25",
+				},
+			},
+			{
+				PrimaryStatus: &MySQLPrimaryStatus{
+					ExecutedGtidSet: "3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57",
+				},
+			},
+		}
+		_, err = GetLatestInstance(ctx, db, status)
+		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
+	})
 })
 
 func initializeMySQL() error {
