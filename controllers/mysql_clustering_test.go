@@ -421,8 +421,8 @@ func TestDecideNextOperation(t *testing.T) {
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
 					failure(false, ""),
 					outOfSync(false, ""),
-					available(true, ""),
-					healthy(true, ""),
+					available(false, ""),
+					healthy(false, ""),
 				},
 				SyncedReplicas: intPointer(3),
 			},
@@ -443,6 +443,29 @@ func TestDecideNextOperation(t *testing.T) {
 					outOfSync(false, ""),
 					available(true, ""),
 					healthy(true, ""),
+				},
+				SyncedReplicas: intPointer(3),
+			},
+		},
+		{
+			name: "It should stop slave when intermediate primary secret name is deleted",
+			input: testData{
+				cluster(intPointer(0)),
+				mySQLStatus(intPointer(0), nil,
+					readOnlyIns(0, moco.PrimaryRole).setReplicaStatus().setIntermediate(&intermediatePrimaryOptions).build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().build(),
+				),
+			},
+			want: &Operation{
+				Operators: []ops.Operator{
+					ops.ConfigureIntermediatePrimaryOp(0, nil),
+				},
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
 				},
 				SyncedReplicas: intPointer(3),
 			},

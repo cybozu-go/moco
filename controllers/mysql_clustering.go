@@ -150,7 +150,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	op = configureIntermediatePrimary(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
-			Conditions:     availableCondition(outOfSyncIns),
+			Conditions:     unavailableCondition(outOfSyncIns),
 			Operators:      op,
 			SyncedReplicas: &syncedReplicas,
 		}, nil
