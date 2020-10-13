@@ -774,7 +774,7 @@ func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster 
 
 	c.Image = r.ConfInitContainerImage
 
-	serverIDOption := fmt.Sprintf("--server-id-offset=%d", *cluster.Status.ServerIDBase)
+	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
 	c.Command = []string{"/moco-conf-gen", serverIDOption}
 	c.Env = append(c.Env,
 		corev1.EnvVar{
