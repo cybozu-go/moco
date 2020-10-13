@@ -6,10 +6,12 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco"
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -30,9 +32,10 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 
 const (
-	host     = "localhost"
-	password = "test-password"
-	port     = 3306
+	host      = "localhost"
+	password  = "test-password"
+	port      = 3306
+	namespace = "test-namespace"
 )
 
 func TestAccessors(t *testing.T) {
@@ -145,4 +148,26 @@ func initializeMySQL() error {
 	}
 
 	return nil
+}
+
+func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MySQLCluster) {
+	acc := NewMySQLAccessor(&MySQLAccessorConfig{
+		ConnMaxLifeTime:   30 * time.Minute,
+		ConnectionTimeout: 3 * time.Second,
+		ReadTimeout:       30 * time.Second,
+	})
+	inf := NewInfrastructure(k8sClient, acc, password, []string{host}, 3306)
+	cluster := mocov1alpha1.MySQLCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test",
+			ClusterName: "test-cluster",
+			Namespace:   namespace,
+			UID:         "test-uid",
+		},
+		Spec: mocov1alpha1.MySQLClusterSpec{
+			Replicas: 1,
+		},
+	}
+
+	return acc, inf, cluster
 }

@@ -53,7 +53,7 @@ func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-func (acc *AccessorMock) Remove(cluster *mocov1alpha1.MySQLCluster) {
+func (acc *AccessorMock) Remove(addr string) {
 }
 
 func TestAPIs(t *testing.T) {

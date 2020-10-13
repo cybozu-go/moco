@@ -2,18 +2,12 @@ package accessor
 
 import (
 	"context"
-	"time"
 
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-)
-
-const (
-	namespace = "test-namespace"
 )
 
 var intermediateSecret = "intermediate-primary-secret"
@@ -103,25 +97,3 @@ var _ = Describe("Get MySQLCluster status", func() {
 		Expect(sts.IntermediatePrimaryOptions).Should(BeNil())
 	})
 })
-
-func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MySQLCluster) {
-	acc := NewMySQLAccessor(&MySQLAccessorConfig{
-		ConnMaxLifeTime:   30 * time.Minute,
-		ConnectionTimeout: 3 * time.Second,
-		ReadTimeout:       30 * time.Second,
-	})
-	inf := NewInfrastructure(k8sClient, acc, password, []string{host}, 3306)
-	cluster := mocov1alpha1.MySQLCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test",
-			ClusterName: "test-cluster",
-			Namespace:   namespace,
-			UID:         "test-uid",
-		},
-		Spec: mocov1alpha1.MySQLClusterSpec{
-			Replicas: 1,
-		},
-	}
-
-	return acc, inf, cluster
-}
