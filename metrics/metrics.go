@@ -1,4 +1,4 @@
-package controllers
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,11 +14,11 @@ var (
 	operationPhaseMetrics     *prometheus.GaugeVec
 	failoverCountTotalMetrics *prometheus.CounterVec
 	totalReplicasMetrics      *prometheus.GaugeVec
-	SyncedReplicasMetrics     *prometheus.GaugeVec
+	syncedReplicasMetrics     *prometheus.GaugeVec
 )
 
 func RegisterMetrics() {
-	operationPhaseMetrics := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	operationPhaseMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,
 		Name:      "operation_phase",
@@ -26,7 +26,7 @@ func RegisterMetrics() {
 	}, []string{"cluster_name", "phase"})
 	metrics.Registry.MustRegister(operationPhaseMetrics)
 
-	failoverCountTotalMetrics := prometheus.NewCounterVec(prometheus.CounterOpts{
+	failoverCountTotalMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,
 		Name:      "failover_count_total",
@@ -34,19 +34,19 @@ func RegisterMetrics() {
 	}, []string{"cluster_name"})
 	metrics.Registry.MustRegister(failoverCountTotalMetrics)
 
-	totalReplicas := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	totalReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,
 		Name:      "total_replicas",
 		Help:      "The number of replicas.",
 	}, []string{"cluster_name"})
-	metrics.Registry.MustRegister(totalReplicas)
+	metrics.Registry.MustRegister(totalReplicasMetrics)
 
-	syncedReplicas := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	syncedReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,
 		Name:      "synced_replicas",
 		Help:      "The number of replicas which are in synced state.",
 	}, []string{"cluster_name"})
-	metrics.Registry.MustRegister(syncedReplicas)
+	metrics.Registry.MustRegister(syncedReplicasMetrics)
 }

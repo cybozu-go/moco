@@ -8,6 +8,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/metrics"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,6 +22,7 @@ type Operation struct {
 	Wait           bool
 	Conditions     []mocov1alpha1.MySQLClusterCondition
 	SyncedReplicas *int
+	Phase          moco.OperationPhase
 }
 
 // reconcileMySQLCluster reconciles MySQL cluster
@@ -44,6 +46,11 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		}
 		return ctrl.Result{}, err
 	}
+
+	if op.Phase != "" {
+		metrics.UpdateOperationPhase(cluster.Name, op.Phase)
+	}
+	metrics.UpdateSyncedReplicasMetrics(cluster.Name, op.SyncedReplicas)
 
 	for _, o := range op.Operators {
 		log.Info("Run operation", "name", o.Name(), "description", o.Describe())
@@ -100,6 +107,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
 			Wait:       wait,
+			Phase:      moco.PhaseWaitRelayLog,
 		}, nil
 	}
 
@@ -109,6 +117,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	}
 	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
+		metrics.UpdateFailoverCountTotalMetrics(cluster.Name)
 		return &Operation{
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
@@ -119,6 +128,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if len(op) != 0 {
 		return &Operation{
 			Operators: op,
+			Phase:     moco.PhaseRestoreInstance,
 		}, nil
 	}
 
@@ -127,6 +137,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		return &Operation{
 			Wait:       true,
 			Conditions: unavailableCondition(outOfSyncIns),
+			Phase:      moco.PhaseRestoreInstance,
 		}, nil
 	}
 
@@ -162,12 +173,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Conditions:     availableCondition(outOfSyncIns),
 			Operators:      op,
 			SyncedReplicas: &syncedReplicas,
+			Phase:          moco.PhaseCompleted,
 		}, nil
 	}
 
 	return &Operation{
 		Conditions:     availableCondition(outOfSyncIns),
 		SyncedReplicas: &syncedReplicas,
+		Phase:          moco.PhaseCompleted,
 	}, nil
 }
 
