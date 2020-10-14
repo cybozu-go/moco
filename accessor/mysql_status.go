@@ -276,7 +276,7 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 }
 
 func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
-	rows, err := db.QueryxContext(ctx, `SELECT GTID_SUBSET(?,?)`, src, dst)
+	rows, err := db.QueryxContext(ctx, `SELECT GTID_SUBSET(?,?) AS R`, src, dst)
 	if err != nil {
 		return 0, err
 	}
@@ -284,25 +284,15 @@ func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error
 		return 0, errors.New("cannot obtain compasion result of GTIDs")
 	}
 
-	res := make(map[string]interface{})
-	err = rows.MapScan(res)
-	if err != nil {
-		return 0, err
+	var res struct {
+		Result int `db:"R"`
 	}
-	v, ok := res[fmt.Sprintf("GTID_SUBSET('%s','%s')", src, dst)]
-	if !ok {
-		return 0, errors.New("cannot obtain comparison result of GTIDs")
-	}
-	str, ok := v.([]uint8)
-	if !ok {
-		return 0, errors.New("wrong type value returns when comparing GTIDs")
-	}
-	cmp, err := strconv.Atoi(string(str))
+	err = rows.StructScan(&res)
 	if err != nil {
 		return 0, err
 	}
 
-	return cmp, nil
+	return res.Result, nil
 }
 
 func GetMySQLPrimaryStatus(ctx context.Context, db *sqlx.DB) (*MySQLPrimaryStatus, error) {
