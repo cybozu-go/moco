@@ -5,17 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/jmoiron/sqlx"
-
-	// MySQL Driver
 	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 type DataBaseAccessor interface {
 	Get(addr, user, password string) (*sqlx.DB, error)
-	Remove(cluster *mocov1alpha1.MySQLCluster)
+	Remove(addr string)
 }
 
 // MySQLAccessorConfig contains MySQL connection configurations
@@ -89,14 +85,12 @@ func (acc *MySQLAccessor) connect(uri string) (*sqlx.DB, error) {
 }
 
 // Remove cleans staled connections
-func (acc *MySQLAccessor) Remove(cluster *mocov1alpha1.MySQLCluster) {
-	postfix := moco.UniqueName(cluster) + "." + cluster.Namespace
-
+func (acc *MySQLAccessor) Remove(addr string) {
 	acc.mu.Lock()
 	defer acc.mu.Unlock()
 
 	for uri, db := range acc.dbs {
-		if !strings.Contains(uri, postfix) {
+		if !strings.Contains(uri, addr) {
 			continue
 		}
 		db.Close()

@@ -156,7 +156,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
-	r.MySQLAccessor.Remove(cluster)
+	r.MySQLAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
 
 	return ctrl.Result{}, nil
 }
