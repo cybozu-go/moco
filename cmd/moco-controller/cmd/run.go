@@ -70,6 +70,8 @@ func subMain() error {
 	}
 	// +kubebuilder:scaffold:builder
 
+	controllers.RegisterMetrics()
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
