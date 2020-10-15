@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
 )
 
@@ -102,8 +104,16 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword); err != nil {
+	metrics.IncrementCloneCountMetrics()
+
+	startTime := time.Now()
+	_, err = db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword)
+	durationSeconds := time.Since(startTime).Seconds()
+
+	if err != nil {
 		if strings.HasPrefix(err.Error(), "Error 3707") {
+			metrics.UpdateCloneDurationSecondsMetrics(durationSeconds)
+
 			log.Info("success to exec mysql CLONE", map[string]interface{}{
 				"donor_hostname": donorHostName,
 				"donor_port":     donorPort,
@@ -114,6 +124,8 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 			return
 		}
 
+		metrics.IncrementCloneFailureCountMetrics()
+
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
 			"donor_hostname": donorHostName,
 			"donor_port":     donorPort,
@@ -123,6 +135,9 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 		})
 		return
 	}
+
+	metrics.UpdateCloneDurationSecondsMetrics(durationSeconds)
+
 	log.Info("success to exec mysql CLONE", map[string]interface{}{
 		"donor_hostname": donorHostName,
 		"donor_port":     donorPort,
