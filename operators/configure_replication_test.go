@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +76,17 @@ var _ = Describe("Configure replication", func() {
 		Expect(replicaStatus).ShouldNot(BeNil())
 		Expect(replicaStatus.MasterHost).Should(Equal(mysqldName2))
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
-		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaRunConnect))
-		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))
+
+		Eventually(func() error {
+			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			replicaStatus = status.InstanceStatus[0].ReplicaStatus
+			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
+				return errors.New("IO thread should be running")
+			}
+			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+				return errors.New("SQL thread should be running")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 })

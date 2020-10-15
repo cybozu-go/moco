@@ -2,6 +2,7 @@ package operators
 
 import (
 	"context"
+	"errors"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -56,7 +57,17 @@ var _ = Describe("Stop replica IO thread", func() {
 		Expect(replicaStatus).ShouldNot(BeNil())
 		Expect(replicaStatus.MasterHost).Should(Equal(mysqldName2))
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
-		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaNotRun))
-		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))
+
+		Eventually(func() error {
+			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			replicaStatus = status.InstanceStatus[0].ReplicaStatus
+			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+				return errors.New("IO thread should not be running")
+			}
+			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+				return errors.New("SQL thread should be running")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 })

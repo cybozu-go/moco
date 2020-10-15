@@ -2,9 +2,11 @@ package operators
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/cybozu-go/moco"
+
 	"github.com/cybozu-go/moco/accessor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -82,8 +84,18 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus).ShouldNot(BeNil())
 		Expect(replicaStatus.MasterHost).Should(Equal(mysqldName2))
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
-		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaRunConnect))
-		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))
+
+		Eventually(func() error {
+			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			replicaStatus = status.InstanceStatus[0].ReplicaStatus
+			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
+				return errors.New("IO thread should be running")
+			}
+			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+				return errors.New("SQL thread should be running")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 
 	It("should do nothing when options is empty", func() {
