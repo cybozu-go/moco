@@ -9,6 +9,7 @@ import (
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/cybozu-go/moco/operators"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
@@ -118,7 +119,6 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	}
 	op = updatePrimary(cluster, primaryIndex)
 	if len(op) != 0 {
-		metrics.UpdateFailoverCountTotalMetrics(cluster.Name)
 		return &Operation{
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
@@ -325,6 +325,12 @@ func updateMetrics(cluster *mocov1alpha1.MySQLCluster, op *Operation) {
 		metrics.UpdateOperationPhase(cluster.Name, op.Phase)
 	}
 
+	for _, o := range op.Operators {
+		if o.Name() == operators.OperatorUpdatePrimary {
+			metrics.UpdateFailoverCountTotalMetrics(cluster.Name)
+			break
+		}
+	}
 	metrics.UpdateSyncedReplicasMetrics(cluster.Name, op.SyncedReplicas)
 
 	for _, s := range cluster.Status.Conditions {

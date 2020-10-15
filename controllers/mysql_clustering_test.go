@@ -11,7 +11,6 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/cybozu-go/moco/metrics"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -36,8 +35,6 @@ var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
 }
 
 func TestDecideNextOperation(t *testing.T) {
-	metrics.RegisterMetrics()
-
 	t.Parallel()
 	tests := []struct {
 		name    string
