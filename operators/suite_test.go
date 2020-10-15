@@ -207,11 +207,6 @@ func initializeMySQL(port int) error {
 		}
 	}
 
-	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`,
-		"dummy", 3306, "dummy", "dummy")
-	if err != nil {
-		return err
-	}
 	_, err = db.Exec(`CLONE LOCAL DATA DIRECTORY = ?`, "/tmp/"+uuid.NewUUID())
 	if err != nil {
 		return err

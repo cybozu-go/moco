@@ -12,6 +12,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+var replicationSource = "replication-source"
+
 var _ = Describe("Configure intermediate primary operator", func() {
 
 	ctx := context.Background()
@@ -32,7 +34,23 @@ var _ = Describe("Configure intermediate primary operator", func() {
 
 		ns := corev1.Namespace{}
 		ns.Name = namespace
-		err = k8sClient.Create(ctx, &ns)
+		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &ns, func() error {
+			return nil
+		})
+		Expect(err).ShouldNot(HaveOccurred())
+
+		secret := corev1.Secret{}
+		secret.Namespace = namespace
+		secret.Name = replicationSource
+		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &secret, func() error {
+			secret.Data = map[string][]byte{
+				"PRIMARY_HOST":     []byte(mysqldName2),
+				"PRIMARY_PORT":     []byte(strconv.Itoa(mysqldPort2)),
+				"PRIMARY_USER":     []byte("root"),
+				"PRIMARY_PASSWORD": []byte(password),
+			}
+			return nil
+		})
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -48,24 +66,9 @@ var _ = Describe("Configure intermediate primary operator", func() {
 
 	logger := ctrl.Log.WithName("operators-test")
 
-	It("", func() {
+	It("should be intermediate primary", func() {
 		_, infra, cluster := getAccessorInfraCluster()
-		source := "replication-source"
-		cluster.Spec.ReplicationSourceSecretName = &source
-
-		secret := corev1.Secret{}
-		secret.Namespace = namespace
-		secret.Name = source
-		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &secret, func() error {
-			secret.Data = map[string][]byte{
-				"PRIMARY_HOST":     []byte(mysqldName2),
-				"PRIMARY_PORT":     []byte(strconv.Itoa(mysqldPort2)),
-				"PRIMARY_USER":     []byte("root"),
-				"PRIMARY_PASSWORD": []byte(password),
-			}
-			return nil
-		})
-		Expect(err).ShouldNot(HaveOccurred())
+		cluster.Spec.ReplicationSourceSecretName = &replicationSource
 
 		op := configureIntermediatePrimaryOp{
 			Index: 0,
@@ -77,7 +80,7 @@ var _ = Describe("Configure intermediate primary operator", func() {
 			},
 		}
 
-		err = op.Run(ctx, infra, &cluster, nil)
+		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
@@ -89,5 +92,23 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaRunConnect))
 		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))
+	})
+
+	It("should do nothing when options is empty", func() {
+		_, infra, cluster := getAccessorInfraCluster()
+		cluster.Spec.ReplicationSourceSecretName = &replicationSource
+
+		op := configureIntermediatePrimaryOp{
+			Index:   0,
+			Options: nil,
+		}
+
+		err := op.Run(ctx, infra, &cluster, nil)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(status.InstanceStatus).Should(HaveLen(2))
+		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
+		Expect(status.InstanceStatus[0].ReplicaStatus).Should(BeNil())
 	})
 })
