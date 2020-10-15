@@ -9,7 +9,6 @@ import (
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/metrics"
-	"github.com/cybozu-go/moco/operators"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
@@ -326,7 +325,7 @@ func updateMetrics(cluster *mocov1alpha1.MySQLCluster, op *Operation) {
 	}
 
 	for _, o := range op.Operators {
-		if o.Name() == operators.OperatorUpdatePrimary {
+		if o.Name() == ops.OperatorUpdatePrimary {
 			metrics.UpdateFailoverCountTotalMetrics(cluster.Name)
 			break
 		}
