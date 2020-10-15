@@ -12,16 +12,54 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 )
 
 const (
 	systemNamespace = "test-moco-system"
 	namespace       = "controllers-test"
+
+	clusterName = "mysqlcluster"
 )
+
+func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
+	cluster := &mocov1alpha1.MySQLCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "MySQLCluster",
+			APIVersion: mocov1alpha1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: namespace,
+		},
+		Spec: mocov1alpha1.MySQLClusterSpec{
+			Replicas: 3,
+			PodTemplate: mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
+						},
+					},
+				},
+			},
+			DataVolumeClaimTemplateSpec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						"storage": *resource.NewQuantity(1<<10, resource.BinarySI),
+					},
+				},
+			},
+		},
+	}
+	return cluster
+}
 
 var _ = Describe("MySQLCluster controller", func() {
 
@@ -42,27 +80,7 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 
-		manifest := `apiVersion: moco.cybozu.com/v1alpha1
-kind: MySQLCluster
-metadata:
-  name: mysqlcluster
-  namespace: controllers-test
-spec:
-  replicas: 3
-  podTemplate:
-    spec:
-      containers:
-      - name: mysqld
-        image: mysql:dev
-  dataVolumeClaimTemplateSpec:
-    accessModes: [ "ReadWriteOnce" ]
-    resources:
-      requests:
-        storage: 1Gi
-`
-		err = yaml.Unmarshal([]byte(manifest), cluster)
-		Expect(err).ShouldNot(HaveOccurred())
-
+		cluster = mysqlClusterResource()
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, cluster, func() error {
 			return nil
 		})
@@ -80,7 +98,7 @@ spec:
 
 			Eventually(func() error {
 				var actual mocov1alpha1.MySQLCluster
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: "mysqlcluster", Namespace: namespace}, &actual)
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, &actual)
 				if err != nil {
 					return err
 				}
@@ -100,48 +118,71 @@ spec:
 
 	Context("Services", func() {
 		It("should create services", func() {
-			isUpdated, err := reconciler.createOrUpdateService(ctx, reconciler.Log, cluster)
+			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeTrue())
 
 			createdPrimaryService := &corev1.Service{}
 			createdReplicaService := &corev1.Service{}
-			Eventually(func() error {
-				err := k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: namespace}, createdPrimaryService)
-				if err != nil {
-					return err
-				}
-
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: namespace}, createdReplicaService)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}, 5*time.Second).Should(Succeed())
-
-			expectedPorts := []corev1.ServicePort{
-				{
-					Name:       "mysql",
-					Protocol:   corev1.ProtocolTCP,
-					Port:       moco.MySQLPort,
-					TargetPort: intstr.FromInt(moco.MySQLPort),
-				},
-				{
-					Name:       "mysqlx",
-					Protocol:   corev1.ProtocolTCP,
-					Port:       moco.MySQLXPort,
-					TargetPort: intstr.FromInt(moco.MySQLXPort),
-				},
-			}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: namespace}, createdPrimaryService)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: namespace}, createdReplicaService)
+			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdPrimaryService.Spec.Ports).Should(ConsistOf(expectedPorts))
+			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
+			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
 
 			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdReplicaService.Spec.Ports).Should(ConsistOf(expectedPorts))
+			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
+			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
 
-			isUpdated, err = reconciler.createOrUpdateService(ctx, reconciler.Log, cluster)
+			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should use serviceTemplate", func() {
+			newCluster := &mocov1alpha1.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			newCluster.Spec.ServiceTemplate = &corev1.ServiceSpec{
+				Type: corev1.ServiceTypeLoadBalancer,
+				Ports: []corev1.ServicePort{
+					{
+						Name:       "mysql",
+						Protocol:   corev1.ProtocolTCP,
+						Port:       8888,
+						TargetPort: intstr.FromInt(8888),
+					},
+				},
+			}
+			err = k8sClient.Update(ctx, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			createdPrimaryService := &corev1.Service{}
+			createdReplicaService := &corev1.Service{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(newCluster)), Namespace: namespace}, createdPrimaryService)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(newCluster)), Namespace: namespace}, createdReplicaService)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
+			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
+
+			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
+			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
+
+			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
+			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
+
+			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
 		})

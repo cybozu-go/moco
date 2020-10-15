@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -226,7 +225,7 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 		return false, err
 	}
 
-	isUpdated, err = r.createOrUpdateService(ctx, log, cluster)
+	isUpdated, err = r.createOrUpdateServices(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
 		return false, err
@@ -966,96 +965,85 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 	return isUpdated, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
-	isUpdated := false
-	primaryService := &corev1.Service{}
-	primaryService.SetNamespace(cluster.Namespace)
+func (r *MySQLClusterReconciler) createOrUpdateServices(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	primaryServiceName := fmt.Sprintf("%s-primary", moco.UniqueName(cluster))
-	primaryService.SetName(primaryServiceName)
-
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, primaryService, func() error {
-		setLabels(&primaryService.ObjectMeta)
-
-		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, primaryService.Spec) {
-			primaryService.Spec = *cluster.Spec.ServiceTemplate
-		}
-
-		ports := []corev1.ServicePort{
-			{
-				Name:       "mysql",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       moco.MySQLPort,
-				TargetPort: intstr.FromInt(moco.MySQLPort),
-			},
-			{
-				Name:       "mysqlx",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       moco.MySQLXPort,
-				TargetPort: intstr.FromInt(moco.MySQLXPort),
-			},
-		}
-		primaryService.Spec.Ports = ports
-
-		primaryService.Spec.Selector = make(map[string]string)
-		primaryService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
-		primaryService.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
-		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
-
-		return ctrl.SetControllerReference(cluster, primaryService, r.Scheme)
-	})
+	primaryIsUpdated, err := r.createOrUpdateService(ctx, cluster, primaryServiceName)
 	if err != nil {
 		log.Error(err, "unable to create-or-update Primary Service")
-		return isUpdated, err
+		return false, err
+	}
+	if primaryIsUpdated {
+		log.Info("reconcile Primary Service successfully")
 	}
 
-	if op != controllerutil.OperationResultNone {
-		log.Info("reconcile Primary Service successfully", "op", op)
-		isUpdated = true
-	}
-
-	replicaService := &corev1.Service{}
-	replicaService.SetNamespace(cluster.Namespace)
 	replicaServiceName := fmt.Sprintf("%s-replica", moco.UniqueName(cluster))
-	replicaService.SetName(replicaServiceName)
-
-	op, err = ctrl.CreateOrUpdate(ctx, r.Client, replicaService, func() error {
-		setLabels(&replicaService.ObjectMeta)
-
-		if cluster.Spec.ServiceTemplate != nil && !equality.Semantic.DeepDerivative(*cluster.Spec.ServiceTemplate, replicaService.Spec) {
-			replicaService.Spec = *cluster.Spec.ServiceTemplate
-		}
-
-		ports := []corev1.ServicePort{
-			{
-				Name:       "mysql",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       moco.MySQLPort,
-				TargetPort: intstr.FromInt(moco.MySQLPort),
-			},
-			{
-				Name:       "mysqlx",
-				Protocol:   corev1.ProtocolTCP,
-				Port:       moco.MySQLXPort,
-				TargetPort: intstr.FromInt(moco.MySQLXPort),
-			},
-		}
-		replicaService.Spec.Ports = ports
-
-		replicaService.Spec.Selector = make(map[string]string)
-		replicaService.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
-		replicaService.Spec.Selector[moco.RoleKey] = moco.ReplicaRole
-		primaryService.Spec.Selector[moco.AppNameKey] = moco.AppName
-		return ctrl.SetControllerReference(cluster, replicaService, r.Scheme)
-	})
+	replicaIsUpdated, err := r.createOrUpdateService(ctx, cluster, replicaServiceName)
 	if err != nil {
 		log.Error(err, "unable to create-or-update Replica Service")
-		return isUpdated, err
+		return false, err
 	}
-	if op != controllerutil.OperationResultNone {
-		log.Info("reconcile Replica Service successfully", "op", op)
-		isUpdated = true
+	if replicaIsUpdated {
+		log.Info("reconcile Replica Service successfully")
 	}
 
+	return primaryIsUpdated || replicaIsUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, svcName string) (bool, error) {
+	isUpdated := false
+	svc := &corev1.Service{}
+	svc.SetNamespace(cluster.Namespace)
+	svc.SetName(svcName)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, svc, func() error {
+		setLabels(&svc.ObjectMeta)
+
+		if cluster.Spec.ServiceTemplate != nil && ((*cluster.Spec.ServiceTemplate).Type != svc.Spec.Type) {
+			svc.Spec.Type = (*cluster.Spec.ServiceTemplate).Type
+		}
+
+		var hasMySQLPort, hasMySQLXPort bool
+		for i, port := range svc.Spec.Ports {
+			if port.Name == "mysql" {
+				svc.Spec.Ports[i].Protocol = corev1.ProtocolTCP
+				svc.Spec.Ports[i].Port = moco.MySQLPort
+				hasMySQLPort = true
+			}
+			if port.Name == "mysqlx" {
+				svc.Spec.Ports[i].Protocol = corev1.ProtocolTCP
+				svc.Spec.Ports[i].Port = moco.MySQLXPort
+				hasMySQLXPort = true
+			}
+		}
+		if !hasMySQLPort {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:     "mysql",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLPort,
+			})
+		}
+		if !hasMySQLXPort {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:     "mysqlx",
+				Protocol: corev1.ProtocolTCP,
+				Port:     moco.MySQLXPort,
+			})
+		}
+
+		svc.Spec.Selector = make(map[string]string)
+		svc.Spec.Selector[moco.ClusterKey] = moco.UniqueName(cluster)
+		svc.Spec.Selector[moco.RoleKey] = moco.PrimaryRole
+		svc.Spec.Selector[moco.AppNameKey] = moco.AppName
+
+		return ctrl.SetControllerReference(cluster, svc, r.Scheme)
+	})
+	if err != nil {
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		isUpdated = true
+	}
 	return isUpdated, nil
 }
 
