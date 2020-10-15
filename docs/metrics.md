@@ -16,7 +16,7 @@ MOCO controller exposes the following metrics with the Prometheus format.  All t
 | cluster_healthy_status   | The cluster status about healthy condition         | Gauge   | cluster_name, status |
 | cluster_available_status | The cluster status about available condition       | Gauge   | cluster_name, status |
 
-Note that MOCO controller also exposes the metrics provided by the Prometheus client library which located under `go` and `process` namespaces.
+Note that MOCO controller also exposes the metrics provided by the Prometheus client library which located under `go` and `process` namespaces. [The metrics](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics) exposed by `controller-runtime` is also available.
 
 ## Agents
 
