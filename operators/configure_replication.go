@@ -10,15 +10,19 @@ import (
 )
 
 type configureReplicationOp struct {
-	Index       int
-	PrimaryHost string
+	Index          int
+	PrimaryHost    string
+	PrimaryPort    int
+	ReplicatorUser string
 }
 
 // ConfigureReplicationOp returns the ConfigureReplicationOp Operator
 func ConfigureReplicationOp(index int, primaryHost string) Operator {
 	return &configureReplicationOp{
-		Index:       index,
-		PrimaryHost: primaryHost,
+		Index:          index,
+		PrimaryHost:    primaryHost,
+		PrimaryPort:    moco.MySQLPort,
+		ReplicatorUser: moco.ReplicatorUser,
 	}
 }
 
@@ -41,7 +45,7 @@ func (o configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`, o.PrimaryHost, moco.MySQLPort, moco.ReplicatorUser, password)
+	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?, MASTER_AUTO_POSITION = 1`, o.PrimaryHost, o.PrimaryPort, o.ReplicatorUser, password)
 	if err != nil {
 		return err
 	}

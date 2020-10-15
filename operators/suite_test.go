@@ -35,6 +35,7 @@ var testEnv *envtest.Environment
 
 const (
 	host            = "localhost"
+	userName        = "root"
 	password        = "test-password"
 	mysqldName1     = "moco-operators-test-mysqld-1"
 	mysqldName2     = "moco-operators-test-mysqld-2"
@@ -43,6 +44,7 @@ const (
 	mysqldServerID1 = 1001
 	mysqldServerID2 = 1002
 	networkName     = "moco-operators-test-net"
+	systemNamespace = "test-moco-system"
 	namespace       = "test-namespace"
 	token           = "test-token"
 	mySQLVersion    = "8.0.21"
@@ -74,6 +76,10 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
+
+	stopMySQLD(mysqldName1)
+	stopMySQLD(mysqldName2)
+	removeNetwork()
 
 	close(done)
 }, 60)
@@ -160,7 +166,7 @@ func removeNetwork() error {
 
 func initializeMySQL(port int) error {
 	conf := mysql.NewConfig()
-	conf.User = "root"
+	conf.User = userName
 	conf.Passwd = password
 	conf.Net = "tcp"
 	conf.Addr = host + ":" + strconv.Itoa(port)
