@@ -172,6 +172,22 @@ const (
 	CloneStatusFailed     = "Failed"
 )
 
+type OperationPhase string
+
+const (
+	PhaseInitializing    = OperationPhase("initializing")
+	PhaseWaitRelayLog    = OperationPhase("wait-relay-log")
+	PhaseRestoreInstance = OperationPhase("restoring-instance")
+	PhaseCompleted       = OperationPhase("completed")
+)
+
+var AllOperationPhases = []OperationPhase{
+	PhaseInitializing,
+	PhaseWaitRelayLog,
+	PhaseRestoreInstance,
+	PhaseCompleted,
+}
+
 var (
 	// ErrConstraintsViolation is returned when the constraints violation occurs
 	ErrConstraintsViolation = errors.New("constraints violation occurs")

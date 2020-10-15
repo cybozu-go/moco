@@ -8,6 +8,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/metrics"
 	ops "github.com/cybozu-go/moco/operators"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,6 +22,7 @@ type Operation struct {
 	Wait           bool
 	Conditions     []mocov1alpha1.MySQLClusterCondition
 	SyncedReplicas *int
+	Phase          moco.OperationPhase
 }
 
 // reconcileMySQLCluster reconciles MySQL cluster
@@ -53,13 +55,19 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 			if condErr != nil {
 				log.Error(condErr, "unable to update status")
 			}
+			if condErr == nil {
+				updateMetrics(cluster, op)
+			}
 			return ctrl.Result{}, err
 		}
 	}
+
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	updateMetrics(cluster, op)
+
 	if op.Wait {
 		log.Info("Waiting")
 		return ctrl.Result{RequeueAfter: r.WaitTime}, nil
@@ -100,6 +108,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
 			Wait:       wait,
+			Phase:      moco.PhaseWaitRelayLog,
 		}, nil
 	}
 
@@ -119,6 +128,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if len(op) != 0 {
 		return &Operation{
 			Operators: op,
+			Phase:     moco.PhaseRestoreInstance,
 		}, nil
 	}
 
@@ -127,6 +137,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		return &Operation{
 			Wait:       true,
 			Conditions: unavailableCondition(outOfSyncIns),
+			Phase:      moco.PhaseRestoreInstance,
 		}, nil
 	}
 
@@ -162,12 +173,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Conditions:     availableCondition(outOfSyncIns),
 			Operators:      op,
 			SyncedReplicas: &syncedReplicas,
+			Phase:          moco.PhaseCompleted,
 		}, nil
 	}
 
 	return &Operation{
 		Conditions:     availableCondition(outOfSyncIns),
 		SyncedReplicas: &syncedReplicas,
+		Phase:          moco.PhaseCompleted,
 	}, nil
 }
 
@@ -304,6 +317,33 @@ func availableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterCon
 	})
 
 	return conditions
+}
+
+func updateMetrics(cluster *mocov1alpha1.MySQLCluster, op *Operation) {
+	if op.Phase != "" {
+		metrics.UpdateOperationPhase(cluster.Name, op.Phase)
+	}
+
+	for _, o := range op.Operators {
+		if o.Name() == ops.OperatorUpdatePrimary {
+			metrics.IncrementFailoverCountTotalMetrics(cluster.Name)
+			break
+		}
+	}
+	metrics.UpdateSyncedReplicasMetrics(cluster.Name, op.SyncedReplicas)
+
+	for _, s := range cluster.Status.Conditions {
+		switch s.Type {
+		case mocov1alpha1.ConditionViolation:
+			metrics.UpdateClusterStatusViolationMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionFailure:
+			metrics.UpdateClusterStatusFailureMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionHealthy:
+			metrics.UpdateClusterStatusAvailableMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionAvailable:
+			metrics.UpdateClusterStatusAvailableMetrics(cluster.Name, s.Status)
+		}
+	}
 }
 
 func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {

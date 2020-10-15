@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -107,6 +108,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 
 		// initialize
+		metrics.UpdateOperationPhase(cluster.Name, moco.PhaseInitializing)
 		isUpdated, err := r.reconcileInitialize(ctx, log, cluster)
 		if err != nil {
 			setCondition(&cluster.Status.Conditions, mocov1alpha1.MySQLClusterCondition{
@@ -125,6 +127,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 				return ctrl.Result{}, err
 			}
 		}
+		metrics.UpdateTotalReplicasMetrics(cluster.Name, cluster.Spec.Replicas)
 
 		// clustering
 		result, err := r.reconcileClustering(ctx, log, cluster)
@@ -147,6 +150,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	metrics.DeleteAllMetrics(cluster.Name)
 
 	cluster2 := cluster.DeepCopy()
 	controllerutil.RemoveFinalizer(cluster2, mysqlClusterFinalizer)
