@@ -20,7 +20,7 @@ var (
 	syncedReplicasMetrics         *prometheus.GaugeVec
 )
 
-func RegisterMetrics(registry *prometheus.Registry) {
+func RegisterControllerMetrics(registry *prometheus.Registry) {
 	clusterViolationStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,

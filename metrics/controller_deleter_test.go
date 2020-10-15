@@ -17,7 +17,7 @@ func TestDeleteAllMetrics(t *testing.T) {
 	)
 
 	registry := prometheus.NewRegistry()
-	RegisterMetrics(registry)
+	RegisterControllerMetrics(registry)
 
 	for _, c := range []string{clusterName, anotherClusterName} {
 		UpdateOperationPhase(c, moco.PhaseCompleted)
@@ -39,7 +39,7 @@ func TestDeleteAllMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	DeleteAllMetrics(clusterName)
+	DeleteAllControllerMetrics(clusterName)
 
 	afterDelete, err := registry.Gather()
 	if err != nil {

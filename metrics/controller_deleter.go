@@ -5,7 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func DeleteAllMetrics(clusterName string) {
+func DeleteAllControllerMetrics(clusterName string) {
 	deleteOperationPhase(clusterName)
 	deleteFailoverCountTotalMetrics(clusterName)
 	deleteTotalReplicasMetrics(clusterName)
