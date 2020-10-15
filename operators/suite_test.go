@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -62,7 +64,9 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{}
+	testEnv = &envtest.Environment{
+		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+	}
 
 	var err error
 	cfg, err = testEnv.Start()
@@ -71,6 +75,8 @@ var _ = BeforeSuite(func(done Done) {
 
 	sch := runtime.NewScheme()
 	err = clientgoscheme.AddToScheme(sch)
+	Expect(err).NotTo(HaveOccurred())
+	err = mocov1alpha1.AddToScheme(sch)
 	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
@@ -114,6 +120,29 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		},
 		Spec: mocov1alpha1.MySQLClusterSpec{
 			Replicas: 2,
+			PodTemplate: mocov1alpha1.PodTemplateSpec{
+				ObjectMeta: mocov1alpha1.ObjectMeta{
+					Name: "test",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "test",
+							Image: "test",
+						},
+					},
+				},
+			},
+			VolumeClaimTemplates: []mocov1alpha1.PersistentVolumeClaim{
+				{
+					ObjectMeta: mocov1alpha1.ObjectMeta{
+						Name: "test",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						VolumeName: "test",
+					},
+				},
+			},
 		},
 		Status: mocov1alpha1.MySQLClusterStatus{
 			CurrentPrimaryIndex: &primaryIndex,
