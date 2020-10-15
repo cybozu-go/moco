@@ -11,13 +11,49 @@ const (
 )
 
 var (
-	operationPhaseMetrics     *prometheus.GaugeVec
-	failoverCountTotalMetrics *prometheus.CounterVec
-	totalReplicasMetrics      *prometheus.GaugeVec
-	syncedReplicasMetrics     *prometheus.GaugeVec
+	clusterViolationStatusMetrics *prometheus.GaugeVec
+	clusterFailureStatusMetrics   *prometheus.GaugeVec
+	clusterAvailableStatusMetrics *prometheus.GaugeVec
+	clusterHealthyStatusMetrics   *prometheus.GaugeVec
+	operationPhaseMetrics         *prometheus.GaugeVec
+	failoverCountTotalMetrics     *prometheus.CounterVec
+	totalReplicasMetrics          *prometheus.GaugeVec
+	syncedReplicasMetrics         *prometheus.GaugeVec
 )
 
 func RegisterMetrics() {
+	clusterViolationStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: metricsSubsystem,
+		Name:      "cluster_violation_status",
+		Help:      "The cluster status about violation condition",
+	}, []string{"cluster_name", "status"})
+	metrics.Registry.MustRegister(clusterViolationStatusMetrics)
+
+	clusterFailureStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: metricsSubsystem,
+		Name:      "cluster_failure_status",
+		Help:      "The cluster status about failure condition",
+	}, []string{"cluster_name", "status"})
+	metrics.Registry.MustRegister(clusterFailureStatusMetrics)
+
+	clusterAvailableStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: metricsSubsystem,
+		Name:      "cluster_available_status",
+		Help:      "The cluster status about available condition",
+	}, []string{"cluster_name", "status"})
+	metrics.Registry.MustRegister(clusterAvailableStatusMetrics)
+
+	clusterHealthyStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: metricsSubsystem,
+		Name:      "cluster_healthy_status",
+		Help:      "The cluster status about healthy condition",
+	}, []string{"cluster_name", "status"})
+	metrics.Registry.MustRegister(clusterHealthyStatusMetrics)
+
 	operationPhaseMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,

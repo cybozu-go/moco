@@ -47,11 +47,6 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		return ctrl.Result{}, err
 	}
 
-	if op.Phase != "" {
-		metrics.UpdateOperationPhase(cluster.Name, op.Phase)
-	}
-	metrics.UpdateSyncedReplicasMetrics(cluster.Name, op.SyncedReplicas)
-
 	for _, o := range op.Operators {
 		log.Info("Run operation", "name", o.Name(), "description", o.Describe())
 		err = o.Run(ctx, infra, cluster, status)
@@ -60,13 +55,19 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 			if condErr != nil {
 				log.Error(condErr, "unable to update status")
 			}
+			if condErr == nil {
+				updateMetrics(cluster, op)
+			}
 			return ctrl.Result{}, err
 		}
 	}
+
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	updateMetrics(cluster, op)
+
 	if op.Wait {
 		log.Info("Waiting")
 		return ctrl.Result{RequeueAfter: r.WaitTime}, nil
@@ -317,6 +318,27 @@ func availableCondition(outOfSyncInstances []int) []mocov1alpha1.MySQLClusterCon
 	})
 
 	return conditions
+}
+
+func updateMetrics(cluster *mocov1alpha1.MySQLCluster, op *Operation) {
+	if op.Phase != "" {
+		metrics.UpdateOperationPhase(cluster.Name, op.Phase)
+	}
+
+	metrics.UpdateSyncedReplicasMetrics(cluster.Name, op.SyncedReplicas)
+
+	for _, s := range cluster.Status.Conditions {
+		switch s.Type {
+		case mocov1alpha1.ConditionViolation:
+			metrics.UpdateClusterStatusViolationMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionFailure:
+			metrics.UpdateClusterStatusFailureMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionHealthy:
+			metrics.UpdateClusterStatusAvailableMetrics(cluster.Name, s.Status)
+		case mocov1alpha1.ConditionAvailable:
+			metrics.UpdateClusterStatusAvailableMetrics(cluster.Name, s.Status)
+		}
+	}
 }
 
 func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) error {
