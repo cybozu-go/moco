@@ -140,7 +140,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), instanceIdx)
 
-		db, err := infra.GetDB(ctx, cluster, instanceIdx)
+		db, err := infra.GetDB(instanceIdx)
 		if err != nil {
 			log.Info("instance not available", "err", err, "podName", podName)
 			continue
@@ -200,7 +200,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 	}
 	status.IntermediatePrimaryOptions = options
 
-	db, err := infra.GetDB(ctx, cluster, 0)
+	db, err := infra.GetDB(0)
 	if err != nil {
 		log.Info("cannot obtain index of latest instance")
 		return status

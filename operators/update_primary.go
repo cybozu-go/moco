@@ -24,7 +24,7 @@ func (o *updatePrimaryOp) Name() string {
 }
 
 func (o *updatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	db, err := infra.GetDB(ctx, cluster, o.newPrimaryIndex)
+	db, err := infra.GetDB(o.newPrimaryIndex)
 	if err != nil {
 		return err
 	}

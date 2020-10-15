@@ -24,7 +24,7 @@ func (o stopReplicaIOThread) Name() string {
 }
 
 func (o stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	db, err := infra.GetDB(ctx, cluster, o.Index)
+	db, err := infra.GetDB(o.Index)
 	if err != nil {
 		return err
 	}

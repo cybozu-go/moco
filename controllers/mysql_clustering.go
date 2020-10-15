@@ -29,11 +29,11 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	var hosts []string
+	var addrs []string
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		hosts = append(hosts, moco.GetHost(cluster, i))
+		addrs = append(addrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.MySQLAdminPort))
 	}
-	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, hosts, moco.MySQLAdminPort)
+	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs)
 	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 
 	op, err := decideNextOperation(log, cluster, status)

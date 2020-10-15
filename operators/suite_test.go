@@ -36,12 +36,12 @@ var testEnv *envtest.Environment
 const (
 	host            = "localhost"
 	password        = "test-password"
-	primaryName     = "moco-operators-test-mysqld-primary"
-	replicaName     = "moco-operators-test-mysqld-replica"
-	primaryPort     = 3309
-	replicaPort     = 3310
-	primaryServerID = 1001
-	replicaServerID = 1002
+	mysqldName1     = "moco-operators-test-mysqld-1"
+	mysqldName2     = "moco-operators-test-mysqld-2"
+	mysqldPort1     = 3309
+	mysqldPort2     = 3310
+	mysqldServerID1 = 1001
+	mysqldServerID2 = 1002
 	networkName     = "moco-operators-test-net"
 	namespace       = "test-namespace"
 	token           = "test-token"
@@ -90,7 +90,7 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := accessor.NewInfrastructure(k8sClient, acc, password, []string{host}, primaryPort)
+	inf := accessor.NewInfrastructure(k8sClient, acc, password, []string{host + ":" + strconv.Itoa(mysqldPort1), host + ":" + strconv.Itoa(mysqldPort2)})
 	primaryIndex := 0
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,7 +100,7 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 			UID:         "test-uid",
 		},
 		Spec: mocov1alpha1.MySQLClusterSpec{
-			Replicas: 1,
+			Replicas: 2,
 		},
 		Status: mocov1alpha1.MySQLClusterStatus{
 			CurrentPrimaryIndex: &primaryIndex,

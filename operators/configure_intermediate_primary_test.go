@@ -20,14 +20,14 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		err := createNetwork()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = startMySQLD(primaryName, primaryPort, primaryServerID)
+		err = startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = startMySQLD(replicaName, replicaPort, replicaServerID)
+		err = startMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = initializeMySQL(primaryPort)
+		err = initializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = initializeMySQL(replicaPort)
+		err = initializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		ns := corev1.Namespace{}
@@ -37,8 +37,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 	})
 
 	AfterEach(func() {
-		stopMySQLD(primaryName)
-		stopMySQLD(replicaName)
+		stopMySQLD(mysqldName1)
+		stopMySQLD(mysqldName2)
 		removeNetwork()
 
 		ns := corev1.Namespace{}
@@ -58,8 +58,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		secret.Name = source
 		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &secret, func() error {
 			secret.Data = map[string][]byte{
-				"PRIMARY_HOST":     []byte(replicaName),
-				"PRIMARY_PORT":     []byte(strconv.Itoa(replicaPort)),
+				"PRIMARY_HOST":     []byte(mysqldName2),
+				"PRIMARY_PORT":     []byte(strconv.Itoa(mysqldPort2)),
 				"PRIMARY_USER":     []byte("root"),
 				"PRIMARY_PASSWORD": []byte(password),
 			}
@@ -70,10 +70,10 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		op := configureIntermediatePrimaryOp{
 			Index: 0,
 			Options: &accessor.IntermediatePrimaryOptions{
-				PrimaryHost:     replicaName,
+				PrimaryHost:     mysqldName2,
 				PrimaryUser:     "root",
 				PrimaryPassword: password,
-				PrimaryPort:     replicaPort,
+				PrimaryPort:     mysqldPort2,
 			},
 		}
 
@@ -81,11 +81,11 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
-		Expect(status.InstanceStatus).Should(HaveLen(1))
+		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeTrue())
 		replicaStatus := status.InstanceStatus[0].ReplicaStatus
 		Expect(replicaStatus).ShouldNot(BeNil())
-		Expect(replicaStatus.MasterHost).Should(Equal(replicaName))
+		Expect(replicaStatus.MasterHost).Should(Equal(mysqldName2))
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaRunConnect))
 		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))

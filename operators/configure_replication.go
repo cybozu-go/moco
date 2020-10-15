@@ -32,7 +32,7 @@ func (o configureReplicationOp) Run(ctx context.Context, infra accessor.Infrastr
 		return err
 	}
 
-	db, err := infra.GetDB(ctx, cluster, o.Index)
+	db, err := infra.GetDB(o.Index)
 	if err != nil {
 		return err
 	}
