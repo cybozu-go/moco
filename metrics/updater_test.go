@@ -68,7 +68,6 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 					t.Errorf("unknown metrics name: %s", *mf.Name)
 				}
 			}
-
 		})
 	}
 }
@@ -127,7 +126,6 @@ func TestSyncedReplicasMetricsUpdater(t *testing.T) {
 					t.Errorf("unknown metrics name: %s", *mf.Name)
 				}
 			}
-
 		})
 	}
 }
