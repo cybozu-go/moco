@@ -1,6 +1,10 @@
 package operators
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -8,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/well"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
@@ -29,11 +34,18 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 
 const (
-	host      = "localhost"
-	password  = "test-password"
-	port      = 3306
-	namespace = "test-namespace"
-	token     = "test-token"
+	host            = "localhost"
+	password        = "test-password"
+	primaryName     = "moco-operators-test-mysqld-primary"
+	replicaName     = "moco-operators-test-mysqld-replica"
+	primaryPort     = 3309
+	replicaPort     = 3310
+	primaryServerID = 1001
+	replicaServerID = 1002
+	networkName     = "moco-operators-test-net"
+	namespace       = "test-namespace"
+	token           = "test-token"
+	mySQLVersion    = "8.0.21"
 )
 
 func TestOperators(t *testing.T) {
@@ -78,7 +90,7 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := accessor.NewInfrastructure(k8sClient, acc, password, []string{host}, 3306)
+	inf := accessor.NewInfrastructure(k8sClient, acc, password, []string{host}, primaryPort)
 	primaryIndex := 0
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,7 +111,54 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 	return acc, inf, cluster
 }
 
-func initializeMySQL() error {
+func startMySQLD(name string, port int, serverID int) error {
+	ctx := context.Background()
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	cmd := well.CommandContext(ctx,
+		"docker", "run", "-d", "--rm",
+		"--network="+networkName,
+		"--name", name,
+		"-p", fmt.Sprintf("%d:%d", port, port),
+		"-v", filepath.Join(wd, "..", "my.cnf")+":/etc/mysql/conf.d/my.cnf",
+		"-e", "MYSQL_ROOT_PASSWORD="+password,
+		"mysql:"+mySQLVersion,
+		fmt.Sprintf("--port=%d", port),
+		fmt.Sprintf("--server-id=%d", serverID),
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func stopMySQLD(name string) error {
+	ctx := context.Background()
+	cmd := well.CommandContext(ctx, "docker", "stop", name)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func createNetwork() error {
+	ctx := context.Background()
+	cmd := well.CommandContext(ctx, "docker", "network", "create", networkName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func removeNetwork() error {
+	ctx := context.Background()
+	cmd := well.CommandContext(ctx, "docker", "network", "rm", networkName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func initializeMySQL(port int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
 	conf.Passwd = password
