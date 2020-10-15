@@ -6,6 +6,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestOperationPhaseMetricsUpdater(t *testing.T) {
@@ -50,18 +51,18 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 							phase := m["phase"]
 							if phase == string(tt.input) {
 								if *met.Gauge.Value != 1.0 {
-									t.Errorf("metric value is not set: phase=%#v", phase)
+									t.Errorf("metric value is not 1: phase=%#v", phase)
 								}
 								found = true
 							} else {
 								if *met.Gauge.Value != 0.0 {
-									t.Errorf("metric value is not unset: phase=%#v", phase)
+									t.Errorf("metric value is not 0: phase=%#v", phase)
 								}
 							}
 						}
 					}
 					if !found {
-						t.Errorf("could not find metrics whose value is set")
+						t.Errorf("could not find metrics whose value is 1")
 					}
 				} else {
 					t.Errorf("unknown metrics name: %s", *mf.Name)
@@ -128,6 +129,80 @@ func TestSyncedReplicasMetricsUpdater(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestClusterStatusMetricsUpdater(t *testing.T) {
+	const clusterName = "testcluster"
+
+	tests := []struct {
+		name  string
+		input corev1.ConditionStatus
+	}{
+		{
+			name:  "first update",
+			input: corev1.ConditionTrue,
+		},
+		{
+			name:  "next update",
+			input: corev1.ConditionUnknown,
+		},
+		{
+			name:  "same update",
+			input: corev1.ConditionUnknown,
+		},
+	}
+
+	type nameAndFunc struct {
+		f    func(clusterName string, status corev1.ConditionStatus)
+		name string
+	}
+	for _, nf := range []nameAndFunc{
+		{UpdateClusterStatusViolationMetrics, "moco_controller_cluster_violation_status"},
+		{UpdateClusterStatusFailureMetrics, "moco_controller_cluster_failure_status"},
+		{UpdateClusterStatusHealthyMetrics, "moco_controller_cluster_healthy_status"},
+		{UpdateClusterStatusAvailableMetrics, "moco_controller_cluster_available_status"},
+	} {
+		registry := prometheus.NewRegistry()
+		RegisterMetrics(registry)
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				nf.f(clusterName, tt.input)
+
+				metricsFamily, err := registry.Gather()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				for _, mf := range metricsFamily {
+					if *mf.Name == nf.name {
+						found := false
+						for _, met := range mf.Metric {
+							m := labelToMap(met.Label)
+							if m["cluster_name"] == clusterName {
+								status := m["status"]
+								if status == string(tt.input) {
+									if *met.Gauge.Value != 1.0 {
+										t.Errorf("metric value is not 1: status=%#v", status)
+									}
+									found = true
+								} else {
+									if *met.Gauge.Value != 0.0 {
+										t.Errorf("metric value is not 0: status=%#v", status)
+									}
+								}
+							}
+						}
+						if !found {
+							t.Errorf("could not find metrics whose value is 1")
+						}
+					} else {
+						t.Errorf("unknown metrics name: %s", *mf.Name)
+					}
+				}
+			})
+		}
 	}
 }
 

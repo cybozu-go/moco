@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/cybozu-go/moco"
+	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -15,7 +16,7 @@ func UpdateOperationPhase(clusterName string, phase moco.OperationPhase) {
 	}
 }
 
-func UpdateFailoverCountTotalMetrics(clusterName string) {
+func IncrementFailoverCountTotalMetrics(clusterName string) {
 	failoverCountTotalMetrics.WithLabelValues(clusterName).Inc()
 }
 
@@ -32,39 +33,27 @@ func UpdateSyncedReplicasMetrics(clusterName string, count *int) {
 }
 
 func UpdateClusterStatusViolationMetrics(clusterName string, status corev1.ConditionStatus) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		if status == c {
-			clusterViolationStatusMetrics.WithLabelValues(clusterName, string(c)).Set(1)
-			continue
-		}
-		clusterViolationStatusMetrics.WithLabelValues(clusterName, string(c)).Set(0)
-	}
+	updateClusterStatusMetrics(clusterViolationStatusMetrics, clusterName, status)
 }
 
 func UpdateClusterStatusFailureMetrics(clusterName string, status corev1.ConditionStatus) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		if status == c {
-			clusterFailureStatusMetrics.WithLabelValues(clusterName, string(c)).Set(1)
-			continue
-		}
-		clusterFailureStatusMetrics.WithLabelValues(clusterName, string(c)).Set(0)
-	}
+	updateClusterStatusMetrics(clusterFailureStatusMetrics, clusterName, status)
 }
+
 func UpdateClusterStatusHealthyMetrics(clusterName string, status corev1.ConditionStatus) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		if status == c {
-			clusterHealthyStatusMetrics.WithLabelValues(clusterName, string(c)).Set(1)
-			continue
-		}
-		clusterHealthyStatusMetrics.WithLabelValues(clusterName, string(c)).Set(0)
-	}
+	updateClusterStatusMetrics(clusterHealthyStatusMetrics, clusterName, status)
 }
+
 func UpdateClusterStatusAvailableMetrics(clusterName string, status corev1.ConditionStatus) {
+	updateClusterStatusMetrics(clusterAvailableStatusMetrics, clusterName, status)
+}
+
+func updateClusterStatusMetrics(target *prometheus.GaugeVec, clusterName string, status corev1.ConditionStatus) {
 	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
 		if status == c {
-			clusterAvailableStatusMetrics.WithLabelValues(clusterName, string(c)).Set(1)
+			target.WithLabelValues(clusterName, string(c)).Set(1)
 			continue
 		}
-		clusterAvailableStatusMetrics.WithLabelValues(clusterName, string(c)).Set(0)
+		target.WithLabelValues(clusterName, string(c)).Set(0)
 	}
 }

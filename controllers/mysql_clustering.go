@@ -326,7 +326,7 @@ func updateMetrics(cluster *mocov1alpha1.MySQLCluster, op *Operation) {
 
 	for _, o := range op.Operators {
 		if o.Name() == ops.OperatorUpdatePrimary {
-			metrics.UpdateFailoverCountTotalMetrics(cluster.Name)
+			metrics.IncrementFailoverCountTotalMetrics(cluster.Name)
 			break
 		}
 	}
