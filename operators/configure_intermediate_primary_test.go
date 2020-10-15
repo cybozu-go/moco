@@ -54,10 +54,6 @@ var _ = Describe("Configure intermediate primary operator", func() {
 	AfterEach(func() {
 		stopMySQLD(mysqldName1)
 		stopMySQLD(mysqldName2)
-
-		ns := corev1.Namespace{}
-		ns.Name = namespace
-		k8sClient.Delete(ctx, &ns)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")
