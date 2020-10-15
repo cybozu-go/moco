@@ -13,6 +13,7 @@ import (
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/controllers"
+	"github.com/cybozu-go/moco/metrics"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -70,7 +71,7 @@ func subMain() error {
 	}
 	// +kubebuilder:scaffold:builder
 
-	controllers.RegisterMetrics()
+	metrics.RegisterMetrics()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
