@@ -29,9 +29,8 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 		},
 	}
 
-	RegisterMetrics()
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(operationPhaseMetrics)
+	RegisterMetrics(registry)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -71,6 +70,69 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 
 		})
 	}
+}
+
+func TestSyncedReplicasMetricsUpdater(t *testing.T) {
+	const clusterName = "testcluster"
+
+	tests := []struct {
+		name  string
+		input *int
+	}{
+		{
+			name:  "first update",
+			input: intPointer(10),
+		},
+		{
+			name:  "nil update",
+			input: nil,
+		},
+		{
+			name:  "next update",
+			input: intPointer(20),
+		},
+	}
+
+	registry := prometheus.NewRegistry()
+	RegisterMetrics(registry)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			UpdateSyncedReplicasMetrics(clusterName, tt.input)
+
+			metricsFamily, err := registry.Gather()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, mf := range metricsFamily {
+				if *mf.Name == "moco_controller_synced_replicas" {
+					for _, met := range mf.Metric {
+						m := labelToMap(met.Label)
+						if m["cluster_name"] == clusterName {
+							value := *met.Gauge.Value
+							if tt.input == nil {
+								if value != 0.0 {
+									t.Errorf("unexpected metric value: expected = 0, actual = %f", value)
+								}
+							} else {
+								if value != float64(*tt.input) {
+									t.Errorf("unexpected metric value: expected = %d, actual = %f", *tt.input, value)
+								}
+							}
+						}
+					}
+				} else {
+					t.Errorf("unknown metrics name: %s", *mf.Name)
+				}
+			}
+
+		})
+	}
+}
+
+func intPointer(i int) *int {
+	return &i
 }
 
 func labelToMap(labelPair []*dto.LabelPair) map[string]string {

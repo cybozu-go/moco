@@ -9,11 +9,13 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -71,7 +73,7 @@ func subMain() error {
 	}
 	// +kubebuilder:scaffold:builder
 
-	metrics.RegisterMetrics()
+	metrics.RegisterMetrics(k8smetrics.Registry.(*prometheus.Registry))
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

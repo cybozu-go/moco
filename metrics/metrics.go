@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 const (
@@ -21,14 +20,14 @@ var (
 	syncedReplicasMetrics         *prometheus.GaugeVec
 )
 
-func RegisterMetrics() {
+func RegisterMetrics(registry *prometheus.Registry) {
 	clusterViolationStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsSubsystem,
 		Name:      "cluster_violation_status",
 		Help:      "The cluster status about violation condition",
 	}, []string{"cluster_name", "status"})
-	metrics.Registry.MustRegister(clusterViolationStatusMetrics)
+	registry.MustRegister(clusterViolationStatusMetrics)
 
 	clusterFailureStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -36,7 +35,7 @@ func RegisterMetrics() {
 		Name:      "cluster_failure_status",
 		Help:      "The cluster status about failure condition",
 	}, []string{"cluster_name", "status"})
-	metrics.Registry.MustRegister(clusterFailureStatusMetrics)
+	registry.MustRegister(clusterFailureStatusMetrics)
 
 	clusterAvailableStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -44,7 +43,7 @@ func RegisterMetrics() {
 		Name:      "cluster_available_status",
 		Help:      "The cluster status about available condition",
 	}, []string{"cluster_name", "status"})
-	metrics.Registry.MustRegister(clusterAvailableStatusMetrics)
+	registry.MustRegister(clusterAvailableStatusMetrics)
 
 	clusterHealthyStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -52,7 +51,7 @@ func RegisterMetrics() {
 		Name:      "cluster_healthy_status",
 		Help:      "The cluster status about healthy condition",
 	}, []string{"cluster_name", "status"})
-	metrics.Registry.MustRegister(clusterHealthyStatusMetrics)
+	registry.MustRegister(clusterHealthyStatusMetrics)
 
 	operationPhaseMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -60,7 +59,7 @@ func RegisterMetrics() {
 		Name:      "operation_phase",
 		Help:      "The operation is in the labeled phase or not",
 	}, []string{"cluster_name", "phase"})
-	metrics.Registry.MustRegister(operationPhaseMetrics)
+	registry.MustRegister(operationPhaseMetrics)
 
 	failoverCountTotalMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
@@ -68,7 +67,7 @@ func RegisterMetrics() {
 		Name:      "failover_count_total",
 		Help:      "The failover count.",
 	}, []string{"cluster_name"})
-	metrics.Registry.MustRegister(failoverCountTotalMetrics)
+	registry.MustRegister(failoverCountTotalMetrics)
 
 	totalReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -76,7 +75,7 @@ func RegisterMetrics() {
 		Name:      "total_replicas",
 		Help:      "The number of replicas.",
 	}, []string{"cluster_name"})
-	metrics.Registry.MustRegister(totalReplicasMetrics)
+	registry.MustRegister(totalReplicasMetrics)
 
 	syncedReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
@@ -84,5 +83,5 @@ func RegisterMetrics() {
 		Name:      "synced_replicas",
 		Help:      "The number of replicas which are in synced state.",
 	}, []string{"cluster_name"})
-	metrics.Registry.MustRegister(syncedReplicasMetrics)
+	registry.MustRegister(syncedReplicasMetrics)
 }
