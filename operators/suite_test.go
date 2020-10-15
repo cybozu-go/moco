@@ -81,6 +81,9 @@ var _ = BeforeSuite(func(done Done) {
 	stopMySQLD(mysqldName2)
 	removeNetwork()
 
+	err = createNetwork()
+	Expect(err).ShouldNot(HaveOccurred())
+
 	close(done)
 }, 60)
 
@@ -88,6 +91,10 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
+
+	stopMySQLD(mysqldName1)
+	stopMySQLD(mysqldName2)
+	removeNetwork()
 })
 
 func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1alpha1.MySQLCluster) {

@@ -18,10 +18,7 @@ var _ = Describe("Configure replication", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		err := createNetwork()
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
+		err := startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = startMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -55,7 +52,6 @@ var _ = Describe("Configure replication", func() {
 	AfterEach(func() {
 		stopMySQLD(mysqldName1)
 		stopMySQLD(mysqldName2)
-		removeNetwork()
 	})
 
 	logger := ctrl.Log.WithName("operators-test")

@@ -28,7 +28,7 @@ func (o turnOffReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructur
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("set global read_only=0")
+	_, err = db.Exec("SET GLOBAL read_only=0")
 	return err
 }
 
