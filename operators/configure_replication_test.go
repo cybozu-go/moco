@@ -62,7 +62,6 @@ var _ = Describe("Configure replication", func() {
 
 	It("should configure replication", func() {
 		_, infra, cluster := getAccessorInfraCluster()
-		cluster.Spec.ReplicationSourceSecretName = &replicationSource
 
 		op := configureReplicationOp{
 			Index:          0,

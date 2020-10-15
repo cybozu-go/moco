@@ -2,7 +2,6 @@ package operators
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -11,7 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var _ = Describe("Set clone donor list", func() {
+var _ = Describe("Stop replica IO thread", func() {
 
 	ctx := context.Background()
 
@@ -28,6 +27,7 @@ var _ = Describe("Set clone donor list", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = initializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
+
 	})
 
 	AfterEach(func() {
@@ -38,21 +38,29 @@ var _ = Describe("Set clone donor list", func() {
 
 	logger := ctrl.Log.WithName("operators-test")
 
-	It("should configure replication", func() {
+	It("should stop IO thread", func() {
 		_, infra, cluster := getAccessorInfraCluster()
-
-		op := setCloneDonorListOp{}
-
-		err := op.Run(ctx, infra, &cluster, nil)
+		db, err := infra.GetDB(0)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, userName, password)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = db.Exec(`START SLAVE`)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
-		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
+		op := stopReplicaIOThread{
+			Index: 0,
+		}
+
+		err = op.Run(ctx, infra, &cluster, nil)
+		Expect(err).ShouldNot(HaveOccurred())
+
 		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
 		Expect(status.InstanceStatus).Should(HaveLen(2))
-		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
-		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))
-		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
-		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))
+		replicaStatus := status.InstanceStatus[0].ReplicaStatus
+		Expect(replicaStatus).ShouldNot(BeNil())
+		Expect(replicaStatus.MasterHost).Should(Equal(mysqldName2))
+		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
+		Expect(replicaStatus.SlaveIORunning).Should(Equal(moco.ReplicaNotRun))
+		Expect(replicaStatus.SlaveSQLRunning).Should(Equal(moco.ReplicaRunConnect))
 	})
 })
