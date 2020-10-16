@@ -304,6 +304,22 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 	})
 
+	Context("Agent token", func() {
+		It("should create agent token", func() {
+			isUpdated, err := reconciler.generateAgentToken(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(cluster.Status.AgentToken).ShouldNot(BeEmpty())
+
+			isUpdated, err = reconciler.generateAgentToken(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
 	Context("Services", func() {
 		It("should create services", func() {
 			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
