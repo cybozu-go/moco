@@ -27,7 +27,7 @@ func RegisterAgentMetrics(registry *prometheus.Registry) {
 	cloneFailureCountMetrics = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsAgentSubsystem,
-		Name:      "clone_count",
+		Name:      "clone_failure_count",
 		Help:      "The clone operation count",
 	})
 	cloneDurationSecondsMetrics = prometheus.NewSummary(prometheus.SummaryOpts{
@@ -47,7 +47,7 @@ func RegisterAgentMetrics(registry *prometheus.Registry) {
 	logRotationFailureCountMetrics = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
 		Subsystem: metricsAgentSubsystem,
-		Name:      "log_rotation_count",
+		Name:      "log_rotation_failure_count",
 		Help:      "The logRotation operation count",
 	})
 	logRotationDurationSecondsMetrics = prometheus.NewSummary(prometheus.SummaryOpts{

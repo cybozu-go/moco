@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,13 +13,22 @@ import (
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/metrics"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	promgo "github.com/prometheus/client_model/go"
 )
+
+const agentMetricsPrefix = "moco_agent_"
 
 func testAgentClone() {
 	It("should return 400 with bad requests", func() {
+		By("initializing metrics registry")
+		registry := prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
+
 		By("preparing agent")
 		agent := New(replicaHost, token, password, password, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
@@ -39,7 +49,6 @@ func testAgentClone() {
 
 		res := httptest.NewRecorder()
 		agent.Clone(res, req)
-		Expect(res).Should(HaveHTTPStatus(http.StatusBadRequest))
 
 		By("passing empty donorHostName")
 		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
@@ -64,9 +73,50 @@ func testAgentClone() {
 		res = httptest.NewRecorder()
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusBadRequest))
+
+		By("passing invalid donorHostName")
+		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries = url.Values{
+			moco.CloneParamDonorHostName: []string{"invalid-host-name"},
+			moco.CloneParamDonorPort:     []string{strconv.Itoa(donorPort)},
+			moco.AgentTokenParam:         []string{token},
+		}
+		req.URL.RawQuery = queries.Encode()
+
+		res = httptest.NewRecorder()
+		agent.Clone(res, req)
+		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
+
+		Eventually(func() error {
+			cloneCount, err := getMetric(registry, agentMetricsPrefix+"clone_count")
+			if err != nil {
+				return err
+			}
+			if *cloneCount.Counter.Value != 1.0 {
+				return errors.New("clone_count does not increase yet")
+			}
+
+			cloneFailureCount, err := getMetric(registry, agentMetricsPrefix+"clone_failure_count")
+			if err != nil {
+				return err
+			}
+			if *cloneFailureCount.Counter.Value != 1.0 {
+				return errors.New("clone_failure_count does not increase yet")
+			}
+
+			return nil
+		}, 30*time.Second).Should(Succeed())
 	})
 
 	It("should clone from donor successfully", func() {
+		By("initializing metrics registry")
+		registry := prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
+
+		cloneCount, err := getMetric(registry, agentMetricsPrefix+"clone_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*cloneCount.Counter.Value).Should(Equal(0.0))
+
 		By("preparing agent")
 		agent := New(replicaHost, token, password, password, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
@@ -110,6 +160,16 @@ func testAgentClone() {
 			}
 			return nil
 		}, 30*time.Second).Should(Succeed())
+
+		cloneCount, err = getMetric(registry, agentMetricsPrefix+"clone_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*cloneCount.Counter.Value).Should(Equal(1.0))
+		cloneFailureCount, err := getMetric(registry, agentMetricsPrefix+"clone_failure_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*cloneFailureCount.Counter.Value).Should(Equal(0.0))
+		cloneDurationSeconds, err := getMetric(registry, agentMetricsPrefix+"clone_duration_seconds")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(len(cloneDurationSeconds.Summary.Quantile)).ShouldNot(Equal(0))
 	})
 
 	It("should not clone if recipient has some data", func() {
@@ -139,4 +199,22 @@ func testAgentClone() {
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusForbidden))
 	})
+}
+
+func getMetric(registry *prometheus.Registry, metricName string) (*promgo.Metric, error) {
+	metricsFamily, err := registry.Gather()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, mf := range metricsFamily {
+		if *mf.Name == metricName {
+			if len(mf.Metric) != 1 {
+				return nil, fmt.Errorf("metrics family should have a single metric: name=%s", *mf.Name)
+			}
+			return mf.Metric[0], nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find a metric: name=%s", metricName)
 }
