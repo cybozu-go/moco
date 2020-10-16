@@ -24,11 +24,11 @@ func (o turnOffReadOnlyOp) Name() string {
 }
 
 func (o turnOffReadOnlyOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	db, err := infra.GetDB(ctx, cluster, o.primaryIndex)
+	db, err := infra.GetDB(o.primaryIndex)
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("set global read_only=0")
+	_, err = db.Exec("SET GLOBAL read_only=0")
 	return err
 }
 

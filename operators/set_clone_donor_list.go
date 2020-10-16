@@ -25,7 +25,7 @@ func (o setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastruct
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		db, err := infra.GetDB(ctx, cluster, i)
+		db, err := infra.GetDB(i)
 		if err != nil {
 			return err
 		}

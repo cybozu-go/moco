@@ -66,6 +66,8 @@ github.com/hashicorp/hcl/json/token
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/jarcoal/httpmock v1.0.6
+github.com/jarcoal/httpmock
 # github.com/jmoiron/sqlx v1.2.0
 github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx

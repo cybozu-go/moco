@@ -30,7 +30,7 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 		panic("unreachable code")
 	}
 
-	db, err := infra.GetDB(ctx, cluster, o.Index)
+	db, err := infra.GetDB(o.Index)
 	if err != nil {
 		return err
 	}

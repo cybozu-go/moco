@@ -1,6 +1,7 @@
 package accessor
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -156,7 +157,7 @@ func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MyS
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := NewInfrastructure(k8sClient, acc, password, []string{host}, 3306)
+	inf := NewInfrastructure(k8sClient, acc, password, []string{fmt.Sprintf("%s:%d", host, 3306)})
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",

@@ -99,8 +99,8 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 	It("should get latest instance by comparing GTIDs", func() {
 		ctx := context.Background()
-		_, inf, cluster := getAccessorInfraCluster()
-		db, err := inf.GetDB(ctx, &cluster, 0)
+		_, inf, _ := getAccessorInfraCluster()
+		db, err := inf.GetDB(0)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("comarping empty instances")
