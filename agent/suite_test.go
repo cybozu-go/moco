@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -10,15 +11,18 @@ import (
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	promgo "github.com/prometheus/client_model/go"
 )
 
 const (
-	donorHost   = "moco-test-mysqld-donor"
-	donorPort   = 3307
-	replicaHost = "moco-test-mysqld-replica"
-	replicaPort = 3308
-	password    = "test-password"
-	token       = "dummy-token"
+	donorHost     = "moco-test-mysqld-donor"
+	donorPort     = 3307
+	replicaHost   = "moco-test-mysqld-replica"
+	replicaPort   = 3308
+	password      = "test-password"
+	token         = "dummy-token"
+	metricsPrefix = "moco_agent_"
 )
 
 func TestAgent(t *testing.T) {
@@ -188,6 +192,24 @@ func resetMaster(host string, port int) error {
 	}
 	_, err = db.Exec("RESET MASTER")
 	return err
+}
+
+func getMetric(registry *prometheus.Registry, metricName string) (*promgo.Metric, error) {
+	metricsFamily, err := registry.Gather()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, mf := range metricsFamily {
+		if *mf.Name == metricName {
+			if len(mf.Metric) != 1 {
+				return nil, fmt.Errorf("metrics family should have a single metric: name=%s", *mf.Name)
+			}
+			return mf.Metric[0], nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find a metric: name=%s", metricName)
 }
 
 var _ = Describe("Test Agent", func() {

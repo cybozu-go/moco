@@ -18,10 +18,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	promgo "github.com/prometheus/client_model/go"
 )
-
-const agentMetricsPrefix = "moco_agent_"
 
 func testAgentClone() {
 	It("should return 400 with bad requests", func() {
@@ -88,7 +85,7 @@ func testAgentClone() {
 		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
 
 		Eventually(func() error {
-			cloneCount, err := getMetric(registry, agentMetricsPrefix+"clone_count")
+			cloneCount, err := getMetric(registry, metricsPrefix+"clone_count")
 			if err != nil {
 				return err
 			}
@@ -96,7 +93,7 @@ func testAgentClone() {
 				return errors.New("clone_count does not increase yet")
 			}
 
-			cloneFailureCount, err := getMetric(registry, agentMetricsPrefix+"clone_failure_count")
+			cloneFailureCount, err := getMetric(registry, metricsPrefix+"clone_failure_count")
 			if err != nil {
 				return err
 			}
@@ -113,7 +110,7 @@ func testAgentClone() {
 		registry := prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
 
-		cloneCount, err := getMetric(registry, agentMetricsPrefix+"clone_count")
+		cloneCount, err := getMetric(registry, metricsPrefix+"clone_count")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*cloneCount.Counter.Value).Should(Equal(0.0))
 
@@ -161,13 +158,13 @@ func testAgentClone() {
 			return nil
 		}, 30*time.Second).Should(Succeed())
 
-		cloneCount, err = getMetric(registry, agentMetricsPrefix+"clone_count")
+		cloneCount, err = getMetric(registry, metricsPrefix+"clone_count")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*cloneCount.Counter.Value).Should(Equal(1.0))
-		cloneFailureCount, err := getMetric(registry, agentMetricsPrefix+"clone_failure_count")
+		cloneFailureCount, err := getMetric(registry, metricsPrefix+"clone_failure_count")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*cloneFailureCount.Counter.Value).Should(Equal(0.0))
-		cloneDurationSeconds, err := getMetric(registry, agentMetricsPrefix+"clone_duration_seconds")
+		cloneDurationSeconds, err := getMetric(registry, metricsPrefix+"clone_duration_seconds")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(cloneDurationSeconds.Summary.Quantile)).ShouldNot(Equal(0))
 	})
@@ -199,22 +196,4 @@ func testAgentClone() {
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusForbidden))
 	})
-}
-
-func getMetric(registry *prometheus.Registry, metricName string) (*promgo.Metric, error) {
-	metricsFamily, err := registry.Gather()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, mf := range metricsFamily {
-		if *mf.Name == metricName {
-			if len(mf.Metric) != 1 {
-				return nil, fmt.Errorf("metrics family should have a single metric: name=%s", *mf.Name)
-			}
-			return mf.Metric[0], nil
-		}
-	}
-
-	return nil, fmt.Errorf("cannot find a metric: name=%s", metricName)
 }
