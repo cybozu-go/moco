@@ -11,3 +11,15 @@ func IncrementCloneFailureCountMetrics() {
 func UpdateCloneDurationSecondsMetrics(durationSeconds float64) {
 	cloneDurationSecondsMetrics.Observe(durationSeconds)
 }
+
+func IncrementLogRotationCountMetrics() {
+	logRotationCountMetrics.Inc()
+}
+
+func IncrementLogRotationFailureCountMetrics() {
+	logRotationFailureCountMetrics.Inc()
+}
+
+func UpdateLogRotationDurationSecondsMetrics(durationSeconds float64) {
+	logRotationDurationSecondsMetrics.Observe(durationSeconds)
+}
