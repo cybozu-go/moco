@@ -98,21 +98,42 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		}).Should(Succeed())
 	})
 
-	It("should do nothing when options is empty", func() {
+	It("should stop slave when options is empty", func() {
 		_, infra, cluster := getAccessorInfraCluster()
 		cluster.Spec.ReplicationSourceSecretName = &replicationSource
+
+		db, err := infra.GetDB(0)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, userName, password)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = db.Exec(`START SLAVE`)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		op := configureIntermediatePrimaryOp{
 			Index:   0,
 			Options: nil,
 		}
 
-		err := op.Run(ctx, infra, &cluster, nil)
+		err = op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
-		Expect(status.InstanceStatus[0].ReplicaStatus).Should(BeNil())
+
+		replicaStatus := status.InstanceStatus[0].ReplicaStatus
+		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
+
+		Eventually(func() error {
+			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			replicaStatus = status.InstanceStatus[0].ReplicaStatus
+			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+				return errors.New("IO thread should not be running")
+			}
+			if replicaStatus.SlaveSQLRunning != moco.ReplicaNotRun {
+				return errors.New("SQL thread should not be running")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 })
