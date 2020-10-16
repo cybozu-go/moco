@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -113,6 +114,59 @@ var _ = Describe("MySQLCluster controller", func() {
 			isUpdated, err = reconciler.setServerIDBaseIfNotAssigned(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
+	Context("Secrets", func() {
+		It("should create secrets", func() {
+			isUpdated, err := reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
+			initSecretNS := cluster.Namespace
+			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+
+			initSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(initSecret.Data).Should(HaveKey(moco.RootPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+
+			ctrlSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: ctrlSecretNS, Name: ctrlSecretName}, ctrlSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+
+			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should not recreate secret if init secret does not exist", func() {
+			initSecretNS := cluster.Namespace
+			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+			initSecret := &corev1.Secret{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, initSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
+			reason := k8serror.ReasonForError(err)
+			Expect(reason).Should(Equal(metav1.StatusReasonNotFound))
 		})
 	})
 
