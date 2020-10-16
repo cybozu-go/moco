@@ -265,6 +265,22 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 	})
 
+	Context("Headless service", func() {
+		It("should create services", func() {
+			isUpdated, err := reconciler.createOrUpdateHeadlessService(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			svc := &corev1.Service{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, svc)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err = reconciler.createOrUpdateHeadlessService(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
 	Context("Services", func() {
 		It("should create services", func() {
 			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
