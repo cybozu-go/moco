@@ -281,6 +281,29 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 	})
 
+	Context("RBAC", func() {
+		It("should not create service account if service account is given", func() {
+			cluster.Spec.PodTemplate.Spec.ServiceAccountName = "test"
+			isUpdated, err := reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should create service account", func() {
+			isUpdated, err := reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sa := &corev1.ServiceAccount{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: serviceAccountPrefix + moco.UniqueName(cluster), Namespace: cluster.Namespace}, sa)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err = reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
 	Context("Services", func() {
 		It("should create services", func() {
 			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
