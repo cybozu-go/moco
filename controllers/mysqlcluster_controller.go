@@ -440,10 +440,12 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 
 		// Set innodb_buffer_pool_size if resources.requests.memory or resources.limits.memory is specified
 		mem := getMysqldContainerRequests(cluster, corev1.ResourceMemory)
-		// 128MiB is the default innodb_buffer_pool_size value
-		if mem != nil && mem.Value() > (128<<20) {
-			bufferSize := mem.Value() / 10 * 7
-			gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": fmt.Sprintf("%dM", bufferSize>>20)}, false)
+		if mem != nil {
+			bufferSize := ((mem.Value() / 10) * 7) >> 20
+			// 128MiB is the default innodb_buffer_pool_size value
+			if bufferSize > 128 {
+				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": fmt.Sprintf("%dM", bufferSize)}, false)
+			}
 		}
 
 		if cluster.Spec.MySQLConfigMapName != nil {

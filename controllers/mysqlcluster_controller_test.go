@@ -53,7 +53,7 @@ func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
 				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						"storage": *resource.NewQuantity(1<<10, resource.BinarySI),
+						corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
 					},
 				},
 			},
@@ -167,6 +167,101 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
 			reason := k8serror.ReasonForError(err)
 			Expect(reason).Should(Equal(metav1.StatusReasonNotFound))
+		})
+	})
+
+	Context("ConfigMaps", func() {
+		It("should create configmap", func() {
+			isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			cm := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
+
+			isUpdated, err = reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should merge with user defined configuration", func() {
+			userDefinedConfName := "user-defined-my.cnf"
+			cluster.Spec.MySQLConfigMapName = &userDefinedConfName
+
+			userDefinedConf := &corev1.ConfigMap{}
+			userDefinedConf.Namespace = cluster.Namespace
+			userDefinedConf.Name = userDefinedConfName
+			userDefinedConf.Data = map[string]string{
+				"max_connections": "5000",
+			}
+			err := k8sClient.Create(ctx, userDefinedConf)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			cm := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
+			conf := cm.Data[moco.MySQLConfName]
+			Expect(conf).Should(ContainSubstring("max_connections = 5000"))
+		})
+
+		It("should set innodb_buffer_pool_size", func() {
+			By("using default value if resource request is empty", func() {
+				cm := &corev1.ConfigMap{}
+				err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
+				conf := cm.Data[moco.MySQLConfName]
+				Expect(conf).ShouldNot(ContainSubstring("innodb_buffer_pool_size"))
+			})
+
+			By("using default value if the container has less memory than the default", func() {
+				cluster.Spec.PodTemplate.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: *resource.NewQuantity(100<<20, resource.BinarySI),
+					},
+				}
+				cm := &corev1.ConfigMap{}
+				isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(isUpdated).Should(BeTrue())
+
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
+				conf := cm.Data[moco.MySQLConfName]
+				Expect(conf).ShouldNot(ContainSubstring("innodb_buffer_pool_size"))
+			})
+
+			By("setting the size of 70% of the request", func() {
+				cm := &corev1.ConfigMap{}
+				cluster.Spec.PodTemplate.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: *resource.NewQuantity(256<<20, resource.BinarySI),
+					},
+				}
+
+				isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(isUpdated).Should(BeTrue())
+
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
+				conf := cm.Data[moco.MySQLConfName]
+				Expect(conf).Should(ContainSubstring("innodb_buffer_pool_size = 179M")) // 256*0.7=179
+			})
+
 		})
 	})
 
