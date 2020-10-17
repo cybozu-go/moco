@@ -3,13 +3,12 @@ package operators
 import (
 	"context"
 	"fmt"
+	"log" // restrictpkg:ignore to suppress mysql client logs.
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -19,6 +18,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -62,6 +62,7 @@ func TestOperators(t *testing.T) {
 
 var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

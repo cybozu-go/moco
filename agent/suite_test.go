@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"log" // restrictpkg:ignore to suppress mysql client logs.
 	"strconv"
 	"testing"
 	"time"
@@ -26,8 +27,7 @@ const (
 )
 
 func TestAgent(t *testing.T) {
-	// If you want to suppress mysqld logs, please uncomment the below line
-	// mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
+	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Agent Suite")
 }
