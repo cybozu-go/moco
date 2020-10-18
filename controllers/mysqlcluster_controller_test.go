@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mathrand "math/rand"
 	"os"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -317,6 +319,88 @@ var _ = Describe("MySQLCluster controller", func() {
 			isUpdated, err = reconciler.generateAgentToken(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
+	Context("StatefulSet", func() {
+		It("should create statefulset", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var mysqldContainer *corev1.Container
+			var agentContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "mysqld" {
+					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
+				} else if c.Name == "agent" {
+					agentContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+			Expect(mysqldContainer).ShouldNot(BeNil())
+			Expect(agentContainer).ShouldNot(BeNil())
+
+			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should return error, when template does not contain mysqld container", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "unknown",
+							Image: "mysql:dev",
+						},
+					},
+				},
+			}
+
+			_, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should return error, when template contains agent container", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
+						},
+						{
+							Name:  "agent",
+							Image: "mysql:dev",
+						},
+					},
+				},
+			}
+			_, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		It("update podTemplate", func() {
+
+		})
+
+		It("update volumeTemplate", func() {
+
+		})
+
+		It("update dataVolumeTemplate", func() {
+
 		})
 	})
 
