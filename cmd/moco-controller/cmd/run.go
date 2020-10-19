@@ -57,7 +57,8 @@ func subMain() error {
 
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:                 mgr.GetClient(),
-		Log:                    ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
+		Log:                    ctrl.Log.WithName("controller"),
+		Recorder:               mgr.GetEventRecorderFor("moco-controller"),
 		Scheme:                 mgr.GetScheme(),
 		ConfInitContainerImage: config.confInitContainerImage,
 		CurlContainerImage:     config.curlContainerImage,

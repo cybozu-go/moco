@@ -2,6 +2,7 @@ package moco
 
 import (
 	"errors"
+	"fmt"
 )
 
 const (
@@ -195,4 +196,53 @@ var (
 	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
 	// ErrCannotCompareGITDs is returned if GTID comparison returns error
 	ErrCannotCompareGITDs = errors.New("cannot compare gtids")
+)
+
+type MOCOEvent struct {
+	Reason  string
+	Message string
+}
+
+func (e MOCOEvent) FillVariables(val ...interface{}) MOCOEvent {
+	e.Message = fmt.Sprintf(e.Message, val)
+	return e
+}
+
+var (
+	EventInitializationSucceeded = MOCOEvent{
+		"Initialization Succeeded",
+		"Initialization phase finished successfully.",
+	}
+	EventInitializationFailed = MOCOEvent{
+		"Initialization Failed",
+		"Initialization phase failed. err=%s",
+	}
+	EventWaitingAllInstancesAvailable = MOCOEvent{
+		"Waiting All Instances Available",
+		"Waiting for all instances to become connected from MOCO. unavailable=%v",
+	}
+	EventViolationOccurred = MOCOEvent{
+		"Violation Occurred",
+		"Constraint violation occurred. Please resolve via manual operation. err=%v",
+	}
+	EventWatingRelayLogExecution = MOCOEvent{
+		"Waiting Relay Log Execution",
+		"Waiting relay log execution on replica instance(s).",
+	}
+	EventRestoringReplicaInstances = MOCOEvent{
+		"Restoring Replica Instance(s)",
+		"Restoring replica instance(s) by cloning with primary instance.",
+	}
+	EventPrimaryChanged = MOCOEvent{
+		"Primary Changed",
+		"Primary instance was changed from %s to %s because of failover or switchover.",
+	}
+	EventClusteringCompletedSynced = MOCOEvent{
+		"Clustering Completed and Synced",
+		"Clustering are completed. All instances are synced.",
+	}
+	EventClusteringCompletedNotSynced = MOCOEvent{
+		"Clustering Completed but Not Synced",
+		"Clustering are completed. Some instance(s) are not synced. out_of_sync=%v",
+	}
 )
