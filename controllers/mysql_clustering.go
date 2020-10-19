@@ -24,7 +24,7 @@ type Operation struct {
 	Conditions     []mocov1alpha1.MySQLClusterCondition
 	SyncedReplicas *int
 	Phase          moco.OperationPhase
-	Event          moco.MOCOEvent
+	Event          *moco.MOCOEvent
 }
 
 // reconcileMySQLCluster reconciles MySQL cluster
@@ -62,6 +62,9 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 			}
 			return ctrl.Result{}, err
 		}
+	}
+	if op.Event != nil {
+		r.Recorder.Event(cluster, op.Event.Type, op.Event.Reason, op.Event.Message)
 	}
 
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
@@ -113,7 +116,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Conditions: unavailableCondition(nil),
 			Wait:       wait,
 			Phase:      moco.PhaseWaitRelayLog,
-			Event:      moco.EventWatingRelayLogExecution,
+			Event:      &moco.EventWatingRelayLogExecution,
 		}, nil
 	}
 
@@ -139,7 +142,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		return &Operation{
 			Operators: op,
 			Phase:     moco.PhaseRestoreInstance,
-			Event:     moco.EventRestoringReplicaInstances,
+			Event:     &moco.EventRestoringReplicaInstances,
 		}, nil
 	}
 
@@ -171,10 +174,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	op = configureIntermediatePrimary(status, cluster)
 	if len(op) != 0 {
+		event := &moco.EventIntermediatePrimaryUnset
+		if cluster.Spec.ReplicationSourceSecretName != nil {
+			event = moco.EventIntermediatePrimaryConfigured.FillVariables(status.IntermediatePrimaryOptions.PrimaryHost)
+		}
 		return &Operation{
-			Conditions:     unavailableCondition(outOfSyncIns),
-			Operators:      op,
-			SyncedReplicas: &syncedReplicas,
+			Conditions: unavailableCondition(outOfSyncIns),
+			Operators:  op,
+			Event:      event,
 		}, nil
 	}
 
@@ -187,7 +194,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	}
 	if cluster.Status.SyncedReplicas < syncedReplicas &&
 		len(outOfSyncIns) == 0 {
-		operation.Event = moco.EventClusteringCompletedSynced
+		operation.Event = &moco.EventClusteringCompletedSynced
 	}
 	if len(outOfSyncIns) > 0 {
 		operation.Event = moco.EventClusteringCompletedNotSynced.FillVariables(outOfSyncIns)
