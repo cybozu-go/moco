@@ -210,7 +210,7 @@ func initializeMySQL(port int) error {
 
 	var db *sqlx.DB
 	var err error
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		db, err = sqlx.Connect("mysql", conf.FormatDSN())
 		if err == nil {
 			break

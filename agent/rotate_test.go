@@ -11,13 +11,16 @@ import (
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func testAgentRotate() {
 	var tmpDir string
 	var agent *Agent
+	var registry *prometheus.Registry
 
 	BeforeEach(func() {
 		var err error
@@ -30,6 +33,9 @@ func testAgentRotate() {
 				ReadTimeout:       30 * time.Second,
 			},
 		)
+
+		registry = prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
 	})
 
 	AfterEach(func() {
@@ -77,5 +83,34 @@ func testAgentRotate() {
 			_, err := os.Stat(file + ".0")
 			Expect(err).ShouldNot(HaveOccurred())
 		}
+		rotationCount, err := getMetric(registry, metricsPrefix+"log_rotation_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*rotationCount.Counter.Value).Should(Equal(1.0))
+		rotationFailureCount, err := getMetric(registry, metricsPrefix+"log_rotation_failure_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*rotationFailureCount.Counter.Value).Should(Equal(0.0))
+		rotationDurationSeconds, err := getMetric(registry, metricsPrefix+"log_rotation_duration_seconds")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(len(rotationDurationSeconds.Summary.Quantile)).ShouldNot(Equal(0))
+
+		By("creating the same name directory")
+		for _, file := range logFiles {
+			err := os.Rename(file+".0", file)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = os.Mkdir(file+".0", 0777)
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+
+		res = httptest.NewRecorder()
+		agent.RotateLog(res, req)
+		body, err = ioutil.ReadAll(res.Body)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError), "body: %s", body)
+		rotationCount, err = getMetric(registry, metricsPrefix+"log_rotation_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*rotationCount.Counter.Value).Should(Equal(2.0))
+		rotationFailureCount, err = getMetric(registry, metricsPrefix+"log_rotation_failure_count")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(*rotationFailureCount.Counter.Value).Should(Equal(1.0))
 	})
 }

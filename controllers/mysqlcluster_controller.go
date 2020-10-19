@@ -150,7 +150,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	metrics.DeleteAllMetrics(cluster.Name)
+	metrics.DeleteAllControllerMetrics(cluster.Name)
 
 	cluster2 := cluster.DeepCopy()
 	controllerutil.RemoveFinalizer(cluster2, mysqlClusterFinalizer)

@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/metrics"
 )
 
 // RotateLog rotes log files
@@ -18,6 +20,9 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.IncrementLogRotationCountMetrics()
+	startTime := time.Now()
+
 	errFile := filepath.Join(a.logDir, moco.MySQLErrorLogName)
 	_, err := os.Stat(errFile)
 	if err == nil {
@@ -27,6 +32,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 				log.FnError: err,
 			})
 			internalServerError(w, fmt.Errorf("failed to rotate err log file: %w", err))
+			metrics.IncrementLogRotationFailureCountMetrics()
 			return
 		}
 	} else if !os.IsNotExist(err) {
@@ -34,6 +40,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 			log.FnError: err,
 		})
 		internalServerError(w, fmt.Errorf("failed to stat err log file: %w", err))
+		metrics.IncrementLogRotationFailureCountMetrics()
 		return
 	}
 
@@ -46,6 +53,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 				log.FnError: err,
 			})
 			internalServerError(w, fmt.Errorf("failed to rotate slow query log file: %w", err))
+			metrics.IncrementLogRotationFailureCountMetrics()
 			return
 		}
 	} else if !os.IsNotExist(err) {
@@ -53,6 +61,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 			log.FnError: err,
 		})
 		internalServerError(w, fmt.Errorf("failed to stat slow query log file: %w", err))
+		metrics.IncrementLogRotationFailureCountMetrics()
 		return
 	}
 
@@ -61,11 +70,16 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
+		metrics.IncrementLogRotationFailureCountMetrics()
 		return
 	}
 
 	if _, err := db.ExecContext(r.Context(), "FLUSH LOCAL ERROR LOGS, SLOW LOGS"); err != nil {
 		internalServerError(w, fmt.Errorf("failed to exec mysql FLUSH: %w", err))
+		metrics.IncrementLogRotationFailureCountMetrics()
 		return
 	}
+
+	durationSeconds := time.Since(startTime).Seconds()
+	metrics.UpdateLogRotationDurationSecondsMetrics(durationSeconds)
 }

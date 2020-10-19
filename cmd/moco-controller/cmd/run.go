@@ -73,7 +73,7 @@ func subMain() error {
 	}
 	// +kubebuilder:scaffold:builder
 
-	metrics.RegisterMetrics(k8smetrics.Registry.(*prometheus.Registry))
+	metrics.RegisterControllerMetrics(k8smetrics.Registry.(*prometheus.Registry))
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

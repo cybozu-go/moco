@@ -8,10 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/agent"
+	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -22,6 +26,12 @@ const (
 	connectionTimeoutFlag = "connection-timeout"
 	readTimeoutFlag       = "read-timeout"
 )
+
+type logger struct{}
+
+func (l logger) Println(v ...interface{}) {
+	log.Error(fmt.Sprint(v...), nil)
+}
 
 var agentCmd = &cobra.Command{
 	Use:   "agent",
@@ -62,6 +72,16 @@ var agentCmd = &cobra.Command{
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 		mux.HandleFunc("/health", agent.Health)
+
+		registry := prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
+		mux.Handle("/metrics", promhttp.HandlerFor(
+			registry,
+			promhttp.HandlerOpts{
+				ErrorLog:      logger{},
+				ErrorHandling: promhttp.ContinueOnError,
+			},
+		))
 
 		serv := &well.HTTPServer{
 			Server: &http.Server{
