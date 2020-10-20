@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -23,6 +24,7 @@ type Operation struct {
 	Conditions     []mocov1alpha1.MySQLClusterCondition
 	SyncedReplicas *int
 	Phase          moco.OperationPhase
+	Event          *moco.MOCOEvent
 }
 
 // reconcileMySQLCluster reconciles MySQL cluster
@@ -61,6 +63,9 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 			return ctrl.Result{}, err
 		}
 	}
+	if op.Event != nil {
+		r.Recorder.Event(cluster, op.Event.Type, op.Event.Reason, op.Event.Message)
+	}
 
 	err = r.setMySQLClusterStatus(ctx, cluster, op.Conditions, op.SyncedReplicas)
 	if err != nil {
@@ -81,17 +86,18 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 }
 
 func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) (*Operation, error) {
-	var unavailable bool
+	var unavailable []int
 	for i, is := range status.InstanceStatus {
 		if !is.Available {
 			log.Info("unavailable host exists", "index", i)
-			unavailable = true
+			unavailable = append(unavailable, i)
 		}
 	}
-	if unavailable {
+	if len(unavailable) > 0 {
 		return &Operation{
 			Conditions: unavailableCondition(nil),
 			Wait:       true,
+			Event:      moco.EventWaitingAllInstancesAvailable.FillVariables(unavailable),
 		}, nil
 	}
 
@@ -99,6 +105,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	if err != nil {
 		return &Operation{
 			Conditions: violationCondition(err),
+			Event:      moco.EventViolationOccurred.FillVariables(err),
 		}, err
 	}
 
@@ -109,9 +116,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Conditions: unavailableCondition(nil),
 			Wait:       wait,
 			Phase:      moco.PhaseWaitRelayLog,
+			Event:      &moco.EventWatingRelayLogExecution,
 		}, nil
 	}
 
+	currentPrimary := "<nil>"
+	if cluster.Status.CurrentPrimaryIndex != nil {
+		currentPrimary = strconv.Itoa(*cluster.Status.CurrentPrimaryIndex)
+	}
 	primaryIndex, err := selectPrimary(status, cluster)
 	if err != nil {
 		return nil, err
@@ -121,6 +133,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		return &Operation{
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
+			Event:      moco.EventPrimaryChanged.FillVariables(currentPrimary, strconv.Itoa(primaryIndex)),
 		}, nil
 	}
 
@@ -129,6 +142,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		return &Operation{
 			Operators: op,
 			Phase:     moco.PhaseRestoreInstance,
+			Event:     &moco.EventRestoringReplicaInstances,
 		}, nil
 	}
 
@@ -160,28 +174,32 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	op = configureIntermediatePrimary(status, cluster)
 	if len(op) != 0 {
+		event := &moco.EventIntermediatePrimaryUnset
+		if cluster.Spec.ReplicationSourceSecretName != nil {
+			event = moco.EventIntermediatePrimaryConfigured.FillVariables(status.IntermediatePrimaryOptions.PrimaryHost)
+		}
 		return &Operation{
-			Conditions:     unavailableCondition(outOfSyncIns),
-			Operators:      op,
-			SyncedReplicas: &syncedReplicas,
+			Conditions: unavailableCondition(outOfSyncIns),
+			Operators:  op,
+			Event:      event,
 		}, nil
 	}
 
 	op = acceptWriteRequest(status, cluster)
-	if len(op) != 0 {
-		return &Operation{
-			Conditions:     availableCondition(outOfSyncIns),
-			Operators:      op,
-			SyncedReplicas: &syncedReplicas,
-			Phase:          moco.PhaseCompleted,
-		}, nil
-	}
-
-	return &Operation{
+	operation := &Operation{
+		Operators:      op,
 		Conditions:     availableCondition(outOfSyncIns),
 		SyncedReplicas: &syncedReplicas,
 		Phase:          moco.PhaseCompleted,
-	}, nil
+	}
+	if cluster.Status.SyncedReplicas < syncedReplicas &&
+		len(outOfSyncIns) == 0 {
+		operation.Event = &moco.EventClusteringCompletedSynced
+	}
+	if len(outOfSyncIns) > 0 {
+		operation.Event = moco.EventClusteringCompletedNotSynced.FillVariables(outOfSyncIns)
+	}
+	return operation, nil
 }
 
 func (r *MySQLClusterReconciler) setMySQLClusterStatus(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, conditions []mocov1alpha1.MySQLClusterCondition, syncedStatus *int) error {

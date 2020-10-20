@@ -60,6 +60,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
+				Event: moco.EventWaitingAllInstancesAvailable.FillVariables([]int{0}),
 			},
 			wantErr: nil,
 		},
@@ -81,6 +82,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
+				Event: moco.EventViolationOccurred.FillVariables(moco.ErrConstraintsViolation),
 			},
 			wantErr: moco.ErrConstraintsViolation,
 		},
@@ -102,6 +104,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
+				Event: moco.EventViolationOccurred.FillVariables(moco.ErrConstraintsViolation),
 			},
 			wantErr: moco.ErrConstraintsViolation,
 		},
@@ -124,6 +127,7 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(false, ""),
 				},
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(0)},
+				Event:     moco.EventPrimaryChanged.FillVariables("<nil>", "0"),
 			},
 		},
 		{
@@ -139,6 +143,8 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait:      false,
 				Operators: []ops.Operator{ops.SetCloneDonorListOp()},
+				Phase:     moco.PhaseRestoreInstance,
+				Event:     &moco.EventRestoringReplicaInstances,
 			},
 		},
 		{
@@ -154,6 +160,8 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait:      false,
 				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Phase:     moco.PhaseRestoreInstance,
+				Event:     &moco.EventRestoringReplicaInstances,
 			},
 		},
 		{
@@ -169,6 +177,8 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait:      false,
 				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Phase:     moco.PhaseRestoreInstance,
+				Event:     &moco.EventRestoringReplicaInstances,
 			},
 		},
 		{
@@ -189,6 +199,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
+				Phase: moco.PhaseRestoreInstance,
 			},
 		},
 		{
@@ -210,6 +221,8 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(false, ""),
 				},
 				SyncedReplicas: intPointer(2),
+				Phase:          moco.PhaseCompleted,
+				Event:          moco.EventClusteringCompletedNotSynced.FillVariables([]int{2}),
 			},
 		},
 		{
@@ -283,6 +296,8 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
+				Phase: moco.PhaseWaitRelayLog,
+				Event: &moco.EventWatingRelayLogExecution,
 			},
 		},
 		{
@@ -305,6 +320,8 @@ func TestDecideNextOperation(t *testing.T) {
 				},
 				Operators:      []ops.Operator{ops.TurnOffReadOnlyOp(0)},
 				SyncedReplicas: intPointer(3),
+				Phase:          moco.PhaseCompleted,
+				Event:          &moco.EventClusteringCompletedSynced,
 			},
 		},
 		{
@@ -326,6 +343,8 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(false, ""),
 				},
 				SyncedReplicas: intPointer(2),
+				Phase:          moco.PhaseCompleted,
+				Event:          moco.EventClusteringCompletedNotSynced.FillVariables([]int{2}),
 			},
 		},
 		{
@@ -347,6 +366,8 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(true, ""),
 				},
 				SyncedReplicas: intPointer(3),
+				Phase:          moco.PhaseCompleted,
+				Event:          &moco.EventClusteringCompletedSynced,
 			},
 		},
 		{
@@ -368,6 +389,7 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(false, ""),
 				},
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
+				Event:     moco.EventPrimaryChanged.FillVariables("0", "1"),
 			},
 		},
 		{
@@ -389,6 +411,7 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(false, ""),
 				},
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
+				Event:     moco.EventPrimaryChanged.FillVariables("0", "1"),
 			},
 		},
 		{
@@ -424,7 +447,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
-				SyncedReplicas: intPointer(3),
+				Event: moco.EventIntermediatePrimaryConfigured.FillVariables(intermediatePrimaryOptions.PrimaryHost),
 			},
 		},
 		{
@@ -445,6 +468,8 @@ func TestDecideNextOperation(t *testing.T) {
 					healthy(true, ""),
 				},
 				SyncedReplicas: intPointer(3),
+				Phase:          moco.PhaseCompleted,
+				Event:          &moco.EventClusteringCompletedSynced,
 			},
 		},
 		{
@@ -467,7 +492,7 @@ func TestDecideNextOperation(t *testing.T) {
 					available(false, ""),
 					healthy(false, ""),
 				},
-				SyncedReplicas: intPointer(3),
+				Event: &moco.EventIntermediatePrimaryUnset,
 			},
 		},
 	}
@@ -758,7 +783,9 @@ func assertOperation(expected, actual *Operation) bool {
 	return assertOperators(expected.Operators, actual.Operators) &&
 		assertConditions(expected.Conditions, actual.Conditions) &&
 		expected.Wait == actual.Wait &&
-		cmp.Equal(expected.SyncedReplicas, actual.SyncedReplicas)
+		cmp.Equal(expected.SyncedReplicas, actual.SyncedReplicas) &&
+		expected.Phase == actual.Phase &&
+		cmp.Equal(expected.Event, actual.Event)
 }
 
 func assertOperators(expected, actual []ops.Operator) bool {

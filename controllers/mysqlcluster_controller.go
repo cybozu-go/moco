@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -60,6 +61,7 @@ const (
 type MySQLClusterReconciler struct {
 	client.Client
 	Log                    logr.Logger
+	Recorder               record.EventRecorder
 	Scheme                 *runtime.Scheme
 	ConfInitContainerImage string
 	CurlContainerImage     string
@@ -83,11 +85,12 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("mysqlcluster", req.NamespacedName)
+	log := r.Log.WithValues("MySQLCluster", req.NamespacedName)
 
 	cluster := &mocov1alpha1.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
@@ -117,6 +120,9 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 				log.Error(err, "failed to status update")
 			}
 			log.Error(err, "failed to initialize MySQLCluster")
+
+			r.Recorder.Eventf(cluster, corev1.EventTypeNormal, moco.EventInitializationFailed.Reason, moco.EventInitializationFailed.Message, err)
+
 			return ctrl.Result{}, err
 		}
 		if isUpdated {
@@ -124,9 +130,13 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 				Type: mocov1alpha1.ConditionInitialized, Status: corev1.ConditionTrue})
 			if err := r.Status().Update(ctx, cluster); err != nil {
 				log.Error(err, "failed to status update", "status", cluster.Status)
+
+				r.Recorder.Eventf(cluster, corev1.EventTypeNormal, moco.EventInitializationFailed.Reason, moco.EventInitializationFailed.Message, err)
+
 				return ctrl.Result{}, err
 			}
 		}
+		r.Recorder.Event(cluster, moco.EventInitializationFailed.Type, moco.EventInitializationSucceeded.Reason, moco.EventInitializationSucceeded.Message)
 		metrics.UpdateTotalReplicasMetrics(cluster.Name, cluster.Spec.Replicas)
 
 		// clustering
