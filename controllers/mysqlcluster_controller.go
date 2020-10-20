@@ -135,8 +135,8 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 				return ctrl.Result{}, err
 			}
+			r.Recorder.Event(cluster, moco.EventInitializationSucceeded.Type, moco.EventInitializationSucceeded.Reason, moco.EventInitializationSucceeded.Message)
 		}
-		r.Recorder.Event(cluster, moco.EventInitializationFailed.Type, moco.EventInitializationSucceeded.Reason, moco.EventInitializationSucceeded.Message)
 		metrics.UpdateTotalReplicasMetrics(cluster.Name, cluster.Spec.Replicas)
 
 		// clustering
