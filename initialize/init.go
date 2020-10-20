@@ -167,10 +167,13 @@ FLUSH PRIVILEGES ;
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err = t.Execute(sql, struct {
 		Password string
 		Host     string
 	}{rootPassword, rootHost})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
@@ -210,10 +213,13 @@ REVOKE
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err := t.Execute(sql, struct {
 		User     string
 		Password string
 	}{moco.OperatorUser, password})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
@@ -231,10 +237,13 @@ GRANT
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err := t.Execute(sql, struct {
 		User     string
 		Password string
 	}{moco.OperatorAdminUser, password})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
@@ -253,10 +262,13 @@ GRANT
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err := t.Execute(sql, struct {
 		User     string
 		Password string
 	}{moco.DonorUser, password})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
@@ -279,10 +291,13 @@ GRANT
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err := t.Execute(sql, struct {
 		User     string
 		Password string
 	}{moco.ReplicatorUser, password})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
@@ -304,9 +319,12 @@ GRANT
 `))
 
 	sql := new(bytes.Buffer)
-	t.Execute(sql, struct {
+	err := t.Execute(sql, struct {
 		Password string
 	}{Password: password})
+	if err != nil {
+		return err
+	}
 
 	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
