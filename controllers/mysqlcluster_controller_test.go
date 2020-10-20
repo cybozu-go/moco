@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -549,6 +550,28 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).Should(HaveOccurred())
 		})
 
+	})
+
+	Context("CronJob", func() {
+		It("should create cron job", func() {
+			isUpdated, err := reconciler.createOrUpdateCronJob(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			job0 := &batchv1beta1.CronJob{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0), Namespace: cluster.Namespace}, job0)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(job0).ShouldNot(BeNil())
+
+			job1 := &batchv1beta1.CronJob{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 1), Namespace: cluster.Namespace}, job1)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(job1).ShouldNot(BeNil())
+
+			isUpdated, err = reconciler.createOrUpdateCronJob(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
 	})
 
 	Context("Services", func() {
