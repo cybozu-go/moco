@@ -560,8 +560,13 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 			sts.Spec.Template = *podTemplate
 		}
 
+		volumeTemplates, err := r.makeVolumeClaimTemplates(cluster)
+		if err != nil {
+			log.Error(err, "invalid volume template found")
+			return err
+		}
 		volumeClaimTemplates := append(
-			r.makeVolumeClaimTemplates(cluster),
+			volumeTemplates,
 			r.makeDataVolumeClaimTemplate(cluster),
 		)
 		if !equality.Semantic.DeepDerivative(volumeClaimTemplates, sts.Spec.VolumeClaimTemplates) {
@@ -903,11 +908,15 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mocov1alpha1.MySQLCluster) []corev1.PersistentVolumeClaim {
+func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mocov1alpha1.MySQLCluster) ([]corev1.PersistentVolumeClaim, error) {
 	templates := cluster.Spec.VolumeClaimTemplates
 	newTemplates := make([]corev1.PersistentVolumeClaim, len(templates))
 
 	for i, template := range templates {
+		if template.Name == mysqlDataVolumeName {
+			err := fmt.Errorf("cannot specify %s volume in volumeClaimTemplates", mysqlDataVolumeName)
+			return nil, err
+		}
 		newTemplates[i] = corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        template.Name,
@@ -918,7 +927,7 @@ func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mocov1alpha1.
 		}
 	}
 
-	return newTemplates
+	return newTemplates, nil
 }
 
 func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alpha1.MySQLCluster) corev1.PersistentVolumeClaim {

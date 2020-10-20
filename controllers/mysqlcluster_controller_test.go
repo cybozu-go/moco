@@ -55,7 +55,7 @@ func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
 				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
+						corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI),
 					},
 				},
 			},
@@ -347,6 +347,15 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(agentContainer).ShouldNot(BeNil())
 
+			var claim *corev1.PersistentVolumeClaim
+			for i, v := range sts.Spec.VolumeClaimTemplates {
+				if v.Name == mysqlDataVolumeName {
+					claim = &sts.Spec.VolumeClaimTemplates[i]
+				}
+			}
+			Expect(claim).ShouldNot(BeNil())
+			Expect(claim.Spec.Resources.Requests.Storage().Value()).Should(BeNumerically("==", 1<<30))
+
 			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
@@ -392,16 +401,154 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 
 		It("update podTemplate", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"/ping.sh"},
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       5,
+							},
+						},
+						{
+							Name:  "filebeat",
+							Image: "filebeat:dev",
+							Args:  []string{"-c", "/etc/filebeat.yml"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "config",
+									ReadOnly:  true,
+									MountPath: "/etc/filebeat.yml",
+									SubPath:   "filebeat.yml",
+								},
+							},
+						},
+					},
+				},
+			}
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
 
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var mysqldContainer *corev1.Container
+			var filebeatContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "mysqld" {
+					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
+				} else if c.Name == "filebeat" {
+					filebeatContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+			Expect(mysqldContainer).ShouldNot(BeNil())
+			Expect(filebeatContainer).ShouldNot(BeNil())
+
+			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
+			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(ContainElement("/ping.sh"))
+			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+
+			Expect(filebeatContainer.VolumeMounts).Should(HaveLen(1))
+
+			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
 		})
 
-		It("update volumeTemplate", func() {
+		It("should use volumeTemplate", func() {
+			oldSts := &appsv1.StatefulSet{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Delete(ctx, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
 
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.VolumeClaimTemplates = []mocov1alpha1.PersistentVolumeClaim{
+				{
+					ObjectMeta: mocov1alpha1.ObjectMeta{
+						Name: "test-volume",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
+							},
+						},
+					},
+				},
+			}
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var testClaim *corev1.PersistentVolumeClaim
+			var dataClaim *corev1.PersistentVolumeClaim
+			for i, v := range sts.Spec.VolumeClaimTemplates {
+				if v.Name == "test-volume" {
+					testClaim = &sts.Spec.VolumeClaimTemplates[i]
+				}
+				if v.Name == mysqlDataVolumeName {
+					dataClaim = &sts.Spec.VolumeClaimTemplates[i]
+				}
+			}
+			Expect(testClaim).ShouldNot(BeNil())
+			Expect(dataClaim).ShouldNot(BeNil())
+
+			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
 		})
 
-		It("update dataVolumeTemplate", func() {
+		It("should return error, when volumeTemplate contains mysql-data", func() {
+			oldSts := &appsv1.StatefulSet{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Delete(ctx, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
 
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.VolumeClaimTemplates = []mocov1alpha1.PersistentVolumeClaim{
+				{
+					ObjectMeta: mocov1alpha1.ObjectMeta{
+						Name: mysqlDataVolumeName,
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
+							},
+						},
+					},
+				},
+			}
+
+			_, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).Should(HaveOccurred())
 		})
+
 	})
 
 	Context("Services", func() {
