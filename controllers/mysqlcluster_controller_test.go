@@ -554,6 +554,8 @@ var _ = Describe("MySQLCluster controller", func() {
 
 	Context("CronJob", func() {
 		It("should create cron job", func() {
+			cluster.Status.AgentToken = "test-token"
+
 			isUpdated, err := reconciler.createOrUpdateCronJob(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeTrue())
@@ -562,6 +564,20 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0), Namespace: cluster.Namespace}, job0)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(job0).ShouldNot(BeNil())
+			Expect(job0.Spec.Schedule).Should(Equal(cluster.Spec.LogRotationSchedule))
+			Expect(job0.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy).Should(Equal(corev1.RestartPolicyOnFailure))
+			Expect(len(job0.Spec.JobTemplate.Spec.Template.Spec.Containers)).Should(Equal(1))
+			containers := []corev1.Container{
+				{
+					Name:                     "curl",
+					Image:                    reconciler.CurlContainerImage,
+					Command:                  []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", moco.UniqueName(cluster)+"-0", moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
+					ImagePullPolicy:          "Always",
+					TerminationMessagePath:   "/dev/termination-log",
+					TerminationMessagePolicy: "File",
+				},
+			}
+			Expect(job0.Spec.JobTemplate.Spec.Template.Spec.Containers).Should(Equal(containers))
 
 			job1 := &batchv1beta1.CronJob{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 1), Namespace: cluster.Namespace}, job1)
@@ -587,13 +603,20 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: namespace}, createdReplicaService)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeClusterIP))
+			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeClusterIP))
+
 			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
 			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
 			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-
-			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
 			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
 			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
+
+			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdReplicaService.Spec.Ports[0].Name).Should(Equal("mysql"))
+			Expect(createdReplicaService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
+			Expect(createdReplicaService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
+			Expect(createdReplicaService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
 
 			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -635,10 +658,14 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
 			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
 			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-
-			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
 			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
 			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
+
+			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
+			Expect(createdReplicaService.Spec.Ports[0].Name).Should(Equal("mysql"))
+			Expect(createdReplicaService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
+			Expect(createdReplicaService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
+			Expect(createdReplicaService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
 
 			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
