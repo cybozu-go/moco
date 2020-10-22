@@ -30,7 +30,7 @@ const (
 	replicaServerID = 2
 )
 
-var _ = Describe("Configure replication", func() {
+var _ = Describe("Test Agent: Clone Request", func() {
 
 	BeforeEach(func() {
 		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)

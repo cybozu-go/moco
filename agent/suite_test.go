@@ -64,8 +64,3 @@ func getMetric(registry *prometheus.Registry, metricName string) (*promgo.Metric
 
 	return nil, fmt.Errorf("cannot find a metric: name=%s", metricName)
 }
-
-var _ = Describe("Test Agent", func() {
-	testAgentHealth()
-	testAgentRotate()
-})
