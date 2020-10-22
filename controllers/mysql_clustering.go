@@ -137,7 +137,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	// Clone from external MySQL here
+	op = cloneFromExternal(status, cluster)
+	if len(op) != 0 {
+		return &Operation{
+			Operators: op,
+			Phase:     moco.PhaseRestoreInstance,
+			Event:     &moco.EventWaitingCloneFromExternal,
+		}, nil
+	}
 
 	op = restoreEmptyInstance(status, cluster)
 	if len(op) != 0 {
@@ -425,9 +432,18 @@ func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []op
 }
 
 func cloneFromExternal(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
+	// Do nothing if ReplicationSourceSecretName is not given
+	if cluster.Spec.ReplicationSourceSecretName == nil {
+		return nil
+	}
+
 	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
-	if isCloneable(&status.InstanceStatus[*currentPrimaryIndex]) {
-		// TODO
+	if !isCloneable(&status.InstanceStatus[*currentPrimaryIndex]) {
+		return nil
+	}
+
+	return []ops.Operator{
+		ops.CloneOp(*currentPrimaryIndex, true),
 	}
 }
 
@@ -476,7 +492,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 		}
 
 		if isCloneable(&s) {
-			op = append(op, ops.CloneOp(i))
+			op = append(op, ops.CloneOp(i, false))
 		}
 	}
 

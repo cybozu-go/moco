@@ -159,7 +159,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -176,7 +176,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},

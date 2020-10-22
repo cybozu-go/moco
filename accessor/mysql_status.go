@@ -390,13 +390,13 @@ func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePr
 	var result IntermediatePrimaryOptions
 	for k, v := range options {
 		switch k {
-		case "PRIMARY_HOST":
+		case moco.ReplicationSourcePrimaryHostKey:
 			result.PrimaryHost = string(v)
-		case "PRIMARY_USER":
+		case moco.ReplicationSourcePrimaryUserKey:
 			result.PrimaryUser = string(v)
-		case "PRIMARY_PASSWORD":
+		case moco.ReplicationSourcePrimaryPasswordKey:
 			result.PrimaryPassword = string(v)
-		case "PRIMARY_PORT":
+		case moco.ReplicationSourcePrimaryPortKey:
 			port, err := strconv.Atoi(string(v))
 			if err != nil {
 				return nil, err

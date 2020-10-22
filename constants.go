@@ -59,6 +59,9 @@ const (
 	// MiscPasswordPath is the path to misc user passsword file
 	MiscPasswordPath = MySQLDataPath + "/misc-password"
 
+	// ReplicationSourceSecretPath is the path to replication source secret file
+	ReplicationSourceSecretPath = MySQLDataPath + "/replication-source-secret"
+
 	// InnoDBBufferPoolRatioPercent is the ratio of InnoDB buffer pool size to resource.limits.memory or resource.requests.memory
 	// Note that the pool size doesn't set to lower than 128MiB, which is the default innodb_buffer_pool_size value
 	InnoDBBufferPoolRatioPercent = 70
@@ -143,6 +146,12 @@ const (
 
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"
+
+	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
+	ReplicationSourcePrimaryHostKey     = "PRIMARY_HOST"
+	ReplicationSourcePrimaryUserKey     = "PRIMARY_USER"
+	ReplicationSourcePrimaryPasswordKey = "PRIMARY_PASSWORD"
+	ReplicationSourcePrimaryPortKey     = "PRIMARY_PORT"
 )
 
 const (
@@ -167,6 +176,7 @@ const (
 const (
 	CloneParamDonorHostName = "donor_hostname"
 	CloneParamDonorPort     = "donor_port"
+	CloneParamExternal      = "external"
 )
 
 const (
@@ -240,6 +250,11 @@ var (
 		corev1.EventTypeNormal,
 		"Waiting Relay Log Execution",
 		"Waiting relay log execution on replica instance(s).",
+	}
+	EventWaitingCloneFromExternal = MOCOEvent{
+		corev1.EventTypeNormal,
+		"Waiting External Clone",
+		"Waiting for the intermediate primary to clone from the external primary",
 	}
 	EventRestoringReplicaInstances = MOCOEvent{
 		corev1.EventTypeNormal,
