@@ -779,7 +779,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			},
 		},
 	}
-	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, agentContainer)
 
 	if cluster.Spec.ReplicationSourceSecretName != nil {
 		newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes, corev1.Volume{
@@ -795,6 +794,8 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			Name:      replicationSourceSecretVolumeName,
 		})
 	}
+
+	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, agentContainer)
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,

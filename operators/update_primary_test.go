@@ -3,6 +3,7 @@ package operators
 import (
 	"context"
 
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
@@ -17,14 +18,14 @@ var _ = Describe("Update primary", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		err := startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
+		err := moco.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = startMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = initializeMySQL(mysqldPort1)
+		err = moco.InitializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = initializeMySQL(mysqldPort2)
+		err = moco.InitializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		ns := corev1.Namespace{}
@@ -36,8 +37,8 @@ var _ = Describe("Update primary", func() {
 	})
 
 	AfterEach(func() {
-		stopMySQLD(mysqldName1)
-		stopMySQLD(mysqldName2)
+		moco.StopAndRemoveMySQLD(mysqldName1)
+		moco.StopAndRemoveMySQLD(mysqldName2)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")

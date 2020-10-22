@@ -1,10 +1,7 @@
 package operators
 
 import (
-	"context"
-	"fmt"
 	"log" // restrictpkg:ignore to suppress mysql client logs.
-	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -13,15 +10,12 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/cybozu-go/well"
 	"github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -84,11 +78,11 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	stopMySQLD(mysqldName1)
-	stopMySQLD(mysqldName2)
-	removeNetwork()
+	moco.StopAndRemoveMySQLD(mysqldName1)
+	moco.StopAndRemoveMySQLD(mysqldName2)
+	moco.RemoveNetwork()
 
-	err = createNetwork()
+	err = moco.CreateNetwork()
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)
@@ -99,9 +93,9 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
-	stopMySQLD(mysqldName1)
-	stopMySQLD(mysqldName2)
-	removeNetwork()
+	moco.StopAndRemoveMySQLD(mysqldName1)
+	moco.StopAndRemoveMySQLD(mysqldName2)
+	moco.RemoveNetwork()
 })
 
 func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1alpha1.MySQLCluster) {
@@ -152,108 +146,4 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 	}
 
 	return acc, inf, cluster
-}
-
-func startMySQLD(name string, port int, serverID int) error {
-	ctx := context.Background()
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	cmd := well.CommandContext(ctx,
-		"docker", "run", "-d", "--rm",
-		"--network="+networkName,
-		"--name", name,
-		"-p", fmt.Sprintf("%d:%d", port, port),
-		"-v", filepath.Join(wd, "..", "my.cnf")+":/etc/mysql/conf.d/my.cnf",
-		"-e", "MYSQL_ROOT_PASSWORD="+password,
-		"mysql:"+mySQLVersion,
-		fmt.Sprintf("--port=%d", port),
-		fmt.Sprintf("--server-id=%d", serverID),
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func stopMySQLD(name string) error {
-	ctx := context.Background()
-	cmd := well.CommandContext(ctx, "docker", "stop", name)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func createNetwork() error {
-	ctx := context.Background()
-	cmd := well.CommandContext(ctx, "docker", "network", "create", networkName)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func removeNetwork() error {
-	ctx := context.Background()
-	cmd := well.CommandContext(ctx, "docker", "network", "rm", networkName)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func initializeMySQL(port int) error {
-	conf := mysql.NewConfig()
-	conf.User = userName
-	conf.Passwd = password
-	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
-	conf.InterpolateParams = true
-
-	var db *sqlx.DB
-	var err error
-	for i := 0; i < 20; i++ {
-		db, err = sqlx.Connect("mysql", conf.FormatDSN())
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second * 3)
-	}
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", moco.OperatorAdminUser, password)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", moco.OperatorAdminUser)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
-	if err != nil {
-		if err.Error() != "Error 1125: Function 'rpl_semi_sync_master' already exists" {
-			return err
-		}
-	}
-	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'")
-	if err != nil {
-		if err.Error() != "Error 1125: Function 'rpl_semi_sync_slave' already exists" {
-			return err
-		}
-	}
-	_, err = db.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
-	if err != nil {
-		if err.Error() != "Error 1125: Function 'clone' already exists" {
-			return err
-		}
-	}
-
-	_, err = db.Exec(`CLONE LOCAL DATA DIRECTORY = ?`, "/tmp/"+uuid.NewUUID())
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

@@ -13,7 +13,6 @@ import (
 )
 
 var _ = Describe("Clone operator", func() {
-
 	ctx := context.Background()
 	_, infra, cluster := getAccessorInfraCluster()
 	replicaIndex := 1
@@ -32,6 +31,22 @@ var _ = Describe("Clone operator", func() {
 		}, httpmock.NewStringResponder(http.StatusOK, ""))
 
 		op := cloneOp{replicaIndex: replicaIndex}
+		err := op.Run(ctx, infra, &cluster, nil)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Expect(httpmock.GetTotalCallCount()).Should(Equal(1))
+	})
+
+	It("should call /clone API with fromExternal flag", func() {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		httpmock.RegisterResponderWithQuery(http.MethodGet, uri, map[string]string{
+			moco.CloneParamExternal: "true",
+			moco.AgentTokenParam:    token,
+		}, httpmock.NewStringResponder(http.StatusOK, ""))
+
+		op := cloneOp{replicaIndex: replicaIndex, fromExternal: true}
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 

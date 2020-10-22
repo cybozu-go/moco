@@ -48,7 +48,7 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 		moco.AgentTokenParam: []string{cluster.Status.AgentToken},
 	}
 	if o.fromExternal {
-		queries[moco.CloneParamExternal] = []string{"1"}
+		queries[moco.CloneParamExternal] = []string{"true"}
 	} else {
 		queries[moco.CloneParamDonorHostName] = []string{primaryHost}
 		queries[moco.CloneParamDonorPort] = []string{strconv.Itoa(moco.MySQLAdminPort)}

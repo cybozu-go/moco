@@ -34,9 +34,9 @@ func testAgentHealth() {
 
 	It("should return 500 if cloning process is in progress", func() {
 		By("executing cloning")
-		err := resetMaster(replicaHost, replicaPort)
+		err := moco.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = setValidDonorList(replicaHost, replicaPort)
+		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
@@ -82,7 +82,7 @@ func testAgentHealth() {
 
 	It("should return 500 if replica status has IO error", func() {
 		By("executing START SLAVE with invalid parameters")
-		err := startSlaveWithInvalidSettings(replicaHost, replicaPort)
+		err := moco.StartSlaveWithInvalidSettings(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("getting health")
