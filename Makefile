@@ -42,8 +42,13 @@ validate: setup
 
 # Run tests
 .PHONY: test
-test: $(KUBEBUILDER)
+test: $(KUBEBUILDER) init-test
 	go test -race -v -coverprofile cover.out ./...
+
+.PHONY: init-test
+init-test:
+	docker build -t mysql-with-go:latest ./initialize/
+	docker run -v  $(PWD):/go/src/github.com/cybozu-go/moco --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -mod=vendor -v ./initialize"
 
 .PHONY: start-mysqld
 start-mysqld:
