@@ -30,6 +30,8 @@ MySQLClusterSpec
 
 The configMap specified with `mysqlConfigMapName` contains MySQL options of mysqld section as key-value pairs.
 
+Note that `podTemplate` must include `name: myslqd` container. This container must specify a container image that runs `mysqld`. Besides, the container `name: agent` cannot be included in `podTemplate` because it is reserved by MOCO controller.
+
 RestoreSpec
 -----------
 

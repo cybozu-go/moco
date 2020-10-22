@@ -58,6 +58,10 @@ const (
 
 	// MiscPasswordPath is the path to misc user passsword file
 	MiscPasswordPath = MySQLDataPath + "/misc-password"
+
+	// InnoDBBufferPoolRatioPercent is the ratio of InnoDB buffer pool size to resource.limits.memory or resource.requests.memory
+	// Note that the pool size doesn't set to lower than 128MiB, which is the default innodb_buffer_pool_size value
+	InnoDBBufferPoolRatioPercent = 70
 )
 
 const (
