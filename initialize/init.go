@@ -196,8 +196,8 @@ GRANT
     TRIGGER,
     LOCK TABLES,
     REPLICATION CLIENT,
-	BACKUP_ADMIN,
-	CLONE_ADMIN,
+    BACKUP_ADMIN,
+    CLONE_ADMIN,
     BINLOG_ADMIN,
     SYSTEM_VARIABLES_ADMIN,
     REPLICATION_SLAVE_ADMIN,
@@ -232,7 +232,7 @@ func initializeOperatorAdminUser(ctx context.Context, passwordFilePath string, p
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	ALL
+    ALL
   ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
 `))
 
@@ -256,8 +256,8 @@ func initializeDonorUser(ctx context.Context, passwordFilePath string, password 
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	BACKUP_ADMIN,
-	SERVICE_CONNECTION_ADMIN
+    BACKUP_ADMIN,
+    SERVICE_CONNECTION_ADMIN
   ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION ;
 `))
 
@@ -310,11 +310,11 @@ func initializeMiscUser(ctx context.Context, passwordFilePath string, miscConfPa
 	t := template.Must(template.New("sql").Parse(`
 CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
-	SELECT,
-	RELOAD,
-	CLONE_ADMIN,
-	SERVICE_CONNECTION_ADMIN,
-	REPLICATION CLIENT
+    SELECT,
+    RELOAD,
+    CLONE_ADMIN,
+    SERVICE_CONNECTION_ADMIN,
+    REPLICATION CLIENT
   ON *.* TO misc@'%' ;
 `))
 
