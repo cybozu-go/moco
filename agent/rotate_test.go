@@ -26,7 +26,7 @@ var _ = Describe("Test Agent: Rotate Request", func() {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "moco-test-agent-")
 		Expect(err).ShouldNot(HaveOccurred())
-		agent = New(replicaHost, token, password, password, tmpDir, replicaPort,
+		agent = New(host, token, password, password, replicationSourceSecretPath, tmpDir, replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,

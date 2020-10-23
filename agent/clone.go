@@ -37,7 +37,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	var donorPassword string
 
 	external := r.URL.Query().Get(moco.CloneParamExternal)
-	if external == "" {
+	if external != "true" {
 		donorHostName = r.URL.Query().Get(moco.CloneParamDonorHostName)
 		if len(donorHostName) <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
@@ -59,14 +59,14 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		donorUser = moco.DonorUser
 		donorPassword = a.donorUserPassword
 	} else {
-		rawDonorHostName, err := ioutil.ReadFile(moco.ReplicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
+		rawDonorHostName, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		donorHostName = string(rawDonorHostName)
 
-		rawDonorPort, err := ioutil.ReadFile(moco.ReplicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
+		rawDonorPort, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPortKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -78,14 +78,14 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rawDonorUser, err := ioutil.ReadFile(moco.ReplicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryUserKey)
+		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryUserKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		donorUser = string(rawDonorUser)
 
-		rawDonorPassword, err := ioutil.ReadFile(moco.ReplicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPasswordKey)
+		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPasswordKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

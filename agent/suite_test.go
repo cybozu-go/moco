@@ -3,6 +3,8 @@ package agent
 import (
 	"fmt"
 	"log" // restrictpkg:ignore to suppress mysql client logs.
+	"os"
+	"path"
 	"testing"
 
 	"github.com/cybozu-go/moco"
@@ -16,10 +18,19 @@ import (
 )
 
 const (
-	password      = "test-password"
-	token         = "dummy-token"
-	metricsPrefix = "moco_agent_"
+	password        = "test-password"
+	token           = "dummy-token"
+	metricsPrefix   = "moco_agent_"
+	host            = "localhost"
+	donorHost       = "moco-test-mysqld-donor"
+	donorPort       = 3307
+	donorServerID   = 1
+	replicaHost     = "moco-test-mysqld-replica"
+	replicaPort     = 3308
+	replicaServerID = 2
 )
+
+var replicationSourceSecretPath string
 
 func TestAgent(t *testing.T) {
 	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
@@ -31,11 +42,16 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 
+	var err error
+	pwd, err := os.Getwd()
+	Expect(err).ShouldNot(HaveOccurred())
+	replicationSourceSecretPath = path.Join(pwd, "test_data")
+
 	moco.StopAndRemoveMySQLD(donorHost)
 	moco.StopAndRemoveMySQLD(replicaHost)
 	moco.RemoveNetwork()
 
-	err := moco.CreateNetwork()
+	err = moco.CreateNetwork()
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)

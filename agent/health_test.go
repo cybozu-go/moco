@@ -48,7 +48,7 @@ var _ = Describe("Test Agent: Health Request", func() {
 		registry = prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
 
-		agent = New(host, token, password, password, "", replicaPort,
+		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -98,7 +98,7 @@ var _ = Describe("Test Agent: Health Request", func() {
 
 		By("wating cloning is completed")
 		Eventually(func() error {
-			db, err := agent.acc.Get(replicaHost+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
 			if err != nil {
 				return err
 			}

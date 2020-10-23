@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -20,17 +21,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	host            = "localhost"
-	donorHost       = "moco-test-mysqld-donor"
-	donorPort       = 3307
-	donorServerID   = 1
-	replicaHost     = "moco-test-mysqld-replica"
-	replicaPort     = 3308
-	replicaServerID = 2
-)
-
 var _ = Describe("Test Agent: Clone Request", func() {
+	var agent *Agent
+	var registry *prometheus.Registry
 
 	BeforeEach(func() {
 		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
@@ -53,6 +46,17 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = moco.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
+
+		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+
+		registry = prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
 	})
 
 	AfterEach(func() {
@@ -66,13 +70,6 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		metrics.RegisterAgentMetrics(registry)
 
 		By("preparing agent")
-		agent := New(host, token, password, password, "", replicaPort,
-			&accessor.MySQLAccessorConfig{
-				ConnMaxLifeTime:   30 * time.Minute,
-				ConnectionTimeout: 3 * time.Second,
-				ReadTimeout:       30 * time.Second,
-			},
-		)
 
 		By("passing invalid token")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
@@ -153,15 +150,6 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*cloneCount.Counter.Value).Should(Equal(0.0))
 
-		By("preparing agent")
-		agent := New(host, token, password, password, "", replicaPort,
-			&accessor.MySQLAccessorConfig{
-				ConnMaxLifeTime:   30 * time.Minute,
-				ConnectionTimeout: 3 * time.Second,
-				ReadTimeout:       30 * time.Second,
-			},
-		)
-
 		By("cloning from donor")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries := url.Values{
@@ -213,15 +201,6 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		err := moco.PrepareTestData(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		By("preparing agent")
-		agent := New(host, token, password, password, "", replicaPort,
-			&accessor.MySQLAccessorConfig{
-				ConnMaxLifeTime:   30 * time.Minute,
-				ConnectionTimeout: 3 * time.Second,
-				ReadTimeout:       30 * time.Second,
-			},
-		)
-
 		By("cloning from donor")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries := url.Values{
@@ -234,5 +213,59 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		res := httptest.NewRecorder()
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusForbidden))
+	})
+
+	It("should clone from external MySQL", func() {
+		By("cloning from external MySQL")
+		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries := url.Values{
+			moco.CloneParamExternal: []string{"true"},
+			moco.AgentTokenParam:    []string{token},
+		}
+		req.URL.RawQuery = queries.Encode()
+
+		res := httptest.NewRecorder()
+		agent.Clone(res, req)
+		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
+
+		Eventually(func() error {
+			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			if err != nil {
+				return err
+			}
+
+			cloneStatus, err := accessor.GetMySQLCloneStateStatus(context.Background(), db)
+			if err != nil {
+				return err
+			}
+
+			expected := sql.NullString{Valid: true, String: "Completed"}
+			if !cmp.Equal(cloneStatus.State, expected) {
+				return fmt.Errorf("doesn't reach completed state: %+v", cloneStatus.State)
+			}
+			return nil
+		}, 30*time.Second).Should(Succeed())
+
+		By("getting 500 when secret files doesn't exist")
+		pwd, err := os.Getwd()
+		Expect(err).ShouldNot(HaveOccurred())
+		agent = New(host, token, password, password, pwd, "", replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+
+		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries = url.Values{
+			moco.CloneParamExternal: []string{"true"},
+			moco.AgentTokenParam:    []string{token},
+		}
+		req.URL.RawQuery = queries.Encode()
+
+		res = httptest.NewRecorder()
+		agent.Clone(res, req)
+		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError))
 	})
 })
