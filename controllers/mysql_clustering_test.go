@@ -416,6 +416,31 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
+			name: "It should clone from external primary",
+			input: testData{
+				intermediate(cluster(intPointer(0))),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
+					emptyIns(moco.PrimaryRole, false).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+				),
+			},
+			want: &Operation{
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				Operators: []ops.Operator{
+					ops.SetCloneDonorListOp([]int{0}, intermediatePrimaryOptions.PrimaryHost+":"+strconv.Itoa(intermediatePrimaryOptions.PrimaryPort)),
+					ops.CloneOp(0, true),
+				},
+				Phase: moco.PhaseRestoreInstance,
+				Event: &moco.EventWaitingCloneFromExternal,
+			},
+		},
+		{
 			name: "It should configure intermediate primary",
 			input: testData{
 				intermediate(cluster(intPointer(0))),

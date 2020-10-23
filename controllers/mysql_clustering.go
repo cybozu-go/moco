@@ -147,9 +147,10 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	op = cloneFromExternal(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
-			Operators: op,
-			Phase:     moco.PhaseRestoreInstance,
-			Event:     &moco.EventWaitingCloneFromExternal,
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
+			Phase:      moco.PhaseRestoreInstance,
+			Event:      &moco.EventWaitingCloneFromExternal,
 		}, nil
 	}
 
