@@ -44,7 +44,8 @@ var _ = Describe("Set clone donor list", func() {
 
 		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
 		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))

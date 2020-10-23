@@ -51,7 +51,8 @@ var _ = Describe("Stop replica IO thread", func() {
 		err = op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		replicaStatus := status.InstanceStatus[0].ReplicaStatus
 		Expect(replicaStatus).ShouldNot(BeNil())
@@ -59,7 +60,10 @@ var _ = Describe("Stop replica IO thread", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 
 		Eventually(func() error {
-			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			if err != nil {
+				return err
+			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
 			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
 				return errors.New("IO thread should not be running")

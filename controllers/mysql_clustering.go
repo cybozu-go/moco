@@ -38,7 +38,14 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		addrs = append(addrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.MySQLAdminPort))
 	}
 	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs)
-	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
+	status, err := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
+	if err != nil {
+		condErr := r.setFailureCondition(ctx, cluster, err, nil)
+		if condErr != nil {
+			log.Error(condErr, "unable to update status")
+		}
+		return ctrl.Result{}, err
+	}
 
 	op, err := decideNextOperation(log, cluster, status)
 	if err != nil {
@@ -405,10 +412,6 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 }
 
 func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
-	if status.Latest == nil {
-		return 0, moco.ErrCannotCompareGITDs
-	}
-
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return 0, nil
 	}

@@ -43,7 +43,8 @@ var _ = Describe("Turn off read only", func() {
 		err = op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
 	})
 })

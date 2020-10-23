@@ -77,7 +77,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeTrue())
 		replicaStatus := status.InstanceStatus[0].ReplicaStatus
@@ -86,7 +87,10 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 
 		Eventually(func() error {
-			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			if err != nil {
+				return err
+			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
 			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
 				return errors.New("IO thread should be running")
@@ -117,7 +121,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		err = op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
 
@@ -125,7 +130,10 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 
 		Eventually(func() error {
-			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			if err != nil {
+				return err
+			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
 			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
 				return errors.New("IO thread should not be running")

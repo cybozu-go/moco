@@ -143,7 +143,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort))},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort))},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -160,7 +160,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -177,7 +177,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -414,19 +414,6 @@ func TestDecideNextOperation(t *testing.T) {
 				Operators: []ops.Operator{ops.UpdatePrimaryOp(1)},
 				Event:     moco.EventPrimaryChanged.FillVariables("0", "1"),
 			},
-		},
-		{
-			name: "It should return error if cannot performe GTID comparsion",
-			input: testData{
-				cluster(intPointer(0)),
-				mySQLStatus(nil, nil,
-					emptyIns(moco.PrimaryRole, false).build(),
-					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().setGTIDInconsistent().build(),
-					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
-				),
-			},
-			want:    nil,
-			wantErr: moco.ErrCannotCompareGITDs,
 		},
 		{
 			name: "It should configure intermediate primary",

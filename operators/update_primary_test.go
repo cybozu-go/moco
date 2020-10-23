@@ -62,7 +62,8 @@ var _ = Describe("Update primary", func() {
 			newPrimaryIndex: 1,
 		}
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = op.Run(ctx, infra, &cluster, status)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -75,7 +76,8 @@ var _ = Describe("Update primary", func() {
 		Expect(*updateCluster.Status.CurrentPrimaryIndex).Should(Equal(1))
 
 		Expect(*cluster.Status.CurrentPrimaryIndex).Should(Equal(1))
-		status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(3))
 
 		primaryStatus := status.InstanceStatus[1]

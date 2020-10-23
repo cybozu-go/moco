@@ -22,8 +22,9 @@ var _ = Describe("Get MySQLCluster status", func() {
 		_, inf, cluster := getAccessorInfraCluster()
 
 		logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		sts, err := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
 
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(sts.InstanceStatus).Should(HaveLen(1))
 		Expect(sts.InstanceStatus[0].PrimaryStatus).ShouldNot(BeNil())
 		Expect(sts.InstanceStatus[0].ReplicaStatus).ShouldNot(BeNil())
@@ -55,7 +56,8 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("getting and validating intermediate primary options")
 		logger := ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		sts, err := GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		expect := &IntermediatePrimaryOptions{
 			PrimaryHost:     "dummy-primary",
 			PrimaryPassword: "dummy-password",
@@ -76,8 +78,8 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("getting and validating intermediate primary options")
 		logger = ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
-		Expect(sts.IntermediatePrimaryOptions).Should(BeNil())
+		sts, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		Expect(err).Should(HaveOccurred())
 
 		By("setting options without INVALID_OPTION to api server")
 		data = map[string][]byte{
@@ -93,8 +95,8 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("getting and validating intermediate primary options")
 		logger = ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
-		Expect(sts.IntermediatePrimaryOptions).Should(BeNil())
+		sts, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		Expect(err).Should(HaveOccurred())
 	})
 
 	It("should get latest instance by comparing GTIDs", func() {
@@ -127,7 +129,7 @@ var _ = Describe("Get MySQLCluster status", func() {
 			},
 		}
 		_, err = GetLatestInstance(ctx, db, status)
-		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
+		Expect(err.Error()).Should(Equal("cannot compare gtids"))
 
 		By("comparing the same GTIDs")
 		status = []MySQLInstanceStatus{
@@ -177,6 +179,6 @@ var _ = Describe("Get MySQLCluster status", func() {
 			},
 		}
 		_, err = GetLatestInstance(ctx, db, status)
-		Expect(err.Error()).Should(Equal("cannot compare retrieved/executed GTIDs"))
+		Expect(err.Error()).Should(Equal("cannot compare gtids"))
 	})
 })
