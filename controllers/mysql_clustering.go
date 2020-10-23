@@ -442,7 +442,9 @@ func cloneFromExternal(status *accessor.MySQLClusterStatus, cluster *mocov1alpha
 		return nil
 	}
 
+	externalHostWithPort := status.IntermediatePrimaryOptions.PrimaryHost + ":" + strconv.Itoa(status.IntermediatePrimaryOptions.PrimaryPort)
 	return []ops.Operator{
+		ops.SetCloneDonorListOp([]int{*currentPrimaryIndex}, externalHostWithPort),
 		ops.CloneOp(*currentPrimaryIndex, true),
 	}
 }
@@ -479,11 +481,14 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	primaryHost := moco.GetHost(cluster, primaryIndex)
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
-	for _, s := range status.InstanceStatus {
+	var target []int
+	for i, s := range status.InstanceStatus {
 		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
-			op = append(op, ops.SetCloneDonorListOp())
-			break
+			target = append(target, i)
 		}
+	}
+	if len(target) > 0 {
+		op = append(op, ops.SetCloneDonorListOp(target, primaryHostWithPort))
 	}
 
 	for i, s := range status.InstanceStatus {

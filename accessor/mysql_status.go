@@ -194,6 +194,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 		status.InstanceStatus[instanceIdx].Available = true
 	}
 
+	// TODO: It should return error when the Secret cannot be read
 	options, err := GetIntermediatePrimaryOptions(ctx, infra.GetClient(), cluster)
 	if err != nil {
 		log.Info("cannot obtain or invalid options for intermediate primary", "err", err)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/cybozu-go/moco"
@@ -142,7 +143,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp()},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort))},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -159,7 +160,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1, false)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -176,7 +177,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1, false)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{0, 1, 2}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
