@@ -35,10 +35,13 @@ const (
 	password        = "test-password"
 	mysqldName1     = "moco-operators-test-mysqld-1"
 	mysqldName2     = "moco-operators-test-mysqld-2"
+	mysqldName3     = "moco-operators-test-mysqld-3"
 	mysqldPort1     = 3309
 	mysqldPort2     = 3310
+	mysqldPort3     = 3311
 	mysqldServerID1 = 1001
 	mysqldServerID2 = 1002
+	mysqldServerID3 = 1003
 	networkName     = "moco-operators-test-net"
 	systemNamespace = "test-moco-system"
 	namespace       = "test-namespace"
@@ -82,8 +85,9 @@ var _ = BeforeSuite(func(done Done) {
 	moco.StopAndRemoveMySQLD(mysqldName2)
 	moco.RemoveNetwork()
 
-	err = moco.CreateNetwork()
-	Expect(err).ShouldNot(HaveOccurred())
+	Eventually(func() error {
+		return moco.CreateNetwork()
+	}, 10*time.Second).Should(Succeed())
 
 	close(done)
 }, 60)

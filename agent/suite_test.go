@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/go-sql-driver/mysql"
@@ -51,8 +52,9 @@ var _ = BeforeSuite(func(done Done) {
 	moco.StopAndRemoveMySQLD(replicaHost)
 	moco.RemoveNetwork()
 
-	err = moco.CreateNetwork()
-	Expect(err).ShouldNot(HaveOccurred())
+	Eventually(func() error {
+		return moco.CreateNetwork()
+	}, 10*time.Second).Should(Succeed())
 
 	close(done)
 }, 60)

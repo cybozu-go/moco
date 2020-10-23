@@ -54,10 +54,8 @@ func StopAndRemoveMySQLD(name string) error {
 	cmd := well.CommandContext(ctx, "docker", "stop", name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
+	cmd.Run()
+
 	cmd = well.CommandContext(ctx, "docker", "rm", name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -67,6 +65,11 @@ func StopAndRemoveMySQLD(name string) error {
 func CreateNetwork() error {
 	ctx := context.Background()
 	cmd := well.CommandContext(ctx, "docker", "network", "create", networkName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+
+	cmd = well.CommandContext(ctx, "docker", "network", "inspect", networkName)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -136,6 +139,8 @@ func InitializeMySQL(port int) error {
 	if err != nil {
 		return err
 	}
+
+	ResetMaster(port)
 
 	return nil
 }

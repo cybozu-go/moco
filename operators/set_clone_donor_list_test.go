@@ -37,13 +37,13 @@ var _ = Describe("Set clone donor list", func() {
 	It("should configure replication", func() {
 		_, infra, cluster := getAccessorInfraCluster()
 
-		op := setCloneDonorListOp{}
+		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
+		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
+		op := setCloneDonorListOp{index: []int{0, 1}, donar: hostWithPort}
 
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
-		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
 		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))

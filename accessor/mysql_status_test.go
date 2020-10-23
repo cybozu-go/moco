@@ -78,7 +78,7 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("getting and validating intermediate primary options")
 		logger = ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		_, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
 		Expect(err).Should(HaveOccurred())
 
 		By("setting options without INVALID_OPTION to api server")
@@ -95,7 +95,7 @@ var _ = Describe("Get MySQLCluster status", func() {
 
 		By("getting and validating intermediate primary options")
 		logger = ctrl.Log.WithName("controllers").WithName("MySQLCluster")
-		sts, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
+		_, err = GetMySQLClusterStatus(context.Background(), logger, inf, &cluster)
 		Expect(err).Should(HaveOccurred())
 	})
 

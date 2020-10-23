@@ -689,17 +689,6 @@ func (b *mySQLStatusBuilder) setGTIDBehind() *mySQLStatusBuilder {
 	return b
 }
 
-func (b *mySQLStatusBuilder) setGTIDInconsistent() *mySQLStatusBuilder {
-	b.status.PrimaryStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-	if b.status.ReplicaStatus != nil {
-		b.status.ReplicaStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-		b.status.ReplicaStatus.RetrievedGtidSet = "dummy-uuid:1-5"
-	}
-
-	b.status.AllRelayLogExecuted = true
-	return b
-}
-
 func (b *mySQLStatusBuilder) setIOThreadStopped() *mySQLStatusBuilder {
 	b.status.ReplicaStatus.SlaveIORunning = moco.ReplicaNotRun
 	return b
