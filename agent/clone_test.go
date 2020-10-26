@@ -69,8 +69,6 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		registry := prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
 
-		By("preparing agent")
-
 		By("passing invalid token")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries := url.Values{
@@ -82,6 +80,7 @@ var _ = Describe("Test Agent: Clone Request", func() {
 
 		res := httptest.NewRecorder()
 		agent.Clone(res, req)
+		Expect(res).Should(HaveHTTPStatus(http.StatusBadRequest))
 
 		By("passing empty donorHostName")
 		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)

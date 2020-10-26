@@ -40,8 +40,19 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
+	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, "root", nil, viper.GetString(moco.PodIPFlag))
+	if err != nil {
+		return err
+	}
+
+	log.Info("touch "+initOnceCompletedPath, nil)
+	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
+}
+
+func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser string, initPassword *string, rootHost string) error {
+
 	log.Info("setup root user", nil)
-	err = initializeRootUser(ctx, passwordFilePath, "root", nil, os.Getenv(moco.RootPasswordEnvName), viper.GetString(moco.PodIPFlag))
+	err := initializeRootUser(ctx, passwordFilePath, initUser, initPassword, os.Getenv(moco.RootPasswordEnvName), rootHost)
 	if err != nil {
 		return err
 	}
@@ -95,8 +106,7 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
-	log.Info("touch "+initOnceCompletedPath, nil)
-	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
+	return nil
 }
 
 func initializeInstance(ctx context.Context) error {

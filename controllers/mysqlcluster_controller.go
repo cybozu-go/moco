@@ -740,6 +740,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			return nil, err
 		}
 	}
+	rooPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	agentContainer := corev1.Container{
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
@@ -774,8 +775,25 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				},
 			},
 			{
+				Name: moco.PodIPEnvName,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+			{
 				Name:  moco.AgentTokenEnvName,
 				Value: cluster.Status.AgentToken,
+			},
+		},
+		EnvFrom: []corev1.EnvFromSource{
+			{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: rooPasswordSecretName,
+					},
+				},
 			},
 		},
 	}

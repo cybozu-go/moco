@@ -148,10 +148,12 @@ const (
 	MiscPasswordKey = "MISC_PASSWORD"
 
 	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
-	ReplicationSourcePrimaryHostKey     = "PRIMARY_HOST"
-	ReplicationSourcePrimaryUserKey     = "PRIMARY_USER"
-	ReplicationSourcePrimaryPasswordKey = "PRIMARY_PASSWORD"
-	ReplicationSourcePrimaryPortKey     = "PRIMARY_PORT"
+	ReplicationSourcePrimaryHostKey            = "PRIMARY_HOST"
+	ReplicationSourcePrimaryUserKey            = "PRIMARY_USER"
+	ReplicationSourcePrimaryPasswordKey        = "PRIMARY_PASSWORD"
+	ReplicationSourcePrimaryPortKey            = "PRIMARY_PORT"
+	ReplicationSourceInitAfterCloneUserKey     = "INIT_AFTER_CLONE_USER"
+	ReplicationSourceInitAfterClonePasswordKey = "INIT_AFTER_CLONE_PASSWORD"
 )
 
 const (
