@@ -17,13 +17,18 @@ var _ = Describe("Turn off read only", func() {
 	BeforeEach(func() {
 		err := moco.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = moco.InitializeMySQL(mysqldPort1)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.InitializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		moco.StopAndRemoveMySQLD(mysqldName1)
+		moco.StopAndRemoveMySQLD(mysqldName2)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")

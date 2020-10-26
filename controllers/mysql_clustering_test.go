@@ -416,7 +416,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name: "It should clone from external primary",
+			name: "It should clone from external MySQL",
 			input: testData{
 				intermediate(cluster(intPointer(0))),
 				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
