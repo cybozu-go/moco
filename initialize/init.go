@@ -41,7 +41,7 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 	}
 
 	log.Info("setup root user", nil)
-	err = initializeRootUser(ctx, passwordFilePath, os.Getenv(moco.RootPasswordEnvName), viper.GetString(moco.PodIPFlag))
+	err = initializeRootUser(ctx, passwordFilePath, "root", nil, os.Getenv(moco.RootPasswordEnvName), viper.GetString(moco.PodIPFlag))
 	if err != nil {
 		return err
 	}
@@ -144,22 +144,72 @@ func importTimeZoneFromHost(ctx context.Context, passwordFilePath string) error 
 	return nil
 }
 
-func initializeRootUser(ctx context.Context, passwordFilePath string, rootPassword, rootHost string) error {
+func initializeRootUser(ctx context.Context, passwordFilePath, initUser string, initPassword *string, rootPassword, rootHost string) error {
 	if rootPassword == "" {
 		return fmt.Errorf("root password is not set")
 	}
+
 	// execSQL requires the password file.
-	conf := `[client]
-user=root
-`
+	conf := fmt.Sprintf(`[client]
+user="%s"
+`, initUser)
+	if initPassword != nil {
+		conf += fmt.Sprintf(`password="%s"
+`, *initPassword)
+	}
+
 	err := ioutil.WriteFile(passwordFilePath, []byte(conf), 0600)
 	if err != nil {
 		return err
 	}
 
-	t := template.Must(template.New("sql").Parse(
-		`DELETE FROM mysql.user WHERE NOT (user IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema') AND host = 'localhost');
+	t := template.Must(template.New("init").Parse(`CREATE USER IF NOT EXISTS 'root'@'localhost';
+GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION ;
+GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION ;
 ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ .Password }}';
+`))
+	init := new(bytes.Buffer)
+	err = t.Execute(init, struct {
+		Password string
+	}{rootPassword})
+	if err != nil {
+		return err
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, init.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+
+	passwordConf := `[client]
+	user=root
+	password="%s"
+	`
+	err = ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
+	if err != nil {
+		return err
+	}
+
+	t = template.Must(template.New("sql").Parse(`DELIMITER //
+CREATE DATABASE tmp_remove_user_db;
+USE tmp_remove_user_db;
+CREATE PROCEDURE tmp_remove_user_proc()
+BEGIN
+  SET @users = NULL ;
+  SELECT GROUP_CONCAT('\'',user, '\'@\'', host, '\'') INTO @users FROM mysql.user WHERE NOT (user IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema') AND host = 'localhost') ;
+  IF @users IS NOT NULL THEN
+    SET @users = CONCAT('DROP USER ', @users) ;
+    PREPARE tmp_remove_user_stmt FROM @users ;
+    EXECUTE tmp_remove_user_stmt ;
+    DEALLOCATE PREPARE tmp_remove_user_stmt ;
+  END IF;
+END//
+DELIMITER ;
+CALL tmp_remove_user_proc();
+DROP PROCEDURE tmp_remove_user_proc;
+USE mysql;
+DROP DATABASE tmp_remove_user_db;
+
 CREATE USER 'root'@'{{ .Host }}' IDENTIFIED BY '{{ .Password }}';
 GRANT ALL ON *.* TO 'root'@'{{ .Host }}' WITH GRANT OPTION ;
 GRANT PROXY ON ''@'' TO 'root'@'{{ .Host }}' WITH GRANT OPTION ;
@@ -175,16 +225,12 @@ FLUSH PRIVILEGES ;
 		return err
 	}
 
-	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
+	out, err = execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	passwordConf := `[client]
-user=root
-password="%s"
-`
-	return ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
+	return nil
 }
 
 func initializeOperatorUser(ctx context.Context, passwordFilePath string, password string) error {

@@ -80,7 +80,15 @@ func testInitializeRootUser(t *testing.T) {
 	if ip.IsUnspecified() {
 		t.Fatal("cannot get my IP address")
 	}
-	err := initializeRootUser(ctx, passwordFilePath, rootPassword, ip.String())
+
+	// Without password
+	err := initializeRootUser(ctx, passwordFilePath, "root", nil, rootPassword, ip.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Use password set by the previous initializeRootUser
+	err = initializeRootUser(ctx, passwordFilePath, "root", &rootPassword, rootPassword, ip.String())
 	if err != nil {
 		t.Fatal(err)
 	}
