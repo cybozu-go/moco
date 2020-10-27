@@ -3,7 +3,6 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -87,10 +86,10 @@ func newMySQLConnector(cluster *mocov1alpha1.MySQLCluster) *mysqlConnector {
 }
 
 func (c *mysqlConnector) startPortForward() error {
-	for i := 0; i < int(c.cluster.Spec.Replicas); i++ {
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
+	for i, name := range []string{"primary", "replica"} {
+		svcName := fmt.Sprintf("%s-%s", moco.UniqueName(c.cluster), name)
 		port := c.basePort + i
-		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "svc/"+svcName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
 		err := command.Start()
 		if err != nil {
 			c.stopPortForward()
@@ -109,10 +108,11 @@ func (c *mysqlConnector) stopPortForward() {
 }
 
 func (c *mysqlConnector) connectToPrimary() (*sqlx.DB, error) {
-	if c.cluster.Status.CurrentPrimaryIndex == nil {
-		return nil, errors.New("CurrentPrimaryIndex is nil")
-	}
-	return c.connect(*c.cluster.Status.CurrentPrimaryIndex)
+	return c.connect(0)
+}
+
+func (c *mysqlConnector) connectToReplica() (*sqlx.DB, error) {
+	return c.connect(1)
 }
 
 func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
