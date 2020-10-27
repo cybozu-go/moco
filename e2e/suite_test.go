@@ -17,7 +17,7 @@ func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	SetDefaultEventuallyPollingInterval(time.Second)
-	SetDefaultEventuallyTimeout(time.Minute * 2)
+	SetDefaultEventuallyTimeout(20 * time.Second)
 
 	RunSpecs(t, "kind test")
 }

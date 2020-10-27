@@ -3,6 +3,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/jmoiron/sqlx"
@@ -57,7 +58,7 @@ func testBootstrap() {
 				return fmt.Errorf("readyReplicas should be 3: %v", sts.Status.ReadyReplicas)
 			}
 			return nil
-		}).Should(Succeed())
+		}, 3*time.Minute).Should(Succeed())
 	})
 
 	It("should replicate data", func() {
@@ -86,19 +87,50 @@ func testBootstrap() {
 		}).Should(Succeed())
 		Expect(replicaDB).ShouldNot(BeNil())
 
-		_, err = primaryDB.Exec("CREATE DATABASE IF NOT EXISTS test")
+		_, err = primaryDB.Exec("DROP DATABASE IF EXISTS moco_e2e")
 		Expect(err).ShouldNot(HaveOccurred())
 
-		_, err = primaryDB.Exec(`CREATE TABLE IF NOT EXISTS test.t1 (
-num bigint unsigned NOT NULL AUTO_INCREMENT,
-val0 varchar(100) DEFAULT NULL,
-val1 varchar(100) DEFAULT NULL,
-val2 varchar(100) DEFAULT NULL,
-val3 varchar(100) DEFAULT NULL,
-val4 varchar(100) DEFAULT NULL,
-  UNIQUE KEY num (num)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-`)
+		_, err = primaryDB.Exec("CREATE DATABASE moco_e2e")
 		Expect(err).ShouldNot(HaveOccurred())
+
+		_, err = primaryDB.Exec(`CREATE TABLE moco_e2e.replication_test (
+			num bigint unsigned NOT NULL AUTO_INCREMENT,
+			val0 varchar(100) DEFAULT NULL,
+			val1 varchar(100) DEFAULT NULL,
+			val2 varchar(100) DEFAULT NULL,
+			val3 varchar(100) DEFAULT NULL,
+			val4 varchar(100) DEFAULT NULL,
+			  UNIQUE KEY num (num)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+		`)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		count := 100
+		tx, err := primaryDB.Begin()
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = tx.Exec("SET SESSION cte_max_recursion_depth = ?", count)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = tx.Exec(`INSERT INTO moco_e2e.replication_test (val0, val1, val2, val3, val4) 
+			WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < ?) 
+			SELECT MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()) FROM t
+		`, count)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = tx.Commit()
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Eventually(func() error {
+			rows, err := replicaDB.Query("SELECT count(*) FROM moco_e2e.replication_test")
+			if err != nil {
+				return err
+			}
+			replicatedCount := 0
+			for rows.Next() {
+				err = rows.Scan(&replicatedCount)
+			}
+			if replicatedCount != count {
+				return fmt.Errorf("repcalited: %d", replicatedCount)
+			}
+			return nil
+		}).Should(Succeed())
 	})
 }
