@@ -39,7 +39,7 @@ func testBootstrap() {
 				return errors.New("Conditions.Healthy should be true")
 			}
 			return nil
-		}).Should(Succeed())
+		}, 3*time.Minute).Should(Succeed())
 
 		By("getting Secret which contains root password")
 		Eventually(func() error {
@@ -80,7 +80,7 @@ func testBootstrap() {
 				return fmt.Errorf("readyReplicas should be 3: %v", sts.Status.ReadyReplicas)
 			}
 			return nil
-		}, 3*time.Minute).Should(Succeed())
+		}).Should(Succeed())
 	})
 
 	It("should replicate data", func() {
