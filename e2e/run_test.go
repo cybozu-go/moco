@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"syscall"
 	"time"
 
 	"github.com/cybozu-go/moco"
@@ -91,6 +92,7 @@ func (c *mysqlConnector) startPortForward() error {
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
 		port := c.basePort + i
 		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err := command.Start()
 		if err != nil {
 			c.stopPortForward()
