@@ -23,7 +23,7 @@ func (o setCloneDonorListOp) Name() string {
 }
 
 func (o setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	for i := range o.index {
+	for _, i := range o.index {
 		db, err := infra.GetDB(i)
 		if err != nil {
 			return err

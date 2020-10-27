@@ -20,10 +20,14 @@ var _ = Describe("Set clone donor list", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.StartMySQLD(mysqldName3, mysqldPort3, mysqldServerID3)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = moco.InitializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = moco.InitializeMySQL(mysqldPort2)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.InitializeMySQL(mysqldPort3)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -39,17 +43,20 @@ var _ = Describe("Set clone donor list", func() {
 
 		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
 		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
-		op := setCloneDonorListOp{index: []int{0, 1}, donar: hostWithPort}
+		op := setCloneDonorListOp{index: []int{0, 2}, donar: hostWithPort}
 
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(status.InstanceStatus).Should(HaveLen(2))
+		Expect(status.InstanceStatus).Should(HaveLen(3))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))
-		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
-		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))
+
+		Expect(status.InstanceStatus[2].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeTrue())
+		Expect(status.InstanceStatus[2].GlobalVariablesStatus.CloneValidDonorList.String).Should(Equal(hostWithPort))
+
+		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeFalse())
 	})
 })

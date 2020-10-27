@@ -406,6 +406,8 @@ func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePr
 				return nil, err
 			}
 			result.PrimaryPort = port
+		case moco.ReplicationSourceInitAfterCloneUserKey:
+		case moco.ReplicationSourceInitAfterClonePasswordKey:
 		default:
 			return nil, errors.New("unknown option for intermediate primary")
 		}
