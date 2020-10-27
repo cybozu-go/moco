@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,15 @@ import (
 	"github.com/cybozu-go/moco/initialize"
 	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
+)
+
+const timeoutDuration = 120 * time.Second
+
+var (
+	passwordFilePath = filepath.Join(moco.TmpPath, "moco-root-password")
+	miscConfPath     = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 )
 
 // Clone executes MySQL CLONE command
@@ -157,6 +167,15 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		defer a.sem.Release(1)
 		a.clone(ctx, a.miscUserPassword, donorUser, donorPassword, donorHostName, donorPort)
 		if externalMode {
+			err := waitBootstrap(ctx, initUser, initPassword)
+			if err != nil {
+				log.Error("mysqld didn't boot up after cloning from external", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+				return err
+			}
 			err = initialize.RestoreUsers(ctx, passwordFilePath, miscConfPath, initUser, &initPassword, os.Getenv(moco.PodIPEnvName))
 			if err != nil {
 				log.Error("failed to initialize after clone", map[string]interface{}{
@@ -164,8 +183,8 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 					"port":      a.mysqlAdminPort,
 					log.FnError: err,
 				})
+				return err
 			}
-			return err
 		}
 		return nil
 	})
@@ -222,4 +241,32 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorUser, donorPasswor
 		"hostname":       a.mysqlAdminHostname,
 		"port":           a.mysqlAdminPort,
 	})
+}
+
+func waitBootstrap(ctx context.Context, user, password string) error {
+	conf := mysql.NewConfig()
+	conf.User = user
+	conf.Passwd = password
+	conf.Net = "unix"
+	conf.Addr = "/var/run/mysqld/mysqld.sock"
+	conf.InterpolateParams = true
+	uri := conf.FormatDSN()
+
+	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
+	defer cancel()
+
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-tick.C:
+			_, err := sqlx.Connect("mysql", uri)
+			if err == nil {
+				return nil
+			}
+		}
+	}
 }
