@@ -3,6 +3,8 @@ package operators
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
@@ -34,12 +36,20 @@ var _ = Describe("Set clone donor list", func() {
 	AfterEach(func() {
 		moco.StopAndRemoveMySQLD(mysqldName1)
 		moco.StopAndRemoveMySQLD(mysqldName2)
+		moco.StopAndRemoveMySQLD(mysqldName3)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")
 
 	It("should configure replication", func() {
-		_, infra, cluster := getAccessorInfraCluster()
+		_, _, cluster := getAccessorInfraCluster()
+		cluster.Spec.Replicas = 3
+		acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
+			ConnMaxLifeTime:   30 * time.Minute,
+			ConnectionTimeout: 3 * time.Second,
+			ReadTimeout:       30 * time.Second,
+		})
+		infra := accessor.NewInfrastructure(k8sClient, acc, password, []string{host + ":" + strconv.Itoa(mysqldPort1), host + ":" + strconv.Itoa(mysqldPort2), host + ":" + strconv.Itoa(mysqldPort3)})
 
 		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
 		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
