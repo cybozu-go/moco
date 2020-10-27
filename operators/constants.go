@@ -7,8 +7,6 @@ const (
 	OperatorSetCloneDonorList = "set-clone-donor-list"
 	// OperatorClone is a name of the clone primary instance operation
 	OperatorClone = "clone"
-	// OperatorExternalClone is a name of the clone external primary instance operation
-	OperatorExternalClone = "external-clone"
 	// OperatorConfigureReplication is a name of the configure replication operation
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation

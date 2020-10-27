@@ -83,6 +83,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	moco.StopAndRemoveMySQLD(mysqldName1)
 	moco.StopAndRemoveMySQLD(mysqldName2)
+	moco.StopAndRemoveMySQLD(mysqldName3)
 	moco.RemoveNetwork()
 
 	Eventually(func() error {
@@ -99,6 +100,7 @@ var _ = AfterSuite(func() {
 
 	moco.StopAndRemoveMySQLD(mysqldName1)
 	moco.StopAndRemoveMySQLD(mysqldName2)
+	moco.StopAndRemoveMySQLD(mysqldName3)
 	moco.RemoveNetwork()
 })
 

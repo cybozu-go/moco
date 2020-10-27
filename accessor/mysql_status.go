@@ -223,7 +223,7 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 	var latest int
 	for i := 0; i < len(status); i++ {
 		if status[i].PrimaryStatus == nil {
-			return nil, moco.ErrCannotCompareGITDs
+			return nil, moco.ErrCannotCompareGTIDs
 		}
 	}
 
@@ -248,7 +248,7 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 			continue
 		}
 
-		return nil, moco.ErrCannotCompareGITDs
+		return nil, moco.ErrCannotCompareGTIDs
 	}
 
 	return &latest, nil
@@ -276,7 +276,7 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 		return false, nil
 	}
 
-	return false, moco.ErrCannotCompareGITDs
+	return false, moco.ErrCannotCompareGTIDs
 }
 
 func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
@@ -285,7 +285,7 @@ func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error
 		return 0, err
 	}
 	if !rows.Next() {
-		return 0, moco.ErrCannotCompareGITDs
+		return 0, moco.ErrCannotCompareGTIDs
 	}
 
 	var res struct {

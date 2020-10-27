@@ -20,6 +20,8 @@ var (
 	passwordFilePath      = filepath.Join("/tmp", "moco-root-password")
 	rootPassword          = "root-password"
 	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
+	initUser              = "init-user"
+	initPassword          = "init-password"
 )
 
 func testInitializeInstance(t *testing.T) {
@@ -284,16 +286,15 @@ func testRestoreUsers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	initPassword := "password"
-	_, err = db.Exec("CREATE USER IF NOT EXISTS 'init'@'localhost' IDENTIFIED BY ?", initPassword)
+	_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'localhost' IDENTIFIED BY ?", initUser, initPassword)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec("GRANT ALL ON *.* TO 'init'@'localhost' WITH GRANT OPTION")
+	_, err = db.Exec("GRANT ALL ON *.* TO ?@'localhost' WITH GRANT OPTION", initUser)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec("GRANT PROXY ON ''@'' TO 'init'@'localhost' WITH GRANT OPTION")
+	_, err = db.Exec("GRANT PROXY ON ''@'' TO ?@'localhost' WITH GRANT OPTION", initUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +313,7 @@ func testRestoreUsers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, "init", &initPassword, ip.String())
+	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, initUser, &initPassword, ip.String())
 	if err != nil {
 		t.Error(err)
 	}
@@ -327,13 +328,14 @@ func testRestoreUsers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer db.Close()
 
-	sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = 'init' AND host = 'localhost') OR (user = 'hoge' AND host = '%')")
+	sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = ? AND host = 'localhost') OR (user = 'hoge' AND host = '%')", initUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sqlRows.Next() {
-		t.Error("user 'init' and/or 'hoge' should be deleted, but exist")
+		t.Errorf("user '%s' and/or 'hoge' should be deleted, but exist", initUser)
 	}
 
 	for _, k := range []string{

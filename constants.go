@@ -212,8 +212,8 @@ var (
 	ErrConstraintsViolation = errors.New("constraints violation occurs")
 	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
 	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
-	// ErrCannotCompareGITDs is returned if GTID comparison returns error
-	ErrCannotCompareGITDs = errors.New("cannot compare gtids")
+	// ErrCannotCompareGTIDs is returned if GTID comparison returns error
+	ErrCannotCompareGTIDs = errors.New("cannot compare gtids")
 )
 
 type MOCOEvent struct {
