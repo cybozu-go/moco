@@ -125,3 +125,12 @@ func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
 	password := string(secret.Data[moco.OperatorPasswordEnvName])
 	return c.accessor.Get(addr, moco.OperatorAdminUser, password)
 }
+
+func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionType mocov1alpha1.MySQLClusterConditionType) *mocov1alpha1.MySQLClusterCondition {
+	for i, c := range conditions {
+		if c.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+	return nil
+}

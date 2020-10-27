@@ -2,8 +2,12 @@ package e2e
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/cybozu-go/moco/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/cybozu-go/moco"
 	"github.com/jmoiron/sqlx"
@@ -21,11 +25,30 @@ func testBootstrap() {
 
 		By("getting Secret which contains root password")
 		Eventually(func() error {
-			mysqlCluster, err := getMySQLCluster()
+			cluster, err := getMySQLCluster()
 			if err != nil {
 				return err
 			}
-			_, err = getRootPassword(mysqlCluster)
+			if cluster.Status.CurrentPrimaryIndex == nil {
+				return errors.New("CurrentPrimaryIndex should be set")
+			}
+			if cluster.Status.Ready != corev1.ConditionTrue {
+				return errors.New("Status.Ready should be true")
+			}
+			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
+			if healthy == nil || healthy.Status != corev1.ConditionTrue {
+				return errors.New("Conditions.Healthy should be true")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("getting Secret which contains root password")
+		Eventually(func() error {
+			cluster, err := getMySQLCluster()
+			if err != nil {
+				return err
+			}
+			_, err = getRootPassword(cluster)
 			if err != nil {
 				return err
 			}
@@ -34,12 +57,12 @@ func testBootstrap() {
 
 		By("getting StatefulSet")
 		Eventually(func() error {
-			mysqlCluster, err := getMySQLCluster()
+			cluster, err := getMySQLCluster()
 			if err != nil {
 				return err
 			}
 
-			stdout, stderr, err = kubectl("get", "-n", "e2e-test", "statefulsets", moco.UniqueName(mysqlCluster), "-o", "json")
+			stdout, stderr, err = kubectl("get", "-n", "e2e-test", "statefulsets", moco.UniqueName(cluster), "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
