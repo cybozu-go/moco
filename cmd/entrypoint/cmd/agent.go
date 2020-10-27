@@ -71,7 +71,6 @@ var agentCmd = &cobra.Command{
 			})
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
-		mux.HandleFunc("/init-after-clone", agent.InitAfterClone)
 		mux.HandleFunc("/health", agent.Health)
 
 		registry := prometheus.NewRegistry()

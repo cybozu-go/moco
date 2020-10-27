@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/initialize"
 	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
 )
@@ -35,6 +37,9 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	var donorPort int
 	var donorUser string
 	var donorPassword string
+	var initUser string
+	var initPassword string
+	var externalMode bool
 
 	external := r.URL.Query().Get(moco.CloneParamExternal)
 	if external != "true" {
@@ -59,6 +64,8 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		donorUser = moco.DonorUser
 		donorPassword = a.donorUserPassword
 	} else {
+		externalMode = true
+
 		rawDonorHostName, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -91,6 +98,20 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		donorPassword = string(rawDonorPassword)
+
+		rawInitUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceInitAfterCloneUserKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		initUser = string(rawInitUser)
+
+		rawInitPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceInitAfterClonePasswordKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		initPassword = string(rawInitPassword)
 	}
 
 	if !a.sem.TryAcquire(1) {
@@ -135,6 +156,17 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
 		a.clone(ctx, a.miscUserPassword, donorUser, donorPassword, donorHostName, donorPort)
+		if externalMode {
+			err = initialize.RestoreUsers(ctx, passwordFilePath, miscConfPath, initUser, &initPassword, os.Getenv(moco.PodIPEnvName))
+			if err != nil {
+				log.Error("failed to initialize after clone", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+			}
+			return err
+		}
 		return nil
 	})
 }
