@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cybozu-go/moco/api/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func testBootstrap() {
@@ -85,9 +84,9 @@ func testBootstrap() {
 	})
 
 	It("should replicate data", func() {
-		mysqlCluster, err := getMySQLCluster()
+		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
-		connector := newMySQLConnector(mysqlCluster)
+		connector := newMySQLConnector(cluster)
 		err = connector.startPortForward()
 		Expect(err).ShouldNot(HaveOccurred())
 		defer connector.stopPortForward()
@@ -100,15 +99,16 @@ func testBootstrap() {
 			}
 			return nil
 		}).Should(Succeed())
+		replica, err := replica0(cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
-			replicaDB, err = connector.connect(1)
+			replicaDB, err = connector.connect(replica)
 			if err != nil {
 				return err
 			}
 			return nil
 		}).Should(Succeed())
-		Expect(replicaDB).ShouldNot(BeNil())
 
 		_, err = primaryDB.Exec("DROP DATABASE IF EXISTS moco_e2e")
 		Expect(err).ShouldNot(HaveOccurred())
@@ -129,16 +129,7 @@ func testBootstrap() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		count := 100
-		tx, err := primaryDB.Begin()
-		Expect(err).ShouldNot(HaveOccurred())
-		_, err = tx.Exec("SET SESSION cte_max_recursion_depth = ?", count)
-		Expect(err).ShouldNot(HaveOccurred())
-		_, err = tx.Exec(`INSERT INTO moco_e2e.replication_test (val0, val1, val2, val3, val4) 
-			WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < ?) 
-			SELECT MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()) FROM t
-		`, count)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = tx.Commit()
+		err = insertData(primaryDB, count)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
@@ -149,6 +140,9 @@ func testBootstrap() {
 			replicatedCount := 0
 			for rows.Next() {
 				err = rows.Scan(&replicatedCount)
+				if err != nil {
+					return err
+				}
 			}
 			if replicatedCount != count {
 				return fmt.Errorf("repcalited: %d", replicatedCount)

@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -86,10 +87,10 @@ func newMySQLConnector(cluster *mocov1alpha1.MySQLCluster) *mysqlConnector {
 }
 
 func (c *mysqlConnector) startPortForward() error {
-	for i, name := range []string{"primary", "replica"} {
-		svcName := fmt.Sprintf("%s-%s", moco.UniqueName(c.cluster), name)
+	for i := 0; i < int(c.cluster.Spec.Replicas); i++ {
+		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
 		port := c.basePort + i
-		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "svc/"+svcName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
 		err := command.Start()
 		if err != nil {
 			c.stopPortForward()
@@ -108,11 +109,10 @@ func (c *mysqlConnector) stopPortForward() {
 }
 
 func (c *mysqlConnector) connectToPrimary() (*sqlx.DB, error) {
-	return c.connect(0)
-}
-
-func (c *mysqlConnector) connectToReplica() (*sqlx.DB, error) {
-	return c.connect(1)
+	if c.cluster.Status.CurrentPrimaryIndex == nil {
+		return nil, errors.New("CurrentPrimaryIndex is nil")
+	}
+	return c.connect(*c.cluster.Status.CurrentPrimaryIndex)
 }
 
 func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
@@ -133,4 +133,36 @@ func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionTyp
 		}
 	}
 	return nil
+}
+
+func replica0(cluster *mocov1alpha1.MySQLCluster) (int, error) {
+	if cluster.Status.CurrentPrimaryIndex == nil {
+		return 0, errors.New("CurrentPrimaryIndex is nil")
+	}
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		if i == *cluster.Status.CurrentPrimaryIndex {
+			continue
+		}
+		return i, nil
+	}
+	return 0, errors.New("replica not found")
+}
+
+func insertData(db *sqlx.DB, count int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("SET SESSION cte_max_recursion_depth = ?", count)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`INSERT INTO moco_e2e.replication_test (val0, val1, val2, val3, val4) 
+			WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < ?) 
+			SELECT MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()) FROM t
+		`, count)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }

@@ -24,4 +24,5 @@ func TestE2E(t *testing.T) {
 
 var _ = Describe("MOCO", func() {
 	Context("bootstrap", testBootstrap)
+	Context("replicaFailover", testReplicaFailOver)
 })
