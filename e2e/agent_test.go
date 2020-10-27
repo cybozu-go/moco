@@ -25,7 +25,9 @@ func testAgent() {
 	})
 
 	AfterEach(func() {
-		portForwardCmd.Process.Kill()
+		if portForwardCmd != nil {
+			portForwardCmd.Process.Kill()
+		}
 	})
 
 	It("should run health probe server", func() {
