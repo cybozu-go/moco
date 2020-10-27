@@ -1,3 +1,0 @@
-SET SESSION cte_max_recursion_depth = 100000;
-INSERT INTO test.t1 (val0, val1, val2, val3, val4) WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 100000) SELECT MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()) FROM t;
-COMMIT;
