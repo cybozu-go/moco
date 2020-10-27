@@ -3,7 +3,6 @@ package e2e
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -14,50 +13,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func testReplicaFailOver() {
-	It("should do failover when a replica becomes unavailable", func() {
-		By("connecting to primary")
+func testPrimaryFailOver() {
+	It("should do failover when a primary becomes unavailable", func() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 		connector := newMySQLConnector(cluster)
 		err = connector.startPortForward()
 		Expect(err).ShouldNot(HaveOccurred())
 		defer connector.stopPortForward()
+		Expect(cluster.Status.CurrentPrimaryIndex).ShouldNot(BeNil())
+		firstPrimary := *cluster.Status.CurrentPrimaryIndex
 
-		var primaryDB *sqlx.DB
-		Eventually(func() error {
-			primaryDB, err = connector.connectToPrimary()
-			if err != nil {
-				return err
-			}
-			return nil
-		}).Should(Succeed())
-		targetReplica, err := replica0(cluster)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		By("purging binlogs")
-		_, err = primaryDB.Exec("FLUSH BINARY LOGS")
-		Expect(err).ShouldNot(HaveOccurred())
-
-		binlogs := make([]string, 0)
-		binlogRows, err := primaryDB.Unsafe().Queryx("SHOW BINARY LOGS")
-		Expect(err).ShouldNot(HaveOccurred())
-		for binlogRows.Next() {
-			results := struct {
-				LogName string `db:"Log_name"`
-			}{}
-			err = binlogRows.StructScan(&results)
-			Expect(err).ShouldNot(HaveOccurred())
-			binlogs = append(binlogs, results.LogName)
-		}
-		Expect(binlogs).ShouldNot(BeEmpty())
-		sort.Strings(binlogs)
-		lastBinLog := binlogs[len(binlogs)-1]
-		_, err = primaryDB.Exec("PURGE MASTER LOGS TO ?", lastBinLog)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		By("deleting Pod and PVC/PV of the target replica")
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), targetReplica)
+		By("deleting Pod and PVC/PV of primary")
+		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), firstPrimary)
 		pvcName := fmt.Sprintf("mysql-data-%s", podName)
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
@@ -92,14 +60,18 @@ func testReplicaFailOver() {
 			return nil
 		}, 2*time.Minute).Should(Succeed())
 
-		By("connecting to recovered replica")
+		Expect(cluster.Status.CurrentPrimaryIndex).ShouldNot(BeNil())
+		newPrimary := *cluster.Status.CurrentPrimaryIndex
+		Expect(newPrimary).ShouldNot(Equal(firstPrimary))
+
+		By("connecting to recovered instance")
 		connector.stopPortForward()
 		err = connector.startPortForward()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
-			replicaDB, err = connector.connect(targetReplica)
+			replicaDB, err = connector.connect(firstPrimary)
 			if err != nil {
 				return err
 			}
@@ -111,15 +83,15 @@ func testReplicaFailOver() {
 			if err != nil {
 				return err
 			}
-			replicatedCount := 0
+			count := 0
 			for selectRows.Next() {
-				err = selectRows.Scan(&replicatedCount)
+				err = selectRows.Scan(&count)
 				if err != nil {
 					return err
 				}
 			}
-			if replicatedCount != 100000 {
-				return fmt.Errorf("repcalited: %d", replicatedCount)
+			if count != 100000 {
+				return fmt.Errorf("repcalited: %d", count)
 			}
 			return nil
 		}).Should(Succeed())

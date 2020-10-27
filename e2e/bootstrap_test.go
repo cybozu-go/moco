@@ -128,7 +128,7 @@ func testBootstrap() {
 		`)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		count := 100
+		count := 100000
 		err = insertData(primaryDB, count)
 		Expect(err).ShouldNot(HaveOccurred())
 
