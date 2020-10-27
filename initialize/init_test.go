@@ -8,8 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -58,9 +61,9 @@ gtid_mode = ON
 func myAddress() net.IP {
 	netInterfaceAddresses, _ := net.InterfaceAddrs()
 	for _, netInterfaceAddress := range netInterfaceAddresses {
-		networkIp, ok := netInterfaceAddress.(*net.IPNet)
-		if ok && !networkIp.IP.IsLoopback() && networkIp.IP.To4() != nil {
-			return networkIp.IP
+		networkIP, ok := netInterfaceAddress.(*net.IPNet)
+		if ok && !networkIP.IP.IsLoopback() && networkIP.IP.To4() != nil {
+			return networkIP.IP
 		}
 	}
 	return net.IPv4zero
@@ -259,6 +262,97 @@ func testTouchInitOnceCompleted(t *testing.T) {
 	}
 }
 
+func testRestoreUsers(t *testing.T) {
+	ctx := context.Background()
+
+	conf := mysql.NewConfig()
+	conf.User = "root"
+	conf.Passwd = rootPassword
+	conf.Net = "unix"
+	conf.Addr = "/var/run/mysqld/mysqld.sock"
+	conf.InterpolateParams = true
+
+	var db *sqlx.DB
+	var err error
+	for i := 0; i < 20; i++ {
+		db, err = sqlx.Connect("mysql", conf.FormatDSN())
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * 3)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	initPassword := "password"
+	_, err = db.Exec("CREATE USER IF NOT EXISTS 'init'@'localhost' IDENTIFIED BY ?", initPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec("GRANT ALL ON *.* TO 'init'@'localhost' WITH GRANT OPTION")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec("GRANT PROXY ON ''@'' TO 'init'@'localhost' WITH GRANT OPTION")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec("CREATE USER IF NOT EXISTS 'hoge'@'%' IDENTIFIED BY 'password'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	ip := myAddress()
+	if ip.IsUnspecified() {
+		t.Fatal("cannot get my IP address")
+	}
+	err = os.Setenv(moco.RootPasswordEnvName, rootPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, "init", &initPassword, ip.String())
+	if err != nil {
+		t.Error(err)
+	}
+
+	for i := 0; i < 20; i++ {
+		db, err = sqlx.Connect("mysql", conf.FormatDSN())
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * 3)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = 'init' AND host = 'localhost') OR (user = 'hoge' AND host = '%')")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sqlRows.Next() {
+		t.Error("user 'init' and/or 'hoge' should be deleted, but exist")
+	}
+
+	for _, k := range []string{
+		moco.OperatorUser,
+		moco.OperatorAdminUser,
+		moco.DonorUser,
+		moco.ReplicationUser,
+		moco.MiscUser,
+	} {
+		sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = ? AND host = '%')", k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !sqlRows.Next() {
+			t.Errorf("user '%s' should be created, but not exist", k)
+		}
+	}
+}
+
 func TestInit(t *testing.T) {
 	_, err := os.Stat(filepath.Join("/", ".dockerenv"))
 	if err != nil {
@@ -273,6 +367,7 @@ func TestInit(t *testing.T) {
 	t.Run("initializeReplicationUser", testInitializeReplicationUser)
 	t.Run("initializeMiscUser", testInitializeMiscUser)
 	t.Run("installPlugins", testInstallPlugins)
+	t.Run("RestoreUsers", testRestoreUsers)
 	t.Run("shutdownInstance", testShutdownInstance)
 	t.Run("TouchInitOnceCompleted", testTouchInitOnceCompleted)
 }

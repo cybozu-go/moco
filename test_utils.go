@@ -70,7 +70,6 @@ func CreateNetwork() error {
 	cmd.Run()
 
 	cmd = well.CommandContext(ctx, "docker", "network", "inspect", networkName)
-	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }

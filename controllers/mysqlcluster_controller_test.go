@@ -139,7 +139,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(initSecret.Data).Should(HaveKey(moco.RootPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
 
 			ctrlSecret := &corev1.Secret{}
@@ -148,7 +148,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 
 			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())

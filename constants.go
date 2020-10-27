@@ -15,8 +15,8 @@ const (
 	// This user is a super user especially for creating and granting privileges to other users.
 	OperatorAdminUser = "moco-admin"
 
-	// ReplicatorUser is a name of MOCO replicator user in the MySQL context.
-	ReplicatorUser = "moco-repl"
+	// ReplicationUser is a name of MOCO replicator user in the MySQL context.
+	ReplicationUser = "moco-repl"
 
 	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
 	DonorUser = "moco-clone-donor"
@@ -141,8 +141,8 @@ const (
 	// ReplicationPasswordKey is a Secret key for operator replication password.
 	ReplicationPasswordKey = "REPLICATION_PASSWORD"
 
-	// DonorPasswordKey is a Secret key for operator donor password.
-	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
+	// CloneDonorPasswordKey is a Secret key for operator donor password.
+	CloneDonorPasswordKey = "CLONE_DONOR_PASSWORD"
 
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"

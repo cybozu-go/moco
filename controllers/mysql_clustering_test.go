@@ -32,7 +32,7 @@ var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
 	PrimaryHost:     "intermediate-primary-host",
 	PrimaryPort:     3306,
 	PrimaryPassword: "intermediate-password",
-	PrimaryUser:     moco.ReplicatorUser,
+	PrimaryUser:     moco.ReplicationUser,
 }
 
 func TestDecideNextOperation(t *testing.T) {

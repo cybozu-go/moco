@@ -22,7 +22,7 @@ func ConfigureReplicationOp(index int, primaryHost string) Operator {
 		Index:          index,
 		PrimaryHost:    primaryHost,
 		PrimaryPort:    moco.MySQLPort,
-		ReplicatorUser: moco.ReplicatorUser,
+		ReplicatorUser: moco.ReplicationUser,
 	}
 }
 

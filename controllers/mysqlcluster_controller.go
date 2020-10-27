@@ -370,7 +370,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 		moco.RootPasswordKey:        rootPass,
 		moco.OperatorPasswordKey:    operatorPass,
 		moco.ReplicationPasswordKey: replicatorPass,
-		moco.DonorPasswordKey:       donorPass,
+		moco.CloneDonorPasswordKey:  donorPass,
 		moco.MiscPasswordKey:        miscPass,
 	}
 
@@ -390,7 +390,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 	secret.Data = map[string][]byte{
 		moco.OperatorPasswordKey:    operatorPass,
 		moco.ReplicationPasswordKey: replicatorPass,
-		moco.DonorPasswordKey:       donorPass,
+		moco.CloneDonorPasswordKey:  donorPass,
 	}
 
 	return r.Client.Create(ctx, secret)

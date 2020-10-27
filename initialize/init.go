@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -41,6 +42,12 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 	}
 
 	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, "root", nil, viper.GetString(moco.PodIPFlag))
+	if err != nil {
+		return err
+	}
+
+	log.Info("shutdown instance", nil)
+	err = shutdownInstance(ctx, passwordFilePath)
 	if err != nil {
 		return err
 	}
@@ -96,12 +103,6 @@ func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser 
 
 	log.Info("install plugins", nil)
 	err = installPlugins(ctx, passwordFilePath)
-	if err != nil {
-		return err
-	}
-
-	log.Info("shutdown instance", nil)
-	err = shutdownInstance(ctx, passwordFilePath)
 	if err != nil {
 		return err
 	}
@@ -331,6 +332,10 @@ GRANT
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
+	err = os.Remove(moco.DonorPasswordPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
 	return ioutil.WriteFile(moco.DonorPasswordPath, []byte(password), 0400)
 }
 
@@ -350,7 +355,7 @@ GRANT
 	err := t.Execute(sql, struct {
 		User     string
 		Password string
-	}{moco.ReplicatorUser, password})
+	}{moco.ReplicationUser, password})
 	if err != nil {
 		return err
 	}
@@ -364,20 +369,21 @@ GRANT
 
 func initializeMiscUser(ctx context.Context, passwordFilePath string, miscConfPath string, password string) error {
 	t := template.Must(template.New("sql").Parse(`
-CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
     SELECT,
     RELOAD,
     CLONE_ADMIN,
     SERVICE_CONNECTION_ADMIN,
     REPLICATION CLIENT
-  ON *.* TO misc@'%' ;
+  ON *.* TO '{{ .User }}'@'%' ;
 `))
 
 	sql := new(bytes.Buffer)
 	err := t.Execute(sql, struct {
+		User     string
 		Password string
-	}{Password: password})
+	}{moco.MiscUser, password})
 	if err != nil {
 		return err
 	}
@@ -389,18 +395,36 @@ GRANT
 
 	conf := `
 [client]
-user=misc
+user=%s
 password=%s
 `
-	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400); err != nil {
+	err = os.Remove(miscConfPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
+	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, moco.MiscUser, password)), 0400); err != nil {
 		return err
 	}
 
+	err = os.Remove(moco.MiscPasswordPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
 	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)
 }
 
 func installPlugins(ctx context.Context, passwordFilePath string) error {
-	sql := `INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
+	// to make this procedure idempotent, uninstall first.
+	sql := `
+UNINSTALL PLUGIN rpl_semi_sync_master;
+UNINSTALL PLUGIN rpl_semi_sync_slave;
+UNINSTALL PLUGIN clone;
+`
+	// ignore uninstallation error
+	execSQL(ctx, passwordFilePath, []byte(sql), "")
+
+	sql = `
+INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 `
