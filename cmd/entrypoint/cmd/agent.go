@@ -63,7 +63,7 @@ var agentCmd = &cobra.Command{
 		}
 
 		agent := agent.New(podName, token,
-			miscPassword, donorPassword, moco.VarLogPath, moco.MySQLAdminPort,
+			miscPassword, donorPassword, moco.ReplicationSourceSecretPath, moco.VarLogPath, moco.MySQLAdminPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   viper.GetDuration(connMaxLifetimeFlag),
 				ConnectionTimeout: viper.GetDuration(connectionTimeoutFlag),

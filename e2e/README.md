@@ -53,6 +53,7 @@ The following feature functions should interact with MySQL on a Kubernetes clust
 
 - Failover
 - Switchover
+- Intermediate Primary
 - Backup/Restore
 - Point-in-Tme recovery
 - Upgrade MySQL version

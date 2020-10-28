@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func testAgentRotate() {
+var _ = Describe("Test Agent: Rotate Request", func() {
 	var tmpDir string
 	var agent *Agent
 	var registry *prometheus.Registry
@@ -26,7 +26,7 @@ func testAgentRotate() {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "moco-test-agent-")
 		Expect(err).ShouldNot(HaveOccurred())
-		agent = New(replicaHost, token, password, password, tmpDir, replicaPort,
+		agent = New(host, token, password, password, replicationSourceSecretPath, tmpDir, replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -56,6 +56,21 @@ func testAgentRotate() {
 	})
 
 	It("should rotate log files", func() {
+		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.StartMySQLD(replicaHost, replicaPort, replicaServerID)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = moco.InitializeMySQL(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.InitializeMySQL(replicaPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		defer func() {
+			moco.StopAndRemoveMySQLD(donorHost)
+			moco.StopAndRemoveMySQLD(replicaHost)
+		}()
+
 		By("preparing log files for testing")
 		slowFile := filepath.Join(tmpDir, moco.MySQLSlowLogName)
 		errFile := filepath.Join(tmpDir, moco.MySQLErrorLogName)
@@ -113,4 +128,4 @@ func testAgentRotate() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*rotationFailureCount.Counter.Value).Should(Equal(1.0))
 	})
-}
+})

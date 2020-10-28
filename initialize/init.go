@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -40,8 +41,25 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
+	err = RestoreUsers(ctx, passwordFilePath, miscConfPath, "root", nil, viper.GetString(moco.PodIPFlag))
+	if err != nil {
+		return err
+	}
+
+	log.Info("shutdown instance", nil)
+	err = shutdownInstance(ctx, passwordFilePath)
+	if err != nil {
+		return err
+	}
+
+	log.Info("touch "+initOnceCompletedPath, nil)
+	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
+}
+
+func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser string, initPassword *string, rootHost string) error {
+
 	log.Info("setup root user", nil)
-	err = initializeRootUser(ctx, passwordFilePath, os.Getenv(moco.RootPasswordEnvName), viper.GetString(moco.PodIPFlag))
+	err := initializeRootUser(ctx, passwordFilePath, initUser, initPassword, os.Getenv(moco.RootPasswordEnvName), rootHost)
 	if err != nil {
 		return err
 	}
@@ -89,14 +107,7 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
-	log.Info("shutdown instance", nil)
-	err = shutdownInstance(ctx, passwordFilePath)
-	if err != nil {
-		return err
-	}
-
-	log.Info("touch "+initOnceCompletedPath, nil)
-	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
+	return nil
 }
 
 func initializeInstance(ctx context.Context) error {
@@ -144,22 +155,72 @@ func importTimeZoneFromHost(ctx context.Context, passwordFilePath string) error 
 	return nil
 }
 
-func initializeRootUser(ctx context.Context, passwordFilePath string, rootPassword, rootHost string) error {
+func initializeRootUser(ctx context.Context, passwordFilePath, initUser string, initPassword *string, rootPassword, rootHost string) error {
 	if rootPassword == "" {
 		return fmt.Errorf("root password is not set")
 	}
+
 	// execSQL requires the password file.
-	conf := `[client]
-user=root
-`
+	conf := fmt.Sprintf(`[client]
+user="%s"
+`, initUser)
+	if initPassword != nil {
+		conf += fmt.Sprintf(`password="%s"
+`, *initPassword)
+	}
+
 	err := ioutil.WriteFile(passwordFilePath, []byte(conf), 0600)
 	if err != nil {
 		return err
 	}
 
-	t := template.Must(template.New("sql").Parse(
-		`DELETE FROM mysql.user WHERE NOT (user IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema') AND host = 'localhost');
+	t := template.Must(template.New("init").Parse(`CREATE USER IF NOT EXISTS 'root'@'localhost';
+GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION ;
+GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION ;
 ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ .Password }}';
+`))
+	init := new(bytes.Buffer)
+	err = t.Execute(init, struct {
+		Password string
+	}{rootPassword})
+	if err != nil {
+		return err
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, init.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+
+	passwordConf := `[client]
+	user=root
+	password="%s"
+	`
+	err = ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
+	if err != nil {
+		return err
+	}
+
+	t = template.Must(template.New("sql").Parse(`DELIMITER //
+CREATE DATABASE tmp_remove_user_db;
+USE tmp_remove_user_db;
+CREATE PROCEDURE tmp_remove_user_proc()
+BEGIN
+  SET @users = NULL ;
+  SELECT GROUP_CONCAT('\'',user, '\'@\'', host, '\'') INTO @users FROM mysql.user WHERE NOT (user IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema') AND host = 'localhost') ;
+  IF @users IS NOT NULL THEN
+    SET @users = CONCAT('DROP USER ', @users) ;
+    PREPARE tmp_remove_user_stmt FROM @users ;
+    EXECUTE tmp_remove_user_stmt ;
+    DEALLOCATE PREPARE tmp_remove_user_stmt ;
+  END IF;
+END//
+DELIMITER ;
+CALL tmp_remove_user_proc();
+DROP PROCEDURE tmp_remove_user_proc;
+USE mysql;
+DROP DATABASE tmp_remove_user_db;
+
 CREATE USER 'root'@'{{ .Host }}' IDENTIFIED BY '{{ .Password }}';
 GRANT ALL ON *.* TO 'root'@'{{ .Host }}' WITH GRANT OPTION ;
 GRANT PROXY ON ''@'' TO 'root'@'{{ .Host }}' WITH GRANT OPTION ;
@@ -175,16 +236,12 @@ FLUSH PRIVILEGES ;
 		return err
 	}
 
-	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
+	out, err = execSQL(ctx, passwordFilePath, sql.Bytes(), "")
 	if err != nil {
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
-	passwordConf := `[client]
-user=root
-password="%s"
-`
-	return ioutil.WriteFile(passwordFilePath, []byte(fmt.Sprintf(passwordConf, rootPassword)), 0600)
+	return nil
 }
 
 func initializeOperatorUser(ctx context.Context, passwordFilePath string, password string) error {
@@ -275,6 +332,10 @@ GRANT
 		return fmt.Errorf("stdout=%s, err=%v", out, err)
 	}
 
+	err = os.Remove(moco.DonorPasswordPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
 	return ioutil.WriteFile(moco.DonorPasswordPath, []byte(password), 0400)
 }
 
@@ -294,7 +355,7 @@ GRANT
 	err := t.Execute(sql, struct {
 		User     string
 		Password string
-	}{moco.ReplicatorUser, password})
+	}{moco.ReplicationUser, password})
 	if err != nil {
 		return err
 	}
@@ -308,20 +369,21 @@ GRANT
 
 func initializeMiscUser(ctx context.Context, passwordFilePath string, miscConfPath string, password string) error {
 	t := template.Must(template.New("sql").Parse(`
-CREATE USER misc@'%' IDENTIFIED BY '{{ .Password }}' ;
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
 GRANT
     SELECT,
     RELOAD,
     CLONE_ADMIN,
     SERVICE_CONNECTION_ADMIN,
     REPLICATION CLIENT
-  ON *.* TO misc@'%' ;
+  ON *.* TO '{{ .User }}'@'%' ;
 `))
 
 	sql := new(bytes.Buffer)
 	err := t.Execute(sql, struct {
+		User     string
 		Password string
-	}{Password: password})
+	}{moco.MiscUser, password})
 	if err != nil {
 		return err
 	}
@@ -333,18 +395,36 @@ GRANT
 
 	conf := `
 [client]
-user=misc
+user=%s
 password=%s
 `
-	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, password)), 0400); err != nil {
+	err = os.Remove(miscConfPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
+	if err := ioutil.WriteFile(miscConfPath, []byte(fmt.Sprintf(conf, moco.MiscUser, password)), 0400); err != nil {
 		return err
 	}
 
+	err = os.Remove(moco.MiscPasswordPath)
+	if err != nil && err.(*os.PathError).Unwrap() != syscall.ENOENT {
+		return err
+	}
 	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)
 }
 
 func installPlugins(ctx context.Context, passwordFilePath string) error {
-	sql := `INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
+	// to make this procedure idempotent, uninstall first.
+	sql := `
+UNINSTALL PLUGIN rpl_semi_sync_master;
+UNINSTALL PLUGIN rpl_semi_sync_slave;
+UNINSTALL PLUGIN clone;
+`
+	// ignore uninstallation error
+	execSQL(ctx, passwordFilePath, []byte(sql), "")
+
+	sql = `
+INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 `

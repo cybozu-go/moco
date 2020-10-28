@@ -15,12 +15,14 @@ import (
 
 type cloneOp struct {
 	replicaIndex int
+	fromExternal bool
 }
 
 // CloneOp returns the CloneOp Operator
-func CloneOp(replicaIndex int) Operator {
+func CloneOp(replicaIndex int, fromExternal bool) Operator {
 	return &cloneOp{
 		replicaIndex: replicaIndex,
+		fromExternal: fromExternal,
 	}
 }
 
@@ -43,9 +45,13 @@ func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster
 	}
 
 	queries := url.Values{
-		moco.CloneParamDonorHostName: []string{primaryHost},
-		moco.CloneParamDonorPort:     []string{strconv.Itoa(moco.MySQLAdminPort)},
-		moco.AgentTokenParam:         []string{cluster.Status.AgentToken},
+		moco.AgentTokenParam: []string{cluster.Status.AgentToken},
+	}
+	if o.fromExternal {
+		queries[moco.CloneParamExternal] = []string{"true"}
+	} else {
+		queries[moco.CloneParamDonorHostName] = []string{primaryHost}
+		queries[moco.CloneParamDonorPort] = []string{strconv.Itoa(moco.MySQLAdminPort)}
 	}
 	req.URL.RawQuery = queries.Encode()
 

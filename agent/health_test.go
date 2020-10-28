@@ -12,19 +12,55 @@ import (
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/metrics"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-func testAgentHealth() {
-	var agent = New(replicaHost, token, password, password, "", replicaPort,
-		&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   30 * time.Minute,
-			ConnectionTimeout: 3 * time.Second,
-			ReadTimeout:       30 * time.Second,
-		},
-	)
+var _ = Describe("Test Agent: Health Request", func() {
+	var agent *Agent
+	var registry *prometheus.Registry
+
+	BeforeEach(func() {
+		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.StartMySQLD(replicaHost, replicaPort, replicaServerID)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = moco.InitializeMySQL(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.InitializeMySQL(replicaPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = moco.PrepareTestData(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = moco.ResetMaster(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.ResetMaster(replicaPort)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		registry = prometheus.NewRegistry()
+		metrics.RegisterAgentMetrics(registry)
+
+		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+	})
+
+	AfterEach(func() {
+		moco.StopAndRemoveMySQLD(donorHost)
+		moco.StopAndRemoveMySQLD(replicaHost)
+	})
 
 	It("should return 200 if no errors or cloning is not in progress", func() {
 		By("getting health")
@@ -34,9 +70,9 @@ func testAgentHealth() {
 
 	It("should return 500 if cloning process is in progress", func() {
 		By("executing cloning")
-		err := resetMaster(replicaHost, replicaPort)
+		err := moco.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = setValidDonorList(replicaHost, replicaPort)
+		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
@@ -62,7 +98,7 @@ func testAgentHealth() {
 
 		By("wating cloning is completed")
 		Eventually(func() error {
-			db, err := agent.acc.Get(replicaHost+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
 			if err != nil {
 				return err
 			}
@@ -82,7 +118,7 @@ func testAgentHealth() {
 
 	It("should return 500 if replica status has IO error", func() {
 		By("executing START SLAVE with invalid parameters")
-		err := startSlaveWithInvalidSettings(replicaHost, replicaPort)
+		err := moco.StartSlaveWithInvalidSettings(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("getting health")
@@ -94,7 +130,7 @@ func testAgentHealth() {
 			return nil
 		}, 10*time.Second).Should(Succeed())
 	})
-}
+})
 
 func getHealth(agent *Agent) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("GET", "http://"+replicaHost+"/health", nil)

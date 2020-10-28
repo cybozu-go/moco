@@ -4,6 +4,7 @@ metadata:
   name: mysqlcluster
 spec:
   replicas: 3
+  # replicationSourceSecretName: mysecret
   podTemplate:
     spec:
       containers:

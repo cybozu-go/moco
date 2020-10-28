@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/cybozu-go/moco"
@@ -31,7 +32,7 @@ var intermediatePrimaryOptions = accessor.IntermediatePrimaryOptions{
 	PrimaryHost:     "intermediate-primary-host",
 	PrimaryPort:     3306,
 	PrimaryPassword: "intermediate-password",
-	PrimaryUser:     moco.ReplicatorUser,
+	PrimaryUser:     moco.ReplicationUser,
 }
 
 func TestDecideNextOperation(t *testing.T) {
@@ -142,7 +143,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp()},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort))},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -159,7 +160,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -176,7 +177,7 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 			want: &Operation{
 				Wait:      false,
-				Operators: []ops.Operator{ops.SetCloneDonorListOp(), ops.CloneOp(1)},
+				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
 			},
@@ -415,17 +416,29 @@ func TestDecideNextOperation(t *testing.T) {
 			},
 		},
 		{
-			name: "It should return error if cannot performe GTID comparsion",
+			name: "It should clone from external MySQL",
 			input: testData{
-				cluster(intPointer(0)),
-				mySQLStatus(nil, nil,
+				intermediate(cluster(intPointer(0))),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
 					emptyIns(moco.PrimaryRole, false).build(),
-					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().setGTIDInconsistent().build(),
-					readOnlyIns(0, moco.ReplicaRole).setReplicaStatus().setIOThreadStopped().build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
 				),
 			},
-			want:    nil,
-			wantErr: moco.ErrCannotCompareGITDs,
+			want: &Operation{
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				Operators: []ops.Operator{
+					ops.SetCloneDonorListOp([]int{0}, intermediatePrimaryOptions.PrimaryHost+":"+strconv.Itoa(intermediatePrimaryOptions.PrimaryPort)),
+					ops.CloneOp(0, true),
+				},
+				Phase: moco.PhaseRestoreInstance,
+				Event: &moco.EventWaitingCloneFromExternal,
+			},
 		},
 		{
 			name: "It should configure intermediate primary",
@@ -695,17 +708,6 @@ func (b *mySQLStatusBuilder) setGTIDBehind() *mySQLStatusBuilder {
 	if b.status.ReplicaStatus != nil {
 		b.status.ReplicaStatus.ExecutedGtidSet = PRIMARYUUID + "1-4"
 		b.status.ReplicaStatus.RetrievedGtidSet = PRIMARYUUID + "1-4"
-	}
-
-	b.status.AllRelayLogExecuted = true
-	return b
-}
-
-func (b *mySQLStatusBuilder) setGTIDInconsistent() *mySQLStatusBuilder {
-	b.status.PrimaryStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-	if b.status.ReplicaStatus != nil {
-		b.status.ReplicaStatus.ExecutedGtidSet = "dummy-uuid:1-5"
-		b.status.ReplicaStatus.RetrievedGtidSet = "dummy-uuid:1-5"
 	}
 
 	b.status.AllRelayLogExecuted = true

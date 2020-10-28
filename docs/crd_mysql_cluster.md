@@ -28,9 +28,18 @@ MySQLClusterSpec
 | `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                                            |
 | `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                                                  |
 
-The configMap specified with `mysqlConfigMapName` contains MySQL options of mysqld section as key-value pairs.
+The configMap specified with `mysqlConfigMapName` contains MySQL options of `mysqld` section as key-value pairs.
 
 Note that `podTemplate` must include `name: myslqd` container. This container must specify a container image that runs `mysqld`. Besides, the container `name: agent` cannot be included in `podTemplate` because it is reserved by MOCO controller.
+
+The secret given to `replicationSourceSecretName` have the following keys:
+
+| Key                                                  | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRIMARY_HOST`, `PRIMARY_PORT`                       | Yes      | The host name and port number of donor for intermediate primary.                                                                                                                                                                                                                                                                                                                                                                             |
+| `PRIMARY_USER`, `PRIMARY_PASSWORD`                   | Yes      | The user name and its password of donor user in donor host. This user must have `BACKUP_ADMIN` privilege.                                                                                                                                                                                                                                                                                                                                    |
+| `INIT_AFTER_CLONE_USER`, `INIT_AFTER_CLONE_PASSWORD` | Yes      | The user name and its password used to recover administrative users used by moco after cloning. This user must be created in the donor in advance. This user must have `SUPER` privilege (same privilege as root) and may be root. Because moco connects to `mysqld` via UNIX domain socket during recovery, this user does not have to be able to connect via network and it is recommended to create the user as `'somebody'@'localhost'`. |
+
 
 RestoreSpec
 -----------

@@ -39,12 +39,13 @@ const (
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
-	mysqlDataVolumeName         = "mysql-data"
-	mysqlConfVolumeName         = "mysql-conf"
-	varRunVolumeName            = "var-run"
-	varLogVolumeName            = "var-log"
-	tmpVolumeName               = "tmp"
-	mysqlConfTemplateVolumeName = "mysql-conf-template"
+	mysqlDataVolumeName               = "mysql-data"
+	mysqlConfVolumeName               = "mysql-conf"
+	varRunVolumeName                  = "var-run"
+	varLogVolumeName                  = "var-log"
+	tmpVolumeName                     = "tmp"
+	mysqlConfTemplateVolumeName       = "mysql-conf-template"
+	replicationSourceSecretVolumeName = "replication-source-secret"
 
 	passwordBytes = 16
 
@@ -369,7 +370,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 		moco.RootPasswordKey:        rootPass,
 		moco.OperatorPasswordKey:    operatorPass,
 		moco.ReplicationPasswordKey: replicatorPass,
-		moco.DonorPasswordKey:       donorPass,
+		moco.CloneDonorPasswordKey:  donorPass,
 		moco.MiscPasswordKey:        miscPass,
 	}
 
@@ -389,7 +390,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 	secret.Data = map[string][]byte{
 		moco.OperatorPasswordKey:    operatorPass,
 		moco.ReplicationPasswordKey: replicatorPass,
-		moco.DonorPasswordKey:       donorPass,
+		moco.CloneDonorPasswordKey:  donorPass,
 	}
 
 	return r.Client.Create(ctx, secret)
@@ -739,7 +740,8 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			return nil, err
 		}
 	}
-	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, corev1.Container{
+	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+	agentContainer := corev1.Container{
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
@@ -773,11 +775,45 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				},
 			},
 			{
+				Name: moco.PodIPEnvName,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+			{
 				Name:  moco.AgentTokenEnvName,
 				Value: cluster.Status.AgentToken,
 			},
 		},
-	})
+		EnvFrom: []corev1.EnvFromSource{
+			{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: rootPasswordSecretName,
+					},
+				},
+			},
+		},
+	}
+
+	if cluster.Spec.ReplicationSourceSecretName != nil {
+		newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes, corev1.Volume{
+			Name: replicationSourceSecretVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: *cluster.Spec.ReplicationSourceSecretName,
+				},
+			},
+		})
+		agentContainer.VolumeMounts = append(agentContainer.VolumeMounts, corev1.VolumeMount{
+			MountPath: moco.ReplicationSourceSecretPath,
+			Name:      replicationSourceSecretVolumeName,
+		})
+	}
+
+	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, agentContainer)
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,

@@ -15,8 +15,8 @@ const (
 	// This user is a super user especially for creating and granting privileges to other users.
 	OperatorAdminUser = "moco-admin"
 
-	// ReplicatorUser is a name of MOCO replicator user in the MySQL context.
-	ReplicatorUser = "moco-repl"
+	// ReplicationUser is a name of MOCO replicator user in the MySQL context.
+	ReplicationUser = "moco-repl"
 
 	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
 	DonorUser = "moco-clone-donor"
@@ -58,6 +58,9 @@ const (
 
 	// MiscPasswordPath is the path to misc user passsword file
 	MiscPasswordPath = MySQLDataPath + "/misc-password"
+
+	// ReplicationSourceSecretPath is the path to replication source secret file
+	ReplicationSourceSecretPath = MySQLDataPath + "/replication-source-secret"
 
 	// InnoDBBufferPoolRatioPercent is the ratio of InnoDB buffer pool size to resource.limits.memory or resource.requests.memory
 	// Note that the pool size doesn't set to lower than 128MiB, which is the default innodb_buffer_pool_size value
@@ -138,11 +141,19 @@ const (
 	// ReplicationPasswordKey is a Secret key for operator replication password.
 	ReplicationPasswordKey = "REPLICATION_PASSWORD"
 
-	// DonorPasswordKey is a Secret key for operator donor password.
-	DonorPasswordKey = "CLONE_DONOR_PASSWORD"
+	// CloneDonorPasswordKey is a Secret key for operator donor password.
+	CloneDonorPasswordKey = "CLONE_DONOR_PASSWORD"
 
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"
+
+	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
+	ReplicationSourcePrimaryHostKey            = "PRIMARY_HOST"
+	ReplicationSourcePrimaryUserKey            = "PRIMARY_USER"
+	ReplicationSourcePrimaryPasswordKey        = "PRIMARY_PASSWORD"
+	ReplicationSourcePrimaryPortKey            = "PRIMARY_PORT"
+	ReplicationSourceInitAfterCloneUserKey     = "INIT_AFTER_CLONE_USER"
+	ReplicationSourceInitAfterClonePasswordKey = "INIT_AFTER_CLONE_PASSWORD"
 )
 
 const (
@@ -167,6 +178,7 @@ const (
 const (
 	CloneParamDonorHostName = "donor_hostname"
 	CloneParamDonorPort     = "donor_port"
+	CloneParamExternal      = "external"
 )
 
 const (
@@ -200,8 +212,8 @@ var (
 	ErrConstraintsViolation = errors.New("constraints violation occurs")
 	// ErrConstraintsRecovered is returned when the constrains recovered but once violated
 	ErrConstraintsRecovered = errors.New("constrains recovered but once violated")
-	// ErrCannotCompareGITDs is returned if GTID comparison returns error
-	ErrCannotCompareGITDs = errors.New("cannot compare gtids")
+	// ErrCannotCompareGTIDs is returned if GTID comparison returns error
+	ErrCannotCompareGTIDs = errors.New("cannot compare gtids")
 )
 
 type MOCOEvent struct {
@@ -240,6 +252,11 @@ var (
 		corev1.EventTypeNormal,
 		"Waiting Relay Log Execution",
 		"Waiting relay log execution on replica instance(s).",
+	}
+	EventWaitingCloneFromExternal = MOCOEvent{
+		corev1.EventTypeNormal,
+		"Waiting External Clone",
+		"Waiting for the intermediate primary to clone from the external primary",
 	}
 	EventRestoringReplicaInstances = MOCOEvent{
 		corev1.EventTypeNormal,

@@ -21,14 +21,14 @@ var _ = Describe("Configure intermediate primary operator", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		err := startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
+		err := moco.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = startMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = initializeMySQL(mysqldPort1)
+		err = moco.InitializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = initializeMySQL(mysqldPort2)
+		err = moco.InitializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		ns := corev1.Namespace{}
@@ -54,8 +54,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 	})
 
 	AfterEach(func() {
-		stopMySQLD(mysqldName1)
-		stopMySQLD(mysqldName2)
+		moco.StopAndRemoveMySQLD(mysqldName1)
+		moco.StopAndRemoveMySQLD(mysqldName2)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")
@@ -77,7 +77,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeTrue())
 		replicaStatus := status.InstanceStatus[0].ReplicaStatus
@@ -86,7 +87,10 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 
 		Eventually(func() error {
-			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			if err != nil {
+				return err
+			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
 			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
 				return errors.New("IO thread should be running")
@@ -117,7 +121,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		err = op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(2))
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
 
@@ -125,7 +130,10 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		Expect(replicaStatus.LastIoErrno).Should(Equal(0))
 
 		Eventually(func() error {
-			status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+			if err != nil {
+				return err
+			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
 			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
 				return errors.New("IO thread should not be running")

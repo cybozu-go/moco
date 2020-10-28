@@ -3,7 +3,10 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -11,12 +14,24 @@ import (
 	"github.com/cybozu-go/log"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/initialize"
 	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
+)
+
+const timeoutDuration = 120 * time.Second
+
+var (
+	passwordFilePath = filepath.Join(moco.TmpPath, "moco-root-password")
+	miscConfPath     = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 )
 
 // Clone executes MySQL CLONE command
 func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -28,23 +43,85 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	donorHostName := r.URL.Query().Get(moco.CloneParamDonorHostName)
-	if len(donorHostName) <= 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	rawDonorPort := r.URL.Query().Get(moco.CloneParamDonorPort)
+	var donorHostName string
 	var donorPort int
-	if rawDonorPort == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	var donorUser string
+	var donorPassword string
+	var initUser string
+	var initPassword string
+	var externalMode bool
 
-	donorPort, err := strconv.Atoi(rawDonorPort)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	external := r.URL.Query().Get(moco.CloneParamExternal)
+	if external != "true" {
+		donorHostName = r.URL.Query().Get(moco.CloneParamDonorHostName)
+		if len(donorHostName) <= 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		rawDonorPort := r.URL.Query().Get(moco.CloneParamDonorPort)
+		if rawDonorPort == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		donorPort, err = strconv.Atoi(rawDonorPort)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		donorUser = moco.DonorUser
+		donorPassword = a.donorUserPassword
+	} else {
+		externalMode = true
+
+		rawDonorHostName, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		donorHostName = string(rawDonorHostName)
+
+		rawDonorPort, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPortKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		donorPort, err = strconv.Atoi(string(rawDonorPort))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryUserKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		donorUser = string(rawDonorUser)
+
+		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPasswordKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		donorPassword = string(rawDonorPassword)
+
+		rawInitUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceInitAfterCloneUserKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		initUser = string(rawInitUser)
+
+		rawInitPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceInitAfterClonePasswordKey)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		initPassword = string(rawInitPassword)
 	}
 
 	if !a.sem.TryAcquire(1) {
@@ -88,12 +165,32 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		a.clone(ctx, a.miscUserPassword, a.donorUserPassword, donorHostName, donorPort)
+		a.clone(ctx, a.miscUserPassword, donorUser, donorPassword, donorHostName, donorPort)
+		if externalMode {
+			err := waitBootstrap(ctx, initUser, initPassword)
+			if err != nil {
+				log.Error("mysqld didn't boot up after cloning from external", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+				return err
+			}
+			err = initialize.RestoreUsers(ctx, passwordFilePath, miscConfPath, initUser, &initPassword, os.Getenv(moco.PodIPEnvName))
+			if err != nil {
+				log.Error("failed to initialize after clone", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+				return err
+			}
+		}
 		return nil
 	})
 }
 
-func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHostName string, donorPort int) {
+func (a *Agent) clone(ctx context.Context, miscPassword, donorUser, donorPassword, donorHostName string, donorPort int) {
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, miscPassword)
 	if err != nil {
 		log.Error("failed to get database", map[string]interface{}{
@@ -107,7 +204,7 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 	metrics.IncrementCloneCountMetrics()
 
 	startTime := time.Now()
-	_, err = db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, moco.DonorUser, donorHostName, donorPort, donorPassword)
+	_, err = db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, donorUser, donorHostName, donorPort, donorPassword)
 	durationSeconds := time.Since(startTime).Seconds()
 
 	if err != nil {
@@ -144,4 +241,32 @@ func (a *Agent) clone(ctx context.Context, miscPassword, donorPassword, donorHos
 		"hostname":       a.mysqlAdminHostname,
 		"port":           a.mysqlAdminPort,
 	})
+}
+
+func waitBootstrap(ctx context.Context, user, password string) error {
+	conf := mysql.NewConfig()
+	conf.User = user
+	conf.Passwd = password
+	conf.Net = "unix"
+	conf.Addr = "/var/run/mysqld/mysqld.sock"
+	conf.InterpolateParams = true
+	uri := conf.FormatDSN()
+
+	ctx, cancel := context.WithTimeout(ctx, timeoutDuration)
+	defer cancel()
+
+	tick := time.NewTicker(time.Second)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-tick.C:
+			_, err := sqlx.Connect("mysql", uri)
+			if err == nil {
+				return nil
+			}
+		}
+	}
 }

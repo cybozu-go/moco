@@ -38,7 +38,14 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		addrs = append(addrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.MySQLAdminPort))
 	}
 	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs)
-	status := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
+	status, err := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
+	if err != nil {
+		condErr := r.setFailureCondition(ctx, cluster, err, nil)
+		if condErr != nil {
+			log.Error(condErr, "unable to update status")
+		}
+		return ctrl.Result{}, err
+	}
 
 	op, err := decideNextOperation(log, cluster, status)
 	if err != nil {
@@ -134,6 +141,16 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
 			Event:      moco.EventPrimaryChanged.FillVariables(currentPrimary, strconv.Itoa(primaryIndex)),
+		}, nil
+	}
+
+	op = cloneFromExternal(status, cluster)
+	if len(op) != 0 {
+		return &Operation{
+			Operators:  op,
+			Conditions: unavailableCondition(nil),
+			Phase:      moco.PhaseRestoreInstance,
+			Event:      &moco.EventWaitingCloneFromExternal,
 		}, nil
 	}
 
@@ -396,10 +413,6 @@ func validateConstraints(status *accessor.MySQLClusterStatus, cluster *mocov1alp
 }
 
 func selectPrimary(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (int, error) {
-	if status.Latest == nil {
-		return 0, moco.ErrCannotCompareGITDs
-	}
-
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return 0, nil
 	}
@@ -422,12 +435,34 @@ func updatePrimary(cluster *mocov1alpha1.MySQLCluster, newPrimaryIndex int) []op
 	}
 }
 
-func isCloneable(state sql.NullString) bool {
-	if !state.Valid {
+func cloneFromExternal(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) []ops.Operator {
+	// Do nothing if ReplicationSourceSecretName is not given
+	if cluster.Spec.ReplicationSourceSecretName == nil {
+		return nil
+	}
+
+	currentPrimaryIndex := cluster.Status.CurrentPrimaryIndex
+	if !isCloneable(&status.InstanceStatus[*currentPrimaryIndex]) {
+		return nil
+	}
+
+	externalHostWithPort := status.IntermediatePrimaryOptions.PrimaryHost + ":" + strconv.Itoa(status.IntermediatePrimaryOptions.PrimaryPort)
+	return []ops.Operator{
+		ops.SetCloneDonorListOp([]int{*currentPrimaryIndex}, externalHostWithPort),
+		ops.CloneOp(*currentPrimaryIndex, true),
+	}
+}
+
+func isCloneable(s *accessor.MySQLInstanceStatus) bool {
+	if s.PrimaryStatus.ExecutedGtidSet != "" {
+		return false
+	}
+
+	if !s.CloneStateStatus.State.Valid {
 		return true
 	}
 
-	if state.String == moco.CloneStatusFailed {
+	if s.CloneStateStatus.State.String == moco.CloneStatusFailed {
 		return true
 	}
 
@@ -450,11 +485,14 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	primaryHost := moco.GetHost(cluster, primaryIndex)
 	primaryHostWithPort := fmt.Sprintf("%s:%d", primaryHost, moco.MySQLAdminPort)
 
-	for _, s := range status.InstanceStatus {
+	var target []int
+	for i, s := range status.InstanceStatus {
 		if !s.GlobalVariablesStatus.CloneValidDonorList.Valid || s.GlobalVariablesStatus.CloneValidDonorList.String != primaryHostWithPort {
-			op = append(op, ops.SetCloneDonorListOp())
-			break
+			target = append(target, i)
 		}
+	}
+	if len(target) > 0 {
+		op = append(op, ops.SetCloneDonorListOp(target, primaryHostWithPort))
 	}
 
 	for i, s := range status.InstanceStatus {
@@ -462,8 +500,8 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 			continue
 		}
 
-		if isCloneable(s.CloneStateStatus.State) && s.PrimaryStatus.ExecutedGtidSet == "" {
-			op = append(op, ops.CloneOp(i))
+		if isCloneable(&s) {
+			op = append(op, ops.CloneOp(i, false))
 		}
 	}
 

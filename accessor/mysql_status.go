@@ -131,7 +131,10 @@ type MySQLCloneStateStatus struct {
 	State sql.NullString `db:"state"`
 }
 
-func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastructure, cluster *mocov1alpha1.MySQLCluster) *MySQLClusterStatus {
+// GetMySQLClusterStatus gathers current cluster status and return it.
+// If the operator failed to gather status of individual replica, the Available field of corresponding replica becomes false.
+// If the operator failed to gather status of cluster itself, returns error.
+func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastructure, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
 	status := &MySQLClusterStatus{
 		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
 	}
@@ -197,29 +200,30 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 	options, err := GetIntermediatePrimaryOptions(ctx, infra.GetClient(), cluster)
 	if err != nil {
 		log.Info("cannot obtain or invalid options for intermediate primary", "err", err)
+		return status, err
 	}
 	status.IntermediatePrimaryOptions = options
 
 	db, err := infra.GetDB(0)
 	if err != nil {
 		log.Info("cannot obtain index of latest instance")
-		return status
+		return status, err
 	}
 	latest, err := GetLatestInstance(ctx, db, status.InstanceStatus)
 	if err != nil {
 		log.Info("cannot obtain index of latest instance")
-		return status
+		return status, err
 	}
 	status.Latest = latest
 
-	return status
+	return status, nil
 }
 
 func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceStatus) (*int, error) {
 	var latest int
 	for i := 0; i < len(status); i++ {
 		if status[i].PrimaryStatus == nil {
-			return nil, errors.New("cannot compare retrieved/executed GTIDs")
+			return nil, moco.ErrCannotCompareGTIDs
 		}
 	}
 
@@ -244,7 +248,7 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 			continue
 		}
 
-		return nil, errors.New("cannot compare retrieved/executed GTIDs")
+		return nil, moco.ErrCannotCompareGTIDs
 	}
 
 	return &latest, nil
@@ -272,7 +276,7 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 		return false, nil
 	}
 
-	return false, errors.New("cannot compare retrieved/executed GTIDs")
+	return false, moco.ErrCannotCompareGTIDs
 }
 
 func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
@@ -281,7 +285,7 @@ func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error
 		return 0, err
 	}
 	if !rows.Next() {
-		return 0, errors.New("cannot obtain compasion result of GTIDs")
+		return 0, moco.ErrCannotCompareGTIDs
 	}
 
 	var res struct {
@@ -390,18 +394,20 @@ func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePr
 	var result IntermediatePrimaryOptions
 	for k, v := range options {
 		switch k {
-		case "PRIMARY_HOST":
+		case moco.ReplicationSourcePrimaryHostKey:
 			result.PrimaryHost = string(v)
-		case "PRIMARY_USER":
+		case moco.ReplicationSourcePrimaryUserKey:
 			result.PrimaryUser = string(v)
-		case "PRIMARY_PASSWORD":
+		case moco.ReplicationSourcePrimaryPasswordKey:
 			result.PrimaryPassword = string(v)
-		case "PRIMARY_PORT":
+		case moco.ReplicationSourcePrimaryPortKey:
 			port, err := strconv.Atoi(string(v))
 			if err != nil {
 				return nil, err
 			}
 			result.PrimaryPort = port
+		case moco.ReplicationSourceInitAfterCloneUserKey:
+		case moco.ReplicationSourceInitAfterClonePasswordKey:
 		default:
 			return nil, errors.New("unknown option for intermediate primary")
 		}

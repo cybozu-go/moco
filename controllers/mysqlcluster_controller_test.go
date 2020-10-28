@@ -30,6 +30,8 @@ const (
 	clusterName = "mysqlcluster"
 )
 
+var replicationSourceSecretName = "replication-source-secret"
+
 func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
 	cluster := &mocov1alpha1.MySQLCluster{
 		TypeMeta: metav1.TypeMeta{
@@ -137,7 +139,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(initSecret.Data).Should(HaveKey(moco.RootPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
 
 			ctrlSecret := &corev1.Secret{}
@@ -146,7 +148,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.DonorPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 
 			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -347,6 +349,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(agentContainer).ShouldNot(BeNil())
+			Expect(len(agentContainer.VolumeMounts)).Should(Equal(4))
 
 			var claim *corev1.PersistentVolumeClaim
 			for i, v := range sts.Spec.VolumeClaimTemplates {
@@ -360,6 +363,52 @@ var _ = Describe("MySQLCluster controller", func() {
 			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should mount volumes of ReplicationSourceSecret", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.ReplicationSourceSecretName = &replicationSourceSecretName
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: replicationSourceSecretName, Namespace: cluster.Namespace},
+				Data:       make(map[string][]byte),
+			}
+			_, err := ctrl.CreateOrUpdate(ctx, k8sClient, secret, func() error {
+				return nil
+			})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var agentContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "agent" {
+					agentContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+			Expect(agentContainer).ShouldNot(BeNil())
+			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
+			Expect(agentContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
+				MountPath: moco.ReplicationSourceSecretPath,
+				Name:      replicationSourceSecretVolumeName,
+			}))
+			defaultMode := corev1.SecretVolumeSourceDefaultMode
+			Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElement(corev1.Volume{
+				Name: replicationSourceSecretVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName:  replicationSourceSecretName,
+						DefaultMode: &defaultMode,
+					},
+				},
+			}))
 		})
 
 		It("should return error, when template does not contain mysqld container", func() {

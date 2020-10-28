@@ -2,7 +2,10 @@ package operators
 
 import (
 	"context"
+	"strconv"
+	"time"
 
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
@@ -17,14 +20,18 @@ var _ = Describe("Update primary", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		err := startMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
+		err := moco.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = startMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.StartMySQLD(mysqldName3, mysqldPort3, mysqldServerID3)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = initializeMySQL(mysqldPort1)
+		err = moco.InitializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = initializeMySQL(mysqldPort2)
+		err = moco.InitializeMySQL(mysqldPort2)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = moco.InitializeMySQL(mysqldPort3)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		ns := corev1.Namespace{}
@@ -36,15 +43,23 @@ var _ = Describe("Update primary", func() {
 	})
 
 	AfterEach(func() {
-		stopMySQLD(mysqldName1)
-		stopMySQLD(mysqldName2)
+		moco.StopAndRemoveMySQLD(mysqldName1)
+		moco.StopAndRemoveMySQLD(mysqldName2)
+		moco.StopAndRemoveMySQLD(mysqldName3)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")
 
 	It("should update primary", func() {
-		_, infra, cluster := getAccessorInfraCluster()
+		_, _, cluster := getAccessorInfraCluster()
 		cluster.Spec.Replicas = 3
+		acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
+			ConnMaxLifeTime:   30 * time.Minute,
+			ConnectionTimeout: 3 * time.Second,
+			ReadTimeout:       30 * time.Second,
+		})
+		infra := accessor.NewInfrastructure(k8sClient, acc, password, []string{host + ":" + strconv.Itoa(mysqldPort1), host + ":" + strconv.Itoa(mysqldPort2), host + ":" + strconv.Itoa(mysqldPort3)})
+
 		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &cluster, func() error {
 			return nil
 		})
@@ -61,7 +76,8 @@ var _ = Describe("Update primary", func() {
 			newPrimaryIndex: 1,
 		}
 
-		status := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err := accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		err = op.Run(ctx, infra, &cluster, status)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -74,7 +90,8 @@ var _ = Describe("Update primary", func() {
 		Expect(*updateCluster.Status.CurrentPrimaryIndex).Should(Equal(1))
 
 		Expect(*cluster.Status.CurrentPrimaryIndex).Should(Equal(1))
-		status = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		status, err = accessor.GetMySQLClusterStatus(ctx, logger, infra, &cluster)
+		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus).Should(HaveLen(3))
 
 		primaryStatus := status.InstanceStatus[1]
