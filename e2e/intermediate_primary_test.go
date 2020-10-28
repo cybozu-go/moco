@@ -19,6 +19,9 @@ const (
 
 func testIntermediatePrimary() {
 	It("should create intermediate cluster", func() {
+		By("creating namespace")
+		_, _, _ = kubectl("create", "ns", nsExternal) // ignore error
+
 		By("creating replication source secret")
 		donorCluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
@@ -44,7 +47,6 @@ stringData:
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s, secret=%v", stdout, stderr, secret)
 
 		By("creating intermediate cluster")
-		_, _, _ = kubectl("create", "ns", nsExternal) // ignore error
 		stdout, stderr, err = kubectl("apply", "-n", nsExternal, "-f", "manifests/mysql_cluster_external.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
