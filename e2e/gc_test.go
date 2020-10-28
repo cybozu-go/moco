@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/cybozu-go/moco"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func testGarbageCollector() {
@@ -58,18 +60,37 @@ func testGarbageCollector() {
 			return nil
 		}).Should(Succeed())
 
+		var pvcNames []string
+		for i := 0; i < int(cluster.Spec.Replicas); i++ {
+			podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
+			pvcName := fmt.Sprintf("mysql-data-%s", podName)
+			pvcNames = append(pvcNames, pvcName)
+		}
+
+		var pvNames []string
 		Consistently(func() error {
-			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "pvc")
-			if err != nil {
-				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			pvNames = make([]string, 0)
+			for _, pvcName := range pvcNames {
+				stdout, stderr, err := kubectl("get", "-n", "e2e-test", "pvc", pvcName, "-o", "json")
+				if err != nil {
+					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+				}
+				var pvc corev1.PersistentVolumeClaim
+				err = json.Unmarshal(stdout, &pvc)
+				if err != nil {
+					return fmt.Errorf("failed to unmarshal PVC. stdout: %s, err: %v", stdout, err)
+				}
+				pvNames = append(pvNames, pvc.Spec.VolumeName)
 			}
 			return nil
 		}).Should(Succeed())
 
 		Consistently(func() error {
-			stdout, stderr, err := kubectl("get", "pv")
-			if err != nil {
-				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			for _, pvName := range pvNames {
+				stdout, stderr, err := kubectl("get", "pv", pvName, "-o", "json")
+				if err != nil {
+					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+				}
 			}
 			return nil
 		}).Should(Succeed())
