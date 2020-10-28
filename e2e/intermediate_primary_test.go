@@ -30,13 +30,16 @@ metadata:
   name: replication-source-secret
 type: Opaque
 stringData:
-  PRIMARY_HOST: %s
+  PRIMARY_HOST: %s.e2e-test.svc
   PRIMARY_PORT: "%s"
-  PRIMARY_USER: moco-repl
+  PRIMARY_USER: %s
   PRIMARY_PASSWORD: %s
-  INIT_AFTER_CLONE_USER: root
+  INIT_AFTER_CLONE_USER: %s
   INIT_AFTER_CLONE_PASSWORD: %s
-`, fmt.Sprintf("%s-replica", moco.UniqueName(donorCluster)), "3306", string(rootPassword.Data[moco.ReplicationPasswordKey]), string(rootPassword.Data[moco.RootPasswordKey]))
+`, fmt.Sprintf("%s-replica",
+			moco.UniqueName(donorCluster)), "3306",
+			moco.DonorUser, string(rootPassword.Data[moco.CloneDonorPasswordKey]),
+			"root", string(rootPassword.Data[moco.RootPasswordKey]))
 		stdout, stderr, err := kubectlWithInput([]byte(secret), "apply", "-n"+nsExternal, "-f", "-")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s, secret=%v", stdout, stderr, secret)
 
