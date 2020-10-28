@@ -137,23 +137,23 @@ Behaviors
 
 Fetch the following information with mysql-client from each instance:
 
-1. SHOW MASTER STATUS
-    1.1. Executed_Gtid_Set
-2. SHOW SLAVE STATUS
-    2.1. Master_Host
-    2.2. Executed_Gtid_Set
-    2.3. Retrieved_Gtid_Set
-    2.4. Slave_IO_Running
-    2.5. Slave_SQL_Running
-    2.6. Last_IO_Errno
-    2.7. Last_IO_Error
-    2.8. Last_SQL_Errno
-    2.9. Last_SQL_Error
-3. select @@global.read_only, @@global.super_read_only;
-    3.1. read_only
-    3.2. super_read_only
-4. performance_schema.clone_status table
-    4.1. STATE
+- SHOW MASTER STATUS
+  - Executed_Gtid_Set
+- SHOW SLAVE STATUS
+  - Master_Host
+  - Executed_Gtid_Set
+  - Retrieved_Gtid_Set
+  - Slave_IO_Running
+  - Slave_SQL_Running
+  - Last_IO_Errno
+  - Last_IO_Error
+  - Last_SQL_Errno
+  - Last_SQL_Error
+- select @@global.read_only, @@global.super_read_only;
+  - read_only
+  - super_read_only
+- performance_schema.clone_status table
+  - STATE
 
 ### How to bootstrap MySQL Cluster
 
