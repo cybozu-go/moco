@@ -181,18 +181,33 @@ var _ = Describe("Test Agent: Clone Request", func() {
 			if !cmp.Equal(cloneStatus.State, expected) {
 				return fmt.Errorf("doesn't reach completed state: %+v", cloneStatus.State)
 			}
+
+			cloneCount, err = getMetric(registry, metricsPrefix+"clone_count")
+			if err != nil {
+				return err
+			}
+			if *cloneCount.Counter.Value != 1.0 {
+				return errors.New("clone count isn't incremented yet")
+			}
+
+			cloneFailureCount, err := getMetric(registry, metricsPrefix+"clone_failure_count")
+			if err != nil {
+				return err
+			}
+			if *cloneFailureCount.Counter.Value != 0.0 {
+				return errors.New("clone failure count shouldn't be incremented")
+			}
+
+			cloneDurationSeconds, err := getMetric(registry, metricsPrefix+"clone_duration_seconds")
+			if err != nil {
+				return err
+			}
+			if len(cloneDurationSeconds.Summary.Quantile) == 0 {
+				return errors.New("clone duration seconds should have values")
+			}
+
 			return nil
 		}, 30*time.Second).Should(Succeed())
-
-		cloneCount, err = getMetric(registry, metricsPrefix+"clone_count")
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(*cloneCount.Counter.Value).Should(Equal(1.0))
-		cloneFailureCount, err := getMetric(registry, metricsPrefix+"clone_failure_count")
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(*cloneFailureCount.Counter.Value).Should(Equal(0.0))
-		cloneDurationSeconds, err := getMetric(registry, metricsPrefix+"clone_duration_seconds")
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(len(cloneDurationSeconds.Summary.Quantile)).ShouldNot(Equal(0))
 	})
 
 	It("should not clone if recipient has some data", func() {
