@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,8 +24,8 @@ func testGarbageCollector() {
 				if err != nil {
 					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 				}
-				if !strings.Contains(string(stdout), "No resources found in e2e-test namespace.") {
-					return fmt.Errorf("resources remain: %s", stdout)
+				if !strings.Contains(string(stderr), "No resources found in e2e-test namespace.") {
+					return fmt.Errorf("resources remain: %s, stdout: %s, stderr: %s", kind, stdout, stderr)
 				}
 				return nil
 			}, 2*time.Minute).Should(Succeed())
@@ -41,7 +40,7 @@ func testGarbageCollector() {
 				if err == nil {
 					return fmt.Errorf("%s should be removed. stdout: %s, stderr: %s", resource, stdout, stderr)
 				}
-				if !strings.Contains(string(stdout), "not found") {
+				if !strings.Contains(string(stderr), "not found") {
 					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 				}
 				return nil
@@ -53,7 +52,7 @@ func testGarbageCollector() {
 			if err == nil {
 				return fmt.Errorf("secret/e2e-test.mysqlcluster should be removed. stdout: %s, stderr: %s", stdout, stderr)
 			}
-			if !strings.Contains(string(stdout), "not found") {
+			if !strings.Contains(string(stderr), "not found") {
 				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
 			return nil

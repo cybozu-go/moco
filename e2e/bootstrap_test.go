@@ -22,7 +22,7 @@ func testBootstrap() {
 		stdout, stderr, err := kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		By("getting Secret which contains root password")
+		By("getting cluster status")
 		Eventually(func() error {
 			cluster, err := getMySQLCluster()
 			if err != nil {
@@ -81,6 +81,19 @@ func testBootstrap() {
 			}
 			return nil
 		}).Should(Succeed())
+	})
+
+	It("should record events", func() {
+		cluster, err := getMySQLCluster()
+		Expect(err).ShouldNot(HaveOccurred())
+		stdout, stderr, err := kubectl("get", "-n", "e2e-test", "events", "--field-selector", "involvedObject.name="+cluster.Name, "-o", "json")
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+
+		var events corev1.EventList
+		err = json.Unmarshal(stdout, &events)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Expect(events.Items).ShouldNot(HaveLen(0))
 	})
 
 	It("should replicate data", func() {

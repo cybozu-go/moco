@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -56,38 +57,34 @@ func testReplicaFailOver() {
 		_, err = primaryDB.Exec("PURGE MASTER LOGS TO ?", lastBinLog)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		By("deleting Pod and PVC/PV of the target replica")
+		By("deleting PVC of the target replica")
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), targetReplica)
 		pvcName := fmt.Sprintf("mysql-data-%s", podName)
-		wg := &sync.WaitGroup{}
-		wg.Add(1)
 
-		var stdout2, stderr2 []byte
-		var err2 error
-		go func() {
-			stdout2, stderr2, err2 = kubectl("-n", "e2e-test", "delete", "pvc", pvcName)
-			wg.Done()
-		}()
-		stdout, stderr, err := kubectl("-n", "e2e-test", "patch", "pvc", pvcName, "-p", `{"metadata": {"finalizers" : null}}`)
+		stdout, stderr, err := kubectl("-n", "e2e-test", "delete", "pvc", pvcName, "--wait=false")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
-		wg.Wait()
-		Expect(err2).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout2, stderr2)
+		stdout, stderr, err = kubectl("-n", "e2e-test", "patch", "pvc", pvcName, "-p", `{"metadata": {"finalizers" : null}}`)
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+		Eventually(func() error {
+			stdout, stderr, err := kubectl("get", "pvc", "-n", "e2e-test", pvcName)
+			if err == nil {
+				return fmt.Errorf("pvc() should be removed. stdout: %s, stderr: %s", stdout, stderr)
+			}
+			if !strings.Contains(string(stderr), "not found") {
+				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+			return nil
+		}).Should(Succeed())
 
+		By("deleting Pod of the target replica")
 		stdout, stderr, err = kubectl("-n", "e2e-test", "delete", "pod", podName)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		Eventually(func() error {
 			cluster, err = getMySQLCluster()
-			if cluster.Status.Ready != corev1.ConditionFalse {
-				return errors.New("status should be in error once")
-			}
-			return nil
-		}).Should(Succeed())
-
-		Eventually(func() error {
-			cluster, err = getMySQLCluster()
-			if cluster.Status.Ready != corev1.ConditionTrue {
-				return errors.New("cluster should recover")
+			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
+			if healthy == nil || healthy.Status != corev1.ConditionTrue {
+				return errors.New("should recover")
 			}
 			return nil
 		}, 2*time.Minute).Should(Succeed())
