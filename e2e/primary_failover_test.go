@@ -66,6 +66,23 @@ func testPrimaryFailOver() {
 		err = connector.startPortForward()
 		Expect(err).ShouldNot(HaveOccurred())
 
+		var primaryDB *sqlx.DB
+		Eventually(func() error {
+			primaryDB, err = connector.connectToPrimary()
+			if err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+		selectRows, err := primaryDB.Query("SELECT count(*) FROM moco_e2e.replication_test")
+		Expect(err).ShouldNot(HaveOccurred())
+		primaryCount := 0
+		for selectRows.Next() {
+			err = selectRows.Scan(&primaryCount)
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+		Expect(primaryCount).ShouldNot(Equal(0))
+
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
 			replicaDB, err = connector.connect(firstPrimary)
@@ -87,7 +104,7 @@ func testPrimaryFailOver() {
 					return err
 				}
 			}
-			if count != 100000 {
+			if count != primaryCount {
 				return fmt.Errorf("repcalited: %d", count)
 			}
 			return nil

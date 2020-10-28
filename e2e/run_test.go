@@ -137,7 +137,7 @@ func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionTyp
 	return nil
 }
 
-func replica0(cluster *mocov1alpha1.MySQLCluster) (int, error) {
+func minIndexReplica(cluster *mocov1alpha1.MySQLCluster) (int, error) {
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return 0, errors.New("CurrentPrimaryIndex is nil")
 	}

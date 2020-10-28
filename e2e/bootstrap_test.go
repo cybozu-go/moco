@@ -18,8 +18,10 @@ import (
 func testBootstrap() {
 	It("should create cluster", func() {
 		By("registering MySQLCluster")
-		_, _, _ = kubectl("create", "ns", "e2e-test") // ignore error
-		stdout, stderr, err := kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
+		stdout, stderr, err := kubectl("apply", "-f", "manifests/namespace.yaml")
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+
+		stdout, stderr, err = kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		By("getting cluster status")
@@ -93,7 +95,18 @@ func testBootstrap() {
 		err = json.Unmarshal(stdout, &events)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(events.Items).ShouldNot(HaveLen(0))
+		initialized := false
+		completed := false
+		for _, e := range events.Items {
+			if equalEvent(e, moco.EventInitializationSucceeded) {
+				initialized = true
+			}
+			if equalEvent(e, moco.EventClusteringCompletedSynced) {
+				completed = true
+			}
+		}
+		Expect(initialized).Should(BeTrue())
+		Expect(completed).Should(BeTrue())
 	})
 
 	It("should replicate data", func() {
@@ -112,7 +125,7 @@ func testBootstrap() {
 			}
 			return nil
 		}).Should(Succeed())
-		replica, err := replica0(cluster)
+		replica, err := minIndexReplica(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
@@ -163,4 +176,8 @@ func testBootstrap() {
 			return nil
 		}).Should(Succeed())
 	})
+}
+
+func equalEvent(actual corev1.Event, expected moco.MOCOEvent) bool {
+	return actual.Reason == expected.Reason && actual.Type == expected.Type && actual.Message == expected.Message
 }

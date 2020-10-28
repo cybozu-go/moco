@@ -33,7 +33,7 @@ func testReplicaFailOver() {
 			}
 			return nil
 		}).Should(Succeed())
-		targetReplica, err := replica0(cluster)
+		targetReplica, err := minIndexReplica(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("purging binlogs")
@@ -94,6 +94,22 @@ func testReplicaFailOver() {
 		err = connector.startPortForward()
 		Expect(err).ShouldNot(HaveOccurred())
 
+		Eventually(func() error {
+			primaryDB, err = connector.connectToPrimary()
+			if err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+		selectRows, err := primaryDB.Query("SELECT count(*) FROM moco_e2e.replication_test")
+		Expect(err).ShouldNot(HaveOccurred())
+		primaryCount := 0
+		for selectRows.Next() {
+			err = selectRows.Scan(&primaryCount)
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+		Expect(primaryCount).ShouldNot(Equal(0))
+
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
 			replicaDB, err = connector.connect(targetReplica)
@@ -115,7 +131,7 @@ func testReplicaFailOver() {
 					return err
 				}
 			}
-			if replicatedCount != 100000 {
+			if replicatedCount != primaryCount {
 				return fmt.Errorf("repcalited: %d", replicatedCount)
 			}
 			return nil
