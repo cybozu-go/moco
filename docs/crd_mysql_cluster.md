@@ -32,6 +32,15 @@ The configMap specified with `mysqlConfigMapName` contains MySQL options of mysq
 
 Note that `podTemplate` must include `name: myslqd` container. This container must specify a container image that runs `mysqld`. Besides, the container `name: agent` cannot be included in `podTemplate` because it is reserved by MOCO controller.
 
+The secret given to replicationSourceSecretName have following keys:
+
+| Key                                              | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PRIMARY_HOST, PRIMARY_PORT                       | Yes      | The host name and port number of donor for intermediate primary.                                                                                                                                                                                                                                                                                                                                                                    |
+| PRIMARY_USER, PRIMARY_PASSWORD                   | Yes      | The user name and its password of donor user in donor host. This user must have BACKUP_ADMIN privilege.                                                                                                                                                                                                                                                                                                                             |
+| INIT_AFTER_CLONE_USER, INIT_AFTER_CLONE_PASSWORD | Yes      | The user name and its password used to recover administrative users used by moco after cloning. This user must be created in the donor in advance. This user must have SUPER privilege (same privilege as root) and may be root. Because moco connect to mysqld via unix domain socket during recovery, this user does not have to be able to connect via network and it is recommended to create the user as `somebody@localhost`. |
+
+
 RestoreSpec
 -----------
 
