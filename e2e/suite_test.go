@@ -29,4 +29,5 @@ var _ = Describe("MOCO", func() {
 	Context("replicaFailover", testReplicaFailOver)
 	Context("primaryFailover", testPrimaryFailOver)
 	Context("garbageCollector", testGarbageCollector)
+	Context("intermediatePrimary", testIntermediatePrimary)
 })

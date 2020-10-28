@@ -1,0 +1,137 @@
+apiVersion: moco.cybozu.com/v1alpha1
+kind: MySQLCluster
+metadata:
+  name: mysqlcluster
+spec:
+  replicas: 3
+  replicationSourceSecretName: replication-source-secret
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: mysql:dev
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        resources:
+          requests:
+            memory: "1Gi"
+        livenessProbe:
+          exec:
+            command: ["/ping.sh"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      - name: err-filebeat
+        image: quay.io/cybozu/filebeat:7.9.2.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: err-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: err-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      - name: slow-filebeat
+        image: quay.io/cybozu/filebeat:7.9.2.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+        ]
+        volumeMounts:
+        - name: slow-filebeat-config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: slow-filebeat-data
+          mountPath: /var/lib/filebeat
+        - name: var-log
+          mountPath: /var/log/mysql
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+      volumes:
+      - name: err-filebeat-config
+        configMap:
+          name: err-filebeat-config
+      - name: err-filebeat-data
+        emptyDir: {}
+      - name: slow-filebeat-config
+        configMap:
+          name: slow-filebeat-config
+      - name: slow-filebeat-data
+        emptyDir: {}
+  dataVolumeClaimTemplateSpec:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 1Gi
+  mysqlConfigMapName: mycnf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mycnf
+data:
+  max_connections: "5000"
+  max_connect_errors: "10"
+  max_allowed_packet: 1G
+  max_heap_table_size: 64M
+  pid_file: /hoge/fuga
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: err-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.err*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slow-filebeat-config
+data:
+  filebeat.yml: |-
+    path.data: /var/lib/filebeat
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/mysql/mysql.slow*
+    output.console:
+      codec.format:
+        string: '%{[@timestamp]} %{[message]}'
+    logging.files:
+      path: /tmp
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
