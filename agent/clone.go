@@ -95,14 +95,14 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryUserKey)
+		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceCloneUserKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		donorUser = string(rawDonorUser)
 
-		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPasswordKey)
+		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceClonePasswordKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
