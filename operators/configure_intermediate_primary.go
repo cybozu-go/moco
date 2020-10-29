@@ -26,10 +26,6 @@ func (o configureIntermediatePrimaryOp) Name() string {
 }
 
 func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
-	if cluster.Spec.ReplicationSourceSecretName == nil {
-		panic("unreachable code")
-	}
-
 	db, err := infra.GetDB(o.Index)
 	if err != nil {
 		return err
@@ -39,7 +35,7 @@ func (o configureIntermediatePrimaryOp) Run(ctx context.Context, infra accessor.
 	if err != nil {
 		return err
 	}
-	if o.Options == nil {
+	if cluster.Spec.ReplicationSourceSecretName == nil {
 		return nil
 	}
 

@@ -147,10 +147,20 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 	op = cloneFromExternal(status, cluster)
 	if len(op) != 0 {
 		return &Operation{
+			Wait:       true,
 			Operators:  op,
 			Conditions: unavailableCondition(nil),
 			Phase:      moco.PhaseRestoreInstance,
 			Event:      &moco.EventWaitingCloneFromExternal,
+		}, nil
+	}
+
+	wait = waitForPrimaryClone(status, cluster)
+	if wait {
+		return &Operation{
+			Wait:       true,
+			Conditions: unavailableCondition(nil),
+			Phase:      moco.PhaseRestoreInstance,
 		}, nil
 	}
 
@@ -163,7 +173,7 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 		}, nil
 	}
 
-	wait, outOfSyncIns := waitForClone(status, cluster)
+	wait, outOfSyncIns := waitForReplicaClone(status, cluster)
 	if wait {
 		return &Operation{
 			Wait:       true,
@@ -508,7 +518,12 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	return op
 }
 
-func waitForClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int) {
+func waitForPrimaryClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) bool {
+	primaryIndex := *cluster.Status.CurrentPrimaryIndex
+	return isCloning(status.InstanceStatus[primaryIndex].CloneStateStatus.State)
+}
+
+func waitForReplicaClone(status *accessor.MySQLClusterStatus, cluster *mocov1alpha1.MySQLCluster) (bool, []int) {
 	primaryIndex := *cluster.Status.CurrentPrimaryIndex
 	count := 0
 	var outOfSyncIns []int

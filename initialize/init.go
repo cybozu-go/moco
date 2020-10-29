@@ -46,12 +46,6 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
-	log.Info("shutdown instance", nil)
-	err = shutdownInstance(ctx, passwordFilePath)
-	if err != nil {
-		return err
-	}
-
 	log.Info("touch "+initOnceCompletedPath, nil)
 	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
 }
@@ -103,6 +97,12 @@ func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser 
 
 	log.Info("install plugins", nil)
 	err = installPlugins(ctx, passwordFilePath)
+	if err != nil {
+		return err
+	}
+
+	log.Info("shutdown instance", nil)
+	err = shutdownInstance(ctx, passwordFilePath)
 	if err != nil {
 		return err
 	}
