@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 )
 
 // UniqueName returns unique name of the cluster

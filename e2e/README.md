@@ -41,6 +41,7 @@ As explained above, tests that cannot be covered by Unit tests and Small tests a
 - Admission Webhook
 - Metrics server
 - Event recording
+- Garbage collector
 
 #### `entrypoint`
 
