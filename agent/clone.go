@@ -71,7 +71,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		donorUser = moco.DonorUser
+		donorUser = moco.CloneDonorUser
 		donorPassword = a.donorUserPassword
 	} else {
 		externalMode = true

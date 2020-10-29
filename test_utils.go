@@ -103,7 +103,7 @@ func InitializeMySQL(port int) error {
 		return err
 	}
 
-	for _, user := range []string{OperatorAdminUser, DonorUser, MiscUser} {
+	for _, user := range []string{OperatorAdminUser, CloneDonorUser, MiscUser} {
 		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
 		if err != nil {
 			return err

@@ -18,11 +18,11 @@ const (
 	// ReplicationUser is a name of MOCO replicator user in the MySQL context.
 	ReplicationUser = "moco-repl"
 
-	// DonorUser is a name of MOCO clone-donor user in the MySQL context.
-	DonorUser = "moco-clone-donor"
+	// CloneDonorUser is a name of MOCO clone-donor user in the MySQL context.
+	CloneDonorUser = "moco-clone-donor"
 
 	// MiscUser is a name of MOCO misc user in the MySQL context.
-	MiscUser = "misc"
+	MiscUser = "moco-misc"
 )
 
 const (
