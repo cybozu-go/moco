@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -81,13 +81,13 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	moco.StopAndRemoveMySQLD(mysqldName1)
-	moco.StopAndRemoveMySQLD(mysqldName2)
-	moco.StopAndRemoveMySQLD(mysqldName3)
-	moco.RemoveNetwork()
+	test_utils.StopAndRemoveMySQLD(mysqldName1)
+	test_utils.StopAndRemoveMySQLD(mysqldName2)
+	test_utils.StopAndRemoveMySQLD(mysqldName3)
+	test_utils.RemoveNetwork()
 
 	Eventually(func() error {
-		return moco.CreateNetwork()
+		return test_utils.CreateNetwork()
 	}, 10*time.Second).Should(Succeed())
 
 	close(done)
@@ -98,10 +98,10 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
-	moco.StopAndRemoveMySQLD(mysqldName1)
-	moco.StopAndRemoveMySQLD(mysqldName2)
-	moco.StopAndRemoveMySQLD(mysqldName3)
-	moco.RemoveNetwork()
+	test_utils.StopAndRemoveMySQLD(mysqldName1)
+	test_utils.StopAndRemoveMySQLD(mysqldName2)
+	test_utils.StopAndRemoveMySQLD(mysqldName3)
+	test_utils.RemoveNetwork()
 })
 
 func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1alpha1.MySQLCluster) {

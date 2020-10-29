@@ -3,11 +3,10 @@ package operators
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/cybozu-go/moco"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

@@ -1,4 +1,4 @@
-package moco
+package test_utils
 
 import (
 	"context"
@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/uuid"
-
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/well"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 const (
@@ -103,7 +103,7 @@ func InitializeMySQL(port int) error {
 		return err
 	}
 
-	for _, user := range []string{OperatorAdminUser, CloneDonorUser, MiscUser} {
+	for _, user := range []string{moco.OperatorAdminUser, moco.CloneDonorUser, moco.MiscUser} {
 		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
 		if err != nil {
 			return err
