@@ -46,10 +46,17 @@ func InitializeOnce(ctx context.Context, initOnceCompletedPath, passwordFilePath
 		return err
 	}
 
+	log.Info("shutdown instance", nil)
+	err = ShutdownInstance(ctx, passwordFilePath)
+	if err != nil {
+		return err
+	}
+
 	log.Info("touch "+initOnceCompletedPath, nil)
 	return touchInitOnceCompleted(ctx, initOnceCompletedPath)
 }
 
+// RestoreUsers creates users for MOCO and grants privileges to them.
 func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser string, initPassword *string, rootHost string) error {
 
 	log.Info("setup root user", nil)
@@ -97,12 +104,6 @@ func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser 
 
 	log.Info("install plugins", nil)
 	err = installPlugins(ctx, passwordFilePath)
-	if err != nil {
-		return err
-	}
-
-	log.Info("shutdown instance", nil)
-	err = shutdownInstance(ctx, passwordFilePath)
 	if err != nil {
 		return err
 	}
@@ -435,7 +436,7 @@ INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 	return nil
 }
 
-func shutdownInstance(ctx context.Context, passwordFilePath string) error {
+func ShutdownInstance(ctx context.Context, passwordFilePath string) error {
 	out, err := doExec(ctx, nil,
 		"mysqladmin", "--defaults-extra-file="+passwordFilePath, "shutdown")
 	if err != nil {

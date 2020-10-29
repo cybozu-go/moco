@@ -185,6 +185,15 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 				})
 				return err
 			}
+			err = initialize.ShutdownInstance(ctx, passwordFilePath)
+			if err != nil {
+				log.Error("failed to shutdown mysqld after clone", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+				return err
+			}
 		}
 		return nil
 	})

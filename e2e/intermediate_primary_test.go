@@ -70,7 +70,7 @@ stringData:
 				return errors.New("Conditions.Healthy should be true")
 			}
 			return nil
-		}, 3*time.Minute).Should(Succeed())
+		}, 5*time.Minute).Should(Succeed())
 
 		By("checking data from donor")
 		cluster, err := getMySQLClusterWithNamespace(nsExternal)
