@@ -15,18 +15,18 @@ The cluster does not mean [NDB cluster](https://dev.mysql.com/doc/refman/8.0/en/
 MySQLClusterSpec
 ----------------
 
-| Field                         | Type                        | Required | Description                                                                                                                                                                                                |
-| ----------------------------- | --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replicas`                    | int                         | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                                                             |
-| `podTemplate`                 | [PodTemplateSpec]           | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                                                     |
-| `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec] | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                                                |
-| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim] | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta].                          |
-| `serviceTemplate`             | [ServiceSpec]               | No       | `Service` template for both primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields.                                                                                  |
-| `mysqlConfigMapName`          | string                      | No       | `ConfigMap` name of MySQL config.                                                                                                                                                                          |
-| `rootPasswordSecretName`      | string                      | No       | `Secret` name for root user config.                                                                                                                                                                        |
-| `replicationSourceSecretName` | string                      | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary (i.e., works as read-only replicas). |
-| `logRotationSchedule`         | string                      | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                                            |
-| `restore`                     | [RestoreSpec](#RestoreSpec) | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                                                  |
+| Field                         | Type                                | Required | Description                                                                                                                                                                                                |
+| ----------------------------- | ----------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replicas`                    | int                                 | No       | The number of instances. Available values are 1, 3, and 5. Default value is 1.                                                                                                                             |
+| `podTemplate`                 | [PodTemplateSpec]                   | Yes      | `Pod` template for MySQL server container.<br /> Strictly, the metadata for this template is a subset of [ObjectMeta].                                                                                     |
+| `dataVolumeClaimTemplateSpec` | [PersistentVolumeClaimSpec]         | Yes      | `PersistentVolumeClaimSpec` template for MySQL data volume.                                                                                                                                                |
+| `volumeClaimTemplates`        | \[\][PersistentVolumeClaim]         | No       | `PersistentVolumeClaim` templates for volumes used by MySQL server container, except for data volume.<br /> Strictly, the metadata for each template is a subset of [ObjectMeta].                          |
+| `serviceTemplate`             | [ServiceTemplate](#ServiceTemplate) | No       | `Service` template for both of primary and replicas.                                                                                                                                                       |
+| `mysqlConfigMapName`          | string                              | No       | `ConfigMap` name of MySQL config.                                                                                                                                                                          |
+| `rootPasswordSecretName`      | string                              | No       | `Secret` name for root user config.                                                                                                                                                                        |
+| `replicationSourceSecretName` | string                              | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary (i.e., works as read-only replicas). |
+| `logRotationSchedule`         | string                              | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                                            |
+| `restore`                     | [RestoreSpec](#RestoreSpec)         | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                                                  |
 
 The configMap specified with `mysqlConfigMapName` contains MySQL options of `mysqld` section as key-value pairs.
 
@@ -40,6 +40,13 @@ The secret given to `replicationSourceSecretName` have the following keys:
 | `PRIMARY_USER`, `PRIMARY_PASSWORD`                   | Yes      | The user name and its password of donor user in donor host. This user must have `BACKUP_ADMIN` privilege.                                                                                                                                                                                                                                                                                                                                    |
 | `INIT_AFTER_CLONE_USER`, `INIT_AFTER_CLONE_PASSWORD` | Yes      | The user name and its password used to recover administrative users used by moco after cloning. This user must be created in the donor in advance. This user must have `SUPER` privilege (same privilege as root) and may be root. Because moco connects to `mysqld` via UNIX domain socket during recovery, this user does not have to be able to connect via network and it is recommended to create the user as `'somebody'@'localhost'`. |
 
+ServiceTemplate
+---------------
+
+| Field         | Type          | Required | Description                                                                                                               |
+| ------------- | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `annotations` | [Annotations] | No       | Annotations attached to `Service` of primary and replicas.                                                                |
+| `spec`        | [ServiceSpec] | No       | `Service` template spec for primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields. |
 
 RestoreSpec
 -----------

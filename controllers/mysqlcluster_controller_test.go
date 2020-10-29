@@ -676,7 +676,12 @@ var _ = Describe("MySQLCluster controller", func() {
 			newCluster := &mocov1alpha1.MySQLCluster{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
-			newCluster.Spec.ServiceTemplate = &corev1.ServiceSpec{
+			newCluster.Spec.ServiceTemplate = &mocov1alpha1.ServiceTemplate{}
+			annotation := map[string]string{
+				"annotation-key": "annotation-value",
+			}
+			newCluster.Spec.ServiceTemplate.Annotations = annotation
+			newCluster.Spec.ServiceTemplate.Spec = &corev1.ServiceSpec{
 				Type: corev1.ServiceTypeLoadBalancer,
 				Ports: []corev1.ServicePort{
 					{
@@ -700,6 +705,9 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(newCluster)), Namespace: namespace}, createdReplicaService)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(createdPrimaryService.ObjectMeta.Annotations).Should(Equal(annotation))
+			Expect(createdReplicaService.ObjectMeta.Annotations).Should(Equal(annotation))
 
 			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
 			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
