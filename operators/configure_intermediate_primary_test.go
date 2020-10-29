@@ -102,9 +102,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 		}).Should(Succeed())
 	})
 
-	It("should stop slave when options is empty", func() {
+	It("should stop slave when replicationSecretName is empty", func() {
 		_, infra, cluster := getAccessorInfraCluster()
-		cluster.Spec.ReplicationSourceSecretName = &replicationSource
 
 		db, err := infra.GetDB(0)
 		Expect(err).ShouldNot(HaveOccurred())

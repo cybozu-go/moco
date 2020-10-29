@@ -48,6 +48,7 @@ func testPrimaryFailOver() {
 		stdout, stderr, err = kubectl("-n", "e2e-test", "delete", "pod", podName)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
+		By("checking cluster status")
 		Eventually(func() error {
 			cluster, err = getMySQLCluster()
 			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)

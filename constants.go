@@ -152,6 +152,8 @@ const (
 	ReplicationSourcePrimaryUserKey            = "PRIMARY_USER"
 	ReplicationSourcePrimaryPasswordKey        = "PRIMARY_PASSWORD"
 	ReplicationSourcePrimaryPortKey            = "PRIMARY_PORT"
+	ReplicationSourceCloneUserKey              = "CLONE_USER"
+	ReplicationSourceClonePasswordKey          = "CLONE_PASSWORD"
 	ReplicationSourceInitAfterCloneUserKey     = "INIT_AFTER_CLONE_USER"
 	ReplicationSourceInitAfterClonePasswordKey = "INIT_AFTER_CLONE_PASSWORD"
 )

@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var _ = Describe("Test Agent: Rotate Request", func() {
+func testRotate() {
 	var tmpDir string
 	var agent *Agent
 	var registry *prometheus.Registry
@@ -128,4 +128,4 @@ var _ = Describe("Test Agent: Rotate Request", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(*rotationFailureCount.Counter.Value).Should(Equal(1.0))
 	})
-})
+}

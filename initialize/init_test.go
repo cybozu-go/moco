@@ -242,7 +242,7 @@ func testInstallPlugins(t *testing.T) {
 
 func testShutdownInstance(t *testing.T) {
 	ctx := context.Background()
-	err := shutdownInstance(ctx, passwordFilePath)
+	err := ShutdownInstance(ctx, passwordFilePath)
 	if err != nil {
 		t.Fatal(err)
 	}

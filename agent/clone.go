@@ -95,14 +95,14 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryUserKey)
+		rawDonorUser, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceCloneUserKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		donorUser = string(rawDonorUser)
 
-		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryPasswordKey)
+		rawDonorPassword, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourceClonePasswordKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -179,6 +179,15 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 			err = initialize.RestoreUsers(ctx, passwordFilePath, miscConfPath, initUser, &initPassword, os.Getenv(moco.PodIPEnvName))
 			if err != nil {
 				log.Error("failed to initialize after clone", map[string]interface{}{
+					"hostname":  a.mysqlAdminHostname,
+					"port":      a.mysqlAdminPort,
+					log.FnError: err,
+				})
+				return err
+			}
+			err = initialize.ShutdownInstance(ctx, passwordFilePath)
+			if err != nil {
+				log.Error("failed to shutdown mysqld after clone", map[string]interface{}{
 					"hostname":  a.mysqlAdminHostname,
 					"port":      a.mysqlAdminPort,
 					log.FnError: err,

@@ -39,8 +39,8 @@ func kubectlWithInput(input []byte, args ...string) ([]byte, []byte, error) {
 	return execAtLocal("./bin/kubectl", input, args...)
 }
 
-func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
-	stdout, stderr, err := kubectl("get", "-n", "e2e-test", "mysqlcluster", "mysqlcluster", "-o", "json")
+func getMySQLClusterWithNamespace(ns string) (*mocov1alpha1.MySQLCluster, error) {
+	stdout, stderr, err := kubectl("get", "-n"+ns, "mysqlcluster", "mysqlcluster", "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get MySQLCluster. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 	}
@@ -53,8 +53,12 @@ func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
 	return &mysqlCluster, nil
 }
 
-func getRootPassword(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
-	stdout, stderr, err := kubectl("get", "-n", "e2e-test", "secret", "root-password-"+moco.UniqueName(mysqlCluster), "-o", "json")
+func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
+	return getMySQLClusterWithNamespace("e2e-test")
+}
+
+func getRootPasswordWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+	stdout, stderr, err := kubectl("get", "-n"+ns, "secret", "root-password-"+moco.UniqueName(mysqlCluster), "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 	}
@@ -65,6 +69,10 @@ func getRootPassword(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, e
 		return nil, fmt.Errorf("failed to unmarshal Secret stdout: %s, err: %v", stdout, err)
 	}
 	return &secret, nil
+}
+
+func getRootPassword(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+	return getRootPasswordWithNamespace("e2e-test", mysqlCluster)
 }
 
 type mysqlConnector struct {
@@ -91,7 +99,7 @@ func (c *mysqlConnector) startPortForward() error {
 	for i := 0; i < int(c.cluster.Spec.Replicas); i++ {
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
 		port := c.basePort + i
-		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command := exec.Command("./bin/kubectl", "-n"+c.cluster.Namespace, "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
 		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err := command.Start()
 		if err != nil {
@@ -120,7 +128,7 @@ func (c *mysqlConnector) connectToPrimary() (*sqlx.DB, error) {
 func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
 	port := c.basePort + index
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	secret, err := getRootPassword(c.cluster)
+	secret, err := getRootPasswordWithNamespace(c.cluster.Namespace, c.cluster)
 	if err != nil {
 		return nil, err
 	}
