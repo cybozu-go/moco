@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var _ = Describe("Test Agent: Health Request", func() {
+func testHealth() {
 	var agent *Agent
 	var registry *prometheus.Registry
 
@@ -130,7 +130,7 @@ var _ = Describe("Test Agent: Health Request", func() {
 			return nil
 		}, 10*time.Second).Should(Succeed())
 	})
-})
+}
 
 func getHealth(agent *Agent) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("GET", "http://"+replicaHost+"/health", nil)

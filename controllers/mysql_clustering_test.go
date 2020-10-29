@@ -426,6 +426,7 @@ func TestDecideNextOperation(t *testing.T) {
 				),
 			},
 			want: &Operation{
+				Wait: true,
 				Conditions: []mocov1alpha1.MySQLClusterCondition{
 					failure(false, ""),
 					outOfSync(false, ""),
@@ -438,6 +439,27 @@ func TestDecideNextOperation(t *testing.T) {
 				},
 				Phase: moco.PhaseRestoreInstance,
 				Event: &moco.EventWaitingCloneFromExternal,
+			},
+		},
+		{
+			name: "It should wait for cloning from external MySQL",
+			input: testData{
+				intermediate(cluster(intPointer(0))),
+				mySQLStatus(intPointer(0), &intermediatePrimaryOptions,
+					emptyIns(moco.PrimaryRole, false).setCloneInProgress().build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+					emptyIns(moco.ReplicaRole, false).build(),
+				),
+			},
+			want: &Operation{
+				Wait: true,
+				Conditions: []mocov1alpha1.MySQLClusterCondition{
+					failure(false, ""),
+					outOfSync(false, ""),
+					available(false, ""),
+					healthy(false, ""),
+				},
+				Phase: moco.PhaseRestoreInstance,
 			},
 		},
 		{

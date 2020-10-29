@@ -99,7 +99,7 @@ func (c *mysqlConnector) startPortForward() error {
 	for i := 0; i < int(c.cluster.Spec.Replicas); i++ {
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
 		port := c.basePort + i
-		command := exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command := exec.Command("./bin/kubectl", "-n"+c.cluster.Namespace, "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
 		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err := command.Start()
 		if err != nil {

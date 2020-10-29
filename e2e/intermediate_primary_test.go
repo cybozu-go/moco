@@ -37,10 +37,12 @@ stringData:
   PRIMARY_PORT: "%s"
   PRIMARY_USER: %s
   PRIMARY_PASSWORD: %s
+  CLONE_USER: %s
+  CLONE_PASSWORD: %s
   INIT_AFTER_CLONE_USER: %s
   INIT_AFTER_CLONE_PASSWORD: %s
-`, fmt.Sprintf("%s-replica",
-			moco.UniqueName(donorCluster)), "3306",
+`, fmt.Sprintf("%s-replica", moco.UniqueName(donorCluster)), "3306",
+			moco.ReplicationUser, string(rootPassword.Data[moco.ReplicationPasswordKey]),
 			moco.DonorUser, string(rootPassword.Data[moco.CloneDonorPasswordKey]),
 			"root", string(rootPassword.Data[moco.RootPasswordKey]))
 		stdout, stderr, err := kubectlWithInput([]byte(secret), "apply", "-n"+nsExternal, "-f", "-")
@@ -79,7 +81,7 @@ stringData:
 		defer connector.stopPortForward()
 
 		count := 100000
-		replica, err := replica0(cluster)
+		replica, err := minIndexReplica(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		var replicaDB *sqlx.DB
 		Eventually(func() error {
@@ -120,5 +122,6 @@ stringData:
 		_, err = primaryDB.Exec("CREATE DATABASE moco_e2e_external")
 		fmt.Printf("cannot write intermediate primary: err=%v", err)
 		Expect(err).Should(HaveOccurred())
+		Expect(err.Error()).Should(ContainSubstring("Error 1290: The MySQL server is running with the --super-read-only option so it cannot execute this statement"))
 	})
 }

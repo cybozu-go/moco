@@ -21,7 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var _ = Describe("Test Agent: Clone Request", func() {
+func testClone() {
 	var agent *Agent
 	var registry *prometheus.Registry
 
@@ -282,4 +282,4 @@ var _ = Describe("Test Agent: Clone Request", func() {
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError))
 	})
-})
+}
