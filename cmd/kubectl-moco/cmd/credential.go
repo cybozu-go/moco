@@ -41,11 +41,12 @@ func fetchCredential(ctx context.Context, clusterName string) error {
 	}
 	switch credentialConfig.format {
 	case "plain":
-		fmt.Print(password)
+		fmt.Println(password)
 	case "myconf":
 		fmt.Printf(`[client]
 user=%s
-password="%s"`, credentialConfig.user, password)
+password="%s"
+`, credentialConfig.user, password)
 	default:
 		return errors.New("unknown format: " + credentialConfig.format)
 	}

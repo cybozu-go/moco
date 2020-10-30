@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cybozu-go/moco"
 	. "github.com/onsi/ginkgo"
@@ -38,7 +39,7 @@ func testKubectlMoco() {
 
 		secret, err := getRootPassword(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(string(stdout)).Should(Equal(string(secret.Data[moco.RootPasswordEnvName])))
+		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[moco.RootPasswordEnvName])))
 	})
 
 	It("should fetch credential for root formatted by my.conf", func() {
@@ -52,6 +53,7 @@ func testKubectlMoco() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(string(stdout)).Should(Equal(fmt.Sprintf(`[client]
 user=root
-password="%s"`, secret.Data[moco.RootPasswordEnvName])))
+password="%s"
+`, secret.Data[moco.RootPasswordEnvName])))
 	})
 }
