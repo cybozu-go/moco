@@ -59,14 +59,25 @@ func subMain(ctx context.Context, clusterName string, args []string) error {
 	}
 
 	podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), index)
+	password, err := getPassword(ctx, cluster, mysqlConfig.user)
+	if err != nil {
+		return err
+	}
 
+	commands := append([]string{"mysql", "-u", mysqlConfig.user, "-p" + password}, args...)
+	err = execMySQL(restConfig, rawClient, mysqlConfig.stdin, mysqlConfig.tty, cluster.Namespace, podName, commands)
+
+	return err
+}
+
+func getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, user string) (string, error) {
 	secret := &corev1.Secret{}
-	err = kubeClient.Get(ctx, types.NamespacedName{
+	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      "root-password-" + moco.UniqueName(cluster),
 	}, secret)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	userPassKeys := map[string]string{
@@ -74,15 +85,15 @@ func subMain(ctx context.Context, clusterName string, args []string) error {
 		"writable": moco.RootPasswordEnvName,
 		"readonly": moco.RootPasswordEnvName,
 	}
-	key, ok := userPassKeys[mysqlConfig.user]
+	key, ok := userPassKeys[user]
 	if !ok {
-		return errors.New("unknown user: " + mysqlConfig.user)
+		return "", errors.New("unknown user: " + user)
 	}
-
-	commands := append([]string{"mysql", "-u", mysqlConfig.user, "-p" + string(secret.Data[key])}, args...)
-	err = execMySQL(restConfig, rawClient, mysqlConfig.stdin, mysqlConfig.tty, cluster.Namespace, podName, commands)
-
-	return err
+	password, ok := secret.Data[key]
+	if !ok {
+		return "", errors.New("unknown user: " + user)
+	}
+	return string(password), nil
 }
 
 func execMySQL(config *rest.Config, client *kubernetes.Clientset, in, tty bool, namespace, pod string, commands []string) error {
