@@ -31,11 +31,11 @@ var mysqlCmd = &cobra.Command{
 	Long:  "Run mysql command in a specified MySQL instance.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return subMain(cmd.Context(), args[0], args[1:])
+		return runMySQLCommand(cmd.Context(), args[0], args[1:])
 	},
 }
 
-func subMain(ctx context.Context, clusterName string, args []string) error {
+func runMySQLCommand(ctx context.Context, clusterName string, args []string) error {
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
@@ -65,38 +65,12 @@ func subMain(ctx context.Context, clusterName string, args []string) error {
 	}
 
 	commands := append([]string{"mysql", "-u", mysqlConfig.user, "-p" + password}, args...)
-	err = execMySQL(restConfig, rawClient, mysqlConfig.stdin, mysqlConfig.tty, cluster.Namespace, podName, commands)
+	err = execCommand(restConfig, rawClient, mysqlConfig.stdin, mysqlConfig.tty, cluster.Namespace, podName, commands)
 
 	return err
 }
 
-func getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, user string) (string, error) {
-	secret := &corev1.Secret{}
-	err := kubeClient.Get(ctx, types.NamespacedName{
-		Namespace: namespace,
-		Name:      "root-password-" + moco.UniqueName(cluster),
-	}, secret)
-	if err != nil {
-		return "", err
-	}
-
-	userPassKeys := map[string]string{
-		"root":     moco.RootPasswordEnvName,
-		"writable": moco.RootPasswordEnvName,
-		"readonly": moco.RootPasswordEnvName,
-	}
-	key, ok := userPassKeys[user]
-	if !ok {
-		return "", errors.New("unknown user: " + user)
-	}
-	password, ok := secret.Data[key]
-	if !ok {
-		return "", errors.New("unknown user: " + user)
-	}
-	return string(password), nil
-}
-
-func execMySQL(config *rest.Config, client *kubernetes.Clientset, in, tty bool, namespace, pod string, commands []string) error {
+func execCommand(config *rest.Config, client *kubernetes.Clientset, in, tty bool, namespace, pod string, commands []string) error {
 	req := client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(pod).

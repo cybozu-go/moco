@@ -18,12 +18,12 @@ For example, the following options are available.
 
 Run `mysql` command in a specified MySQL instance.
 
-| Options       | Default value        | Description                       |
-| ------------- | -------------------- | --------------------------------- |
-| `-u, --user`  | `readonly`           | Run mysql as a specified user     |
-| `--index`     | index of the primary | Index of a target mysql instance  |
-| `-i, --stdin` | `false`              | Pass stdin to the mysql container |
-| `-t, --tty`   | `false`              | Stdin is a TTY                    |
+| Options       | Default value        | Description                                                 |
+| ------------- | -------------------- | ----------------------------------------------------------- |
+| `-u, --user`  | `viewer`             | Run mysql as a specified user: `root`, `editor` or `viewer` |
+| `--index`     | index of the primary | Index of a target mysql instance                            |
+| `-i, --stdin` | `false`              | Pass stdin to the mysql container                           |
+| `-t, --tty`   | `false`              | Stdin is a TTY                                              |
 
 The normal `mysql` command can be run as follows:
 
@@ -47,7 +47,7 @@ kubectl moco mysql -i -t mycluster
 
 Fetch the credential information of a specified user
 
-| Options    | Default value | Description                              |
-| ---------- | ------------- | ---------------------------------------- |
-| `--user`   | `readonly`    | Fetch the credential of a specified user |
-| `--format` | `plain`       | Output format: `plain` or `myconf`       |
+| Options      | Default value | Description                                                            |
+| ------------ | ------------- | ---------------------------------------------------------------------- |
+| `-u, --user` | `viewer`      | Fetch the credential of a specified user: `root`, `editor` or `viewer` |
+| `--format`   | `plain`       | Output format: `plain` or `myconf`                                     |
