@@ -124,11 +124,11 @@ const (
 	// RootPasswordEnvName is a name of the environment variable of a root password.
 	RootPasswordEnvName = "ROOT_PASSWORD"
 
-	// EditorPasswordEnvName is a name of the environment variable of a editor password.
-	EditorPasswordEnvName = "EDITOR_PASSWORD"
+	// WritablePasswordEnvName is a name of the environment variable of a writable user password.
+	WritablePasswordEnvName = "WRITABLE_PASSWORD"
 
-	// ViewerPasswordEnvName is a name of the environment variable of a viewer password.
-	ViewerPasswordEnvName = "VIEWER_PASSWORD"
+	// ReadonlyPasswordEnvName is a name of the environment variable of a readonly user password.
+	ReadonlyPasswordEnvName = "READONLY_PASSWORD"
 
 	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
 	OperatorPasswordEnvName = "OPERATOR_PASSWORD"

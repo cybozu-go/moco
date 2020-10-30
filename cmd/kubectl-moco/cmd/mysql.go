@@ -104,7 +104,7 @@ func execCommand(config *rest.Config, client *kubernetes.Clientset, in, tty bool
 
 func init() {
 	fs := mysqlCmd.Flags()
-	fs.StringVarP(&mysqlConfig.user, "user", "u", "readonly", "User for login to mysql")
+	fs.StringVarP(&mysqlConfig.user, "user", "u", "readonly", "User for login to mysql [`root`, `moco-writable` or `moco-readonly`]")
 	fs.IntVar(&mysqlConfig.index, "index", -1, "Index of a target mysql instance")
 	fs.BoolVarP(&mysqlConfig.stdin, "stdin", "i", false, "Pass stdin to the mysql container")
 	fs.BoolVarP(&mysqlConfig.tty, "tty", "t", false, "Stdin is a TTY")

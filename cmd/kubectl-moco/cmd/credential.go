@@ -55,7 +55,7 @@ password="%s"
 
 func init() {
 	fs := credentialCmd.Flags()
-	fs.StringVarP(&credentialConfig.user, "user", "u", "readonly", "User for login to mysql")
+	fs.StringVarP(&credentialConfig.user, "user", "u", "readonly", "User for login to mysql [`root`, `moco-writable` or `moco-readonly`]")
 	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `myconf`]")
 
 	rootCmd.AddCommand(credentialCmd)
