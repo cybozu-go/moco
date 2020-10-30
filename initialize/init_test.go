@@ -190,12 +190,12 @@ func testInitializeMiscUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := execSQL(ctx, passwordFilePath, []byte("SELECT count(*) FROM mysql.user WHERE user='misc';"), "")
+	out, err := execSQL(ctx, passwordFilePath, []byte("SELECT count(*) FROM mysql.user WHERE user='moco-misc';"), "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(out), "1") {
-		t.Fatal("cannot find user: misc")
+		t.Fatalf("cannot find user: moco-misc")
 	}
 	_, err = os.Stat(miscConfPath)
 	if err != nil {
@@ -330,18 +330,20 @@ func testRestoreUsers(t *testing.T) {
 	}
 	defer db.Close()
 
-	sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = ? AND host = 'localhost') OR (user = 'hoge' AND host = '%')", initUser)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sqlRows.Next() {
-		t.Errorf("user '%s' and/or 'hoge' should be deleted, but exist", initUser)
+	for _, k := range []string{"localhost", ip.String()} {
+		sqlRows, err := db.Query("SELECT user FROM mysql.user WHERE (user = 'root' AND host = ?)", k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !sqlRows.Next() {
+			t.Errorf("user 'root'@'%s' should be created, but not exist", k)
+		}
 	}
 
 	for _, k := range []string{
 		moco.OperatorUser,
 		moco.OperatorAdminUser,
-		moco.DonorUser,
+		moco.CloneDonorUser,
 		moco.ReplicationUser,
 		moco.MiscUser,
 	} {

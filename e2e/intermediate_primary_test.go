@@ -43,7 +43,7 @@ stringData:
   INIT_AFTER_CLONE_PASSWORD: %s
 `, fmt.Sprintf("%s-replica", moco.UniqueName(donorCluster)), "3306",
 			moco.ReplicationUser, string(rootPassword.Data[moco.ReplicationPasswordKey]),
-			moco.DonorUser, string(rootPassword.Data[moco.CloneDonorPasswordKey]),
+			moco.CloneDonorUser, string(rootPassword.Data[moco.CloneDonorPasswordKey]),
 			"root", string(rootPassword.Data[moco.RootPasswordKey]))
 		stdout, stderr, err := kubectlWithInput([]byte(secret), "apply", "-n"+nsExternal, "-f", "-")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s, secret=%v", stdout, stderr, secret)
