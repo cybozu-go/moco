@@ -42,11 +42,8 @@ validate: setup
 
 # Run tests
 .PHONY: test
-test: $(KUBEBUILDER) init-test
+test: $(KUBEBUILDER)
 	go test -race -v -coverprofile cover.out ./...
-
-.PHONY: init-test
-init-test:
 	docker build -t mysql-with-go:latest ./initialize/
 	docker run -v  $(PWD):/go/src/github.com/cybozu-go/moco --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -mod=vendor -v ./initialize"
 
@@ -94,6 +91,11 @@ build/moco-controller: generate
 build/entrypoint:
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/entrypoint
+
+# Build kubectl-moco binary
+build/kubectl-moco:
+	mkdir -p build
+	GO111MODULE=on go build -o $@ ./cmd/kubectl-moco
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
