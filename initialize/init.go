@@ -96,6 +96,18 @@ func RestoreUsers(ctx context.Context, passwordFilePath, miscConfPath, initUser 
 		return err
 	}
 
+	log.Info("setup readonly user", nil)
+	err = initializeReadOnlyUser(ctx, passwordFilePath, os.Getenv(moco.ReadOnlyPasswordEnvName))
+	if err != nil {
+		return err
+	}
+
+	log.Info("setup writable user", nil)
+	err = initializeWritableUser(ctx, passwordFilePath, os.Getenv(moco.WritablePasswordEnvName))
+	if err != nil {
+		return err
+	}
+
 	log.Info("sync timezone with system", nil)
 	err = importTimeZoneFromHost(ctx, passwordFilePath)
 	if err != nil {
@@ -400,6 +412,102 @@ password=%s
 		return err
 	}
 	return ioutil.WriteFile(moco.MiscPasswordPath, []byte(password), 0400)
+}
+
+func initializeReadOnlyUser(ctx context.Context, passwordFilePath string, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+DROP USER IF EXISTS '{{ .User }}'@'%' ;
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+    PROCESS,
+    SELECT,
+    SHOW DATABASES,
+    SHOW VIEW,
+    REPLICATION CLIENT,
+    REPLICATION SLAVE
+  ON *.* TO '{{ .User }}'@'%' ;
+`))
+
+	sql := new(bytes.Buffer)
+	err := t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.ReadOnlyUser, password})
+	if err != nil {
+		return err
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+	return nil
+}
+
+func initializeWritableUser(ctx context.Context, passwordFilePath string, password string) error {
+	t := template.Must(template.New("sql").Parse(`
+DROP USER IF EXISTS '{{ .User }}'@'%' ;
+CREATE USER '{{ .User }}'@'%' IDENTIFIED BY '{{ .Password }}' ;
+GRANT
+    ALTER,
+    ALTER ROUTINE,
+    CREATE,
+    CREATE ROLE,
+    CREATE ROUTINE,
+    CREATE TEMPORARY TABLES,
+    CREATE USER,
+    CREATE VIEW,
+    DELETE,
+    DROP,
+    DROP ROLE,
+    EVENT,
+    EXECUTE,
+    INDEX,
+    INSERT,
+    LOCK TABLES,
+    PROCESS,
+    REFERENCES,
+    REPLICATION CLIENT,
+    REPLICATION SLAVE,
+    SELECT,
+    SHOW DATABASES,
+    SHOW VIEW,
+    TRIGGER,
+    UPDATE
+  ON *.* TO '{{ .User }}'@'%' WITH GRANT OPTION;
+SET GLOBAL partial_revokes=on ;
+REVOKE
+    CREATE,
+    CREATE ROUTINE,
+    CREATE TEMPORARY TABLES,
+    CREATE VIEW,
+    DELETE,
+    DROP,
+    EVENT,
+    EXECUTE,
+    INDEX,
+    INSERT,
+    LOCK TABLES,
+    REFERENCES,
+    TRIGGER,
+    UPDATE
+  ON mysql.* FROM '{{ .User }}'@'%' ;
+`))
+
+	sql := new(bytes.Buffer)
+	err := t.Execute(sql, struct {
+		User     string
+		Password string
+	}{moco.WritableUser, password})
+	if err != nil {
+		return err
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, sql.Bytes(), "")
+	if err != nil {
+		return fmt.Errorf("stdout=%s, err=%v", out, err)
+	}
+	return nil
 }
 
 func installPlugins(ctx context.Context, passwordFilePath string) error {

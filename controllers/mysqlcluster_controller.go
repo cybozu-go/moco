@@ -359,6 +359,14 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
+	readOnlyPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
+	writablePass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
 	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
@@ -372,6 +380,8 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 		moco.ReplicationPasswordKey: replicatorPass,
 		moco.CloneDonorPasswordKey:  donorPass,
 		moco.MiscPasswordKey:        miscPass,
+		moco.ReadOnlyPasswordKey:    readOnlyPass,
+		moco.WritablePasswordKey:    writablePass,
 	}
 
 	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)

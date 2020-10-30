@@ -203,6 +203,40 @@ func testInitializeMiscUser(t *testing.T) {
 	}
 }
 
+func testInitializeReadOnlyUser(t *testing.T) {
+	ctx := context.Background()
+	readOnlyPassword := "readonly-password"
+	err := initializeReadOnlyUser(ctx, passwordFilePath, readOnlyPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, []byte("SELECT count(*) FROM mysql.user WHERE user='moco-readonly';"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "1") {
+		t.Fatal("cannot find user: moco-readonly")
+	}
+}
+
+func testInitializeWritableUser(t *testing.T) {
+	ctx := context.Background()
+	writablePassword := "writable-password"
+	err := initializeWritableUser(ctx, passwordFilePath, writablePassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := execSQL(ctx, passwordFilePath, []byte("SELECT count(*) FROM mysql.user WHERE user='moco-writable';"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), "1") {
+		t.Fatal("cannot find user: moco-writable")
+	}
+}
+
 func testInstallPlugins(t *testing.T) {
 	ctx := context.Background()
 	err := installPlugins(ctx, passwordFilePath)
@@ -370,6 +404,8 @@ func TestInit(t *testing.T) {
 	t.Run("initializeDonorUser", testInitializeDonorUser)
 	t.Run("initializeReplicationUser", testInitializeReplicationUser)
 	t.Run("initializeMiscUser", testInitializeMiscUser)
+	t.Run("initializeReadOnlyUser", testInitializeReadOnlyUser)
+	t.Run("initializeWritableUser", testInitializeWritableUser)
 	t.Run("installPlugins", testInstallPlugins)
 	t.Run("RestoreUsers", testRestoreUsers)
 	t.Run("shutdownInstance", testShutdownInstance)
