@@ -284,6 +284,7 @@ func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error
 	if err != nil {
 		return 0, err
 	}
+	defer rows.Close()
 	if !rows.Next() {
 		return 0, moco.ErrCannotCompareGTIDs
 	}
