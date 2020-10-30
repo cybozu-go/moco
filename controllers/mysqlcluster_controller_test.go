@@ -681,6 +681,11 @@ var _ = Describe("MySQLCluster controller", func() {
 				"annotation-key": "annotation-value",
 			}
 			newCluster.Spec.ServiceTemplate.Annotations = annotation
+			labelKey := "label-key"
+			labelValue := "label-value"
+			newCluster.Spec.ServiceTemplate.Labels = map[string]string{
+				labelKey: labelValue,
+			}
 			newCluster.Spec.ServiceTemplate.Spec = &corev1.ServiceSpec{
 				Type: corev1.ServiceTypeLoadBalancer,
 				Ports: []corev1.ServicePort{
@@ -708,6 +713,9 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			Expect(createdPrimaryService.ObjectMeta.Annotations).Should(Equal(annotation))
 			Expect(createdReplicaService.ObjectMeta.Annotations).Should(Equal(annotation))
+
+			Expect(createdPrimaryService.ObjectMeta.Labels[labelKey]).Should(Equal(labelValue))
+			Expect(createdReplicaService.ObjectMeta.Labels[labelKey]).Should(Equal(labelValue))
 
 			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
 			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))

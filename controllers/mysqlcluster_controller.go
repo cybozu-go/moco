@@ -1043,8 +1043,6 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 	svc.SetName(svcName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		setLabels(&svc.ObjectMeta)
-
 		if cluster.Spec.ServiceTemplate != nil {
 			if !equality.Semantic.DeepDerivative(cluster.Spec.ServiceTemplate.Annotations, svc.Annotations) {
 				if svc.Annotations == nil {
@@ -1055,11 +1053,20 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 				}
 			}
 
+			if !equality.Semantic.DeepDerivative(cluster.Spec.ServiceTemplate.Labels, svc.Labels) {
+				svc.Labels = make(map[string]string)
+				for k, v := range cluster.Spec.ServiceTemplate.Labels {
+					svc.Labels[k] = v
+				}
+			}
+
 			if cluster.Spec.ServiceTemplate.Spec != nil &&
 				((*cluster.Spec.ServiceTemplate).Spec.Type != svc.Spec.Type) {
 				svc.Spec.Type = (*cluster.Spec.ServiceTemplate).Spec.Type
 			}
 		}
+
+		setLabels(&svc.ObjectMeta)
 
 		var hasMySQLPort, hasMySQLXPort bool
 		for i, port := range svc.Spec.Ports {

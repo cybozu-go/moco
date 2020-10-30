@@ -3773,10 +3773,22 @@ spec:
               serviceTemplate:
                 description: ServiceTemplate is a `Service` template for both primary and replicas.
                 properties:
-                  annotations:
-                    additionalProperties:
-                      type: string
-                    description: Annotations is a map of string keys and values.
+                  metadata:
+                    description: Standard object's metadata.  Only `annotations` and `labels` are valid.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is a map of string keys and values.
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels is a map of string keys and values.
+                        type: object
+                      name:
+                        description: Name is the name of the object.
+                        type: string
                     type: object
                   spec:
                     description: Spec is the ServiceSpec

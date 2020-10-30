@@ -99,9 +99,9 @@ type PersistentVolumeClaim struct {
 
 // ServiceTemplate defines the desired spec and annotations of Service
 type ServiceTemplate struct {
-	// Annotations is a map of string keys and values.
+	// Standard object's metadata.  Only `annotations` and `labels` are valid.
 	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
+	ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec is the ServiceSpec
 	// +optional

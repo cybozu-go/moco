@@ -43,10 +43,10 @@ The secret given to `replicationSourceSecretName` have the following keys:
 ServiceTemplate
 ---------------
 
-| Field         | Type          | Required | Description                                                                                                               |
-| ------------- | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `annotations` | [Annotations] | No       | Annotations attached to `Service` of primary and replicas.                                                                |
-| `spec`        | [ServiceSpec] | No       | `Service` template spec for primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields. |
+| Field      | Type          | Required | Description                                                                                                               |
+| ---------- | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `metadata` | [ObjectMeta]  | No       | Metadata attached to `Service` of primary and replicas. Only `annotations` and `labels` are valid.                        |
+| `spec`     | [ServiceSpec] | No       | `Service` template spec for primary and replicas.<br/> Note that MOCO will overwrites only `Ports` and `Selector` fields. |
 
 RestoreSpec
 -----------
