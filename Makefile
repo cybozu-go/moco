@@ -4,8 +4,6 @@ include common.mk
 GO111MODULE = on
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
-GOFLAGS := -mod=vendor
-export GO111MODULE GOFLAGS
 
 KUBEBUILDER_ASSETS := $(PWD)/bin
 export KUBEBUILDER_ASSETS
@@ -31,21 +29,21 @@ all: build/moco-controller
 
 .PHONY: validate
 validate: setup
-	test -z "$$(gofmt -s -l . | grep -v '^vendor' | tee /dev/stderr)"
+	test -z "$$(gofmt -s -l . | tee /dev/stderr)"
 	staticcheck ./...
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
-	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... | grep -v /vendor/ ) 2>&1 | tee /dev/stderr)"
+	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... ) 2>&1 | tee /dev/stderr)"
 	ineffassign .
-	go build -mod=vendor ./...
+	go build ./...
 	go vet ./...
-	test -z "$$(go vet ./... | grep -v '^vendor' | tee /dev/stderr)"
+	test -z "$$(go vet ./... | tee /dev/stderr)"
 
 # Run tests
 .PHONY: test
 test: $(KUBEBUILDER)
 	go test -race -v -coverprofile cover.out ./...
 	docker build -t mysql-with-go:latest ./initialize/
-	docker run -v  $(PWD):/go/src/github.com/cybozu-go/moco --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -mod=vendor -v ./initialize"
+	docker run -v $(PWD):/go/src/github.com/cybozu-go/moco -e GOPATH=/tmp --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -v ./initialize"
 
 .PHONY: start-mysqld
 start-mysqld:
@@ -118,8 +116,6 @@ generate: $(CONTROLLER_GEN)
 .PHONY: mod
 mod:
 	go mod tidy
-	go mod vendor
-	git add -f vendor
 	git add go.mod
 
 $(KUBEBUILDER):

@@ -1,8 +1,5 @@
 include ../common.mk
 
-GOFLAGS=-mod=vendor
-export GOFLAGS
-
 KUBECTL := $(PWD)/bin/kubectl
 KIND_VERSION=0.9.0
 KUSTOMIZE_VERSION=3.7.0
@@ -13,7 +10,7 @@ KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 MOCO_CONF_GEN_VERSION=0.3.0
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
-GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
+GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
 launch-kind: kind
 	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
@@ -30,11 +27,11 @@ shutdown-kind: kind
 test: launch-kind load-image $(KUBECTL_MOCO) $(KUBECTL) $(KUSTOMIZE)
 	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
 	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
-	env E2ETEST=1 go test -count=1 -v . -args -ginkgo.progress -ginkgo.v
+	env E2ETEST=1 go test -count=1 -v . -args -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: telepresence
 telepresence:
-	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run -mod=vendor ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:$(MOCO_CONF_GEN_VERSION)
+	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:$(MOCO_CONF_GEN_VERSION)
 
 .PHONY: load-image
 load-image: load-moco-image load-mysql-image
