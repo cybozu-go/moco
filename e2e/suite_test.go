@@ -29,5 +29,6 @@ var _ = Describe("MOCO", func() {
 	Context("replicaFailover", testReplicaFailOver)
 	Context("primaryFailover", testPrimaryFailOver)
 	Context("intermediatePrimary", testIntermediatePrimary)
+	Context("kubectl-moco", testKubectlMoco)
 	Context("garbageCollector", testGarbageCollector)
 })

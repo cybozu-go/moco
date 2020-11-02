@@ -15,6 +15,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/cybozu-go/moco/test_utils"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,25 +27,25 @@ func testClone() {
 	var registry *prometheus.Registry
 
 	BeforeEach(func() {
-		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
+		err := test_utils.StartMySQLD(donorHost, donorPort, donorServerID)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.StartMySQLD(replicaHost, replicaPort, replicaServerID)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = moco.InitializeMySQL(donorPort)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.InitializeMySQL(replicaPort)
+		err = test_utils.StartMySQLD(replicaHost, replicaPort, replicaServerID)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.PrepareTestData(donorPort)
+		err = test_utils.InitializeMySQL(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = test_utils.InitializeMySQL(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
+		err = test_utils.PrepareTestData(donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.ResetMaster(donorPort)
+		err = test_utils.SetValidDonorList(replicaPort, donorHost, donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.ResetMaster(replicaPort)
+
+		err = test_utils.ResetMaster(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = test_utils.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
@@ -60,8 +61,8 @@ func testClone() {
 	})
 
 	AfterEach(func() {
-		moco.StopAndRemoveMySQLD(donorHost)
-		moco.StopAndRemoveMySQLD(replicaHost)
+		test_utils.StopAndRemoveMySQLD(donorHost)
+		test_utils.StopAndRemoveMySQLD(replicaHost)
 	})
 
 	It("should return 400 with bad requests", func() {
@@ -212,7 +213,7 @@ func testClone() {
 
 	It("should not clone if recipient has some data", func() {
 		By("write data to recipient")
-		err := moco.PrepareTestData(replicaPort)
+		err := test_utils.PrepareTestData(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("cloning from donor")

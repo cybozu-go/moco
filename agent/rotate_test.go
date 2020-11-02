@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
@@ -56,19 +57,19 @@ func testRotate() {
 	})
 
 	It("should rotate log files", func() {
-		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
+		err := test_utils.StartMySQLD(donorHost, donorPort, donorServerID)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.StartMySQLD(replicaHost, replicaPort, replicaServerID)
+		err = test_utils.StartMySQLD(replicaHost, replicaPort, replicaServerID)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.InitializeMySQL(donorPort)
+		err = test_utils.InitializeMySQL(donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.InitializeMySQL(replicaPort)
+		err = test_utils.InitializeMySQL(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		defer func() {
-			moco.StopAndRemoveMySQLD(donorHost)
-			moco.StopAndRemoveMySQLD(replicaHost)
+			test_utils.StopAndRemoveMySQLD(donorHost)
+			test_utils.StopAndRemoveMySQLD(replicaHost)
 		}()
 
 		By("preparing log files for testing")

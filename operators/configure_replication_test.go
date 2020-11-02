@@ -5,12 +5,12 @@ import (
 	"errors"
 	"os"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -19,14 +19,14 @@ var _ = Describe("Configure replication", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		err := moco.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
+		err := test_utils.StartMySQLD(mysqldName1, mysqldPort1, mysqldServerID1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
+		err = test_utils.StartMySQLD(mysqldName2, mysqldPort2, mysqldServerID2)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.InitializeMySQL(mysqldPort1)
+		err = test_utils.InitializeMySQL(mysqldPort1)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.InitializeMySQL(mysqldPort2)
+		err = test_utils.InitializeMySQL(mysqldPort2)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		ns := corev1.Namespace{}
@@ -51,8 +51,8 @@ var _ = Describe("Configure replication", func() {
 	})
 
 	AfterEach(func() {
-		moco.StopAndRemoveMySQLD(mysqldName1)
-		moco.StopAndRemoveMySQLD(mysqldName2)
+		test_utils.StopAndRemoveMySQLD(mysqldName1)
+		test_utils.StopAndRemoveMySQLD(mysqldName2)
 	})
 
 	logger := ctrl.Log.WithName("operators-test")

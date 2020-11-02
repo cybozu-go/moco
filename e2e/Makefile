@@ -8,8 +8,9 @@ KIND_VERSION=0.9.0
 KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
+KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 
-MOCO_CONF_GEN_VERSION=0.2.1
+MOCO_CONF_GEN_VERSION=0.3.0
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
 
 GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -name '*.go' -print)
@@ -26,7 +27,7 @@ shutdown-kind: kind
 		kind delete cluster --name=$(KIND_CLUSTER_NAME) || true; \
 	fi
 
-test: launch-kind load-image $(KUBECTL) $(KUSTOMIZE)
+test: launch-kind load-image $(KUBECTL_MOCO) $(KUBECTL) $(KUSTOMIZE)
 	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
 	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
 	env E2ETEST=1 go test -count=1 -v . -args -ginkgo.progress -ginkgo.v
@@ -59,6 +60,11 @@ build-moco-image: $(GO_FILES) ../Dockerfile
 .PHONY: build-mysql-image
 build-mysql-image: $(GO_FILES) Dockerfile
 	docker build .. -f Dockerfile -t mysql:dev
+
+$(KUBECTL_MOCO):
+	mkdir -p bin
+	cd ../; make build/kubectl-moco
+	cp ../build/kubectl-moco $@
 
 $(KUBECTL):
 	mkdir -p bin

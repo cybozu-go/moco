@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -48,21 +48,21 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ShouldNot(HaveOccurred())
 	replicationSourceSecretPath = path.Join(pwd, "test_data")
 
-	moco.StopAndRemoveMySQLD(donorHost)
-	moco.StopAndRemoveMySQLD(replicaHost)
-	moco.RemoveNetwork()
+	test_utils.StopAndRemoveMySQLD(donorHost)
+	test_utils.StopAndRemoveMySQLD(replicaHost)
+	test_utils.RemoveNetwork()
 
 	Eventually(func() error {
-		return moco.CreateNetwork()
+		return test_utils.CreateNetwork()
 	}, 10*time.Second).Should(Succeed())
 
 	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
-	moco.StopAndRemoveMySQLD(donorHost)
-	moco.StopAndRemoveMySQLD(replicaHost)
-	moco.RemoveNetwork()
+	test_utils.StopAndRemoveMySQLD(donorHost)
+	test_utils.StopAndRemoveMySQLD(replicaHost)
+	test_utils.RemoveNetwork()
 })
 
 var _ = Describe("Test Agent", func() {

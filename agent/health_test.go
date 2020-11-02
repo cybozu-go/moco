@@ -13,6 +13,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/cybozu-go/moco/test_utils"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,25 +25,25 @@ func testHealth() {
 	var registry *prometheus.Registry
 
 	BeforeEach(func() {
-		err := moco.StartMySQLD(donorHost, donorPort, donorServerID)
+		err := test_utils.StartMySQLD(donorHost, donorPort, donorServerID)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.StartMySQLD(replicaHost, replicaPort, replicaServerID)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = moco.InitializeMySQL(donorPort)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.InitializeMySQL(replicaPort)
+		err = test_utils.StartMySQLD(replicaHost, replicaPort, replicaServerID)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.PrepareTestData(donorPort)
+		err = test_utils.InitializeMySQL(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = test_utils.InitializeMySQL(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
+		err = test_utils.PrepareTestData(donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = moco.ResetMaster(donorPort)
+		err = test_utils.SetValidDonorList(replicaPort, donorHost, donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.ResetMaster(replicaPort)
+
+		err = test_utils.ResetMaster(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = test_utils.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		registry = prometheus.NewRegistry()
@@ -58,8 +59,8 @@ func testHealth() {
 	})
 
 	AfterEach(func() {
-		moco.StopAndRemoveMySQLD(donorHost)
-		moco.StopAndRemoveMySQLD(replicaHost)
+		test_utils.StopAndRemoveMySQLD(donorHost)
+		test_utils.StopAndRemoveMySQLD(replicaHost)
 	})
 
 	It("should return 200 if no errors or cloning is not in progress", func() {
@@ -70,9 +71,9 @@ func testHealth() {
 
 	It("should return 500 if cloning process is in progress", func() {
 		By("executing cloning")
-		err := moco.ResetMaster(replicaPort)
+		err := test_utils.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = moco.SetValidDonorList(replicaPort, donorHost, donorPort)
+		err = test_utils.SetValidDonorList(replicaPort, donorHost, donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
@@ -118,7 +119,7 @@ func testHealth() {
 
 	It("should return 500 if replica status has IO error", func() {
 		By("executing START SLAVE with invalid parameters")
-		err := moco.StartSlaveWithInvalidSettings(replicaPort)
+		err := test_utils.StartSlaveWithInvalidSettings(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("getting health")
