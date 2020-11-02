@@ -1,0 +1,7 @@
+namespace: moco-system
+bases:
+- ./crd
+- ./rbac
+- ./manager
+resources:
+- namespace.yaml

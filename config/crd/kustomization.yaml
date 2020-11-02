@@ -17,5 +17,5 @@ patchesStrategicMerge:
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.
-configurations:
-- kustomizeconfig.yaml
+# configurations:
+# - kustomizeconfig.yaml
