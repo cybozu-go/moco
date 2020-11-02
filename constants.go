@@ -23,6 +23,12 @@ const (
 
 	// MiscUser is a name of MOCO misc user in the MySQL context.
 	MiscUser = "moco-misc"
+
+	// ReadOnlyUser is a name of MOCO predefined human user with wide read-only rights used for manual operation.
+	ReadOnlyUser = "moco-readonly"
+
+	// WritableUser is a name of MOCO predefined human user with wide read/write rights used for manual operation.
+	WritableUser = "moco-writable"
 )
 
 const (
@@ -129,6 +135,12 @@ const (
 
 	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
 	MiscPasswordEnvName = "MISC_PASSWORD"
+
+	// ReadOnlyPasswordEnvName is a name of the environment variable of a password for moco-readonly.
+	ReadOnlyPasswordEnvName = "READONLY_PASSWORD"
+
+	// WritablePasswordEnvName is a name of the environment variable of a password for moco-writable.
+	WritablePasswordEnvName = "WRITABLE_PASSWORD"
 )
 
 const (
@@ -146,6 +158,12 @@ const (
 
 	// MiscPasswordKey is a Secret key for misc user password.
 	MiscPasswordKey = "MISC_PASSWORD"
+
+	// ReadOnlyPasswordKey is a Secret key for moco-readonly user password.
+	ReadOnlyPasswordKey = "READONLY_PASSWORD"
+
+	// ReadOnlyPasswordKey is a Secret key for moco-writable user password.
+	WritablePasswordKey = "WRITABLE_PASSWORD"
 
 	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
 	ReplicationSourcePrimaryHostKey            = "PRIMARY_HOST"
