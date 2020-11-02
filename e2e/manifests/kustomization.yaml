@@ -5,3 +5,5 @@ bases:
 images:
   - name: controller
     newTag: dev
+patchesStrategicMerge:
+  - moco_controller.yaml
