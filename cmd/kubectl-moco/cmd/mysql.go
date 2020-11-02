@@ -49,6 +49,9 @@ func runMySQLCommand(ctx context.Context, clusterName string, args []string) err
 		return err
 	}
 
+	if mysqlConfig.index >= int(cluster.Spec.Replicas) {
+		return errors.New("index should be smaller than replicas")
+	}
 	index := mysqlConfig.index
 	if mysqlConfig.index < 0 {
 		if cluster.Status.CurrentPrimaryIndex != nil {

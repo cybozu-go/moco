@@ -21,9 +21,9 @@ func getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, user s
 	}
 
 	userPassKeys := map[string]string{
-		"root":                       moco.RootPasswordEnvName,
-		moco.WritablePasswordEnvName: moco.WritablePasswordEnvName,
-		moco.ReadOnlyPasswordEnvName: moco.ReadOnlyPasswordEnvName,
+		"root":            moco.RootPasswordEnvName,
+		moco.WritableUser: moco.WritablePasswordEnvName,
+		moco.ReadOnlyUser: moco.ReadOnlyPasswordEnvName,
 	}
 	key, ok := userPassKeys[user]
 	if !ok {

@@ -39,7 +39,7 @@ func testKubectlMoco() {
 
 		secret, err := getRootPassword(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[moco.RootPasswordEnvName])))
+		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[moco.WritablePasswordEnvName])))
 	})
 
 	It("should fetch credential for root formatted by my.conf", func() {
