@@ -24,7 +24,7 @@ func testKubectlMoco() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte("select count(*) from moco_e2e.replication_test"), "-n", cluster.Namespace, "mysql", "-u", "root", "-i", cluster.Name)
+		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte("select count(*) from moco_e2e.replication_test"), "-n", cluster.Namespace, "mysql", "-u", "moco-readonly", "-i", cluster.Name)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		Expect(string(stdout)).Should(ContainSubstring("100000"))
@@ -34,7 +34,7 @@ func testKubectlMoco() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "credential", "-u", "root", cluster.Name)
+		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "credential", "-u", "moco-writable", cluster.Name)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		secret, err := getRootPassword(cluster)
