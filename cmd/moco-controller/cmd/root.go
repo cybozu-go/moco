@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultInitContainerImage = "quay.io/cybozu/moco-conf-gen:1.0.0"
+	defaultInitContainerImage = "quay.io/cybozu/moco-conf-gen:0.3.0"
 	defaultCurlContainerImage = "quay.io/cybozu/ubuntu:18.04"
 )
 

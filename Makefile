@@ -109,7 +109,6 @@ manifests: $(CONTROLLER_GEN)
 	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 	sed  -i -r 's/^( +)description: The IP protocol for this port\. Supports "TCP", "UDP", and "SCTP"\. Default is TCP\./\0\n\1default: TCP/' \
 	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
-	cp config/crd/bases/moco.cybozu.com_mysqlclusters.yaml deploy/crd.yaml
 
 # Generate code
 .PHONY: generate

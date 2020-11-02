@@ -1,7 +1,0 @@
-apiVersion: moco.cybozu.com/v1alpha1
-kind: MySQLCluster
-metadata:
-  name: mysqlcluster-sample
-spec:
-  # Add fields here
-  foo: bar
