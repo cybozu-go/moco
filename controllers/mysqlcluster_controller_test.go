@@ -15,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -735,6 +736,66 @@ var _ = Describe("MySQLCluster controller", func() {
 			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
+		})
+	})
+
+	Context("PodDisruptionBudget", func() {
+		expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
+			MaxUnavailable: &intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: 1,
+			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					moco.ClusterKey:   moco.UniqueName(cluster),
+					moco.AppNameKey:   moco.AppName,
+					moco.ManagedByKey: moco.MyName,
+				},
+			},
+		}
+
+		It("should create pod disruption budget", func() {
+			cluster.Spec.Replicas = 1
+
+			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			pdb := &policyv1beta1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(pdb.Spec).Should(Equal(expectedSpec))
+
+			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should fill appropriate MaxUnavailable", func() {
+			By("checking in case of 5 replicas")
+			cluster.Spec.Replicas = 5
+			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			pdb := &policyv1beta1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
+			Expect(err).ShouldNot(HaveOccurred())
+			expectedSpec.MaxUnavailable.IntVal = 2
+			Expect(pdb.Spec).Should(Equal(expectedSpec))
+
+			By("checking in case of 3 replicas")
+			cluster.Spec.Replicas = 3
+			isUpdated, err = reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			pdb = &policyv1beta1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
+			Expect(err).ShouldNot(HaveOccurred())
+			expectedSpec.MaxUnavailable.IntVal = 1
+			Expect(pdb.Spec).Should(Equal(expectedSpec))
 		})
 	})
 })
