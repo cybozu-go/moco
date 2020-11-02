@@ -31,7 +31,7 @@ type MySQLClusterSpec struct {
 
 	// ServiceTemplate is a `Service` template for both primary and replicas.
 	// +optional
-	ServiceTemplate *corev1.ServiceSpec `json:"serviceTemplate,omitempty"`
+	ServiceTemplate *ServiceTemplate `json:"serviceTemplate,omitempty"`
 
 	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
 	// +optional
@@ -95,6 +95,17 @@ type PersistentVolumeClaim struct {
 
 	// Spec defines the desired characteristics of a volume requested by a pod author.
 	Spec corev1.PersistentVolumeClaimSpec `json:"spec"`
+}
+
+// ServiceTemplate defines the desired spec and annotations of Service
+type ServiceTemplate struct {
+	// Standard object's metadata.  Only `annotations` and `labels` are valid.
+	// +optional
+	ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec is the ServiceSpec
+	// +optional
+	Spec *corev1.ServiceSpec `json:"spec,omitempty"`
 }
 
 // RestoreSpec defines the desired spec of Point-in-Time-Recovery
