@@ -88,6 +88,7 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -272,6 +273,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInter
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1beta1.CronJob{}).
+		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Watches(&src, &handler.EnqueueRequestForObject{}).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: 8},
@@ -1151,7 +1153,8 @@ func (r *MySQLClusterReconciler) createOrUpdatePodDisruptionBudget(ctx context.C
 			moco.ManagedByKey: moco.MyName,
 			moco.AppNameKey:   moco.AppName,
 		}
-		return nil
+
+		return ctrl.SetControllerReference(cluster, pdb, r.Scheme)
 	})
 	if err != nil {
 		log.Error(err, "unable to create-or-update PodDisruptionBudget")
