@@ -372,7 +372,7 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	secret.SetNamespace(cluster.Namespace)
 	secret.SetName(secretName)
 
-	setLabels(&secret.ObjectMeta)
+	setStandardLabels(&secret.ObjectMeta, cluster)
 
 	secret.Data = map[string][]byte{
 		moco.RootPasswordKey:        rootPass,
@@ -443,7 +443,7 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	cm.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-		setLabels(&cm.ObjectMeta)
+		setStandardLabels(&cm.ObjectMeta, cluster)
 		gen := mysqlConfGenerator{
 			log: log,
 		}
@@ -497,7 +497,7 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	headless.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, headless, func() error {
-		setLabels(&headless.ObjectMeta)
+		setStandardLabels(&headless.ObjectMeta, cluster)
 		headless.Spec.ClusterIP = corev1.ClusterIPNone
 		headless.Spec.PublishNotReadyAddresses = true
 		headless.Spec.Selector = map[string]string{
@@ -530,7 +530,7 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 	sa.SetName(saName)
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		setLabels(&sa.ObjectMeta)
+		setStandardLabels(&sa.ObjectMeta, cluster)
 		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
 	})
 
@@ -552,7 +552,7 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	sts.SetName(moco.UniqueName(cluster))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		setLabels(&sts.ObjectMeta)
+		setStandardLabels(&sts.ObjectMeta, cluster)
 		sts.Spec.Replicas = &cluster.Spec.Replicas
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 		sts.Spec.ServiceName = moco.UniqueName(cluster)
@@ -642,9 +642,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	}
 
 	// add labels to describe application
-	newTemplate.Labels[moco.ClusterKey] = moco.UniqueName(cluster)
-	newTemplate.Labels[moco.ManagedByKey] = moco.MyName
-	newTemplate.Labels[moco.AppNameKey] = moco.AppName
+	setStandardLabels(&newTemplate.ObjectMeta, cluster)
 
 	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
 
@@ -995,7 +993,7 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 		cronJob.SetName(podName)
 
 		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
-			setLabels(&cronJob.ObjectMeta)
+			setStandardLabels(&cronJob.ObjectMeta, cluster)
 			cronJob.Spec.Schedule = cluster.Spec.LogRotationSchedule
 			cronJob.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
 			containers := []corev1.Container{
@@ -1076,7 +1074,7 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 			}
 		}
 
-		setLabels(&svc.ObjectMeta)
+		setStandardLabels(&svc.ObjectMeta, cluster)
 
 		var hasMySQLPort, hasMySQLXPort bool
 		for i, port := range svc.Spec.Ports {
@@ -1137,11 +1135,11 @@ func (r *MySQLClusterReconciler) generateAgentToken(ctx context.Context, log log
 	return true, nil
 }
 
-func setLabels(om *metav1.ObjectMeta) {
+func setStandardLabels(om *metav1.ObjectMeta, cluster *mocov1alpha1.MySQLCluster) {
 	if om.Labels == nil {
 		om.Labels = make(map[string]string)
 	}
-	om.Labels[moco.ClusterKey] = om.Name
+	om.Labels[moco.ClusterKey] = moco.UniqueName(cluster)
 	om.Labels[moco.ManagedByKey] = moco.MyName
 	om.Labels[moco.AppNameKey] = moco.AppName
 }
