@@ -740,21 +740,21 @@ var _ = Describe("MySQLCluster controller", func() {
 	})
 
 	Context("PodDisruptionBudget", func() {
-		expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
-			MaxUnavailable: &intstr.IntOrString{
-				Type:   intstr.Int,
-				IntVal: 1,
-			},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					moco.ClusterKey:   moco.UniqueName(cluster),
-					moco.AppNameKey:   moco.AppName,
-					moco.ManagedByKey: moco.MyName,
-				},
-			},
-		}
-
 		It("should create pod disruption budget", func() {
+			expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
+				MaxUnavailable: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: 1,
+				},
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						moco.ClusterKey:   moco.UniqueName(cluster),
+						moco.AppNameKey:   moco.AppName,
+						moco.ManagedByKey: moco.MyName,
+					},
+				},
+			}
+
 			cluster.Spec.Replicas = 1
 
 			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
@@ -767,12 +767,26 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			Expect(pdb.Spec).Should(Equal(expectedSpec))
 
-			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			isUpdated, err = reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
 		})
 
 		It("should fill appropriate MaxUnavailable", func() {
+			expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
+				MaxUnavailable: &intstr.IntOrString{
+					Type:   intstr.Int,
+					IntVal: 1,
+				},
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						moco.ClusterKey:   moco.UniqueName(cluster),
+						moco.AppNameKey:   moco.AppName,
+						moco.ManagedByKey: moco.MyName,
+					},
+				},
+			}
+
 			By("checking in case of 5 replicas")
 			cluster.Spec.Replicas = 5
 			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
