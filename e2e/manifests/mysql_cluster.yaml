@@ -27,6 +27,12 @@ spec:
             port: 9080
           initialDelaySeconds: 10
           periodSeconds: 5
+        startupProbe:
+          exec:
+            command: ["/ping.sh"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 6
       - name: err-filebeat
         image: quay.io/cybozu/filebeat:7.9.2.1
         args: [

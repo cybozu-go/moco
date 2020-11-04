@@ -633,10 +633,12 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	for _, c := range template.Spec.Containers {
 		defaultProbe(c.LivenessProbe)
 		defaultProbe(c.ReadinessProbe)
+		defaultProbe(c.StartupProbe)
 	}
 	for _, c := range template.Spec.InitContainers {
 		defaultProbe(c.LivenessProbe)
 		defaultProbe(c.ReadinessProbe)
+		defaultProbe(c.StartupProbe)
 	}
 
 	newTemplate := corev1.PodTemplateSpec{
