@@ -53,6 +53,7 @@ stringData:
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		By("getting intermediate cluster status")
+		fmt.Println("start: ", time.Now())
 		Eventually(func() error {
 			cluster, err := getMySQLClusterWithNamespace(nsExternal)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -70,7 +71,8 @@ stringData:
 				return errors.New("Conditions.Healthy should be true")
 			}
 			return nil
-		}, 5*time.Minute).Should(Succeed())
+		}, 10*time.Minute).Should(Succeed())
+		fmt.Println("end: ", time.Now())
 
 		By("checking data from donor")
 		cluster, err := getMySQLClusterWithNamespace(nsExternal)
