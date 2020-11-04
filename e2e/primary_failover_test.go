@@ -50,17 +50,29 @@ func testPrimaryFailOver() {
 
 		By("checking cluster status")
 		Eventually(func() error {
+			/*
+			 * The condition may not become unhealthy immediately after deleting pod.
+			 * So, the following `findCondition` may observe healthy before primary switching.
+			 * On the other hand, it is not guaranteed to observe the unhealthy condition.
+			 *
+			 * Consequently, `Eventually` block must contain both condition check and primary index check.
+			 */
 			cluster, err = getMySQLCluster()
 			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
 			if healthy == nil || healthy.Status != corev1.ConditionTrue {
 				return errors.New("should recover")
 			}
+
+			if cluster.Status.CurrentPrimaryIndex == nil {
+				return errors.New("current primary index is unknown")
+			}
+			newPrimary := *cluster.Status.CurrentPrimaryIndex
+			if newPrimary == firstPrimary {
+				return fmt.Errorf("current primary is still %d", firstPrimary)
+			}
+
 			return nil
 		}, 2*time.Minute).Should(Succeed())
-
-		Expect(cluster.Status.CurrentPrimaryIndex).ShouldNot(BeNil())
-		newPrimary := *cluster.Status.CurrentPrimaryIndex
-		Expect(newPrimary).ShouldNot(Equal(firstPrimary))
 
 		By("connecting to recovered instance")
 		connector.stopPortForward()
