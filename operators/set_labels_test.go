@@ -64,7 +64,7 @@ var _ = Describe("Set labels", func() {
 	It("should configure replication", func() {
 		_, infra, cluster := getAccessorInfraCluster()
 
-		op := setLabelsOp{}
+		op := setRoleLabelsOp{}
 
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())

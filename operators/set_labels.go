@@ -14,18 +14,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type setLabelsOp struct{}
+type setRoleLabelsOp struct{}
 
-// SetLabelsOp returns the SetLabelsOp Operator
-func SetLabelsOp() Operator {
-	return &setLabelsOp{}
+// SetRoleLabelsOp returns the SetRoleLabelsOp Operator
+func SetRoleLabelsOp() Operator {
+	return &setRoleLabelsOp{}
 }
 
-func (o setLabelsOp) Name() string {
-	return OperatorSetLabels
+func (o setRoleLabelsOp) Name() string {
+	return OperatorSetRoleLabels
 }
 
-func (o setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o setRoleLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	pods := corev1.PodList{}
 	err := infra.GetClient().List(ctx, &pods, &client.ListOptions{
 		Namespace:     cluster.Namespace,
@@ -50,6 +50,6 @@ func (o setLabelsOp) Run(ctx context.Context, infra accessor.Infrastructure, clu
 	return nil
 }
 
-func (o setLabelsOp) Describe() string {
+func (o setRoleLabelsOp) Describe() string {
 	return fmt.Sprintf("%#v", o)
 }

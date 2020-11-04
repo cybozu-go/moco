@@ -241,7 +241,7 @@ func TestDecideNextOperation(t *testing.T) {
 				Operators: []ops.Operator{
 					ops.ConfigureReplicationOp(1, hostName(0)),
 					ops.ConfigureReplicationOp(2, hostName(0)),
-					ops.SetLabelsOp(),
+					ops.SetRoleLabelsOp(),
 				},
 			},
 		},
@@ -258,7 +258,7 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait: false,
 				Operators: []ops.Operator{
-					ops.SetLabelsOp(),
+					ops.SetRoleLabelsOp(),
 				},
 			},
 		},
@@ -275,7 +275,7 @@ func TestDecideNextOperation(t *testing.T) {
 			want: &Operation{
 				Wait: false,
 				Operators: []ops.Operator{
-					ops.SetLabelsOp(),
+					ops.SetRoleLabelsOp(),
 				},
 			},
 		},
