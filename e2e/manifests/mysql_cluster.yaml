@@ -19,7 +19,7 @@ spec:
         livenessProbe:
           exec:
             command: ["/ping.sh"]
-          initialDelaySeconds: 5
+          initialDelaySeconds: 30
           periodSeconds: 5
         readinessProbe:
           httpGet:
