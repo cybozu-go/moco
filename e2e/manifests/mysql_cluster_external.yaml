@@ -15,11 +15,11 @@ spec:
           protocol: TCP
         resources:
           requests:
-            memory: "1Gi"
+            memory: "768Mi"
         livenessProbe:
           exec:
             command: ["/ping.sh"]
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 5
         readinessProbe:
           httpGet:
