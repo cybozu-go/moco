@@ -19,11 +19,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,6 +88,7 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -232,6 +235,12 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 		return false, err
 	}
 
+	isUpdated, err = r.createOrUpdatePodDisruptionBudget(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
 	return isUpdatedAtLeastOnce, nil
 }
 
@@ -264,6 +273,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInter
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1beta1.CronJob{}).
+		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Watches(&src, &handler.EnqueueRequestForObject{}).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: 8},
@@ -1118,6 +1128,43 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 	if op != controllerutil.OperationResultNone {
 		isUpdated = true
 	}
+	return isUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdatePodDisruptionBudget(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdated := false
+
+	pdb := &policyv1beta1.PodDisruptionBudget{}
+	pdb.SetNamespace(cluster.Namespace)
+	pdb.SetName(moco.UniqueName(cluster))
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, pdb, func() error {
+		setStandardLabels(&pdb.ObjectMeta, cluster)
+		pdb.Spec.MaxUnavailable = &intstr.IntOrString{}
+		pdb.Spec.MaxUnavailable.Type = intstr.Int
+		if cluster.Spec.Replicas > 1 {
+			pdb.Spec.MaxUnavailable.IntVal = cluster.Spec.Replicas / 2
+		} else {
+			pdb.Spec.MaxUnavailable.IntVal = 1
+		}
+		pdb.Spec.Selector = &metav1.LabelSelector{}
+		pdb.Spec.Selector.MatchLabels = map[string]string{
+			moco.ClusterKey:   moco.UniqueName(cluster),
+			moco.ManagedByKey: moco.MyName,
+			moco.AppNameKey:   moco.AppName,
+		}
+
+		return ctrl.SetControllerReference(cluster, pdb, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update PodDisruptionBudget")
+		return false, err
+	}
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile PodDisruptionBudget successfully", "op", op)
+		isUpdated = true
+	}
+
 	return isUpdated, nil
 }
 
