@@ -140,7 +140,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			}
 			r.Recorder.Event(cluster, moco.EventInitializationSucceeded.Type, moco.EventInitializationSucceeded.Reason, moco.EventInitializationSucceeded.Message)
 
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		metrics.UpdateTotalReplicasMetrics(cluster.Name, cluster.Spec.Replicas)

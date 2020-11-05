@@ -43,4 +43,4 @@ jobs:
           top -b -n 1
           df -h
           kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
-          kubectl -n e2e-test-external logs -lmoco.cybozu.com/role=replica -c agent --tail=-1
+          kubectl -n e2e-test-external logs -c agent --tail=-1
