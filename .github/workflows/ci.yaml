@@ -44,8 +44,23 @@ jobs:
           df -h
           kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
           kubectl -n e2e-test-external logs -lmoco.cybozu.com/role=replica -c agent --tail=-1
+          echo iteration1
           kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
-          mkdir -p /tmp/kindlog
-          kind export logs /tmp/kindlog --name moco-e2e
-          cat /tmp/kindlog/moco-e2e-worker/kubelet.log
-          cat /tmp/kindlog/moco-e2e-worker/containerd.log
+          kubectl -n e2e-test-external describe statefulset
+          sleep 5
+          echo iteration2
+          kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
+          kubectl -n e2e-test-external describe statefulset
+          sleep 5
+          echo iteration3
+          kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
+          kubectl -n e2e-test-external describe statefulset
+          sleep 5
+          echo iteration4
+          kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
+          kubectl -n e2e-test-external describe statefulset
+          sleep 5
+          echo iteration5
+          kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
+          kubectl -n e2e-test-external describe statefulset
+          sleep 5
