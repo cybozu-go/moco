@@ -43,6 +43,6 @@ jobs:
           top -b -n 1
           df -h
           kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
-          kubectl -n e2e-test-external logs -c agent --tail=-1
+          kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1
           kubectl -n e2e-test-external describe pod
           kubectl -n e2e-test-external describe statefulset
