@@ -166,7 +166,14 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 
 	op = restoreEmptyInstance(status, cluster)
 	if len(op) != 0 {
+		var wait bool
+		for _, o := range op {
+			if o.Name() == ops.OperatorClone {
+				wait = true
+			}
+		}
 		return &Operation{
+			Wait:      wait,
 			Operators: op,
 			Phase:     moco.PhaseRestoreInstance,
 			Event:     &moco.EventRestoringReplicaInstances,

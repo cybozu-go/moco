@@ -34,7 +34,6 @@ func kubectl(args ...string) ([]byte, []byte, error) {
 	return execAtLocal("./bin/kubectl", nil, args...)
 }
 
-//lint:ignore U1000 This func may be used in the future.
 func kubectlWithInput(input []byte, args ...string) ([]byte, []byte, error) {
 	return execAtLocal("./bin/kubectl", input, args...)
 }

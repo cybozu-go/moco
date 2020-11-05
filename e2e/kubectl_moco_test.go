@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/cybozu-go/moco"
@@ -27,7 +28,7 @@ func testKubectlMoco() {
 		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte("select count(*) from moco_e2e.replication_test"), "-n", cluster.Namespace, "mysql", "-u", "moco-readonly", "-i", cluster.Name)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		Expect(string(stdout)).Should(ContainSubstring("100000"))
+		Expect(string(stdout)).Should(ContainSubstring(strconv.Itoa(lineCount)))
 	})
 
 	It("should fetch credential for root", func() {

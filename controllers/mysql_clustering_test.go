@@ -159,7 +159,7 @@ func TestDecideNextOperation(t *testing.T) {
 				),
 			},
 			want: &Operation{
-				Wait:      false,
+				Wait:      true,
 				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,
@@ -176,7 +176,7 @@ func TestDecideNextOperation(t *testing.T) {
 				),
 			},
 			want: &Operation{
-				Wait:      false,
+				Wait:      true,
 				Operators: []ops.Operator{ops.SetCloneDonorListOp([]int{1}, hostName(0)+":"+strconv.Itoa(moco.MySQLAdminPort)), ops.CloneOp(1, false)},
 				Phase:     moco.PhaseRestoreInstance,
 				Event:     &moco.EventRestoringReplicaInstances,

@@ -33,4 +33,14 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - run: cd e2e && make test
+      - id: run_e2e_test
+        run: cd e2e && make test
+      - if: failure() && steps.run_e2e_test.outcome == 'failure'
+        run: |
+          ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
+          ./e2e/bin/kubectl -n e2e-test-external get statefulsets
+          ./e2e/bin/kubectl -n e2e-test-external get pods
+          ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
+          ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1
+          top -b -n 1
+          df -h

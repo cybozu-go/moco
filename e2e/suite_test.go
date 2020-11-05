@@ -9,6 +9,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	lineCount = 10000
+)
+
 func TestE2E(t *testing.T) {
 	if os.Getenv("E2ETEST") == "" {
 		t.Skip("Run under e2e/")
