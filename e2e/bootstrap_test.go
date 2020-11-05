@@ -170,7 +170,7 @@ func testBootstrap() {
 				}
 			}
 			if replicatedCount != lineCount {
-				return fmt.Errorf("repcalited: %d", replicatedCount)
+				return fmt.Errorf("replicated: %d", replicatedCount)
 			}
 			return nil
 		}).Should(Succeed())

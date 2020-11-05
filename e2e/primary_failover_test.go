@@ -106,7 +106,7 @@ func testPrimaryFailOver() {
 				}
 			}
 			if count != primaryCount {
-				return fmt.Errorf("repcalited: %d", count)
+				return fmt.Errorf("replicated: %d", count)
 			}
 			return nil
 		}).Should(Succeed())
