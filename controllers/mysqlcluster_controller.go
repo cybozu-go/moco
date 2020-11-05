@@ -139,14 +139,17 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 				return ctrl.Result{}, err
 			}
 			r.Recorder.Event(cluster, moco.EventInitializationSucceeded.Type, moco.EventInitializationSucceeded.Reason, moco.EventInitializationSucceeded.Message)
+
+			return ctrl.Result{}, nil
 		}
+
 		metrics.UpdateTotalReplicasMetrics(cluster.Name, cluster.Spec.Replicas)
 
 		// clustering
 		result, err := r.reconcileClustering(ctx, log, cluster)
 		if err != nil {
-			log.Error(err, "failed to ready MySQLCluster")
-			return ctrl.Result{}, err
+			log.Info("failed to ready MySQLCluster", "err", err)
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 
 		return result, nil
