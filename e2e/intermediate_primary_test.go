@@ -55,12 +55,12 @@ stringData:
 		By("getting intermediate cluster status")
 		fmt.Println("start: ", time.Now())
 		Eventually(func() error {
-			stdout, stderr, err = kubectl("describe", "-n"+nsExternal, "pod")
-			if err != nil {
-				fmt.Printf("stdout=%s, stderr=%s\n", stdout, stderr)
-			} else {
-				fmt.Printf("%s\n", stdout)
-			}
+			// stdout, stderr, err = kubectl("describe", "-n"+nsExternal, "pod")
+			// if err != nil {
+			// 	fmt.Printf("stdout=%s, stderr=%s\n", stdout, stderr)
+			// } else {
+			// 	fmt.Printf("%s\n", stdout)
+			// }
 
 			cluster, err := getMySQLClusterWithNamespace(nsExternal)
 			Expect(err).ShouldNot(HaveOccurred())
