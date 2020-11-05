@@ -522,6 +522,7 @@ func restoreEmptyInstance(status *accessor.MySQLClusterStatus, cluster *mocov1al
 		}
 
 		if isCloneable(&s) {
+			fmt.Printf("why clone op: %+v\n", s.CloneStateStatus.State)
 			op = append(op, ops.CloneOp(i, false))
 		}
 	}
