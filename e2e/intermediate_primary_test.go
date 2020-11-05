@@ -55,6 +55,13 @@ stringData:
 		By("getting intermediate cluster status")
 		fmt.Println("start: ", time.Now())
 		Eventually(func() error {
+			stdout, stderr, err = kubectl("describe", "-n"+nsExternal, "pod")
+			if err != nil {
+				fmt.Printf("stdout=%s, stderr=%s\n", stdout, stderr)
+			} else {
+				fmt.Printf("%s\n", stdout)
+			}
+
 			cluster, err := getMySQLClusterWithNamespace(nsExternal)
 			Expect(err).ShouldNot(HaveOccurred())
 			if err != nil {
@@ -71,7 +78,7 @@ stringData:
 				return errors.New("Conditions.Healthy should be true")
 			}
 			return nil
-		}, 10*time.Minute).Should(Succeed())
+		}, 3*time.Minute).Should(Succeed())
 		fmt.Println("end: ", time.Now())
 
 		By("checking data from donor")

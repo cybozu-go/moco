@@ -39,5 +39,6 @@ jobs:
         run: |
           ./e2e/bin/kubectl -n e2e-test-external get statefulsets
           ./e2e/bin/kubectl -n e2e-test-external get pods
+          ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
           top -b -n 1
           df -h
