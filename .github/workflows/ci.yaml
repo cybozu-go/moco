@@ -33,7 +33,6 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - run: journalctl
       - id: run_e2e_test
         run: cd e2e && make test
       - if: failure() && steps.run_e2e_test.outcome == 'failure'
@@ -45,4 +44,8 @@ jobs:
           df -h
           kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
           kubectl -n e2e-test-external logs -lmoco.cybozu.com/role=replica -c agent --tail=-1
-          journalctl
+          kubectl -n e2e-test-external describe pod -lmoco.cybozu.com/role=replica
+          mkdir -p /tmp/kindlog
+          kind export logs /tmp/kindlog --name moco-e2e
+          cat /tmp/kindlog/moco-e2e-worker/kubelet.log
+          cat /tmp/kindlog/moco-e2e-worker/containerd.log
