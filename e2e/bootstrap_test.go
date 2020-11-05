@@ -154,8 +154,7 @@ func testBootstrap() {
 		`)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		count := 10000
-		err = insertData(primaryDB, count)
+		err = insertData(primaryDB, lineCount)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		Eventually(func() error {
@@ -170,7 +169,7 @@ func testBootstrap() {
 					return err
 				}
 			}
-			if replicatedCount != count {
+			if replicatedCount != lineCount {
 				return fmt.Errorf("repcalited: %d", replicatedCount)
 			}
 			return nil

@@ -89,7 +89,6 @@ stringData:
 		Expect(err).ShouldNot(HaveOccurred())
 		defer connector.stopPortForward()
 
-		count := 100000
 		replica, err := minIndexReplica(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		var replicaDB *sqlx.DB
@@ -113,7 +112,7 @@ stringData:
 					return err
 				}
 			}
-			if replicatedCount != count {
+			if replicatedCount != lineCount {
 				return fmt.Errorf("repcalited: %d", replicatedCount)
 			}
 			return nil
