@@ -33,4 +33,11 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - run: cd e2e && make test
+      - id: run_e2e_test
+        run: cd e2e && make test
+      - if: failure() && steps.run_e2e_test.outcome == 'failure'
+        run: |
+          ./e2e/bin/kubectl -n e2e-test-external get statefulsets
+          ./e2e/bin/kubectl -n e2e-test-external get pods
+          top -b -n 1
+          df -h
