@@ -571,14 +571,14 @@ func configureReplication(status *accessor.MySQLClusterStatus, cluster *mocov1al
 	for i, is := range status.InstanceStatus {
 		if i == *cluster.Status.CurrentPrimaryIndex {
 			if is.Role != moco.PrimaryRole {
-				operators = append(operators, ops.SetLabelsOp())
+				operators = append(operators, ops.SetRoleLabelsOp())
 				break
 			}
 			continue
 		}
 
 		if is.Role != moco.ReplicaRole {
-			operators = append(operators, ops.SetLabelsOp())
+			operators = append(operators, ops.SetRoleLabelsOp())
 			break
 		}
 	}

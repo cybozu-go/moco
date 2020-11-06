@@ -11,8 +11,8 @@ const (
 	OperatorConfigureReplication = "configure-replication"
 	// OperatorTurnOffReadOnly is a name of the turn off read-only operation
 	OperatorTurnOffReadOnly = "turnoff-readonly"
-	// OperatorSetLabels is a name of the set labels operation
-	OperatorSetLabels = "set-labels"
+	// OperatorSetRoleLabels is a name of the set labels operation
+	OperatorSetRoleLabels = "set-role-labels"
 	// OperatorStopReplicaIOThread is a name of the stop replicas' io-thread operation
 	OperatorStopReplicaIOThread = "stop-replica-io-thread"
 	// OperatorConfigureIntermediatePrimary is a name of the configure intermediate primary operation
