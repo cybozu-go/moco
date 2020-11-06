@@ -18,7 +18,7 @@ GO_FILES := $(shell find .. -path ../vendor -prune -o -path ../e2e -prune -o -na
 launch-kind: kind
 	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
 		sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
-			-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster.yaml > /tmp/kind-cluster.yaml; \
+			-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster$(KIND_CLUSTER_CONFIG_SUFFIX).yaml > /tmp/kind-cluster.yaml; \
 		kind create cluster --name=$(KIND_CLUSTER_NAME) --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION); \
 	fi
 

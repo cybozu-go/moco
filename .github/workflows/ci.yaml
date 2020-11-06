@@ -33,8 +33,13 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
+      - run: |
+          swapon > swapon.txt
+          sudo swapoff -a
+          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+      - run: sudo mkdir /mnt/local-path-provisioner
       - id: run_e2e_test
-        run: cd e2e && make test
+        run: cd e2e && make KIND_CLUSTER_CONFIG_SUFFIX=-actions test
       - if: failure() && steps.run_e2e_test.outcome == 'failure'
         run: |
           ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
