@@ -5,8 +5,6 @@ metadata:
   namespace: system
   labels:
     control-plane: moco-controller-manager
-  annotations:
-    prometheus.io/port: "8080"
 spec:
   selector:
     matchLabels:
@@ -16,12 +14,14 @@ spec:
     metadata:
       labels:
         control-plane: moco-controller-manager
+      annotations:
+        prometheus.io/port: "8080"
     spec:
       containers:
       - name: manager
         command:
         - /moco-controller
-        image: controller:latest
+        image: ghcr.io/cybozu-go/moco:latest
         resources:
           limits:
             cpu: 4000m
