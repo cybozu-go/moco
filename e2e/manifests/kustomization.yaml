@@ -3,7 +3,8 @@ kind: Kustomization
 bases:
 - ../../config
 images:
-  - name: controller
+  - name: ghcr.io/cybozu-go/moco
+    newName: controller
     newTag: dev
 patchesStrategicMerge:
   - moco_controller.yaml
