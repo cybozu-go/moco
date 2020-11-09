@@ -15,7 +15,7 @@ spec:
           protocol: TCP
         resources:
           requests:
-            memory: "1Gi"
+            memory: "512Mi"
         livenessProbe:
           exec:
             command: ["/ping.sh"]
