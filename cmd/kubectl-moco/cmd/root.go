@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
@@ -22,7 +21,7 @@ import (
 var (
 	kubeConfigFlags *genericclioptions.ConfigFlags
 	kubeClient      client.Client
-	rawClient       *kubernetes.Clientset
+	factory         util.Factory
 	restConfig      *rest.Config
 	namespace       string
 )
@@ -44,7 +43,7 @@ var rootCmd = &cobra.Command{
 		cmd.SilenceUsage = true
 
 		var err error
-		factory := util.NewFactory(util.NewMatchVersionFlags(kubeConfigFlags))
+		factory = util.NewFactory(util.NewMatchVersionFlags(kubeConfigFlags))
 		restConfig, err = factory.ToRESTConfig()
 		if err != nil {
 			return err
@@ -62,11 +61,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		kubeClient, err = client.New(restConfig, client.Options{Scheme: scheme})
-		if err != nil {
-			return err
-		}
-
-		rawClient, err = kubernetes.NewForConfig(restConfig)
 		if err != nil {
 			return err
 		}

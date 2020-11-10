@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -10,11 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, user string) (string, error) {
+func getPassword(ctx context.Context, clusterUniqueName, user string) (string, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
-		Name:      "root-password-" + moco.UniqueName(cluster),
+		Name:      "root-password-" + clusterUniqueName,
 	}, secret)
 	if err != nil {
 		return "", err
@@ -34,4 +35,20 @@ func getPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, user s
 		return "", errors.New("unknown user: " + user)
 	}
 	return string(password), nil
+}
+
+func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) (string, error) {
+	if mysqlConfig.index >= int(cluster.Spec.Replicas) {
+		return "", errors.New("index should be smaller than replicas")
+	}
+	index := mysqlConfig.index
+	if mysqlConfig.index < 0 {
+		if cluster.Status.CurrentPrimaryIndex != nil {
+			index = *cluster.Status.CurrentPrimaryIndex
+		} else {
+			return "", errors.New("primary instance not found")
+		}
+	}
+
+	return fmt.Sprintf("%s-%d", moco.UniqueName(cluster), index), nil
 }
