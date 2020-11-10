@@ -638,6 +638,34 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
 		})
+
+		It("should use logRotationSecurityContext", func() {
+			newCluster := &mocov1alpha1.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			id := int64(10000)
+			securityContext := &corev1.PodSecurityContext{
+				RunAsUser:  &id,
+				RunAsGroup: &id,
+			}
+			newCluster.Spec.LogRotationSecurityContext = securityContext
+			err = k8sClient.Update(ctx, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createOrUpdateCronJob(ctx, reconciler.Log, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			cronJob := &batchv1beta1.CronJob{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0), Namespace: cluster.Namespace}, cronJob)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(cronJob).ShouldNot(BeNil())
+			Expect(cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext).Should(Equal(securityContext))
+
+			isUpdated, err = reconciler.createOrUpdateCronJob(ctx, reconciler.Log, newCluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeFalse())
+		})
 	})
 
 	Context("Services", func() {

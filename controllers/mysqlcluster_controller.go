@@ -998,6 +998,7 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 // createOrUpdateCronJob doesn't remove cron jobs when the replica number is decreased
 func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	isUpdated := false
+
 	for i := int32(0); i < cluster.Spec.Replicas; i++ {
 		cronJob := &batchv1beta1.CronJob{}
 		cronJob.SetNamespace(cluster.Namespace)
@@ -1018,6 +1019,10 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 			if !equality.Semantic.DeepDerivative(containers, cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers) {
 				cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = containers
 			}
+			if !equality.Semantic.DeepDerivative(cluster.Spec.LogRotationSecurityContext, cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext) {
+				cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext = cluster.Spec.LogRotationSecurityContext
+			}
+
 			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
 		})
 		if err != nil {
