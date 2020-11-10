@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"os"
+	"time"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	dockerterm "github.com/docker/docker/pkg/term"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	cmdexec "k8s.io/kubectl/pkg/cmd/exec"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+)
+
+const (
+	defaultPodExecTimeout = 60 * time.Second
+	mysqldContainerName   = "mysqld"
 )
 
 var mysqlConfig struct {
@@ -31,15 +33,14 @@ var mysqlCmd = &cobra.Command{
 	Long:  "Run mysql command in a specified MySQL instance.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runMySQLCommand(cmd.Context(), args[0], args[1:])
+		return runMySQLCommand(cmd.Context(), args[0], cmd, args[1:])
 	},
 }
 
-func runMySQLCommand(ctx context.Context, clusterName string, args []string) error {
+func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command, args []string) error {
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
-
 	cluster := &mocov1alpha1.MySQLCluster{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
@@ -49,60 +50,37 @@ func runMySQLCommand(ctx context.Context, clusterName string, args []string) err
 		return err
 	}
 
-	if mysqlConfig.index >= int(cluster.Spec.Replicas) {
-		return errors.New("index should be smaller than replicas")
+	podName, err := getPodName(ctx, cluster)
+	if err != nil {
+		return err
 	}
-	index := mysqlConfig.index
-	if mysqlConfig.index < 0 {
-		if cluster.Status.CurrentPrimaryIndex != nil {
-			index = *cluster.Status.CurrentPrimaryIndex
-		} else {
-			return errors.New("primary instance not found")
-		}
-	}
-
-	podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), index)
-	password, err := getPassword(ctx, cluster, mysqlConfig.user)
+	password, err := getPassword(ctx, moco.UniqueName(cluster), mysqlConfig.user)
 	if err != nil {
 		return err
 	}
 
-	commands := append([]string{"mysql", "-u", mysqlConfig.user, "-p" + password}, args...)
-	err = execCommand(restConfig, rawClient, mysqlConfig.stdin, mysqlConfig.tty, cluster.Namespace, podName, commands)
+	commands := append([]string{podName, "--", "mysql", "-u", mysqlConfig.user, "-p" + password}, args...)
+	argsLenAtDash := 2
+	options := &cmdexec.ExecOptions{
+		StreamOptions: cmdexec.StreamOptions{
+			IOStreams: genericclioptions.IOStreams{
+				In:     os.Stdin,
+				Out:    os.Stdout,
+				ErrOut: os.Stderr,
+			},
+			Stdin:         mysqlConfig.stdin,
+			TTY:           mysqlConfig.tty,
+			ContainerName: mysqldContainerName,
+		},
 
-	return err
-}
+		Executor: &cmdexec.DefaultRemoteExecutor{},
+	}
+	cmdutil.AddPodRunningTimeoutFlag(cmd, defaultPodExecTimeout)
+	cmdutil.CheckErr(options.Complete(factory, cmd, commands, argsLenAtDash))
+	cmdutil.CheckErr(options.Validate())
+	cmdutil.CheckErr(options.Run())
 
-func execCommand(config *rest.Config, client *kubernetes.Clientset, in, tty bool, namespace, pod string, commands []string) error {
-	req := client.CoreV1().RESTClient().Post().
-		Resource("pods").
-		Name(pod).
-		Namespace(namespace).
-		SubResource("exec")
-	req.VersionedParams(&corev1.PodExecOptions{
-		Container: moco.MysqldContainerName,
-		Command:   commands,
-		Stdin:     in,
-		Stdout:    true,
-		Stderr:    true,
-		TTY:       in && tty,
-	}, scheme.ParameterCodec)
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
-	if err != nil {
-		return err
-	}
-	stdin, stdout, stderr := dockerterm.StdStreams()
-	opt := remotecommand.StreamOptions{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
-		Tty:    in && tty,
-	}
-	if !in {
-		opt.Stdin = nil
-	}
-
-	return exec.Stream(opt)
+	return nil
 }
 
 func init() {

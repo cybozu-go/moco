@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +36,7 @@ func fetchCredential(ctx context.Context, clusterName string) error {
 	if err != nil {
 		return err
 	}
-	password, err := getPassword(ctx, cluster, credentialConfig.user)
+	password, err := getPassword(ctx, moco.UniqueName(cluster), credentialConfig.user)
 	if err != nil {
 		return err
 	}
