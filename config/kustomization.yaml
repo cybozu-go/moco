@@ -1,4 +1,7 @@
 namespace: moco-system
+namePrefix: moco-
+commonLabels:
+  app.kubernetes.io/name: moco
 bases:
 - ./crd
 - ./rbac
