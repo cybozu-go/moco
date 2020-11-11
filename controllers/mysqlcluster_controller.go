@@ -48,6 +48,7 @@ const (
 	tmpVolumeName                     = "tmp"
 	mysqlConfTemplateVolumeName       = "mysql-conf-template"
 	replicationSourceSecretVolumeName = "replication-source-secret"
+	myCnfSecretVolumeName             = "my-cnf-secret"
 
 	passwordBytes = 16
 
@@ -56,6 +57,7 @@ const (
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
 
 	rootPasswordSecretPrefix = "root-password-"
+	myCnfSecretPrefix        = "my-cnf-"
 	serviceAccountPrefix     = "mysqld-sa-"
 )
 
@@ -347,7 +349,43 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return false, err
 	}
 
+	err = r.createMyCnfSecretForLocalCLI(ctx, cluster)
+	if err != nil {
+		log.Error(err, "unable to create Secret for local CLI")
+		return false, err
+	}
+
 	return true, nil
+}
+
+func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
+	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+	rootPasswordSecret := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: rootPasswordSecretName}, rootPasswordSecret)
+	if err != nil {
+		return err
+	}
+	rootPass := rootPasswordSecret.Data[moco.RootPasswordKey]
+	readOnlyPass := rootPasswordSecret.Data[moco.ReadOnlyPasswordKey]
+	writablePass := rootPasswordSecret.Data[moco.WritablePasswordKey]
+
+	secretName := myCnfSecretPrefix + moco.UniqueName(cluster)
+	secret := &corev1.Secret{}
+	secret.SetNamespace(cluster.Namespace)
+	secret.SetName(secretName)
+	setStandardLabels(&secret.ObjectMeta, cluster)
+	secret.Data = map[string][]byte{
+		moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
+		moco.ReadOnlyMyCnfKey: formatCredentialAsMyCnf(moco.ReadOnlyUser, string(readOnlyPass)),
+		moco.WritableMyCnfKey: formatCredentialAsMyCnf(moco.WritableUser, string(writablePass)),
+	}
+
+	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	return r.Client.Create(ctx, secret)
 }
 
 func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, operatorPass, replicatorPass, donorPass []byte) error {
@@ -700,6 +738,14 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				},
 			},
 		},
+		corev1.Volume{
+			Name: myCnfSecretVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: myCnfSecretPrefix + moco.UniqueName(cluster),
+				},
+			},
+		},
 	)
 
 	// find "mysqld" container and update it
@@ -743,6 +789,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			corev1.VolumeMount{
 				MountPath: moco.TmpPath,
 				Name:      tmpVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: moco.MyCnfSecretPath,
+				Name:      myCnfSecretVolumeName,
 			},
 		)
 		newTemplate.Spec.Containers[i] = *c
@@ -1241,4 +1291,11 @@ func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionTyp
 		}
 	}
 	return nil
+}
+
+func formatCredentialAsMyCnf(user, password string) []byte {
+	return []byte(fmt.Sprintf(`[client]
+user="%s"
+password="%s"
+`, user, password))
 }

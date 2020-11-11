@@ -132,6 +132,8 @@ var _ = Describe("MySQLCluster controller", func() {
 			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
 			initSecretNS := cluster.Namespace
 			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+			myCnfSecretName := myCnfSecretPrefix + moco.UniqueName(cluster)
+			myCnfSecretNS := cluster.Namespace
 
 			initSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
@@ -150,6 +152,14 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
+
+			myCnfSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.RootMyCnfKey))
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.ReadOnlyMyCnfKey))
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.WritableMyCnfKey))
 
 			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -364,6 +374,43 @@ var _ = Describe("MySQLCluster controller", func() {
 			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
+		})
+
+		It("should mount volumes of MyCnfSecret", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.ReplicationSourceSecretName = &replicationSourceSecretName
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var mysqldContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "mysqld" {
+					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+			Expect(mysqldContainer).ShouldNot(BeNil())
+			Expect(len(mysqldContainer.VolumeMounts)).Should(Equal(6))
+			Expect(mysqldContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
+				MountPath: moco.MyCnfSecretPath,
+				Name:      myCnfSecretVolumeName,
+			}))
+			defaultMode := corev1.SecretVolumeSourceDefaultMode
+			Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElement(corev1.Volume{
+				Name: myCnfSecretVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName:  myCnfSecretPrefix + moco.UniqueName(cluster),
+						DefaultMode: &defaultMode,
+					},
+				},
+			}))
 		})
 
 		It("should mount volumes of ReplicationSourceSecret", func() {
