@@ -5,6 +5,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2020-11-11
+
+### Added
+
+- Add support for [klog](https://github.com/kubernetes/klog) options to `kubectl-moco` plugin (#110).
+- Add `logRotationSecurityContext` field to `MySQLCluster` CRD to give PodSecurityContext for the log rotation CronJob (#111).
+
+### Fixed
+
+- Fix the location of an annotation in the deployment manifest (#107).
+- Fix the behavior of `-it` option for `kubectl-moco` plugin (#109).
+- Fix the default value of `-u` option for `kubectl-moco` plugin (#109).
+- Add `moco-` prefix to the names in the deployment manifest (#112).  **You need to delete `moco-controller-manager` Deployment to apply the updated manifest.**
+- Remove the resource limits for the controller from the deployment manifest (#115).
+
 ## [0.3.0] - 2020-11-05
 
 ### Added
@@ -46,7 +61,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/cybozu-go/moco/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cybozu-go/moco/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cybozu-go/moco/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/cybozu-go/moco/compare/v0.1.0...v0.1.1
