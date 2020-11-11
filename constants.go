@@ -59,6 +59,9 @@ const (
 	// TmpPath is a path for /tmp.
 	TmpPath = "/tmp"
 
+	// MyCnfSecretPath is the path for my.cnf formated credentials for CLI
+	MyCnfSecretPath = "/mysql-credentials"
+
 	// MySQLConfTemplatePath is
 	MySQLConfTemplatePath = "/etc/mysql_template"
 
@@ -169,13 +172,13 @@ const (
 	WritablePasswordKey = "WRITABLE_PASSWORD"
 
 	// RootMyCnfKey is the username and password of root formated as my.cnf
-	RootMyCnfKey = "root-my.cnf"
+	RootMyCnfKey = RootUser + "-my.cnf"
 
 	// ReadOnlyMyCnfKey is the username and password of moco-readonly formated as my.cnf
-	ReadOnlyMyCnfKey = "moco-readonly-my.cnf"
+	ReadOnlyMyCnfKey = ReadOnlyUser + "-my.cnf"
 
 	// WritableMyCnfKey is the username and password or moco-writable formated as my.cnf
-	WritableMyCnfKey = "moco-writable-my.cnf"
+	WritableMyCnfKey = WritableUser + "-my.cnf"
 
 	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
 	ReplicationSourcePrimaryHostKey            = "PRIMARY_HOST"

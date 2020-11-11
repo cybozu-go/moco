@@ -48,6 +48,7 @@ const (
 	tmpVolumeName                     = "tmp"
 	mysqlConfTemplateVolumeName       = "mysql-conf-template"
 	replicationSourceSecretVolumeName = "replication-source-secret"
+	myCnfSecretVolumeName             = "my-cnf-secret"
 
 	passwordBytes = 16
 
@@ -737,6 +738,14 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				},
 			},
 		},
+		corev1.Volume{
+			Name: myCnfSecretVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: myCnfSecretPrefix + moco.UniqueName(cluster),
+				},
+			},
+		},
 	)
 
 	// find "mysqld" container and update it
@@ -780,6 +789,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			corev1.VolumeMount{
 				MountPath: moco.TmpPath,
 				Name:      tmpVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: moco.MyCnfSecretPath,
+				Name:      myCnfSecretVolumeName,
 			},
 		)
 		newTemplate.Spec.Containers[i] = *c
