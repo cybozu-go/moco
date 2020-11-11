@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   labels:
     control-plane: moco-controller-manager
-  name: moco-system
+  name: system
