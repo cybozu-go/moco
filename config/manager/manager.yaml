@@ -26,12 +26,8 @@ spec:
         - /moco-controller
         image: ghcr.io/cybozu-go/moco:latest
         resources:
-          limits:
-            cpu: 4000m
-            memory: 2Gi
           requests:
-            cpu: 1000m
-            memory: 512Mi
+            memory: 256Mi
         env:
         - name: POD_NAMESPACE
           valueFrom:
