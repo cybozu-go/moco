@@ -132,6 +132,8 @@ var _ = Describe("MySQLCluster controller", func() {
 			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
 			initSecretNS := cluster.Namespace
 			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+			myCnfSecretName := myCnfSecretPrefix + moco.UniqueName(cluster)
+			myCnfSecretNS := cluster.Namespace
 
 			initSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
@@ -142,6 +144,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
 
 			ctrlSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: ctrlSecretNS, Name: ctrlSecretName}, ctrlSecret)
@@ -150,6 +153,14 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
+
+			myCnfSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.RootMyCnfKey))
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.ReadOnlyMyCnfKey))
+			Expect(myCnfSecret.Data).Should(HaveKey(moco.WritableMyCnfKey))
 
 			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())

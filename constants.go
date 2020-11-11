@@ -8,6 +8,9 @@ import (
 )
 
 const (
+	// RootUser is the name of root user in the MySQL context.
+	RootUser = "root"
+
 	// OperatorUser is a name of MOCO operator user in the MySQL context.
 	OperatorUser = "moco"
 
@@ -164,6 +167,15 @@ const (
 
 	// ReadOnlyPasswordKey is a Secret key for moco-writable user password.
 	WritablePasswordKey = "WRITABLE_PASSWORD"
+
+	// RootMyCnfKey is the username and password of root formated as my.cnf
+	RootMyCnfKey = "root-my.cnf"
+
+	// ReadOnlyMyCnfKey is the username and password of moco-readonly formated as my.cnf
+	ReadOnlyMyCnfKey = "moco-readonly-my.cnf"
+
+	// WritableMyCnfKey is the username and password or moco-writable formated as my.cnf
+	WritableMyCnfKey = "moco-writable-my.cnf"
 
 	// ReplicationSourcePrimaryHostKey etc. are Secret key for replication source secret
 	ReplicationSourcePrimaryHostKey            = "PRIMARY_HOST"
