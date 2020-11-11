@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -54,12 +55,9 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 	if err != nil {
 		return err
 	}
-	password, err := getPassword(ctx, moco.UniqueName(cluster), mysqlConfig.user)
-	if err != nil {
-		return err
-	}
 
-	commands := append([]string{podName, "--", "mysql", "-u", mysqlConfig.user, "-p" + password}, args...)
+	myCnfPath := fmt.Sprintf("%s/%s-my.cnf", moco.MyCnfSecretPath, mysqlConfig.user)
+	commands := append([]string{podName, "--", "mysql", "--defaults-extra-file=" + myCnfPath}, args...)
 	argsLenAtDash := 2
 	options := &cmdexec.ExecOptions{
 		StreamOptions: cmdexec.StreamOptions{

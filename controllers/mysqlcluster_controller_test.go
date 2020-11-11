@@ -144,7 +144,6 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
 			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
 
 			ctrlSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: ctrlSecretNS, Name: ctrlSecretName}, ctrlSecret)
