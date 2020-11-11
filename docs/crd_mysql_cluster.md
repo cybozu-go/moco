@@ -26,6 +26,7 @@ MySQLClusterSpec
 | `rootPasswordSecretName`      | string                              | No       | `Secret` name for root user config.                                                                                                                                                                        |
 | `replicationSourceSecretName` | string                              | No       | `Secret` name which contains replication source info. Keys must appear in [Options].<br/> If this field is given, the `MySQLCluster` works as an intermediate primary (i.e., works as read-only replicas). |
 | `logRotationSchedule`         | string                              | No       | Schedule in Cron format for MySQL log rotation.                                                                                                                                                            |
+| `logRotationSecurityContext`  | [PodSecurityContext]                | No       | PodSecurityContext for MySQL log rotation Job's Pod.                                                                                                                                                       |
 | `restore`                     | [RestoreSpec](#RestoreSpec)         | No       | Specification to perform Point-in-Time-Recovery from existing cluster.<br/> If this field is filled, start restoring. This field is unable to be updated.                                                  |
 
 The configMap specified with `mysqlConfigMapName` contains MySQL options of `mysqld` section as key-value pairs.
@@ -93,9 +94,10 @@ MySQLClusterConditionType
 
 
 [ObjectMeta]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#objectmeta-v1-meta
-[Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta
+[Options]: https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html
 [PersistentVolumeClaim]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumeclaim-v1-core
 [PersistentVolumeClaimSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#persistentvolumeclaimspec-v1-core
+[PodSecurityContext]: https://v1-18.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podsecuritycontext-v1-core
 [PodTemplateSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#podtemplatespec-v1-core
 [ServiceSpec]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#servicespec-v1-core
-[Options]: https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html
+[Time]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#time-v1-meta
