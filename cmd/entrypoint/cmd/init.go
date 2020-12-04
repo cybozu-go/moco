@@ -31,8 +31,12 @@ var initCmd = &cobra.Command{
 			log.Info("start initialization", nil)
 			err := initialize.InitializeOnce(ctx, initOnceCompletedPath, passwordFilePath, miscConfPath)
 			if err != nil {
-				f, err := ioutil.ReadFile("/var/log/mysql/mysql.err")
-				if err != nil {
+				f, err2 := ioutil.ReadFile("/var/log/mysql/mysql.err")
+				if err2 != nil {
+					log.Error("failed to read mysql.err", map[string]interface{}{
+						log.FnError: err2,
+					})
+					// original error is more important, so return it
 					return err
 				}
 
