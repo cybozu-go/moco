@@ -30,6 +30,9 @@ jobs:
       - run: make test
   e2e:
     name: End-to-End Tests
+    strategy:
+      matrix:
+        mysql-version: ["8.0.18.1", "8.0.20.1", "8.0.21.1", "8.0.22.1"]
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
@@ -39,7 +42,7 @@ jobs:
           cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
       - run: sudo mkdir /mnt/local-path-provisioner
       - id: run_e2e_test
-        run: cd e2e && make KIND_CLUSTER_CONFIG_SUFFIX=-actions test
+        run: cd e2e && make test KIND_CLUSTER_CONFIG_SUFFIX=-actions MYSQL_VERSION=${{ matrix.mysql-version }}
 
       # Print status and log of each component
       - run: |

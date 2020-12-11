@@ -56,7 +56,7 @@ build-moco-image: $(GO_FILES) ../Dockerfile
 
 .PHONY: build-mysql-image
 build-mysql-image: $(GO_FILES) Dockerfile
-	docker build .. -f Dockerfile -t mysql:dev
+	docker build .. -f Dockerfile -t mysql:dev --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 
 $(KUBECTL_MOCO):
 	mkdir -p bin
