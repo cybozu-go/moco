@@ -18,7 +18,7 @@ var credentialConfig struct {
 
 // credentialCmd represents the credential command
 var credentialCmd = &cobra.Command{
-	Use:   "credential",
+	Use:   "credential <CLUSTER_NAME>",
 	Short: "Fetch the credential of a specified user",
 	Long:  "Fetch the credential of a specified user.",
 	Args:  cobra.ExactArgs(1),
