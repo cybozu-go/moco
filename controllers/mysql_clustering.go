@@ -57,7 +57,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	}
 
 	for _, o := range op.Operators {
-		log.Info("Run operation", "name", o.Name(), "description", o.Describe())
+		log.Info("run operation", "name", o.Name(), "description", o.Describe())
 		err = o.Run(ctx, infra, cluster, status)
 		if err != nil {
 			condErr := r.setFailureCondition(ctx, cluster, err, nil)
@@ -81,7 +81,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	updateMetrics(cluster, op)
 
 	if op.Wait {
-		log.Info("Waiting")
+		log.Info("waiting")
 		return ctrl.Result{RequeueAfter: r.WaitTime}, nil
 	}
 	if len(op.Operators) > 0 {
