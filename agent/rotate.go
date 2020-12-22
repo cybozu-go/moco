@@ -65,9 +65,7 @@ func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	podName := os.Getenv(moco.PodNameEnvName)
-
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", podName, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		metrics.IncrementLogRotationFailureCountMetrics()

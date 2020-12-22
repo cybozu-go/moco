@@ -165,7 +165,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 
 	well.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		a.clone(ctx, a.miscUserPassword, donorUser, donorPassword, donorHostName, donorPort)
+		a.clone(ctx, donorUser, donorPassword, donorHostName, donorPort)
 		if externalMode {
 			err := waitBootstrap(ctx, initUser, initPassword)
 			if err != nil {
@@ -199,8 +199,8 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *Agent) clone(ctx context.Context, miscPassword, donorUser, donorPassword, donorHostName string, donorPort int) {
-	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, miscPassword)
+func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostName string, donorPort int) {
+	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		log.Error("failed to get database", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
