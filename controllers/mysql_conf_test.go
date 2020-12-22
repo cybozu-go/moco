@@ -13,11 +13,11 @@ func TestMySQLConfGenerator(t *testing.T) {
 		"pid-file":                            "/invalid/pid",
 		"debug":                               "+P",
 		"skip-character-set-client-handshake": "ON",
-	}, false)
+	})
 	gen.mergeSection("mysqld", map[string]string{
 		"binlog-format":                        "ROW",
 		"loose_character_set_client_handshake": "ON",
-	}, false)
+	})
 	gen.merge(map[string]map[string]string{
 		"client": {
 			"port": "3306",
@@ -26,7 +26,7 @@ func TestMySQLConfGenerator(t *testing.T) {
 			"datadir":  "/var/lib/mysql",
 			"pid_file": "/var/run/mysqld/mysqld.pid",
 		},
-	}, false)
+	})
 
 	actual, err := gen.generate()
 	if err != nil {
