@@ -14,6 +14,11 @@ import (
 
 // RotateLog rotes log files
 func (a *Agent) RotateLog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	token := r.URL.Query().Get(moco.AgentTokenParam)
 	if token != a.token {
 		w.WriteHeader(http.StatusBadRequest)
