@@ -1089,30 +1089,31 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 
 func (r *MySQLClusterReconciler) createOrUpdateServices(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	primaryServiceName := fmt.Sprintf("%s-primary", moco.UniqueName(cluster))
-	primaryIsUpdated, err := r.createOrUpdateService(ctx, cluster, primaryServiceName)
+	primaryIsUpdated, op, err := r.createOrUpdateService(ctx, cluster, primaryServiceName)
 	if err != nil {
 		log.Error(err, "unable to create-or-update Primary Service")
 		return false, err
 	}
 	if primaryIsUpdated {
-		log.Info("reconcile Primary Service successfully")
+		log.Info("reconcile Primary Service successfully", "op", op)
 	}
 
 	replicaServiceName := fmt.Sprintf("%s-replica", moco.UniqueName(cluster))
-	replicaIsUpdated, err := r.createOrUpdateService(ctx, cluster, replicaServiceName)
+	replicaIsUpdated, op, err := r.createOrUpdateService(ctx, cluster, replicaServiceName)
 	if err != nil {
 		log.Error(err, "unable to create-or-update Replica Service")
 		return false, err
 	}
 	if replicaIsUpdated {
-		log.Info("reconcile Replica Service successfully")
+		log.Info("reconcile Replica Service successfully", "op", op)
 	}
 
 	return primaryIsUpdated || replicaIsUpdated, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, svcName string) (bool, error) {
+func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, svcName string) (bool, controllerutil.OperationResult, error) {
 	isUpdated := false
+
 	svc := &corev1.Service{}
 	svc.SetNamespace(cluster.Namespace)
 	svc.SetName(svcName)
@@ -1179,13 +1180,13 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 		return ctrl.SetControllerReference(cluster, svc, r.Scheme)
 	})
 	if err != nil {
-		return false, err
+		return false, op, err
 	}
 
 	if op != controllerutil.OperationResultNone {
 		isUpdated = true
 	}
-	return isUpdated, nil
+	return isUpdated, op, nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdatePodDisruptionBudget(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
