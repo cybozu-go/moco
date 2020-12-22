@@ -99,7 +99,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 	cluster := &mocov1alpha1.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
-		log.Error(err, "unable to fetch MySQLCluster", "name", req.NamespacedName)
+		log.Error(err, "unable to fetch MySQLCluster")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -109,7 +109,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			controllerutil.AddFinalizer(cluster2, mysqlClusterFinalizer)
 			patch := client.MergeFrom(cluster)
 			if err := r.Patch(ctx, cluster2, patch); err != nil {
-				log.Error(err, "failed to add finalizer", "name", cluster.Name)
+				log.Error(err, "failed to add finalizer")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{Requeue: true}, nil
@@ -162,7 +162,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("start finalizing MySQLCluster", "name", cluster.Name)
+	log.Info("start finalizing MySQLCluster")
 	err := r.removePasswordSecretForController(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -173,7 +173,7 @@ func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	controllerutil.RemoveFinalizer(cluster2, mysqlClusterFinalizer)
 	patch := client.MergeFrom(cluster)
 	if err := r.Patch(ctx, cluster2, patch); err != nil {
-		log.Error(err, "failed to remove finalizer", "name", cluster.Name)
+		log.Error(err, "failed to remove finalizer")
 		return ctrl.Result{}, err
 	}
 
