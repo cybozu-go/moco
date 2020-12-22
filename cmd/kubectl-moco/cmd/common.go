@@ -37,12 +37,11 @@ func getPassword(ctx context.Context, clusterUniqueName, user string) (string, e
 	return string(password), nil
 }
 
-func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) (string, error) {
-	if mysqlConfig.index >= int(cluster.Spec.Replicas) {
+func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (string, error) {
+	if index >= int(cluster.Spec.Replicas) {
 		return "", errors.New("index should be smaller than replicas")
 	}
-	index := mysqlConfig.index
-	if mysqlConfig.index < 0 {
+	if index < 0 {
 		if cluster.Status.CurrentPrimaryIndex != nil {
 			index = *cluster.Status.CurrentPrimaryIndex
 		} else {

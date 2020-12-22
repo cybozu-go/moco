@@ -51,7 +51,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 		return err
 	}
 
-	podName, err := getPodName(ctx, cluster)
+	podName, err := getPodName(ctx, cluster, mysqlConfig.index)
 	if err != nil {
 		return err
 	}
