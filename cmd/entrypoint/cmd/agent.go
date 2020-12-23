@@ -28,14 +28,16 @@ const (
 	readTimeoutFlag       = "read-timeout"
 )
 
-type logger struct{}
+type mysqlLogger struct{}
 
-func (l logger) Println(v ...interface{}) {
-	log.Error("[promhttp] "+fmt.Sprint(v...), nil)
+func (l mysqlLogger) Print(v ...interface{}) {
+	log.Error("[mysql] "+fmt.Sprint(v...), nil)
 }
 
-func (l logger) Print(v ...interface{}) {
-	log.Error("[mysql] "+fmt.Sprint(v...), nil)
+type promhttpLogger struct{}
+
+func (l promhttpLogger) Println(v ...interface{}) {
+	log.Error("[promhttp] "+fmt.Sprint(v...), nil)
 }
 
 var agentCmd = &cobra.Command{
@@ -77,14 +79,14 @@ var agentCmd = &cobra.Command{
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 		mux.HandleFunc("/health", agent.Health)
-		mysql.SetLogger(mysql.Logger(logger{}))
+		mysql.SetLogger(mysqlLogger{})
 
 		registry := prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
 		mux.Handle("/metrics", promhttp.HandlerFor(
 			registry,
 			promhttp.HandlerOpts{
-				ErrorLog:      logger{},
+				ErrorLog:      promhttpLogger{},
 				ErrorHandling: promhttp.ContinueOnError,
 			},
 		))
