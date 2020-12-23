@@ -27,11 +27,9 @@ spec:
             port: 9080
           initialDelaySeconds: 10
           periodSeconds: 5
-      - name: err-filebeat
+      - name: err-log
         image: quay.io/cybozu/filebeat:7.9.2.1
-        args: [
-          "-c", "/etc/filebeat.yml",
-        ]
+        args: ["-c", "/etc/filebeat.yml"]
         volumeMounts:
         - name: err-filebeat-config
           mountPath: /etc/filebeat.yml
@@ -44,11 +42,9 @@ spec:
           readOnly: true
         - name: tmp
           mountPath: /tmp
-      - name: slow-filebeat
+      - name: slow-log
         image: quay.io/cybozu/filebeat:7.9.2.1
-        args: [
-          "-c", "/etc/filebeat.yml",
-        ]
+        args: ["-c", "/etc/filebeat.yml"]
         volumeMounts:
         - name: slow-filebeat-config
           mountPath: /etc/filebeat.yml
@@ -108,7 +104,7 @@ data:
         - /var/log/mysql/mysql.err*
     output.console:
       codec.format:
-        string: '%{[@timestamp]} %{[message]}'
+        string: '%{[message]}'
     logging.files:
       path: /tmp
       name: filebeat
@@ -129,7 +125,7 @@ data:
         - /var/log/mysql/mysql.slow*
     output.console:
       codec.format:
-        string: '%{[@timestamp]} %{[message]}'
+        string: '%{[message]}'
     logging.files:
       path: /tmp
       name: filebeat

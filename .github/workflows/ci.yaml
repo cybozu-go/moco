@@ -40,12 +40,34 @@ jobs:
       - run: sudo mkdir /mnt/local-path-provisioner
       - id: run_e2e_test
         run: cd e2e && make KIND_CLUSTER_CONFIG_SUFFIX=-actions test
-      - if: failure() && steps.run_e2e_test.outcome == 'failure'
-        run: |
-          ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
-          ./e2e/bin/kubectl -n e2e-test-external get statefulsets
-          ./e2e/bin/kubectl -n e2e-test-external get pods
-          ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
-          ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1
+
+      # Print status and log of each component
+      - run: |
           top -b -n 1
           df -h
+        if: always()
+      - run: ./e2e/bin/kubectl -n moco-system get all
+        if: always()
+      - run: |
+          ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
+          ./e2e/bin/kubectl -n e2e-test-external get all
+        if: always()
+      - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
+        if: always()
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v well
+        if: always()
+      - name: error log (e2e-test-external, 0)
+        run: |
+          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
+          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-0 -c err-log --tail=-1
+        if: always()
+      - name: error log (e2e-test-external, 1)
+        run: |
+          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
+          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-1 -c err-log --tail=-1
+        if: always()
+      - name: error log (e2e-test-external, 2)
+        run: |
+          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
+          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-2 -c err-log --tail=-1
+        if: always()
