@@ -43,16 +43,25 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var externalMode bool
+	external := r.URL.Query().Get(moco.CloneParamExternal)
+	switch external {
+	case "true":
+		externalMode = true
+	case "":
+		externalMode = false
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	var donorHostName string
 	var donorPort int
 	var donorUser string
 	var donorPassword string
 	var initUser string
 	var initPassword string
-	var externalMode bool
-
-	external := r.URL.Query().Get(moco.CloneParamExternal)
-	if external != "true" {
+	if !externalMode {
 		donorHostName = r.URL.Query().Get(moco.CloneParamDonorHostName)
 		if len(donorHostName) <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
@@ -74,8 +83,6 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		donorUser = moco.CloneDonorUser
 		donorPassword = a.donorUserPassword
 	} else {
-		externalMode = true
-
 		rawDonorHostName, err := ioutil.ReadFile(a.replicationSourceSecretPath + "/" + moco.ReplicationSourcePrimaryHostKey)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
