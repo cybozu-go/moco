@@ -1113,7 +1113,6 @@ func (r *MySQLClusterReconciler) createOrUpdateServices(ctx context.Context, log
 
 func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, svcName string) (bool, controllerutil.OperationResult, error) {
 	isUpdated := false
-
 	svc := &corev1.Service{}
 	svc.SetNamespace(cluster.Namespace)
 	svc.SetName(svcName)
