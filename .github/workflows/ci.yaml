@@ -32,7 +32,7 @@ jobs:
     name: End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18.1", "8.0.20.1", "8.0.21.1", "8.0.22.1"]
+        mysql-version: ["8.0.18", "8.0.20"]
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
