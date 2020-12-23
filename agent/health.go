@@ -21,7 +21,7 @@ func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
 		log.Error("failed to get database", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -32,7 +32,7 @@ func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, fmt.Errorf("failed to get replica status: %w", err))
 		log.Error("failed to get replica status", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
@@ -48,7 +48,7 @@ func (a *Agent) Health(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, fmt.Errorf("failed to get clone status: %w", err))
 		log.Error("failed to get clone status", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
-			"port":      moco.MySQLAdminPort,
+			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
 		return
