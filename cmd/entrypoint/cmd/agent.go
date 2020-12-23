@@ -14,6 +14,7 @@ import (
 	"github.com/cybozu-go/moco/agent"
 	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
+	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -30,7 +31,11 @@ const (
 type logger struct{}
 
 func (l logger) Println(v ...interface{}) {
-	log.Error(fmt.Sprint(v...), nil)
+	log.Error("[promhttp] "+fmt.Sprint(v...), nil)
+}
+
+func (l logger) Print(v ...interface{}) {
+	log.Error("[mysql] "+fmt.Sprint(v...), nil)
 }
 
 var agentCmd = &cobra.Command{
@@ -72,6 +77,7 @@ var agentCmd = &cobra.Command{
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 		mux.HandleFunc("/health", agent.Health)
+		mysql.SetLogger(mysql.Logger(logger{}))
 
 		registry := prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
