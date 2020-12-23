@@ -44,7 +44,6 @@ func subMain() error {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      config.metricsAddr,
-		Port:                    9443,
 		LeaderElection:          true,
 		LeaderElectionID:        config.leaderElectionID,
 		LeaderElectionNamespace: os.Getenv("POD_NAMESPACE"),
