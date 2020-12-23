@@ -140,7 +140,7 @@ type mysqlConfGenerator struct {
 	log  logr.Logger
 }
 
-func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string, warn bool) {
+func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string) {
 	if g.conf == nil {
 		g.conf = make(map[string]map[string]string)
 	}
@@ -156,9 +156,9 @@ func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string
 	}
 }
 
-func (g *mysqlConfGenerator) merge(conf map[string]map[string]string, warn bool) {
+func (g *mysqlConfGenerator) merge(conf map[string]map[string]string) {
 	for k, v := range conf {
-		g.mergeSection(k, v, warn)
+		g.mergeSection(k, v)
 	}
 }
 

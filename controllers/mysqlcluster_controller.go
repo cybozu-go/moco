@@ -497,7 +497,7 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 		gen := mysqlConfGenerator{
 			log: log,
 		}
-		gen.mergeSection("mysqld", defaultMycnf, false)
+		gen.mergeSection("mysqld", defaultMycnf)
 
 		// Set innodb_buffer_pool_size if resources.requests.memory or resources.limits.memory is specified
 		mem := getMysqldContainerRequests(cluster, corev1.ResourceMemory)
@@ -505,7 +505,7 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			bufferSize := ((mem.Value() * moco.InnoDBBufferPoolRatioPercent) / 100) >> 20
 			// 128MiB is the default innodb_buffer_pool_size value
 			if bufferSize > 128 {
-				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": fmt.Sprintf("%dM", bufferSize)}, false)
+				gen.mergeSection("mysqld", map[string]string{"innodb_buffer_pool_size": fmt.Sprintf("%dM", bufferSize)})
 			}
 		}
 
@@ -515,10 +515,10 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 			if err != nil {
 				return err
 			}
-			gen.mergeSection("mysqld", cm.Data, false)
+			gen.mergeSection("mysqld", cm.Data)
 		}
 
-		gen.merge(constMycnf, true)
+		gen.merge(constMycnf)
 
 		myCnf, err := gen.generate()
 		if err != nil {
