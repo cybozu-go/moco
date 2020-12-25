@@ -14,6 +14,7 @@ import (
 	"github.com/cybozu-go/moco/agent"
 	"github.com/cybozu-go/moco/metrics"
 	"github.com/cybozu-go/well"
+	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -27,10 +28,16 @@ const (
 	readTimeoutFlag       = "read-timeout"
 )
 
-type logger struct{}
+type mysqlLogger struct{}
 
-func (l logger) Println(v ...interface{}) {
-	log.Error(fmt.Sprint(v...), nil)
+func (l mysqlLogger) Print(v ...interface{}) {
+	log.Error("[mysql] "+fmt.Sprint(v...), nil)
+}
+
+type promhttpLogger struct{}
+
+func (l promhttpLogger) Println(v ...interface{}) {
+	log.Error("[promhttp] "+fmt.Sprint(v...), nil)
 }
 
 var agentCmd = &cobra.Command{
@@ -72,13 +79,14 @@ var agentCmd = &cobra.Command{
 		mux.HandleFunc("/rotate", agent.RotateLog)
 		mux.HandleFunc("/clone", agent.Clone)
 		mux.HandleFunc("/health", agent.Health)
+		mysql.SetLogger(mysqlLogger{})
 
 		registry := prometheus.NewRegistry()
 		metrics.RegisterAgentMetrics(registry)
 		mux.Handle("/metrics", promhttp.HandlerFor(
 			registry,
 			promhttp.HandlerOpts{
-				ErrorLog:      logger{},
+				ErrorLog:      promhttpLogger{},
 				ErrorHandling: promhttp.ContinueOnError,
 			},
 		))
