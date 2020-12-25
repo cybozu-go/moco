@@ -223,20 +223,10 @@ func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostNa
 	_, err = db.ExecContext(ctx, `CLONE INSTANCE FROM ?@?:? IDENTIFIED BY ?`, donorUser, donorHostName, donorPort, donorPassword)
 	durationSeconds := time.Since(startTime).Seconds()
 
-	if err != nil {
-		if strings.HasPrefix(err.Error(), "Error 3707") {
-			metrics.UpdateCloneDurationSecondsMetrics(durationSeconds)
-
-			log.Info("success to exec mysql CLONE", map[string]interface{}{
-				"donor_hostname": donorHostName,
-				"donor_port":     donorPort,
-				"hostname":       a.mysqlAdminHostname,
-				"port":           a.mysqlAdminPort,
-				log.FnError:      err,
-			})
-			return
-		}
-
+	// After cloning, the recipient MySQL server instance is restarted (stopped and started) automatically.
+	// And then the "ERROR 3707" (Restart server failed) occurs. This error does not indicate a cloning failure.
+	// So checking the error number here.
+	if err != nil && !strings.HasPrefix(err.Error(), "Error 3707") {
 		metrics.IncrementCloneFailureCountMetrics()
 
 		log.Error("failed to exec mysql CLONE", map[string]interface{}{
@@ -256,6 +246,7 @@ func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostNa
 		"donor_port":     donorPort,
 		"hostname":       a.mysqlAdminHostname,
 		"port":           a.mysqlAdminPort,
+		log.FnError:      err,
 	})
 }
 
