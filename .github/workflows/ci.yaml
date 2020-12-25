@@ -41,10 +41,28 @@ jobs:
           sudo swapoff -a
           cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
       - run: sudo mkdir /mnt/local-path-provisioner
-      - id: run_e2e_test
-        run: cd e2e && make test KIND_CLUSTER_CONFIG_SUFFIX=-actions MYSQL_VERSION=${{ matrix.mysql-version }}
+      - run: cd e2e && make setup
+      - name: watch
+        run: |
+          ./e2e/script/watch_mysql.sh e2e-test          mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
+          ./e2e/script/watch_mysql.sh e2e-test-external mysqlcluster $VARIABLES > watch_mysql_e2e-external.txt &
+          ./e2e/script/watch_pod.sh e2e-test          > watch_pod_e2e.txt &
+          ./e2e/script/watch_pod.sh e2e-test-external > watch_pod_e2e-external.txt &
+      - run: cd e2e && make test KIND_CLUSTER_CONFIG_SUFFIX=-actions MYSQL_VERSION=${{ matrix.mysql-version }}
 
       # Print status and log of each component
+      - name: MySQL status (e2e-test)
+        run: cat watch_mysql_e2e.txt
+        if: always()
+      - name: MySQL status (e2e-test-external)
+        run: cat watch_mysql_e2e-external.txt
+        if: always()
+      - name: Pod (e2e-test)
+        run: cat watch_pod_e2e.txt
+        if: always()
+      - name: Pod (e2e-test-external)
+        run: cat watch_pod_e2e-external.txt
+        if: always()
       - run: |
           top -b -n 1
           df -h
