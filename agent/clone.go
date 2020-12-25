@@ -139,8 +139,8 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		a.sem.Release(1)
-		internalServerError(w, fmt.Errorf("failed to get database: %w", err))
-		log.Error("failed to get database", map[string]interface{}{
+		internalServerError(w, fmt.Errorf("failed to connect to database before getting MySQL primary status: %w", err))
+		log.Error("failed to connect to database before getting MySQL primary status", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
 			"port":      a.mysqlAdminPort,
 			log.FnError: err,
@@ -209,7 +209,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostName string, donorPort int) {
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
-		log.Error("failed to get database", map[string]interface{}{
+		log.Error("failed to connect to database before clone", map[string]interface{}{
 			"hostname":  a.mysqlAdminHostname,
 			"port":      a.mysqlAdminPort,
 			log.FnError: err,
