@@ -75,20 +75,14 @@ jobs:
         if: always()
       - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
         if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v well
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v "/health"
         if: always()
       - name: error log (e2e-test-external, 0)
-        run: |
-          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
-          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-0 -c err-log --tail=-1
+        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 0 err-log
         if: always()
       - name: error log (e2e-test-external, 1)
-        run: |
-          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
-          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-1 -c err-log --tail=-1
+        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 1 err-log
         if: always()
       - name: error log (e2e-test-external, 2)
-        run: |
-          STS_NAME=$(./e2e/bin/kubectl -n e2e-test-external get sts -lapp.kubernetes.io/name=moco-mysql -o jsonpath='{.items[0].metadata.name}')
-          ./e2e/bin/kubectl -n e2e-test-external logs ${STS_NAME}-2 -c err-log --tail=-1
+        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 2 err-log
         if: always()
