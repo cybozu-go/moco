@@ -176,7 +176,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		if externalMode {
 			err := waitBootstrap(ctx, initUser, initPassword)
 			if err != nil {
-				log.Error("mysqld didn't boot up after clone", map[string]interface{}{
+				log.Error("mysqld didn't boot up after cloning from external", map[string]interface{}{
 					"hostname":  a.mysqlAdminHostname,
 					"port":      a.mysqlAdminPort,
 					log.FnError: err,
