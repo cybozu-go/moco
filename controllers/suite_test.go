@@ -5,22 +5,20 @@ import (
 	"testing"
 	"time"
 
+	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -39,7 +37,7 @@ func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
 
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = "test-password"
+	conf.Passwd = "rootpassword"
 	conf.Net = "tcp"
 	conf.Addr = "localhost:3306"
 	conf.Timeout = 3

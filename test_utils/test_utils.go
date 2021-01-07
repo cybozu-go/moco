@@ -18,15 +18,14 @@ import (
 )
 
 const (
-	host            = "localhost"
-	userName        = "root"
-	password        = "test-password"
-	networkName     = "moco-test-net"
-	systemNamespace = "test-moco-system"
-	namespace       = "test-namespace"
-	token           = "test-token"
-	mySQLVersion    = "8.0.21"
+	Host        = "localhost"
+	UserName    = "root"
+	Password    = "rootpassword"
+	networkName = "moco-test-net"
 )
+
+// MySQLVersion is the version of MySQL used in small tests. This value is overwritten at runtime.
+var MySQLVersion = "8.0.20"
 
 func run(cmd *well.LogCmd) error {
 	outBuf := new(bytes.Buffer)
@@ -59,8 +58,8 @@ func StartMySQLD(name string, port int, serverID int) error {
 		"--name", name,
 		"-p", fmt.Sprintf("%d:%d", port, port),
 		"-v", filepath.Join(wd, "..", "my.cnf")+":/etc/mysql/conf.d/my.cnf",
-		"-e", "MYSQL_ROOT_PASSWORD="+password,
-		"mysql:"+mySQLVersion,
+		"-e", "MYSQL_ROOT_PASSWORD="+Password,
+		"mysql:"+MySQLVersion,
 		fmt.Sprintf("--port=%d", port),
 		fmt.Sprintf("--server-id=%d", serverID),
 	)
@@ -93,10 +92,10 @@ func RemoveNetwork() error {
 
 func InitializeMySQL(port int) error {
 	conf := mysql.NewConfig()
-	conf.User = userName
-	conf.Passwd = password
+	conf.User = UserName
+	conf.Passwd = Password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	var db *sqlx.DB
@@ -113,7 +112,7 @@ func InitializeMySQL(port int) error {
 	}
 
 	for _, user := range []string{moco.OperatorAdminUser, moco.CloneDonorUser, moco.MiscUser} {
-		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, password)
+		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, Password)
 		if err != nil {
 			return err
 		}
@@ -156,9 +155,9 @@ func InitializeMySQL(port int) error {
 func PrepareTestData(port int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = password
+	conf.Passwd = Password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	db, err := sqlx.Connect("mysql", conf.FormatDSN())
@@ -185,9 +184,9 @@ func PrepareTestData(port int) error {
 func SetValidDonorList(port int, donorHost string, donorPort int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = password
+	conf.Passwd = Password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	db, err := sqlx.Connect("mysql", conf.FormatDSN())
@@ -206,9 +205,9 @@ func SetValidDonorList(port int, donorHost string, donorPort int) error {
 func ResetMaster(port int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = password
+	conf.Passwd = Password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	db, err := sqlx.Connect("mysql", conf.FormatDSN())
@@ -222,9 +221,9 @@ func ResetMaster(port int) error {
 func StartSlaveWithInvalidSettings(port int) error {
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = password
+	conf.Passwd = Password
 	conf.Net = "tcp"
-	conf.Addr = host + ":" + strconv.Itoa(port)
+	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	db, err := sqlx.Connect("mysql", conf.FormatDSN())

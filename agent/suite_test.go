@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	password        = "test-password"
+	password        = "rootpassword"
 	token           = "dummy-token"
 	metricsPrefix   = "moco_agent_"
 	host            = "localhost"

@@ -34,7 +34,7 @@ var testEnv *envtest.Environment
 
 const (
 	host      = "localhost"
-	password  = "test-password"
+	password  = "rootpassword"
 	port      = 3306
 	namespace = "test-namespace"
 )
