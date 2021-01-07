@@ -9,6 +9,7 @@ KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 
 MOCO_CONF_GEN_VERSION=0.3.0
 KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
+MYSQL_VERSION ?= 8.0.20
 
 GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
@@ -56,7 +57,7 @@ build-moco-image: $(GO_FILES) ../Dockerfile
 
 .PHONY: build-mysql-image
 build-mysql-image: $(GO_FILES) Dockerfile
-	docker build .. -f Dockerfile -t mysql:dev
+	docker build .. -f Dockerfile -t mysql:dev --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 
 $(KUBECTL_MOCO):
 	mkdir -p bin
