@@ -105,7 +105,7 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := accessor.NewInfrastructure(k8sClient, acc, test_utils.Password, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)})
+	inf := accessor.NewInfrastructure(k8sClient, acc, test_utils.RootUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)})
 	primaryIndex := 0
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{

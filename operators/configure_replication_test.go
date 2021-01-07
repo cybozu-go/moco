@@ -41,7 +41,7 @@ var _ = Describe("Configure replication", func() {
 		secret.Name = namespace + ".test"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &secret, func() error {
 			secret.Data = map[string][]byte{
-				moco.ReplicationPasswordKey: []byte(test_utils.Password),
+				moco.ReplicationPasswordKey: []byte(test_utils.RootUserPassword),
 			}
 			return nil
 		})
@@ -64,7 +64,7 @@ var _ = Describe("Configure replication", func() {
 			Index:          0,
 			PrimaryHost:    mysqldName2,
 			PrimaryPort:    mysqldPort2,
-			ReplicatorUser: test_utils.UserName,
+			ReplicatorUser: test_utils.RootUser,
 		}
 
 		err := op.Run(ctx, infra, &cluster, nil)
