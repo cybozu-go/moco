@@ -23,7 +23,7 @@ TBD
 
 ## Supported MySQL versions
 
-\>=8.0.20
+8.0.18 and 8.0.20
 
 ## Documentation
 
