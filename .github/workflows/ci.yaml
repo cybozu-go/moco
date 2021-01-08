@@ -42,7 +42,7 @@ jobs:
           cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
       - run: sudo mkdir /mnt/local-path-provisioner
       - run: cd e2e && make setup
-      - name: watch
+      - name: Prepare
         run: |
           VARIABLES=read_only,super_read_only,rpl_semi_sync_master_wait_for_slave_count,clone_valid_donor_list
           ./e2e/script/watch_mysql.sh e2e-test          mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
@@ -52,16 +52,16 @@ jobs:
       - run: cd e2e && make test KIND_CLUSTER_CONFIG_SUFFIX=-actions MYSQL_VERSION=${{ matrix.mysql-version }}
 
       # Print status and log of each component
-      - name: MySQL status (e2e-test)
+      - name: Watch MySQL status (e2e-test)
         run: cat watch_mysql_e2e.txt
         if: always()
-      - name: MySQL status (e2e-test-external)
+      - name: Watch MySQL status (e2e-test-external)
         run: cat watch_mysql_e2e-external.txt
         if: always()
-      - name: Pod (e2e-test)
+      - name: Watch pod (e2e-test)
         run: cat watch_pod_e2e.txt
         if: always()
-      - name: Pod (e2e-test-external)
+      - name: Watch pod (e2e-test-external)
         run: cat watch_pod_e2e-external.txt
         if: always()
       - run: |
