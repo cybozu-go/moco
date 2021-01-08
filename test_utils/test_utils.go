@@ -24,8 +24,7 @@ const (
 	networkName = "moco-test-net"
 )
 
-// MySQLVersion is the version of MySQL used in small tests. This value is overwritten at runtime.
-var MySQLVersion = "8.0.20"
+var MySQLVersion = os.Getenv("MYSQL_VERSION")
 
 func run(cmd *well.LogCmd) error {
 	outBuf := new(bytes.Buffer)
