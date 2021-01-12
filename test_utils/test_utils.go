@@ -1,11 +1,13 @@
 package test_utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cybozu-go/moco"
@@ -26,6 +28,24 @@ const (
 	mySQLVersion    = "8.0.21"
 )
 
+func run(cmd *well.LogCmd) error {
+	outBuf := new(bytes.Buffer)
+	errBuf := new(bytes.Buffer)
+	cmd.Stdout = outBuf
+	cmd.Stderr = errBuf
+
+	err := cmd.Run()
+	stdout := strings.TrimRight(outBuf.String(), "\n")
+	if len(stdout) != 0 {
+		fmt.Println("[test_utils/stdout] " + stdout)
+	}
+	stderr := strings.TrimRight(errBuf.String(), "\n")
+	if len(stderr) != 0 {
+		fmt.Println("[test_utils/stderr] " + stderr)
+	}
+	return err
+}
+
 func StartMySQLD(name string, port int, serverID int) error {
 	ctx := context.Background()
 
@@ -44,42 +64,31 @@ func StartMySQLD(name string, port int, serverID int) error {
 		fmt.Sprintf("--port=%d", port),
 		fmt.Sprintf("--server-id=%d", serverID),
 	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return run(cmd)
 }
 
 func StopAndRemoveMySQLD(name string) error {
 	ctx := context.Background()
 	cmd := well.CommandContext(ctx, "docker", "stop", name)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	run(cmd)
 
 	cmd = well.CommandContext(ctx, "docker", "rm", name)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return run(cmd)
 }
 
 func CreateNetwork() error {
 	ctx := context.Background()
 	cmd := well.CommandContext(ctx, "docker", "network", "create", networkName)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	run(cmd)
 
 	cmd = well.CommandContext(ctx, "docker", "network", "inspect", networkName)
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return run(cmd)
 }
 
 func RemoveNetwork() error {
 	ctx := context.Background()
 	cmd := well.CommandContext(ctx, "docker", "network", "rm", networkName)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return run(cmd)
 }
 
 func InitializeMySQL(port int) error {
