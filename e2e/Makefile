@@ -32,7 +32,7 @@ setup: $(KUBECTL_MOCO) $(KUBECTL) $(KUSTOMIZE)
 test: launch-kind load-image setup
 	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
 	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
-	env E2ETEST=1 go test -count=1 -v . -args -ginkgo.progress -ginkgo.v -ginkgo.failFast
+	env E2ETEST=1 go test -count=1 -v -timeout 15m . -args -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: telepresence
 telepresence:
