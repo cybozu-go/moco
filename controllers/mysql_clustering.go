@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -237,20 +238,23 @@ func decideNextOperation(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, st
 }
 
 func (r *MySQLClusterReconciler) setMySQLClusterStatus(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, conditions []mocov1alpha1.MySQLClusterCondition, syncedStatus *int) error {
+	cluster2 := cluster.DeepCopy()
+
 	for _, cond := range conditions {
 		if cond.Type == mocov1alpha1.ConditionAvailable {
-			cluster.Status.Ready = cond.Status
+			cluster2.Status.Ready = cond.Status
 		}
-		setCondition(&cluster.Status.Conditions, cond)
+		setCondition(&cluster2.Status.Conditions, cond)
 	}
 	if syncedStatus != nil {
-		cluster.Status.SyncedReplicas = *syncedStatus
+		cluster2.Status.SyncedReplicas = *syncedStatus
 	}
-	err := r.Status().Update(ctx, cluster)
-	if err != nil {
-		return err
+
+	if equality.Semantic.DeepEqual(cluster, cluster2) {
+		return nil
 	}
-	return nil
+
+	return r.Status().Update(ctx, cluster2)
 }
 
 func (r *MySQLClusterReconciler) setFailureCondition(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, e error, outOfSyncInstances []int) error {
