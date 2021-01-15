@@ -170,9 +170,14 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	well.Go(func(ctx context.Context) error {
+	env := well.NewEnvironment(context.Background())
+	env.Go(func(ctx context.Context) error {
 		defer a.sem.Release(1)
-		a.clone(ctx, donorUser, donorPassword, donorHostName, donorPort)
+		err := a.clone(ctx, donorUser, donorPassword, donorHostName, donorPort)
+		if err != nil {
+			return err
+		}
+
 		if externalMode {
 			err := waitBootstrap(ctx, initUser, initPassword)
 			if err != nil {
@@ -206,7 +211,7 @@ func (a *Agent) Clone(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostName string, donorPort int) {
+func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostName string, donorPort int) error {
 	db, err := a.acc.Get(fmt.Sprintf("%s:%d", a.mysqlAdminHostname, a.mysqlAdminPort), moco.MiscUser, a.miscUserPassword)
 	if err != nil {
 		log.Error("failed to connect to database before clone", map[string]interface{}{
@@ -214,7 +219,7 @@ func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostNa
 			"port":      a.mysqlAdminPort,
 			log.FnError: err,
 		})
-		return
+		return err
 	}
 
 	metrics.IncrementCloneCountMetrics()
@@ -236,7 +241,7 @@ func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostNa
 			"port":           a.mysqlAdminPort,
 			log.FnError:      err,
 		})
-		return
+		return err
 	}
 
 	metrics.UpdateCloneDurationSecondsMetrics(durationSeconds)
@@ -248,6 +253,7 @@ func (a *Agent) clone(ctx context.Context, donorUser, donorPassword, donorHostNa
 		"port":           a.mysqlAdminPort,
 		log.FnError:      err,
 	})
+	return nil
 }
 
 func waitBootstrap(ctx context.Context, user, password string) error {

@@ -2,9 +2,11 @@ package agent
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log" // restrictpkg:ignore to suppress mysql client logs.
 	"os"
 	"path"
+	"strconv"
 	"testing"
 	"time"
 
@@ -33,6 +35,41 @@ const (
 
 var replicationSourceSecretPath string
 
+type testData struct {
+	primaryHost            string
+	primaryPort            int
+	primaryUser            string
+	primaryPassword        string
+	cloneUser              string
+	clonePassword          string
+	initAfterCloneUser     string
+	initAfterClonePassword string
+}
+
+func writeTestData(data *testData) {
+	writeFile := func(filename, data string) error {
+		return ioutil.WriteFile(path.Join(replicationSourceSecretPath, filename), []byte(data), 0664)
+	}
+
+	var err error
+	err = writeFile("PRIMARY_HOST", data.primaryHost)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PORT", strconv.Itoa(data.primaryPort))
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_USER", data.primaryUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PASSWORD", data.primaryPassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_USER", data.cloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_PASSWORD", data.clonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_USER", data.initAfterCloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_PASSWORD", data.initAfterClonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+}
+
 func TestAgent(t *testing.T) {
 	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 	RegisterFailHandler(Fail)
@@ -47,6 +84,10 @@ var _ = BeforeSuite(func(done Done) {
 	pwd, err := os.Getwd()
 	Expect(err).ShouldNot(HaveOccurred())
 	replicationSourceSecretPath = path.Join(pwd, "test_data")
+	err = os.RemoveAll(replicationSourceSecretPath)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = os.Mkdir(replicationSourceSecretPath, 0775)
+	Expect(err).ShouldNot(HaveOccurred())
 
 	test_utils.StopAndRemoveMySQLD(donorHost)
 	test_utils.StopAndRemoveMySQLD(replicaHost)
@@ -63,6 +104,9 @@ var _ = AfterSuite(func() {
 	test_utils.StopAndRemoveMySQLD(donorHost)
 	test_utils.StopAndRemoveMySQLD(replicaHost)
 	test_utils.RemoveNetwork()
+
+	err := os.RemoveAll(replicationSourceSecretPath)
+	Expect(err).ShouldNot(HaveOccurred())
 })
 
 var _ = Describe("Test Agent", func() {
