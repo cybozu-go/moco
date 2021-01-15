@@ -37,7 +37,7 @@ func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
 
 	conf := mysql.NewConfig()
 	conf.User = "root"
-	conf.Passwd = "rootpassword"
+	conf.Passwd = "testpassword"
 	conf.Net = "tcp"
 	conf.Addr = "localhost:3306"
 	conf.Timeout = 3
