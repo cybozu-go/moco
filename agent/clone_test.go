@@ -136,6 +136,7 @@ func testClone() {
 		}
 
 		By("checking metrics")
+		// In these test cases, the clone will not start actually. So the metrics will not change.
 		Eventually(func() error {
 			cloneCount, err := getMetric(registry, metricsPrefix+"clone_count")
 			if err != nil {
@@ -332,12 +333,13 @@ func testClone() {
 		}
 
 		By("checking metrics")
+		// In these test cases, the clone will start and fail. So the metrics will change.
 		Eventually(func() error {
 			cloneCount, err := getMetric(registry, metricsPrefix+"clone_count")
 			if err != nil {
 				return err
 			}
-			if *cloneCount.Counter.Value != 4.0 {
+			if *cloneCount.Counter.Value != float64(len(testcases)) {
 				return fmt.Errorf("clone_count isn't incremented yet: value=%f", *cloneCount.Counter.Value)
 			}
 
@@ -345,7 +347,7 @@ func testClone() {
 			if err != nil {
 				return err
 			}
-			if *cloneFailureCount.Counter.Value != 4.0 {
+			if *cloneFailureCount.Counter.Value != float64(len(testcases)) {
 				return fmt.Errorf("clone_failure_count isn't incremented yet: value=%f", *cloneFailureCount.Counter.Value)
 			}
 

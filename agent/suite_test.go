@@ -84,6 +84,10 @@ var _ = BeforeSuite(func(done Done) {
 	pwd, err := os.Getwd()
 	Expect(err).ShouldNot(HaveOccurred())
 	replicationSourceSecretPath = path.Join(pwd, "test_data")
+	err = os.RemoveAll(replicationSourceSecretPath)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = os.Mkdir(replicationSourceSecretPath, 0775)
+	Expect(err).ShouldNot(HaveOccurred())
 
 	test_utils.StopAndRemoveMySQLD(donorHost)
 	test_utils.StopAndRemoveMySQLD(replicaHost)
@@ -100,6 +104,9 @@ var _ = AfterSuite(func() {
 	test_utils.StopAndRemoveMySQLD(donorHost)
 	test_utils.StopAndRemoveMySQLD(replicaHost)
 	test_utils.RemoveNetwork()
+
+	err := os.RemoveAll(replicationSourceSecretPath)
+	Expect(err).ShouldNot(HaveOccurred())
 })
 
 var _ = Describe("Test Agent", func() {
