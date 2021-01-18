@@ -8,8 +8,8 @@ env:
   go-version: 1.13
   cache-version: 1
 jobs:
-  test:
-    name: Small Tests
+  validation:
+    name: Validation
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
@@ -26,8 +26,19 @@ jobs:
       - run: make setup
         if: steps.cache-tools.outputs.cache-hit != 'true'
       - run: make validate
-      - run: make start-mysqld
-      - run: make test
+  test:
+    name: Small Tests
+    strategy:
+      matrix:
+        mysql-version: ["8.0.18", "8.0.20"]
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.go-version }}
+      - run: make start-mysqld MYSQL_VERSION=${{ matrix.mysql-version }}
+      - run: make test MYSQL_VERSION=${{ matrix.mysql-version }}
   e2e:
     name: End-to-End Tests
     strategy:

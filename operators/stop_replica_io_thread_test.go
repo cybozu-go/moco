@@ -40,7 +40,7 @@ var _ = Describe("Stop replica IO thread", func() {
 		_, infra, cluster := getAccessorInfraCluster()
 		db, err := infra.GetDB(0)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, userName, password)
+		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, test_utils.UserName, test_utils.Password)
 		Expect(err).ShouldNot(HaveOccurred())
 		_, err = db.Exec(`START SLAVE`)
 		Expect(err).ShouldNot(HaveOccurred())

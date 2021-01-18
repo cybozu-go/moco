@@ -18,7 +18,7 @@ import (
 var (
 	initOnceCompletedPath = filepath.Join(moco.MySQLDataPath, "init-once-completed")
 	passwordFilePath      = filepath.Join("/tmp", "moco-root-password")
-	rootPassword          = "root-password"
+	rootPassword          = "testpassword"
 	miscConfPath          = filepath.Join(moco.MySQLDataPath, "misc.cnf")
 	initUser              = "init-user"
 	initPassword          = "init-password"

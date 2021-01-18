@@ -30,9 +30,6 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 
 const (
-	host            = "localhost"
-	userName        = "root"
-	password        = "test-password"
 	mysqldName1     = "moco-operators-test-mysqld-1"
 	mysqldName2     = "moco-operators-test-mysqld-2"
 	mysqldName3     = "moco-operators-test-mysqld-3"
@@ -42,11 +39,9 @@ const (
 	mysqldServerID1 = 1001
 	mysqldServerID2 = 1002
 	mysqldServerID3 = 1003
-	networkName     = "moco-operators-test-net"
 	systemNamespace = "test-moco-system"
 	namespace       = "test-namespace"
 	token           = "test-token"
-	mySQLVersion    = "8.0.21"
 )
 
 func TestOperators(t *testing.T) {
@@ -110,7 +105,7 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := accessor.NewInfrastructure(k8sClient, acc, password, []string{host + ":" + strconv.Itoa(mysqldPort1), host + ":" + strconv.Itoa(mysqldPort2)})
+	inf := accessor.NewInfrastructure(k8sClient, acc, test_utils.Password, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)})
 	primaryIndex := 0
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
