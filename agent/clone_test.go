@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -21,6 +23,41 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+type testData struct {
+	primaryHost            string
+	primaryPort            int
+	primaryUser            string
+	primaryPassword        string
+	cloneUser              string
+	clonePassword          string
+	initAfterCloneUser     string
+	initAfterClonePassword string
+}
+
+func writeTestData(data *testData) {
+	writeFile := func(filename, data string) error {
+		return ioutil.WriteFile(path.Join(replicationSourceSecretPath, filename), []byte(data), 0664)
+	}
+
+	var err error
+	err = writeFile("PRIMARY_HOST", data.primaryHost)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PORT", strconv.Itoa(data.primaryPort))
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_USER", data.primaryUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PASSWORD", data.primaryPassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_USER", data.cloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_PASSWORD", data.clonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_USER", data.initAfterCloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_PASSWORD", data.initAfterClonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+}
 
 func initializeDonorMySQL(isExternal bool) {
 	By("initializing MySQL donor")
