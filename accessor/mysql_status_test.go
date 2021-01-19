@@ -13,11 +13,6 @@ import (
 var intermediateSecret = "intermediate-primary-secret"
 
 var _ = Describe("Get MySQLCluster status", func() {
-	It("should initialize MySQL for testing", func() {
-		err := initializeMySQL()
-		Expect(err).ShouldNot(HaveOccurred())
-	})
-
 	It("should get MySQL status", func() {
 		_, inf, cluster := getAccessorInfraCluster()
 
