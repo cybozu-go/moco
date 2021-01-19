@@ -22,6 +22,12 @@ const (
 	RootUser         = "root"
 	RootUserPassword = "testpassword"
 
+	// Dummy user and password for clone from external.
+	ExternalDonorUser         = "external-donor-user"
+	ExternalDonorUserPassword = "externaldonorpassword"
+	ExternalInitUser          = "external-init-user"
+	ExternalInitUserPassword  = "externalinitpassword"
+
 	// Dummy password for MySQL users which are managed by MOCO.
 	OperatorUserPassword      = "testpassword"
 	OperatorAdminUserPassword = "testpassword"
@@ -149,6 +155,14 @@ func InitializeMySQL(port int) error {
 		{
 			name:     moco.MiscUser,
 			password: MiscUserPassword,
+		},
+		{
+			name:     ExternalDonorUser,
+			password: ExternalDonorUserPassword,
+		},
+		{
+			name:     ExternalInitUser,
+			password: ExternalInitUserPassword,
 		},
 	}
 	for _, user := range users {

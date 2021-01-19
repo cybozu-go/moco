@@ -21,10 +21,8 @@ import (
 )
 
 const (
-	password        = "testpassword"
 	token           = "dummy-token"
 	metricsPrefix   = "moco_agent_"
-	host            = "localhost"
 	donorHost       = "moco-test-mysqld-donor"
 	donorPort       = 3307
 	donorServerID   = 1

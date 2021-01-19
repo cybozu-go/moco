@@ -50,7 +50,7 @@ func testClone() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("creating agent instance")
-		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
+		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, replicationSourceSecretPath, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -179,7 +179,7 @@ func testClone() {
 
 		By("checking result")
 		Eventually(func() error {
-			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, test_utils.MiscUserPassword)
 			if err != nil {
 				return err
 			}
@@ -255,28 +255,28 @@ func testClone() {
 				title:         "invalid donorHostName",
 				donorHost:     "invalid-host",
 				donorPort:     donorPort,
-				cloneUser:     "moco-clone-donor",
-				clonePassword: password,
+				cloneUser:     test_utils.ExternalDonorUser,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid donorPort",
 				donorHost:     donorHost,
 				donorPort:     10000,
-				cloneUser:     "moco-clone-donor",
-				clonePassword: password,
+				cloneUser:     test_utils.ExternalDonorUser,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid cloneUser",
 				donorHost:     donorHost,
 				donorPort:     donorPort,
 				cloneUser:     "invalid-user",
-				clonePassword: password,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid clonePassword",
 				donorHost:     donorHost,
 				donorPort:     donorPort,
-				cloneUser:     "moco-clone-donor",
+				cloneUser:     test_utils.ExternalDonorUser,
 				clonePassword: "invalid-password",
 			},
 		}
@@ -288,8 +288,8 @@ func testClone() {
 				primaryPort:            tt.donorPort,
 				cloneUser:              tt.cloneUser,
 				clonePassword:          tt.clonePassword,
-				initAfterCloneUser:     "init",
-				initAfterClonePassword: "password",
+				initAfterCloneUser:     test_utils.ExternalInitUser,
+				initAfterClonePassword: test_utils.ExternalInitUserPassword,
 			}
 			writeTestData(data)
 
@@ -314,7 +314,7 @@ func testClone() {
 
 			By(fmt.Sprintf("(%s) %s", tt.title, "checking after clone status"))
 			Eventually(func() error {
-				db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+				db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, test_utils.MiscUserPassword)
 				if err != nil {
 					return err
 				}
@@ -370,10 +370,10 @@ func testClone() {
 		data := &testData{
 			primaryHost:            donorHost,
 			primaryPort:            donorPort,
-			cloneUser:              "moco-clone-donor",
-			clonePassword:          password,
-			initAfterCloneUser:     "init",
-			initAfterClonePassword: "password",
+			cloneUser:              test_utils.ExternalDonorUser,
+			clonePassword:          test_utils.ExternalDonorUserPassword,
+			initAfterCloneUser:     test_utils.ExternalInitUser,
+			initAfterClonePassword: test_utils.ExternalInitUserPassword,
 		}
 		writeTestData(data)
 
@@ -390,7 +390,7 @@ func testClone() {
 		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
 
 		Eventually(func() error {
-			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, test_utils.MiscUserPassword)
 			if err != nil {
 				return err
 			}
@@ -410,7 +410,7 @@ func testClone() {
 		By("getting 500 when secret files doesn't exist")
 		pwd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
-		agent = New(host, token, password, password, pwd, "", replicaPort,
+		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, pwd, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
