@@ -18,9 +18,18 @@ import (
 )
 
 const (
-	Host        = "localhost"
-	UserName    = "root"
-	Password    = "testpassword"
+	Host             = "localhost"
+	RootUser         = "root"
+	RootUserPassword = "testpassword"
+
+	// Dummy password for MySQL users which are managed by MOCO.
+	OperatorUserPassword      = "testpassword"
+	OperatorAdminUserPassword = "testpassword"
+	ReplicationUserPassword   = "testpassword"
+	CloneDonorUserPassword    = "testpassword"
+	MiscUserPassword          = "testpassword"
+
+	// Docker network name for test.
 	networkName = "moco-test-net"
 )
 
@@ -57,7 +66,7 @@ func StartMySQLD(name string, port int, serverID int) error {
 		"--name", name,
 		"-p", fmt.Sprintf("%d:%d", port, port),
 		"-v", filepath.Join(wd, "..", "my.cnf")+":/etc/mysql/conf.d/my.cnf",
-		"-e", "MYSQL_ROOT_PASSWORD="+Password,
+		"-e", "MYSQL_ROOT_PASSWORD="+RootUserPassword,
 		"mysql:"+MySQLVersion,
 		fmt.Sprintf("--port=%d", port),
 		fmt.Sprintf("--server-id=%d", serverID),
@@ -89,37 +98,68 @@ func RemoveNetwork() error {
 	return run(cmd)
 }
 
-func InitializeMySQL(port int) error {
+func Connect(port, retryCount int) (*sqlx.DB, error) {
 	conf := mysql.NewConfig()
-	conf.User = UserName
-	conf.Passwd = Password
+	conf.User = RootUser
+	conf.Passwd = RootUserPassword
 	conf.Net = "tcp"
 	conf.Addr = Host + ":" + strconv.Itoa(port)
 	conf.InterpolateParams = true
 
 	var db *sqlx.DB
 	var err error
-	for i := 0; i < 20; i++ {
-		db, err = sqlx.Connect("mysql", conf.FormatDSN())
+	dataSource := conf.FormatDSN()
+	for i := 0; i <= retryCount; i++ {
+		fmt.Printf("[test_utils/connect] %d, %s\n", i, dataSource)
+		db, err = sqlx.Connect("mysql", dataSource)
 		if err == nil {
 			break
 		}
 		time.Sleep(time.Second * 3)
 	}
+	return db, err
+}
+
+func InitializeMySQL(port int) error {
+	db, err := Connect(port, 20)
 	if err != nil {
 		return err
 	}
 
-	for _, user := range []string{moco.OperatorAdminUser, moco.CloneDonorUser, moco.MiscUser} {
-		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user, Password)
+	users := []struct {
+		name     string
+		password string
+	}{
+		{
+			name:     moco.OperatorUser,
+			password: OperatorUserPassword,
+		},
+		{
+			name:     moco.OperatorAdminUser,
+			password: OperatorAdminUserPassword,
+		},
+		{
+			name:     moco.ReplicationUser,
+			password: ReplicationUserPassword,
+		},
+		{
+			name:     moco.CloneDonorUser,
+			password: CloneDonorUserPassword,
+		},
+		{
+			name:     moco.MiscUser,
+			password: MiscUserPassword,
+		},
+	}
+	for _, user := range users {
+		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user.name, user.password)
 		if err != nil {
 			return err
 		}
-		_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user)
+		_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user.name)
 		if err != nil {
 			return err
 		}
-
 	}
 
 	_, err = db.Exec("INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'")
@@ -141,103 +181,86 @@ func InitializeMySQL(port int) error {
 		}
 	}
 
-	_, err = db.Exec(`CLONE LOCAL DATA DIRECTORY = ?`, "/tmp/"+uuid.NewUUID())
+	_, err = db.Exec("CLONE LOCAL DATA DIRECTORY = ?", "/tmp/"+uuid.NewUUID())
 	if err != nil {
 		return err
 	}
 
-	ResetMaster(port)
-
-	return nil
+	return ResetMaster(port)
 }
 
 func PrepareTestData(port int) error {
-	conf := mysql.NewConfig()
-	conf.User = "root"
-	conf.Passwd = Password
-	conf.Net = "tcp"
-	conf.Addr = Host + ":" + strconv.Itoa(port)
-	conf.InterpolateParams = true
-
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	db, err := Connect(port, 0)
 	if err != nil {
 		return err
 	}
 
-	queries := []string{
-		"CREATE DATABASE IF NOT EXISTS test",
-		"CREATE TABLE IF NOT EXISTS `test`.`t1` (`num` bigint unsigned NOT NULL AUTO_INCREMENT,`val0` varchar(100) DEFAULT NULL,`val1` varchar(100) DEFAULT NULL,`val2` varchar(100) DEFAULT NULL,`val3` varchar(100) DEFAULT NULL,`val4` varchar(100) DEFAULT NULL,UNIQUE KEY `num` (`num`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
-		"INSERT INTO test.t1 (val0, val1, val2, val3, val4) WITH RECURSIVE t AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 10) SELECT MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()),MD5(RAND()) FROM t",
-		"COMMIT",
-	}
-	for _, query := range queries {
-		_, err = db.Exec(query)
-		if err != nil {
-			return err
-		}
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS test")
+	if err != nil {
+		return err
 	}
 
-	return nil
+	_, err = db.Exec(`
+CREATE TABLE IF NOT EXISTS test.t1 (
+    num bigint unsigned NOT NULL AUTO_INCREMENT,
+    val0 varchar(100) DEFAULT NULL,
+    val1 varchar(100) DEFAULT NULL,
+    val2 varchar(100) DEFAULT NULL,
+    val3 varchar(100) DEFAULT NULL,
+    val4 varchar(100) DEFAULT NULL,
+    UNIQUE KEY num (num)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+INSERT INTO test.t1 (val0, val1, val2, val3, val4)
+WITH RECURSIVE t AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM t WHERE n < 10
+)
+SELECT MD5(RAND()), MD5(RAND()), MD5(RAND()), MD5(RAND()), MD5(RAND())
+FROM t`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("COMMIT")
+	return err
 }
 
 func SetValidDonorList(port int, donorHost string, donorPort int) error {
-	conf := mysql.NewConfig()
-	conf.User = "root"
-	conf.Passwd = Password
-	conf.Net = "tcp"
-	conf.Addr = Host + ":" + strconv.Itoa(port)
-	conf.InterpolateParams = true
-
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	db, err := Connect(port, 0)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(`SET GLOBAL clone_valid_donor_list = ?`, donorHost+":"+strconv.Itoa(donorPort))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = db.Exec("SET GLOBAL clone_valid_donor_list = ?", donorHost+":"+strconv.Itoa(donorPort))
+	return err
 }
 
 func ResetMaster(port int) error {
-	conf := mysql.NewConfig()
-	conf.User = "root"
-	conf.Passwd = Password
-	conf.Net = "tcp"
-	conf.Addr = Host + ":" + strconv.Itoa(port)
-	conf.InterpolateParams = true
-
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	db, err := Connect(port, 0)
 	if err != nil {
 		return err
 	}
+
 	_, err = db.Exec("RESET MASTER")
 	return err
 }
 
 func StartSlaveWithInvalidSettings(port int) error {
-	conf := mysql.NewConfig()
-	conf.User = "root"
-	conf.Passwd = Password
-	conf.Net = "tcp"
-	conf.Addr = Host + ":" + strconv.Itoa(port)
-	conf.InterpolateParams = true
-
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
+	db, err := Connect(port, 0)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, "dummy", 3306, "dummy", "dummy")
+	_, err = db.Exec("CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?", "dummy", 3306, "dummy", "dummy")
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`START SLAVE`)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = db.Exec("START SLAVE")
+	return err
 }

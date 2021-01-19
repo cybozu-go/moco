@@ -45,8 +45,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 			secret.Data = map[string][]byte{
 				"PRIMARY_HOST":     []byte(mysqldName2),
 				"PRIMARY_PORT":     []byte(strconv.Itoa(mysqldPort2)),
-				"PRIMARY_USER":     []byte(test_utils.UserName),
-				"PRIMARY_PASSWORD": []byte(test_utils.Password),
+				"PRIMARY_USER":     []byte(test_utils.RootUser),
+				"PRIMARY_PASSWORD": []byte(test_utils.RootUserPassword),
 			}
 			return nil
 		})
@@ -68,8 +68,8 @@ var _ = Describe("Configure intermediate primary operator", func() {
 			Index: 0,
 			Options: &accessor.IntermediatePrimaryOptions{
 				PrimaryHost:     mysqldName2,
-				PrimaryUser:     test_utils.UserName,
-				PrimaryPassword: test_utils.Password,
+				PrimaryUser:     test_utils.RootUser,
+				PrimaryPassword: test_utils.RootUserPassword,
 				PrimaryPort:     mysqldPort2,
 			},
 		}
@@ -107,7 +107,7 @@ var _ = Describe("Configure intermediate primary operator", func() {
 
 		db, err := infra.GetDB(0)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, test_utils.UserName, test_utils.Password)
+		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, test_utils.RootUser, test_utils.RootUserPassword)
 		Expect(err).ShouldNot(HaveOccurred())
 		_, err = db.Exec(`START SLAVE`)
 		Expect(err).ShouldNot(HaveOccurred())

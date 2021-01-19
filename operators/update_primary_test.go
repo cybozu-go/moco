@@ -58,7 +58,7 @@ var _ = Describe("Update primary", func() {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		})
-		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.Password, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)})
+		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.RootUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)})
 
 		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &cluster, func() error {
 			return nil
@@ -67,7 +67,7 @@ var _ = Describe("Update primary", func() {
 
 		db, err := infra.GetDB(0)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, test_utils.UserName, test_utils.Password)
+		_, err = db.Exec(`CHANGE MASTER TO MASTER_HOST = ?, MASTER_PORT = ?, MASTER_USER = ?, MASTER_PASSWORD = ?`, mysqldName2, mysqldPort2, test_utils.RootUser, test_utils.RootUserPassword)
 		Expect(err).ShouldNot(HaveOccurred())
 		_, err = db.Exec(`START SLAVE`)
 		Expect(err).ShouldNot(HaveOccurred())
