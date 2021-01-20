@@ -58,9 +58,9 @@ spec:
         - name: tmp
           mountPath: /tmp
       securityContext:
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
       volumes:
       - name: err-filebeat-config
         configMap:
