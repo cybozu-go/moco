@@ -42,7 +42,7 @@ validate: setup
 .PHONY: test
 test: $(KUBEBUILDER)
 	MYSQL_VERSION=$(MYSQL_VERSION) go test -race -v -coverprofile cover.out ./...
-	docker build -t mysql-with-go:latest ./initialize/
+	docker build -t mysql-with-go:latest ./initialize/ --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 	docker run -v $(PWD):/go/src/github.com/cybozu-go/moco -e GOPATH=/tmp --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -v ./initialize"
 
 .PHONY: start-mysqld

@@ -1,4 +1,5 @@
-FROM quay.io/cybozu/moco-mysql:8.0.20.4
+ARG MYSQL_VERSION
+FROM quay.io/cybozu/moco-mysql:${MYSQL_VERSION}
 
 ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:"$PATH"
