@@ -33,7 +33,7 @@ var _ = Describe("Set labels", func() {
 			pod0.Spec.Containers = []corev1.Container{
 				{
 					Name:  "ubuntu",
-					Image: "ubuntu:18.04",
+					Image: "ubuntu:20.04",
 				},
 			}
 			return nil
@@ -50,7 +50,7 @@ var _ = Describe("Set labels", func() {
 			pod1.Spec.Containers = []corev1.Container{
 				{
 					Name:  "ubuntu",
-					Image: "ubuntu:18.04",
+					Image: "ubuntu:20.04",
 				},
 			}
 			return nil

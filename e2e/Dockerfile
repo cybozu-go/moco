@@ -1,5 +1,5 @@
 ARG MYSQL_VERSION
-FROM quay.io/cybozu/golang:1.13-bionic as builder
+FROM quay.io/cybozu/golang:1.15-focal as builder
 
 WORKDIR /workspace
 

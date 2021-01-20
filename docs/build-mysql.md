@@ -56,7 +56,7 @@ ENTRYPOINT ["mysqld"]
 This example builds MySQL from source code.
 
 ```
-FROM ubuntu:18.04 AS build
+FROM ubuntu:20.04 AS build
 
 ARG MOCO_VERSION=0.4.0
 ARG MYSQL_VERSION=8.0.20
@@ -78,7 +78,7 @@ RUN apt-get install -y cmake libncurses5-dev libjemalloc-dev libnuma-dev libread
   && make -j $(nproc) \
   && make install
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt-get update \
   && env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libncurses5 libjemalloc1 libnuma1 libreadline7 libssl1.1 locales tzdata \
