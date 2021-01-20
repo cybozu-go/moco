@@ -58,7 +58,7 @@ var _ = Describe("Update primary", func() {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		})
-		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.RootUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)})
+		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)})
 
 		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &cluster, func() error {
 			return nil
