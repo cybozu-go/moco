@@ -6,7 +6,6 @@ import (
 	"time"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -34,21 +33,7 @@ type AccessorMock struct {
 }
 
 func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
-
-	conf := mysql.NewConfig()
-	conf.User = "root"
-	conf.Passwd = "testpassword"
-	conf.Net = "tcp"
-	conf.Addr = "localhost:3306"
-	conf.Timeout = 3
-	conf.ReadTimeout = 3
-	conf.InterpolateParams = true
-
-	db, err := sqlx.Connect("mysql", conf.FormatDSN())
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
+	return nil, nil
 }
 
 func (acc *AccessorMock) Remove(addr string) {

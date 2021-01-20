@@ -25,10 +25,9 @@ import (
 )
 
 const (
-	systemNamespace = "test-moco-system"
-	namespace       = "controllers-test"
-
-	clusterName = "mysqlcluster"
+	systemNamespace  = "test-moco-system"
+	clusterNamespace = "controllers-test"
+	clusterName      = "mysqlcluster"
 )
 
 var replicationSourceSecretName = "replication-source-secret"
@@ -41,7 +40,7 @@ func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterName,
-			Namespace: namespace,
+			Namespace: clusterNamespace,
 		},
 		Spec: mocov1alpha1.MySQLClusterSpec{
 			Replicas: 3,
@@ -81,7 +80,7 @@ var _ = Describe("MySQLCluster controller", func() {
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 		ns := corev1.Namespace{}
-		ns.Name = namespace
+		ns.Name = clusterNamespace
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &ns, func() error {
 			return nil
 		})
@@ -105,7 +104,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			Eventually(func() error {
 				var actual mocov1alpha1.MySQLCluster
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, &actual)
+				err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, &actual)
 				if err != nil {
 					return err
 				}
@@ -277,7 +276,6 @@ var _ = Describe("MySQLCluster controller", func() {
 				conf := cm.Data[moco.MySQLConfName]
 				Expect(conf).Should(ContainSubstring("innodb_buffer_pool_size = 179M")) // 256*0.7=179
 			})
-
 		})
 	})
 
@@ -326,7 +324,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeTrue())
 
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, cluster)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(cluster.Status.AgentToken).ShouldNot(BeEmpty())
 
@@ -688,7 +686,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 		It("should use logRotationSecurityContext", func() {
 			newCluster := &mocov1alpha1.MySQLCluster{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, newCluster)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			id := int64(10000)
 			securityContext := &corev1.PodSecurityContext{
@@ -723,9 +721,9 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			createdPrimaryService := &corev1.Service{}
 			createdReplicaService := &corev1.Service{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: namespace}, createdPrimaryService)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: clusterNamespace}, createdPrimaryService)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: namespace}, createdReplicaService)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: clusterNamespace}, createdReplicaService)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeClusterIP))
@@ -750,7 +748,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 		It("should use serviceTemplate", func() {
 			newCluster := &mocov1alpha1.MySQLCluster{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, newCluster)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, newCluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			newCluster.Spec.ServiceTemplate = &mocov1alpha1.ServiceTemplate{}
 			annotation := map[string]string{
@@ -782,9 +780,9 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			createdPrimaryService := &corev1.Service{}
 			createdReplicaService := &corev1.Service{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(newCluster)), Namespace: namespace}, createdPrimaryService)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(newCluster)), Namespace: clusterNamespace}, createdPrimaryService)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(newCluster)), Namespace: namespace}, createdReplicaService)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(newCluster)), Namespace: clusterNamespace}, createdReplicaService)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(createdPrimaryService.ObjectMeta.Annotations).Should(Equal(annotation))
