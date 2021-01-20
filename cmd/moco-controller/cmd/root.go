@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 
 const (
 	defaultInitContainerImage = "quay.io/cybozu/moco-conf-gen:0.3.0"
-	defaultCurlContainerImage = "quay.io/cybozu/ubuntu:18.04"
+	defaultCurlContainerImage = "quay.io/cybozu/ubuntu:20.04"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.

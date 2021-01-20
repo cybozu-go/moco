@@ -3,7 +3,7 @@ FROM quay.io/cybozu/moco-mysql:8.0.20.4
 ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:"$PATH"
 
-ARG GO_VERSION=1.13.15
+ARG GO_VERSION=1.15.7
 USER root
 WORKDIR /work
 RUN curl -s -f -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz \

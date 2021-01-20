@@ -5,12 +5,12 @@ on:
     branches:
       - 'master'
 env:
-  go-version: 1.13
+  go-version: 1.15
   cache-version: 1
 jobs:
   validation:
     name: Validation
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.20"]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -44,7 +44,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.20"]
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - run: |
