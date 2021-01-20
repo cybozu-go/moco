@@ -1,31 +1,36 @@
 ARG MYSQL_VERSION
-FROM quay.io/cybozu/moco-mysql:${MYSQL_VERSION}
 
+FROM mysql:${MYSQL_VERSION}
+USER root
+WORKDIR /work
 ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:"$PATH"
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG GO_VERSION=1.15.7
-USER root
-WORKDIR /work
-RUN curl -s -f -O https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz \
-    && rm -rf /usr/local/go \
-    && tar -x -z -C /usr/local -f go${GO_VERSION}.linux-amd64.tar.gz \
-    && rm go${GO_VERSION}.linux-amd64.tar.gz \
+RUN curl -s -f -o go.tar.gz https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz \
+    && tar -x -z -C /usr/local -f go.tar.gz \
+    && rm go.tar.gz \
     && mkdir -p $GOPATH/src/github.com/cybozu-go
 
+# 999 is the user ID of `mysql` user in the docker official MySQL container.
 RUN mkdir -p /etc/mysql \
-    && chown 10000:10000 -R /etc/mysql \
-    && mkdir -p /var/lib/mysql \
-    && chown 10000:10000 -R /var/lib/mysql \
+    && chown -R 999:999 /etc/mysql \
+    && mkdir -p /var/lib/mysql-files \
+    && chown -R 999:999 /var/lib/mysql-files \
     && mkdir -p /var/log/mysql \
-    && chown 10000:10000 -R /var/log/mysql \
+    && chown -R 999:999 /var/log/mysql \
     && mkdir -p /var/run/mysqld \
-    && chown 10000:10000 -R /var/run/mysqld \
+    && chown -R 999:999 /var/run/mysqld \
     && mkdir -p /home/mysql \
-    && chown 10000:10000 -R /home/mysql
+    && chown -R 999:999 /home/mysql
 
-ENV HOME /home/mysql
-USER 10000
+USER 999
+ENV HOME=/home/mysql
+
 WORKDIR $GOPATH/src/github.com/cybozu-go/moco
-
-ENTRYPOINT [""]
