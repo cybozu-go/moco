@@ -2,11 +2,13 @@ package accessor
 
 import (
 	"fmt"
+	"log" // restrictpkg:ignore to suppress mysql client logs.
 	"testing"
 	"time"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/test_utils"
+	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +47,7 @@ func TestAccessors(t *testing.T) {
 
 var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{}
