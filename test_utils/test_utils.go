@@ -22,6 +22,12 @@ const (
 	RootUser         = "root"
 	RootUserPassword = "testpassword"
 
+	// Dummy user and password for clone from external.
+	ExternalDonorUser         = "external-donor-user"
+	ExternalDonorUserPassword = "externaldonorpassword"
+	ExternalInitUser          = "external-init-user"
+	ExternalInitUserPassword  = "externalinitpassword"
+
 	// Dummy password for MySQL users which are managed by MOCO.
 	OperatorUserPassword      = "testpassword"
 	OperatorAdminUserPassword = "testpassword"
@@ -174,6 +180,51 @@ func InitializeMySQL(port int) error {
 			return err
 		}
 	}
+	_, err = db.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
+	if err != nil {
+		if err.Error() != "Error 1125: Function 'clone' already exists" {
+			return err
+		}
+	}
+
+	_, err = db.Exec("CLONE LOCAL DATA DIRECTORY = ?", "/tmp/"+uuid.NewUUID())
+	if err != nil {
+		return err
+	}
+
+	return ResetMaster(port)
+}
+
+func InitializeMySQLAsExternalDonor(port int) error {
+	db, err := Connect(port, 20)
+	if err != nil {
+		return err
+	}
+
+	users := []struct {
+		name     string
+		password string
+	}{
+		{
+			name:     ExternalDonorUser,
+			password: ExternalDonorUserPassword,
+		},
+		{
+			name:     ExternalInitUser,
+			password: ExternalInitUserPassword,
+		},
+	}
+	for _, user := range users {
+		_, err = db.Exec("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", user.name, user.password)
+		if err != nil {
+			return err
+		}
+		_, err = db.Exec("GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION", user.name)
+		if err != nil {
+			return err
+		}
+	}
+
 	_, err = db.Exec("INSTALL PLUGIN clone SONAME 'mysql_clone.so'")
 	if err != nil {
 		if err.Error() != "Error 1125: Function 'clone' already exists" {

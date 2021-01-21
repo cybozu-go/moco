@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -22,35 +24,77 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type testData struct {
+	primaryHost            string
+	primaryPort            int
+	primaryUser            string
+	primaryPassword        string
+	cloneUser              string
+	clonePassword          string
+	initAfterCloneUser     string
+	initAfterClonePassword string
+}
+
+func writeTestData(data *testData) {
+	writeFile := func(filename, data string) error {
+		return ioutil.WriteFile(path.Join(replicationSourceSecretPath, filename), []byte(data), 0664)
+	}
+
+	var err error
+	err = writeFile("PRIMARY_HOST", data.primaryHost)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PORT", strconv.Itoa(data.primaryPort))
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_USER", data.primaryUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("PRIMARY_PASSWORD", data.primaryPassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_USER", data.cloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("CLONE_PASSWORD", data.clonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_USER", data.initAfterCloneUser)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = writeFile("INIT_AFTER_CLONE_PASSWORD", data.initAfterClonePassword)
+	Expect(err).ShouldNot(HaveOccurred())
+}
+
+func initializeDonorMySQL(isExternal bool) {
+	By("initializing MySQL donor")
+	err := test_utils.StartMySQLD(donorHost, donorPort, donorServerID)
+	Expect(err).ShouldNot(HaveOccurred())
+	if isExternal {
+		err = test_utils.InitializeMySQLAsExternalDonor(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+	} else {
+		err = test_utils.InitializeMySQL(donorPort)
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+	err = test_utils.PrepareTestData(donorPort)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = test_utils.ResetMaster(donorPort)
+	Expect(err).ShouldNot(HaveOccurred())
+}
+
 func testClone() {
 	var agent *Agent
 	var registry *prometheus.Registry
 
 	BeforeEach(func() {
-		By("initializing MySQL servers")
-		err := test_utils.StartMySQLD(donorHost, donorPort, donorServerID)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = test_utils.StartMySQLD(replicaHost, replicaPort, replicaServerID)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = test_utils.InitializeMySQL(donorPort)
+		// The configuration of the donor MySQL is different for each test case.
+		// So the donor is not initialized here. The initialization will do at the beginning of each test case.
+		By("initializing MySQL replica")
+		err := test_utils.StartMySQLD(replicaHost, replicaPort, replicaServerID)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = test_utils.InitializeMySQL(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
-
-		err = test_utils.PrepareTestData(donorPort)
-		Expect(err).ShouldNot(HaveOccurred())
-
 		err = test_utils.SetValidDonorList(replicaPort, donorHost, donorPort)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		err = test_utils.ResetMaster(donorPort)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = test_utils.ResetMaster(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("creating agent instance")
-		agent = New(host, token, password, password, replicationSourceSecretPath, "", replicaPort,
+		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, replicationSourceSecretPath, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
@@ -83,6 +127,8 @@ func testClone() {
 	})
 
 	It("should return 400 with bad requests", func() {
+		initializeDonorMySQL(false)
+
 		testcases := []struct {
 			title  string
 			values url.Values
@@ -159,6 +205,8 @@ func testClone() {
 	})
 
 	It("should clone from donor successfully", func() {
+		initializeDonorMySQL(false)
+
 		By("cloning from donor")
 		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
 		queries := url.Values{
@@ -179,7 +227,7 @@ func testClone() {
 
 		By("checking result")
 		Eventually(func() error {
-			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, test_utils.MiscUserPassword)
 			if err != nil {
 				return err
 			}
@@ -225,6 +273,8 @@ func testClone() {
 	})
 
 	It("should not clone if recipient has some data", func() {
+		initializeDonorMySQL(false)
+
 		By("write data to recipient")
 		err := test_utils.PrepareTestData(replicaPort)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -244,6 +294,8 @@ func testClone() {
 	})
 
 	It("should not clone from external MySQL with invalid donor settings", func() {
+		initializeDonorMySQL(true)
+
 		testcases := []struct {
 			title         string
 			donorHost     string
@@ -255,28 +307,28 @@ func testClone() {
 				title:         "invalid donorHostName",
 				donorHost:     "invalid-host",
 				donorPort:     donorPort,
-				cloneUser:     "moco-clone-donor",
-				clonePassword: password,
+				cloneUser:     test_utils.ExternalDonorUser,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid donorPort",
 				donorHost:     donorHost,
 				donorPort:     10000,
-				cloneUser:     "moco-clone-donor",
-				clonePassword: password,
+				cloneUser:     test_utils.ExternalDonorUser,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid cloneUser",
 				donorHost:     donorHost,
 				donorPort:     donorPort,
 				cloneUser:     "invalid-user",
-				clonePassword: password,
+				clonePassword: test_utils.ExternalDonorUserPassword,
 			},
 			{
 				title:         "invalid clonePassword",
 				donorHost:     donorHost,
 				donorPort:     donorPort,
-				cloneUser:     "moco-clone-donor",
+				cloneUser:     test_utils.ExternalDonorUser,
 				clonePassword: "invalid-password",
 			},
 		}
@@ -288,8 +340,8 @@ func testClone() {
 				primaryPort:            tt.donorPort,
 				cloneUser:              tt.cloneUser,
 				clonePassword:          tt.clonePassword,
-				initAfterCloneUser:     "init",
-				initAfterClonePassword: "password",
+				initAfterCloneUser:     test_utils.ExternalInitUser,
+				initAfterClonePassword: test_utils.ExternalInitUserPassword,
 			}
 			writeTestData(data)
 
@@ -314,7 +366,7 @@ func testClone() {
 
 			By(fmt.Sprintf("(%s) %s", tt.title, "checking after clone status"))
 			Eventually(func() error {
-				db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+				db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, test_utils.MiscUserPassword)
 				if err != nil {
 					return err
 				}
@@ -366,14 +418,16 @@ func testClone() {
 	})
 
 	It("should clone from external MySQL", func() {
+		initializeDonorMySQL(true)
+
 		By("preparing test data")
 		data := &testData{
 			primaryHost:            donorHost,
 			primaryPort:            donorPort,
-			cloneUser:              "moco-clone-donor",
-			clonePassword:          password,
-			initAfterCloneUser:     "init",
-			initAfterClonePassword: "password",
+			cloneUser:              test_utils.ExternalDonorUser,
+			clonePassword:          test_utils.ExternalDonorUserPassword,
+			initAfterCloneUser:     test_utils.ExternalInitUser,
+			initAfterClonePassword: test_utils.ExternalInitUserPassword,
 		}
 		writeTestData(data)
 
@@ -389,8 +443,34 @@ func testClone() {
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusOK))
 
+		By("confirming clone by init user")
 		Eventually(func() error {
-			db, err := agent.acc.Get(host+":"+strconv.Itoa(replicaPort), moco.MiscUser, password)
+			db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), test_utils.ExternalInitUser, test_utils.ExternalInitUserPassword)
+			if err != nil {
+				return err
+			}
+
+			cloneStatus, err := accessor.GetMySQLCloneStateStatus(context.Background(), db)
+			if err != nil {
+				return err
+			}
+
+			expected := sql.NullString{Valid: true, String: "Completed"}
+			if !cmp.Equal(cloneStatus.State, expected) {
+				return fmt.Errorf("doesn't reach completed state: %+v", cloneStatus.State)
+			}
+			return nil
+		}, 30*time.Second).Should(Succeed())
+
+		// The initialization(*) after cloning from the external donor does not succeed in this test.
+		// In the initialization, the agent tries to connect to the MySQL server via the Unix domain socket. But the connection will not be succeeded.
+		// *) htps://github.com/cybozu-go/moco/blob/v0.3.1/agent/clone.go#L169-L197
+		Skip("MySQL users for MOCO don't be created")
+
+		By("confirming clone by restored misc user")
+		restoredMiscUserPassword := "dummy"
+		Eventually(func() error {
+			db, err := agent.acc.Get(test_utils.Host+":"+strconv.Itoa(replicaPort), moco.MiscUser, restoredMiscUserPassword)
 			if err != nil {
 				return err
 			}
@@ -410,7 +490,7 @@ func testClone() {
 		By("getting 500 when secret files doesn't exist")
 		pwd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
-		agent = New(host, token, password, password, pwd, "", replicaPort,
+		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, pwd, "", replicaPort,
 			&accessor.MySQLAccessorConfig{
 				ConnMaxLifeTime:   30 * time.Minute,
 				ConnectionTimeout: 3 * time.Second,
