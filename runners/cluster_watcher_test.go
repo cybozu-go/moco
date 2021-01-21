@@ -15,7 +15,7 @@ import (
 
 func testMySQLClusterWatcher() {
 	It("should notify generic events", func() {
-		ctx := context.Context(context.Background())
+		ctx := context.Background()
 		ch := make(chan event.GenericEvent)
 		watcher := NewMySQLClusterWatcher(k8sClient, ch, time.Second)
 		go watcher.Start(ctx)
