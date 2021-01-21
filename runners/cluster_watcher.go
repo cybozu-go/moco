@@ -35,7 +35,7 @@ func (w mySQLClusterWatcher) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-ticker.C:
 			err := w.fireEventForInitializedMySQLClusters(context.Background())
 			if err != nil {
