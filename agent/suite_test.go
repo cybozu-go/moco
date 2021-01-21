@@ -32,7 +32,6 @@ const (
 var replicationSourceSecretPath string
 
 func TestAgent(t *testing.T) {
-	mysql.SetLogger(mysql.Logger(log.New(GinkgoWriter, "[mysql] ", log.Ldate|log.Ltime|log.Lshortfile)))
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Agent Suite")
 }
