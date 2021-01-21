@@ -93,8 +93,7 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update
 
 // Reconcile reconciles MySQLCluster.
-func (r *MySQLClusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("MySQLCluster", req.NamespacedName)
 
 	cluster := &mocov1alpha1.MySQLCluster{}
@@ -285,7 +284,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInter
 		Complete(r)
 }
 
-func selectInitializedCluster(obj runtime.Object) []string {
+func selectInitializedCluster(obj client.Object) []string {
 	cluster := obj.(*mocov1alpha1.MySQLCluster)
 
 	for _, cond := range cluster.Status.Conditions {

@@ -15,10 +15,10 @@ import (
 
 func testMySQLClusterWatcher() {
 	It("should notify generic events", func() {
-		stop := make(chan struct{})
+		ctx := context.Context(context.Background())
 		ch := make(chan event.GenericEvent)
 		watcher := NewMySQLClusterWatcher(k8sClient, ch, time.Second)
-		go watcher.Start(stop)
+		go watcher.Start(ctx)
 
 		manifest := `apiVersion: moco.cybozu.com/v1alpha1
 kind: MySQLCluster
@@ -57,8 +57,8 @@ spec:
 		var ev event.GenericEvent
 		select {
 		case ev = <-ch:
-			Expect(ev.Meta.GetNamespace()).Should(Equal("default"))
-			Expect(ev.Meta.GetName()).Should(Equal("mysqlcluster"))
+			Expect(ev.Object.GetNamespace()).Should(Equal("default"))
+			Expect(ev.Object.GetName()).Should(Equal("mysqlcluster"))
 		case <-time.After(3 * time.Second):
 			Fail("Generic Event wasn't fired!!")
 		}
