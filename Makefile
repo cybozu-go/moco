@@ -45,18 +45,6 @@ test: $(KUBEBUILDER)
 	docker build -t mysql-with-go:latest ./initialize/ --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 	docker run -v $(PWD):/go/src/github.com/cybozu-go/moco -e GOPATH=/tmp --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -v ./initialize"
 
-.PHONY: start-mysqld
-start-mysqld:
-	if [ "$(shell docker inspect moco-test-mysqld --format='{{ .State.Running }}')" != "true" ]; then \
-		docker run --name moco-test-mysqld --rm -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=testpassword mysql:$(MYSQL_VERSION); \
-	fi
-
-.PHONY: stop-mysqld
-stop-mysqld:
-	if [ "$(shell docker inspect moco-test-mysqld --format='{{ .State.Running }}')" = "true" ]; then \
-		docker stop moco-test-mysqld; \
-	fi
-
 # Build moco-controller binary
 build/moco-controller: generate
 	mkdir -p build
