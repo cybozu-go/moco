@@ -48,6 +48,12 @@ FROM mysql:${MYSQL_VERSION}
 COPY --from=download /entrypoint /entrypoint
 COPY --from=download /ping.sh /ping.sh
 
+# The docker official MySQL image doesn't have `/var/lib/mysql-files` which is the default path of the `secure_file_priv` option.
+# Please create the directory as follows or specify the `secure_file_priv` option explicitly.
+# 999 is the user ID of `mysql` user in the docker official MySQL image.
+RUN mkdir -p /var/lib/mysql-files \
+    && chown -R 999:999 /var/lib/mysql-files
+
 ENTRYPOINT ["mysqld"]
 ```
 
