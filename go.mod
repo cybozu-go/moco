@@ -19,13 +19,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	k8s.io/api v0.18.15
-	k8s.io/apimachinery v0.18.15
-	k8s.io/cli-runtime v0.18.15
-	k8s.io/client-go v0.18.15
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/cli-runtime v0.20.2
+	k8s.io/client-go v0.20.2
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.18.15
-	sigs.k8s.io/controller-runtime v0.6.4
+	k8s.io/kubectl v0.20.2
+	sigs.k8s.io/controller-runtime v0.8.0
 	sigs.k8s.io/controller-tools v0.4.1
 	sigs.k8s.io/yaml v1.2.0
 )
