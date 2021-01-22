@@ -37,7 +37,6 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: ${{ env.go-version }}
-      - run: make start-mysqld MYSQL_VERSION=${{ matrix.mysql-version }}
       - run: make test MYSQL_VERSION=${{ matrix.mysql-version }}
   e2e:
     name: End-to-End Tests

@@ -20,7 +20,7 @@ import (
 const (
 	Host             = "localhost"
 	RootUser         = "root"
-	RootUserPassword = "testpassword"
+	RootUserPassword = "rootpassword"
 
 	// Dummy user and password for clone from external.
 	ExternalDonorUser         = "external-donor-user"
@@ -29,11 +29,11 @@ const (
 	ExternalInitUserPassword  = "externalinitpassword"
 
 	// Dummy password for MySQL users which are managed by MOCO.
-	OperatorUserPassword      = "testpassword"
-	OperatorAdminUserPassword = "testpassword"
-	ReplicationUserPassword   = "testpassword"
-	CloneDonorUserPassword    = "testpassword"
-	MiscUserPassword          = "testpassword"
+	OperatorUserPassword      = "userpassword"
+	OperatorAdminUserPassword = "adminpassword"
+	ReplicationUserPassword   = "replpassword"
+	CloneDonorUserPassword    = "clonepassword"
+	MiscUserPassword          = "miscpassword"
 
 	// Docker network name for test.
 	networkName = "moco-test-net"
