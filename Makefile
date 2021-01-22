@@ -65,14 +65,6 @@ build/kubectl-moco:
 manifests: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-	# workaround for CRD issue with k8s 1.18 & controller-gen 0.4
-	# ref: https://github.com/kubernetes/kubernetes/issues/91395
-	# sed -i -r 's/^( +)  or SCTP\. Defaults to "TCP"\./\0\n\1default: TCP/' \
-	sed -i -r 's/^( +)description: Protocol for port\. Must be UDP, TCP, or SCTP\. Defaults to "TCP"\./\0\n\1default: TCP/' \
-	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
-	sed  -i -r 's/^( +)description: The IP protocol for this port\. Supports "TCP", "UDP", and "SCTP"\. Default is TCP\./\0\n\1default: TCP/' \
-	  config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
-
 # Generate code
 .PHONY: generate
 generate: $(CONTROLLER_GEN)

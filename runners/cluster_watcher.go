@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -30,13 +29,13 @@ type mySQLClusterWatcher struct {
 }
 
 // Start implements Runnable.Start
-func (w mySQLClusterWatcher) Start(ch <-chan struct{}) error {
+func (w mySQLClusterWatcher) Start(ctx context.Context) error {
 	ticker := time.NewTicker(w.tick)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-ch:
-			return nil
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-ticker.C:
 			err := w.fireEventForInitializedMySQLClusters(context.Background())
 			if err != nil {
@@ -55,10 +54,7 @@ func (w mySQLClusterWatcher) fireEventForInitializedMySQLClusters(ctx context.Co
 
 	for _, cluster := range clusters.Items {
 		w.channel <- event.GenericEvent{
-			Meta: &metav1.ObjectMeta{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
-			},
+			Object: &cluster,
 		}
 	}
 	return nil

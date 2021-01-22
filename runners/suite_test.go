@@ -84,7 +84,7 @@ var _ = Describe("Test runners", func() {
 	Context("cluster-watcher", testMySQLClusterWatcher)
 })
 
-func selectInitializedCluster(obj runtime.Object) []string {
+func selectInitializedCluster(obj client.Object) []string {
 	cluster := obj.(*mocov1alpha1.MySQLCluster)
 
 	for _, cond := range cluster.Status.Conditions {
