@@ -55,10 +55,6 @@ const (
 	defaultTerminationGracePeriodSeconds = 300
 
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
-
-	rootPasswordSecretPrefix = "root-password-"
-	myCnfSecretPrefix        = "my-cnf-"
-	serviceAccountPrefix     = "mysqld-sa-"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -358,9 +354,11 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 }
 
 func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
-	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	rootPasswordSecret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: rootPasswordSecretName}, rootPasswordSecret)
+	err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      moco.GetRootPasswordSecretName(cluster.Name),
+	}, rootPasswordSecret)
 	if err != nil {
 		return err
 	}
@@ -368,10 +366,9 @@ func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Contex
 	readOnlyPass := rootPasswordSecret.Data[moco.ReadOnlyPasswordKey]
 	writablePass := rootPasswordSecret.Data[moco.WritablePasswordKey]
 
-	secretName := myCnfSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(secretName)
+	secret.SetName(moco.GetMyCnfSecretName(cluster.Name))
 	setStandardLabels(&secret.ObjectMeta, cluster)
 	secret.Data = map[string][]byte{
 		moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
@@ -416,10 +413,9 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
-	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(secretName)
+	secret.SetName(moco.GetRootPasswordSecretName(cluster.Name))
 
 	setStandardLabels(&secret.ObjectMeta, cluster)
 
@@ -573,10 +569,9 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 		return false, nil
 	}
 
-	saName := serviceAccountPrefix + moco.UniqueName(cluster)
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
-	sa.SetName(saName)
+	sa.SetName(moco.GetServiceAccountName(cluster.Name))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
 		setStandardLabels(&sa.ObjectMeta, cluster)
@@ -693,7 +688,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	// add labels to describe application
 	setStandardLabels(&newTemplate.ObjectMeta, cluster)
 
-	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
+	newTemplate.Spec.ServiceAccountName = moco.GetServiceAccountName(cluster.Name)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -741,7 +736,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			Name: myCnfSecretVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: myCnfSecretPrefix + moco.UniqueName(cluster),
+					SecretName: moco.GetMyCnfSecretName(cluster.Name),
 				},
 			},
 		},
@@ -809,7 +804,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			return nil, err
 		}
 	}
-	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	agentContainer := corev1.Container{
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
@@ -860,7 +854,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			{
 				SecretRef: &corev1.SecretEnvSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: rootPasswordSecretName,
+						Name: moco.GetRootPasswordSecretName(cluster.Name),
 					},
 				},
 			},
@@ -969,11 +963,10 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
-	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: secretName,
+				Name: moco.GetRootPasswordSecretName(cluster.Name),
 			},
 		},
 	})
@@ -1048,10 +1041,11 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	isUpdated := false
 
-	for i := int32(0); i < cluster.Spec.Replicas; i++ {
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		podName := moco.GetPodName(cluster.Name, i)
+
 		cronJob := &batchv1beta1.CronJob{}
 		cronJob.SetNamespace(cluster.Namespace)
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
 		cronJob.SetName(podName)
 
 		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {

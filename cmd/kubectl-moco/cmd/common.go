@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/cybozu-go/moco"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
@@ -11,11 +10,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func getPassword(ctx context.Context, clusterUniqueName, user string) (string, error) {
+func getPassword(ctx context.Context, clusterName, user string) (string, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
-		Name:      "root-password-" + clusterUniqueName,
+		Name:      moco.GetRootPasswordSecretName(clusterName),
 	}, secret)
 	if err != nil {
 		return "", err
@@ -49,5 +48,5 @@ func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index i
 		}
 	}
 
-	return fmt.Sprintf("%s-%d", moco.UniqueName(cluster), index), nil
+	return moco.GetPodName(cluster.Name, index), nil
 }

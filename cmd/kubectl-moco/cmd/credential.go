@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var credentialConfig struct {
@@ -28,15 +25,7 @@ var credentialCmd = &cobra.Command{
 }
 
 func fetchCredential(ctx context.Context, clusterName string) error {
-	cluster := &mocov1alpha1.MySQLCluster{}
-	err := kubeClient.Get(ctx, types.NamespacedName{
-		Namespace: namespace,
-		Name:      clusterName,
-	}, cluster)
-	if err != nil {
-		return err
-	}
-	password, err := getPassword(ctx, moco.UniqueName(cluster), credentialConfig.user)
+	password, err := getPassword(ctx, clusterName, credentialConfig.user)
 	if err != nil {
 		return err
 	}

@@ -8,21 +8,22 @@ BINDIR=$(dirname "$0")/../bin
 KUBECTL=$BINDIR/kubectl
 KUBECTLMOCO=$BINDIR/kubectl-moco
 
+UNIQUE_NAME=moco-$NAME
+
 function log {
   echo "$(date '+%Y-%m-%d %H:%M:%S') $@"
 }
 
 function loop {
   # check cluster status
-  BUF=$($KUBECTL -n $NS get mysqlcluster $NAME -o jsonpath='{.metadata.name}{"-"}{.metadata.uid}{" "}{.spec.replicas}{" "}{.status.ready}' 2> /dev/null)
+  BUF=$($KUBECTL -n $NS get mysqlcluster $NAME -o jsonpath='{.spec.replicas}{" "}{.status.ready}' 2> /dev/null)
   if [ -z "$BUF" ]; then
     log "MySQLCluster is not found"
     return
   fi
   array=($BUF)
-  UNIQUE_NAME=${array[0]}
-  REPLICAS=${array[1]}
-  STATUS=${array[2]}
+  REPLICAS=${array[0]}
+  STATUS=${array[1]}
 
   log "$UNIQUE_NAME status=$STATUS replicas=$REPLICAS"
 

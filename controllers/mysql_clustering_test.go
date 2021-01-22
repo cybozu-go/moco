@@ -882,7 +882,7 @@ func sortOp(op *Operation) {
 // Functions for utilities
 
 func hostName(index int) string {
-	uniqueName := fmt.Sprintf("%s-%s", CLUSTER, UID)
+	uniqueName := fmt.Sprintf("moco-%s", CLUSTER)
 	return fmt.Sprintf("%s-%d.%s.%s.svc", uniqueName, index, uniqueName, NAMESPACE)
 }
 

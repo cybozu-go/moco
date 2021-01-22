@@ -130,8 +130,8 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
 			initSecretNS := cluster.Namespace
-			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
-			myCnfSecretName := myCnfSecretPrefix + moco.UniqueName(cluster)
+			initSecretName := moco.GetRootPasswordSecretName(cluster.Name)
+			myCnfSecretName := moco.GetMyCnfSecretName(cluster.Name)
 			myCnfSecretNS := cluster.Namespace
 
 			initSecret := &corev1.Secret{}
@@ -167,7 +167,7 @@ var _ = Describe("MySQLCluster controller", func() {
 
 		It("should not recreate secret if init secret does not exist", func() {
 			initSecretNS := cluster.Namespace
-			initSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
+			initSecretName := moco.GetRootPasswordSecretName(cluster.Name)
 			initSecret := &corev1.Secret{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -309,7 +309,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(isUpdated).Should(BeTrue())
 
 			sa := &corev1.ServiceAccount{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: serviceAccountPrefix + moco.UniqueName(cluster), Namespace: cluster.Namespace}, sa)
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetServiceAccountName(cluster.Name), Namespace: cluster.Namespace}, sa)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			isUpdated, err = reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
@@ -404,7 +404,7 @@ var _ = Describe("MySQLCluster controller", func() {
 				Name: myCnfSecretVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName:  myCnfSecretPrefix + moco.UniqueName(cluster),
+						SecretName:  moco.GetMyCnfSecretName(cluster.Name),
 						DefaultMode: &defaultMode,
 					},
 				},

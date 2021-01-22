@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/cybozu-go/moco"
@@ -141,7 +140,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 	for instanceIdx := 0; instanceIdx < int(cluster.Spec.Replicas); instanceIdx++ {
 		status.InstanceStatus[instanceIdx].Available = false
 
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), instanceIdx)
+		podName := moco.GetPodName(cluster.Name, instanceIdx)
 
 		db, err := infra.GetDB(instanceIdx)
 		if err != nil {

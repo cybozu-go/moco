@@ -12,12 +12,32 @@ import (
 
 // UniqueName returns unique name of the cluster
 func UniqueName(cluster *mocov1alpha1.MySQLCluster) string {
-	return fmt.Sprintf("%s-%s", cluster.GetName(), cluster.GetUID())
+	return fmt.Sprintf("moco-%s", cluster.Name)
+}
+
+// GetPodName returns the pod name in the cluster.
+func GetPodName(clusterName string, index int) string {
+	return fmt.Sprintf("moco-%s-%d", clusterName, index)
+}
+
+// GetRootPasswordSecretName returns the name of the root password secret.
+func GetRootPasswordSecretName(clusterName string) string {
+	return fmt.Sprintf("moco-root-password-%s", clusterName)
+}
+
+// GetMyCnfSecretName returns the name of the myCnf secret.
+func GetMyCnfSecretName(clusterName string) string {
+	return fmt.Sprintf("moco-my-cnf-%s", clusterName)
+}
+
+// GetServiceAccountName returns the name of service account for mysql pod.
+func GetServiceAccountName(clusterName string) string {
+	return fmt.Sprintf("moco-mysqld-sa-%s", clusterName)
 }
 
 // GetHost returns host url of the given cluster and instance
 func GetHost(cluster *mocov1alpha1.MySQLCluster, index int) string {
-	podName := fmt.Sprintf("%s-%d", UniqueName(cluster), index)
+	podName := GetPodName(cluster.Name, index)
 	return fmt.Sprintf("%s.%s.%s.svc", podName, UniqueName(cluster), cluster.Namespace)
 }
 

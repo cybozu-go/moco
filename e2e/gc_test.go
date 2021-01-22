@@ -44,8 +44,8 @@ func testGarbageCollector() {
 		}, 2*time.Minute).Should(Succeed())
 
 		for _, resource := range []string{
-			"serviceaccount/mysqld-sa-" + moco.UniqueName(cluster),
-			"secret/root-password-" + moco.UniqueName(cluster),
+			"serviceaccount/moco-mysqld-sa-" + cluster.GetName(),
+			"secret/moco-root-password-" + cluster.GetName(),
 		} {
 			Eventually(func() error {
 				stdout, stderr, err := kubectl("get", "-n", "e2e-test", resource)
