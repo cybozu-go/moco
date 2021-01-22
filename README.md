@@ -25,6 +25,10 @@ TBD
 
 8.0.18 and 8.0.20
 
+## Supported Kubernetes version
+
+1.20 and 1.19
+
 ## Documentation
 
 [docs](docs/) directory contains documents about designs and specifications.
