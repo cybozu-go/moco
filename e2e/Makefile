@@ -8,7 +8,6 @@ KIND_CLUSTER_NAME=moco-e2e
 KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 
 MOCO_CONF_GEN_VERSION=0.3.0
-MYSQL_VERSION ?= 8.0.20
 
 GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
