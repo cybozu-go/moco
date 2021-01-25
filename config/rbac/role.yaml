@@ -140,17 +140,6 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
   - moco.cybozu.com
   resources:
   - mysqlclusters
