@@ -20,18 +20,28 @@ func testGarbageCollector() {
 		stdout, stderr, err := kubectl("delete", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		for _, kind := range []string{"configmaps", "service", "cronjobs", "jobs", "statefulsets", "pods"} {
-			Eventually(func() error {
-				stdout, stderr, err := kubectl("get", "-n", "e2e-test", kind)
-				if err != nil {
-					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
-				}
-				if !strings.Contains(string(stderr), "No resources found in e2e-test namespace.") {
-					return fmt.Errorf("resources remain: %s, stdout: %s, stderr: %s", kind, stdout, stderr)
-				}
+		kinds := strings.Join([]string{"configmaps", "services", "cronjobs", "jobs", "statefulsets", "pods"}, ",")
+		Eventually(func() error {
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", kinds, "-o", "name")
+			if err != nil {
+				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+			resources := strings.Split(strings.TrimSuffix(string(stdout), "\n"), "\n")
+
+			// k8s >=v1.20 does not need this condition,
+			// because kube-root-ca.crt cm is created in every namespace.
+			// Please remove this line when the support for k8s <=v1.19 is dropped
+			if len(resources) == 1 && resources[0] == "" {
 				return nil
-			}, 2*time.Minute).Should(Succeed())
-		}
+			}
+			if len(resources) == 1 && resources[0] == "configmap/kube-root-ca.crt" {
+
+				fmt.Println("only remain configmap/kube-root-ca.crt")
+				return nil
+			}
+
+			return fmt.Errorf("resources remain: %s", resources)
+		}, 2*time.Minute).Should(Succeed())
 
 		for _, resource := range []string{
 			"serviceaccount/mysqld-sa-" + moco.UniqueName(cluster),

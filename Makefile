@@ -22,7 +22,6 @@ endif
 
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
-MYSQL_VERSION ?= 8.0.20
 
 .PHONY: all
 all: build/moco-controller

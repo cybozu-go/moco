@@ -1,23 +1,19 @@
 include ../common.mk
 
 KUBECTL := $(PWD)/bin/kubectl
-KIND_VERSION=0.9.0
+KIND_VERSION=0.10.0
 KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 
 MOCO_CONF_GEN_VERSION=0.3.0
-KUBEADM_APIVERSION=kubeadm.k8s.io/v1beta2
-MYSQL_VERSION ?= 8.0.20
 
 GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
 launch-kind: kind
 	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
-		sed -e "s|@KUBERNETES_VERSION@|$(KUBERNETES_VERSION)|" \
-			-e "s|@KUBEADM_APIVERSION@|$(KUBEADM_APIVERSION)|" kind-cluster$(KIND_CLUSTER_CONFIG_SUFFIX).yaml > /tmp/kind-cluster.yaml; \
-		kind create cluster --name=$(KIND_CLUSTER_NAME) --config /tmp/kind-cluster.yaml --image kindest/node:v$(KUBERNETES_VERSION); \
+		kind create cluster --name=$(KIND_CLUSTER_NAME) --config kind-cluster$(KIND_CLUSTER_CONFIG_SUFFIX).yaml --image kindest/node:v$(KUBERNETES_VERSION); \
 	fi
 
 shutdown-kind: kind
