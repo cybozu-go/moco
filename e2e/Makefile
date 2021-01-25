@@ -1,7 +1,7 @@
 include ../common.mk
 
 KUBECTL := $(PWD)/bin/kubectl
-KIND_VERSION=0.9.0
+KIND_VERSION=0.10.0
 KUSTOMIZE_VERSION=3.7.0
 KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
