@@ -167,7 +167,7 @@ stringData:
 		stdout, stderr, err = kubectlWithInput(stdout, "apply", "-n"+nsExternal, "-f", "-")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=", string(stdout), "stderr=", string(stderr))
 
-		By("creating new database to external cluster")
+		By("creating a database on the e2e-test-external MySQL cluster directly")
 		cluster, err := getMySQLClusterWithNamespace(nsExternal)
 		Expect(err).ShouldNot(HaveOccurred())
 		connector := newMySQLConnector(cluster)
@@ -196,7 +196,7 @@ stringData:
 			}
 
 			if !ret.Next() {
-				return errors.New("cannot create new database to external cluster")
+				return errors.New("cannot create a database")
 			}
 			return nil
 		}).Should(Succeed())
