@@ -5,6 +5,27 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2021-01-26
+
+### Added
+
+- Add document about how to build MySQL container image. (#122)
+- Add document about example of MySQLCluster CR. (#124)
+
+### Changed
+
+- Support MySQL 8.0.18 and 8.0.20 (#125, #141, #142)
+- Support Kubernetes 1.19 and 1.20 (#157, #160)
+- Update Go to 1.15 and Ubuntu base image to 20.04 (#153)
+
+### Fixed
+
+- Publish editor/viewer ClusterRoles with aggregation labels. (#116)
+- Fix the login user option of `kubectl-moco`. (#117)
+- Fix agent process crash bug. (#143)
+- Prevent unnecessary reconciliation. (#146)
+- Add `loose_` prefix to the `innodb_numa_interleave` system variable. (#158)
+
 ## [0.3.1] - 2020-11-11
 
 ### Added
@@ -61,7 +82,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/cybozu-go/moco/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/cybozu-go/moco/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cybozu-go/moco/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cybozu-go/moco/compare/v0.1.1...v0.2.0
