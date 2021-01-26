@@ -83,7 +83,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	Eventually(func() error {
 		return test_utils.CreateNetwork()
-	}, 10*time.Second).Should(Succeed())
+	}, 20*time.Second).Should(Succeed())
 
 	close(done)
 }, 60)
