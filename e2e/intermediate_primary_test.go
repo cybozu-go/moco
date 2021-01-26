@@ -122,5 +122,83 @@ stringData:
 		fmt.Printf("cannot write intermediate primary: err=%v", err)
 		Expect(err).Should(HaveOccurred())
 		Expect(err.Error()).Should(ContainSubstring("Error 1290: The MySQL server is running with the --super-read-only option so it cannot execute this statement"))
+		connector.stopPortForward()
+
+		By("propagating query when writing new data to external donor")
+		cluster, err = getMySQLCluster()
+		Expect(err).ShouldNot(HaveOccurred())
+		donorConnector := newMySQLConnector(cluster)
+		err = donorConnector.startPortForward()
+		Expect(err).ShouldNot(HaveOccurred())
+		defer donorConnector.stopPortForward()
+
+		var donorDB *sqlx.DB
+		Eventually(func() error {
+			donorDB, err = donorConnector.connectToPrimary()
+			if err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+		_, err = donorDB.Exec("CREATE DATABASE moco_e2e_from_donor")
+		Expect(err).ShouldNot(HaveOccurred())
+		donorConnector.stopPortForward()
+
+		err = connector.startPortForward()
+		Expect(err).ShouldNot(HaveOccurred())
+		Eventually(func() error {
+			ret, err := primaryDB.Query("SHOW DATABASES LIKE 'moco_e2e_from_donor'")
+			if err != nil {
+				return err
+			}
+
+			if !ret.Next() {
+				return errors.New("doesn't propagating query from donor")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should stop intermediate primary behavior", func() {
+		By("applying manifest without replicationSourceSecretName")
+		stdout, stderr, err := execAtLocal("sed", nil, "/replicationSourceSecretName: replication-source-secret/d", "./manifests/mysql_cluster_external.yaml")
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=", string(stdout), "stderr=", string(stderr))
+
+		stdout, stderr, err = kubectlWithInput(stdout, "apply", "-n"+nsExternal, "-f", "-")
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=", string(stdout), "stderr=", string(stderr))
+
+		By("creating a database on the e2e-test-external MySQL cluster directly")
+		cluster, err := getMySQLClusterWithNamespace(nsExternal)
+		Expect(err).ShouldNot(HaveOccurred())
+		connector := newMySQLConnector(cluster)
+		err = connector.startPortForward()
+		Expect(err).ShouldNot(HaveOccurred())
+		defer connector.stopPortForward()
+
+		var primaryDB *sqlx.DB
+		Eventually(func() error {
+			primaryDB, err = connector.connectToPrimary()
+			if err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		Eventually(func() error {
+			_, err = primaryDB.Exec("CREATE DATABASE moco_e2e_external")
+			return err
+		}, 2*time.Minute).Should(Succeed())
+
+		Eventually(func() error {
+			ret, err := primaryDB.Query("SHOW DATABASES LIKE 'moco_e2e_external'")
+			if err != nil {
+				return err
+			}
+
+			if !ret.Next() {
+				return errors.New("cannot create a database")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 }
