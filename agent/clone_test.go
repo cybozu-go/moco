@@ -462,28 +462,6 @@ func testClone() {
 			return nil
 		}, 30*time.Second).Should(Succeed())
 
-		By("getting 500 when secret files doesn't exist")
-		pwd, err := os.Getwd()
-		Expect(err).ShouldNot(HaveOccurred())
-		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, pwd, "", replicaPort,
-			&accessor.MySQLAccessorConfig{
-				ConnMaxLifeTime:   30 * time.Minute,
-				ConnectionTimeout: 3 * time.Second,
-				ReadTimeout:       30 * time.Second,
-			},
-		)
-
-		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
-		queries = url.Values{
-			moco.CloneParamExternal: []string{"true"},
-			moco.AgentTokenParam:    []string{token},
-		}
-		req.URL.RawQuery = queries.Encode()
-
-		res = httptest.NewRecorder()
-		agent.Clone(res, req)
-		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError))
-
 		// The initialization(*) after cloning from the external donor does not succeed in this test.
 		// In the initialization, the agent tries to connect to the MySQL server via the Unix domain socket. But the connection will not be succeeded.
 		// *) htps://github.com/cybozu-go/moco/blob/v0.3.1/agent/clone.go#L169-L197
@@ -508,5 +486,28 @@ func testClone() {
 			}
 			return nil
 		}, 30*time.Second).Should(Succeed())
+	})
+
+	It("should return 500 when secret files doesn't exist", func() {
+		pwd, err := os.Getwd()
+		Expect(err).ShouldNot(HaveOccurred())
+		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, pwd, "", replicaPort,
+			&accessor.MySQLAccessorConfig{
+				ConnMaxLifeTime:   30 * time.Minute,
+				ConnectionTimeout: 3 * time.Second,
+				ReadTimeout:       30 * time.Second,
+			},
+		)
+
+		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries := url.Values{
+			moco.CloneParamExternal: []string{"true"},
+			moco.AgentTokenParam:    []string{token},
+		}
+		req.URL.RawQuery = queries.Encode()
+
+		res := httptest.NewRecorder()
+		agent.Clone(res, req)
+		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError))
 	})
 }
