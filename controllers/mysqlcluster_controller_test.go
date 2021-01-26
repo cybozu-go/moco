@@ -358,7 +358,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(agentContainer).ShouldNot(BeNil())
-			Expect(len(agentContainer.VolumeMounts)).Should(Equal(4))
+			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
 
 			var claim *corev1.PersistentVolumeClaim
 			for i, v := range sts.Spec.VolumeClaimTemplates {
@@ -394,7 +394,7 @@ var _ = Describe("MySQLCluster controller", func() {
 				}
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(len(mysqldContainer.VolumeMounts)).Should(Equal(6))
+			Expect(len(mysqldContainer.VolumeMounts)).Should(Equal(8))
 			Expect(mysqldContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
 				MountPath: moco.MyCnfSecretPath,
 				Name:      myCnfSecretVolumeName,
@@ -440,7 +440,7 @@ var _ = Describe("MySQLCluster controller", func() {
 				}
 			}
 			Expect(agentContainer).ShouldNot(BeNil())
-			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
+			Expect(len(agentContainer.VolumeMounts)).Should(Equal(6))
 			Expect(agentContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
 				MountPath: moco.ReplicationSourceSecretPath,
 				Name:      replicationSourceSecretVolumeName,

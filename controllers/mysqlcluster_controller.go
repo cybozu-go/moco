@@ -39,13 +39,16 @@ import (
 
 const (
 	agentContainerName          = "agent"
+	binaryCopyContainerName     = "binary-copy"
 	entrypointInitContainerName = "moco-init"
 	confInitContainerName       = "moco-conf-gen"
 
+	mocoBinaryVolumeName              = "moco-bin"
 	mysqlDataVolumeName               = "mysql-data"
 	mysqlConfVolumeName               = "mysql-conf"
 	varRunVolumeName                  = "var-run"
 	varLogVolumeName                  = "var-log"
+	mysqlFilesVolumeName              = "mysql-files"
 	tmpVolumeName                     = "tmp"
 	mysqlConfTemplateVolumeName       = "mysql-conf-template"
 	replicationSourceSecretVolumeName = "replication-source-secret"
@@ -61,13 +64,14 @@ const (
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Log                    logr.Logger
-	Recorder               record.EventRecorder
-	Scheme                 *runtime.Scheme
-	ConfInitContainerImage string
-	CurlContainerImage     string
-	MySQLAccessor          accessor.DataBaseAccessor
-	WaitTime               time.Duration
+	Log                      logr.Logger
+	Recorder                 record.EventRecorder
+	Scheme                   *runtime.Scheme
+	BinaryCopyContainerImage string
+	ConfInitContainerImage   string
+	CurlContainerImage       string
+	MySQLAccessor            accessor.DataBaseAccessor
+	WaitTime                 time.Duration
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -809,6 +813,12 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	// If the original template contains volumes with the same names as below, CreateOrUpdate fails.
 	newTemplate.Spec.Volumes = append(newTemplate.Spec.Volumes,
 		corev1.Volume{
+			Name: mocoBinaryVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		corev1.Volume{
 			Name: mysqlConfVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -822,6 +832,12 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		},
 		corev1.Volume{
 			Name: varLogVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		corev1.Volume{
+			Name: mysqlFilesVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -875,6 +891,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
+				MountPath: moco.MOCOBinaryPath,
+				Name:      mocoBinaryVolumeName,
+			},
+			corev1.VolumeMount{
 				MountPath: moco.MySQLDataPath,
 				Name:      mysqlDataVolumeName,
 			},
@@ -889,6 +909,10 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			corev1.VolumeMount{
 				MountPath: moco.VarLogPath,
 				Name:      varLogVolumeName,
+			},
+			corev1.VolumeMount{
+				MountPath: moco.MySQLFilesPath,
+				Name:      mysqlFilesVolumeName,
 			},
 			corev1.VolumeMount{
 				MountPath: moco.TmpPath,
@@ -918,9 +942,13 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			"/entrypoint", "agent",
+			moco.MOCOBinaryPath + "/entrypoint", "agent",
 		},
 		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: moco.MOCOBinaryPath,
+				Name:      mocoBinaryVolumeName,
+			},
 			{
 				MountPath: moco.MySQLDataPath,
 				Name:      mysqlDataVolumeName,
@@ -990,11 +1018,28 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
+		r.makeBinaryCopyContainer(),
 		r.makeConfInitContainer(log, cluster),
 		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
 	)
 
 	return &newTemplate, nil
+}
+
+func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
+	c := corev1.Container{
+		Name:    binaryCopyContainerName,
+		Image:   r.BinaryCopyContainerImage,
+		Command: []string{"cp", "/entrypoint", "/ping.sh", moco.MOCOBinaryPath},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: moco.MOCOBinaryPath,
+				Name:      mocoBinaryVolumeName,
+			},
+		},
+	}
+
+	return c
 }
 
 func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) corev1.Container {
@@ -1072,7 +1117,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	// use the same image with the 'mysqld' container
 	c.Image = mysqldContainerImage
 
-	c.Command = []string{"/entrypoint", "init"}
+	c.Command = []string{moco.MOCOBinaryPath + "/entrypoint", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
@@ -1092,6 +1137,10 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	)
 	c.VolumeMounts = append(c.VolumeMounts,
 		corev1.VolumeMount{
+			MountPath: moco.MOCOBinaryPath,
+			Name:      mocoBinaryVolumeName,
+		},
+		corev1.VolumeMount{
 			MountPath: moco.MySQLDataPath,
 			Name:      mysqlDataVolumeName,
 		},
@@ -1106,6 +1155,10 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 		corev1.VolumeMount{
 			MountPath: moco.VarLogPath,
 			Name:      varLogVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: moco.MySQLFilesPath,
+			Name:      mysqlFilesVolumeName,
 		},
 		corev1.VolumeMount{
 			MountPath: moco.TmpPath,

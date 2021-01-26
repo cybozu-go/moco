@@ -13,14 +13,15 @@ import (
 )
 
 var config struct {
-	metricsAddr            string
-	leaderElectionID       string
-	confInitContainerImage string
-	curlContainerImage     string
-	connMaxLifeTime        time.Duration
-	connectionTimeout      time.Duration
-	readTimeout            time.Duration
-	waitTime               time.Duration
+	metricsAddr              string
+	leaderElectionID         string
+	binaryCopyContainerImage string
+	confInitContainerImage   string
+	curlContainerImage       string
+	connMaxLifeTime          time.Duration
+	connectionTimeout        time.Duration
+	readTimeout              time.Duration
+	waitTime                 time.Duration
 }
 
 var rootCmd = &cobra.Command{
@@ -42,8 +43,9 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultInitContainerImage = "quay.io/cybozu/moco-conf-gen:0.3.0"
-	defaultCurlContainerImage = "quay.io/cybozu/ubuntu:20.04"
+	defaultBinaryCopyContainerImage = "quay.io/cybozu/moco-mysql:8.0.18"
+	defaultInitContainerImage       = "quay.io/cybozu/moco-conf-gen:0.3.0"
+	defaultCurlContainerImage       = "quay.io/cybozu/ubuntu:20.04"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -59,6 +61,7 @@ func init() {
 	fs := rootCmd.Flags()
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
+	fs.StringVar(&config.binaryCopyContainerImage, "binary-copy-container-image", defaultBinaryCopyContainerImage, "The container image name that includes moco's binaries")
 	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
 	fs.StringVar(&config.curlContainerImage, "curl-container-image", defaultCurlContainerImage, "The container image name of curl")
 	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")

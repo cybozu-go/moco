@@ -18,7 +18,7 @@ spec:
             memory: "512Mi"
         livenessProbe:
           exec:
-            command: ["/ping.sh"]
+            command: ["/moco-bin/ping.sh"]
           initialDelaySeconds: 5
           periodSeconds: 5
         readinessProbe:

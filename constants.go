@@ -35,6 +35,9 @@ const (
 )
 
 const (
+	// MOCOBinaryPath is a path for MOCO's binary dir.
+	MOCOBinaryPath = "/moco-bin"
+
 	// MySQLDataPath is a path for MySQL data dir.
 	MySQLDataPath = "/var/lib/mysql"
 
@@ -49,6 +52,9 @@ const (
 
 	// VarLogPath is a path for /var/log/mysql.
 	VarLogPath = "/var/log/mysql"
+
+	// MySQLFilesPath is a path for /var/lib/mysql-files.
+	MySQLFilesPath = "/var/lib/mysql-files"
 
 	// MySQLErrorLogName is a filename of error log for MySQL.
 	MySQLErrorLogName = "mysql.err"
