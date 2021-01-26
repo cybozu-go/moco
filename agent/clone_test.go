@@ -486,8 +486,9 @@ func testClone() {
 			}
 			return nil
 		}, 30*time.Second).Should(Succeed())
+	})
 
-		By("getting 500 when secret files doesn't exist")
+	It("should return 500 when secret files doesn't exist", func() {
 		pwd, err := os.Getwd()
 		Expect(err).ShouldNot(HaveOccurred())
 		agent = New(test_utils.Host, token, test_utils.MiscUserPassword, test_utils.CloneDonorUserPassword, pwd, "", replicaPort,
@@ -498,14 +499,14 @@ func testClone() {
 			},
 		)
 
-		req = httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
-		queries = url.Values{
+		req := httptest.NewRequest("GET", "http://"+replicaHost+"/clone", nil)
+		queries := url.Values{
 			moco.CloneParamExternal: []string{"true"},
 			moco.AgentTokenParam:    []string{token},
 		}
 		req.URL.RawQuery = queries.Encode()
 
-		res = httptest.NewRecorder()
+		res := httptest.NewRecorder()
 		agent.Clone(res, req)
 		Expect(res).Should(HaveHTTPStatus(http.StatusInternalServerError))
 	})
