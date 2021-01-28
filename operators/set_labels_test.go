@@ -28,7 +28,7 @@ var _ = Describe("Set labels", func() {
 		pod0.Name = "pod-0"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &pod0, func() error {
 			pod0.Labels = map[string]string{
-				moco.ClusterKey: "test-test-uid",
+				moco.ClusterKey: "moco-test",
 			}
 			pod0.Spec.Containers = []corev1.Container{
 				{
@@ -45,7 +45,7 @@ var _ = Describe("Set labels", func() {
 		pod1.Name = "pod-1"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &pod1, func() error {
 			pod1.Labels = map[string]string{
-				moco.ClusterKey: "test-test-uid",
+				moco.ClusterKey: "moco-test",
 			}
 			pod1.Spec.Containers = []corev1.Container{
 				{

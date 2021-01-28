@@ -89,12 +89,9 @@ jobs:
         if: always()
       - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v "/health"
         if: always()
-      - name: error log (e2e-test-external, 0)
-        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 0 err-log
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-0 -c err-log
         if: always()
-      - name: error log (e2e-test-external, 1)
-        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 1 err-log
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-1 -c err-log
         if: always()
-      - name: error log (e2e-test-external, 2)
-        run: ./e2e/script/show_container_log.sh e2e-test-external mysqlcluster 2 err-log
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-2 -c err-log
         if: always()

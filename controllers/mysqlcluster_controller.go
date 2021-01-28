@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -55,10 +56,6 @@ const (
 	defaultTerminationGracePeriodSeconds = 300
 
 	mysqlClusterFinalizer = "moco.cybozu.com/mysqlcluster"
-
-	rootPasswordSecretPrefix = "root-password-"
-	myCnfSecretPrefix        = "my-cnf-"
-	serviceAccountPrefix     = "mysqld-sa-"
 )
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -90,7 +87,7 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
-// +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles MySQLCluster.
 func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -162,7 +159,7 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	log.Info("start finalizing MySQLCluster")
-	err := r.removePasswordSecretForController(ctx, log, cluster)
+	err := r.reconcileFinalize(ctx, log, cluster)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -177,6 +174,8 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	r.MySQLAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
+
+	log.Info("finalizing MySQLCluster is completed")
 
 	return ctrl.Result{}, nil
 }
@@ -245,6 +244,51 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 	}
 
 	return isUpdatedAtLeastOnce, nil
+}
+
+func (r *MySQLClusterReconciler) reconcileFinalize(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	var err error
+	err = r.removePodDisruptionBudget(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeServices(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeCronJob(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeStatefulSet(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeRBAC(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeHeadlessService(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeConfigMap(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	err = r.removeSecrets(ctx, log, cluster)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller for reconciliation.
@@ -358,9 +402,11 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 }
 
 func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
-	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	rootPasswordSecret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: rootPasswordSecretName}, rootPasswordSecret)
+	err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      moco.GetRootPasswordSecretName(cluster.Name),
+	}, rootPasswordSecret)
 	if err != nil {
 		return err
 	}
@@ -368,10 +414,9 @@ func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Contex
 	readOnlyPass := rootPasswordSecret.Data[moco.ReadOnlyPasswordKey]
 	writablePass := rootPasswordSecret.Data[moco.WritablePasswordKey]
 
-	secretName := myCnfSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(secretName)
+	secret.SetName(moco.GetMyCnfSecretName(cluster.Name))
 	setStandardLabels(&secret.ObjectMeta, cluster)
 	secret.Data = map[string][]byte{
 		moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
@@ -416,10 +461,9 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
-	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(secretName)
+	secret.SetName(moco.GetRootPasswordSecretName(cluster.Name))
 
 	setStandardLabels(&secret.ObjectMeta, cluster)
 
@@ -455,21 +499,24 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 	return r.Client.Create(ctx, secret)
 }
 
-func (r *MySQLClusterReconciler) removePasswordSecretForController(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
-	secret := &corev1.Secret{}
-	myNS, mySecretName := moco.GetSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		log.Error(err, "unable to get Secret")
-		return err
+func (r *MySQLClusterReconciler) removeSecrets(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	ns, name := moco.GetSecretNameForController(cluster)
+
+	secrets := []*types.NamespacedName{
+		{Namespace: ns, Name: name},
+		{Namespace: cluster.Namespace, Name: moco.GetRootPasswordSecretName(cluster.Name)},
+		{Namespace: cluster.Namespace, Name: moco.GetMyCnfSecretName(cluster.Name)},
 	}
-	err = r.Delete(ctx, secret)
-	if err != nil {
-		log.Error(err, "unable to delete Secret")
-		return err
+	for _, s := range secrets {
+		secret := &corev1.Secret{}
+		secret.SetNamespace(s.Namespace)
+		secret.SetName(s.Name)
+
+		err := r.Delete(ctx, secret)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete Secret")
+			return err
+		}
 	}
 	return nil
 }
@@ -540,6 +587,19 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	return false, nil
 }
 
+func (r *MySQLClusterReconciler) removeConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	cm := &corev1.ConfigMap{}
+	cm.SetNamespace(cluster.Namespace)
+	cm.SetName(moco.UniqueName(cluster))
+
+	err := r.Delete(ctx, cm)
+	if client.IgnoreNotFound(err) != nil {
+		log.Error(err, "unable to delete ConfigMap")
+		return err
+	}
+	return nil
+}
+
 func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	headless := &corev1.Service{}
 	headless.SetNamespace(cluster.Namespace)
@@ -568,15 +628,27 @@ func (r *MySQLClusterReconciler) createOrUpdateHeadlessService(ctx context.Conte
 	return false, nil
 }
 
+func (r *MySQLClusterReconciler) removeHeadlessService(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	headless := &corev1.Service{}
+	headless.SetNamespace(cluster.Namespace)
+	headless.SetName(moco.UniqueName(cluster))
+
+	err := r.Delete(ctx, headless)
+	if client.IgnoreNotFound(err) != nil {
+		log.Error(err, "unable to delete headless Service")
+		return err
+	}
+	return nil
+}
+
 func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	if cluster.Spec.PodTemplate.Spec.ServiceAccountName != "" {
 		return false, nil
 	}
 
-	saName := serviceAccountPrefix + moco.UniqueName(cluster)
 	sa := &corev1.ServiceAccount{}
 	sa.SetNamespace(cluster.Namespace)
-	sa.SetName(saName)
+	sa.SetName(moco.GetServiceAccountName(cluster.Name))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
 		setStandardLabels(&sa.ObjectMeta, cluster)
@@ -593,6 +665,23 @@ func (r *MySQLClusterReconciler) createOrUpdateRBAC(ctx context.Context, log log
 		return true, nil
 	}
 	return false, nil
+}
+
+func (r *MySQLClusterReconciler) removeRBAC(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	if cluster.Spec.PodTemplate.Spec.ServiceAccountName != "" {
+		return nil
+	}
+
+	sa := &corev1.ServiceAccount{}
+	sa.SetNamespace(cluster.Namespace)
+	sa.SetName(moco.GetServiceAccountName(cluster.Name))
+
+	err := r.Delete(ctx, sa)
+	if client.IgnoreNotFound(err) != nil {
+		log.Error(err, "unable to delete ServiceAccount")
+		return err
+	}
+	return nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
@@ -647,6 +736,19 @@ func (r *MySQLClusterReconciler) createOrUpdateStatefulSet(ctx context.Context, 
 	return false, nil
 }
 
+func (r *MySQLClusterReconciler) removeStatefulSet(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	sts := &appsv1.StatefulSet{}
+	sts.SetNamespace(cluster.Namespace)
+	sts.SetName(moco.UniqueName(cluster))
+
+	err := r.Delete(ctx, sts)
+	if client.IgnoreNotFound(err) != nil {
+		log.Error(err, "unable to delete StatefulSet")
+		return err
+	}
+	return nil
+}
+
 func defaultProbe(probe *corev1.Probe) {
 	if probe == nil {
 		return
@@ -693,7 +795,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	// add labels to describe application
 	setStandardLabels(&newTemplate.ObjectMeta, cluster)
 
-	newTemplate.Spec.ServiceAccountName = serviceAccountPrefix + moco.UniqueName(cluster)
+	newTemplate.Spec.ServiceAccountName = moco.GetServiceAccountName(cluster.Name)
 
 	if newTemplate.Spec.TerminationGracePeriodSeconds == nil {
 		var t int64 = defaultTerminationGracePeriodSeconds
@@ -741,7 +843,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			Name: myCnfSecretVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: myCnfSecretPrefix + moco.UniqueName(cluster),
+					SecretName: moco.GetMyCnfSecretName(cluster.Name),
 				},
 			},
 		},
@@ -809,7 +911,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			return nil, err
 		}
 	}
-	rootPasswordSecretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	agentContainer := corev1.Container{
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
@@ -860,7 +961,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			{
 				SecretRef: &corev1.SecretEnvSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: rootPasswordSecretName,
+						Name: moco.GetRootPasswordSecretName(cluster.Name),
 					},
 				},
 			},
@@ -969,11 +1070,10 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.Image = mysqldContainerImage
 
 	c.Command = []string{"/entrypoint", "init"}
-	secretName := rootPasswordSecretPrefix + moco.UniqueName(cluster)
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: secretName,
+				Name: moco.GetRootPasswordSecretName(cluster.Name),
 			},
 		},
 	})
@@ -1048,10 +1148,11 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	isUpdated := false
 
-	for i := int32(0); i < cluster.Spec.Replicas; i++ {
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		podName := moco.GetPodName(cluster.Name, i)
+
 		cronJob := &batchv1beta1.CronJob{}
 		cronJob.SetNamespace(cluster.Namespace)
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
 		cronJob.SetName(podName)
 
 		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
@@ -1084,6 +1185,22 @@ func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log 
 		}
 	}
 	return isUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) removeCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	for i := 0; i < int(cluster.Spec.Replicas); i++ {
+		cronJob := &batchv1beta1.CronJob{}
+		cronJob.SetNamespace(cluster.Namespace)
+		cronJob.SetName(moco.GetPodName(cluster.Name, i))
+
+		opt := metav1.DeletePropagationForeground
+		err := r.Delete(ctx, cronJob, &client.DeleteOptions{PropagationPolicy: &opt})
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete CronJob")
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateServices(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
@@ -1187,6 +1304,25 @@ func (r *MySQLClusterReconciler) createOrUpdateService(ctx context.Context, clus
 	return isUpdated, op, nil
 }
 
+func (r *MySQLClusterReconciler) removeServices(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	services := []string{
+		fmt.Sprintf("%s-primary", moco.UniqueName(cluster)),
+		fmt.Sprintf("%s-replica", moco.UniqueName(cluster)),
+	}
+	for _, svcName := range services {
+		svc := &corev1.Service{}
+		svc.SetNamespace(cluster.Namespace)
+		svc.SetName(svcName)
+
+		err := r.Delete(ctx, svc)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete Service")
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *MySQLClusterReconciler) createOrUpdatePodDisruptionBudget(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	isUpdated := false
 
@@ -1222,6 +1358,19 @@ func (r *MySQLClusterReconciler) createOrUpdatePodDisruptionBudget(ctx context.C
 	}
 
 	return isUpdated, nil
+}
+
+func (r *MySQLClusterReconciler) removePodDisruptionBudget(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	pdb := &policyv1beta1.PodDisruptionBudget{}
+	pdb.SetNamespace(cluster.Namespace)
+	pdb.SetName(moco.UniqueName(cluster))
+
+	err := r.Delete(ctx, pdb)
+	if client.IgnoreNotFound(err) != nil {
+		log.Error(err, "unable to delete PodDisruptionBudget")
+		return err
+	}
+	return nil
 }
 
 func (r *MySQLClusterReconciler) generateAgentToken(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {

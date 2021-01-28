@@ -20,7 +20,7 @@ func testGarbageCollector() {
 		stdout, stderr, err := kubectl("delete", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		kinds := strings.Join([]string{"configmaps", "services", "cronjobs", "jobs", "statefulsets", "pods"}, ",")
+		kinds := strings.Join([]string{"configmaps", "services", "cronjobs", "jobs", "statefulsets", "pods", "poddisruptionbudgets"}, ",")
 		Eventually(func() error {
 			stdout, stderr, err := kubectl("get", "-n", "e2e-test", kinds, "-o", "name")
 			if err != nil {
@@ -44,8 +44,8 @@ func testGarbageCollector() {
 		}, 2*time.Minute).Should(Succeed())
 
 		for _, resource := range []string{
-			"serviceaccount/mysqld-sa-" + moco.UniqueName(cluster),
-			"secret/root-password-" + moco.UniqueName(cluster),
+			"serviceaccount/moco-mysqld-sa-" + cluster.GetName(),
+			"secret/moco-root-password-" + cluster.GetName(),
 		} {
 			Eventually(func() error {
 				stdout, stderr, err := kubectl("get", "-n", "e2e-test", resource)

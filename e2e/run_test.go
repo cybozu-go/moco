@@ -57,7 +57,7 @@ func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
 }
 
 func getRootPasswordWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
-	stdout, stderr, err := kubectl("get", "-n"+ns, "secret", "root-password-"+moco.UniqueName(mysqlCluster), "-o", "json")
+	stdout, stderr, err := kubectl("get", "-n"+ns, "secret", "moco-root-password-"+mysqlCluster.Name, "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 	}
