@@ -11,21 +11,26 @@ MOCO_CONF_GEN_VERSION=0.3.0
 
 GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
+.PHONY: default
+default: test
+
+.PHONY: launch-kind
 launch-kind: kind
 	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
 		kind create cluster --name=$(KIND_CLUSTER_NAME) --config kind-cluster$(KIND_CLUSTER_CONFIG_SUFFIX).yaml --image kindest/node:v$(KUBERNETES_VERSION); \
 	fi
 
+.PHONY: shutdown-kind
 shutdown-kind: kind
 	if [ "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
 		kind delete cluster --name=$(KIND_CLUSTER_NAME) || true; \
 	fi
 
 .PHONY: setup
-setup: $(KUBECTL_MOCO) $(KUBECTL) $(KUSTOMIZE)
+setup: $(KUBECTL) $(KUSTOMIZE)
 
 .PHONY: test
-test: launch-kind load-image setup
+test: launch-kind load-image $(KUBECTL_MOCO) setup
 	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
 	$(KUSTOMIZE) build --load_restrictor='none' ./manifests | $(KUBECTL) apply -f -
 	env E2ETEST=1 go test -count=1 -v -timeout 15m . -args -ginkgo.progress -ginkgo.v -ginkgo.failFast
@@ -59,7 +64,7 @@ build-moco-image: $(GO_FILES) ../Dockerfile
 build-mysql-image: $(GO_FILES) Dockerfile
 	docker build .. -f Dockerfile -t mysql:dev --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 
-$(KUBECTL_MOCO):
+$(KUBECTL_MOCO): $(GO_FILES)
 	mkdir -p bin
 	cd ../; make build/kubectl-moco
 	cp ../build/kubectl-moco $@
