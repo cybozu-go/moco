@@ -15,16 +15,18 @@ CRD_OPTIONS ?= "crd:crdVersions=v1"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+GOBIN := $(shell go env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN := $(shell go env GOBIN)
 endif
+
+GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
 
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
 
 .PHONY: all
-all: build/moco-controller
+all: build
 
 .PHONY: validate
 validate: setup
@@ -44,18 +46,22 @@ test: $(KUBEBUILDER)
 	docker build -t mysql-with-go:latest ./initialize/ --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
 	docker run -v $(PWD):/go/src/github.com/cybozu-go/moco -e GOPATH=/tmp --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -v ./initialize"
 
+# Build all binaries
+.PHONY: build
+build: build/moco-controller build/entrypoint build/kubectl-moco
+
 # Build moco-controller binary
-build/moco-controller: generate
+build/moco-controller: generate $(GO_FILES)
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/moco-controller/main.go
 
 # Build entrypoint binary
-build/entrypoint:
+build/entrypoint: $(GO_FILES)
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/entrypoint
 
 # Build kubectl-moco binary
-build/kubectl-moco:
+build/kubectl-moco: $(GO_FILES)
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/kubectl-moco
 
