@@ -21,7 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -95,8 +95,11 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	cluster := &mocov1alpha1.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
+		if k8serror.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		log.Error(err, "unable to fetch MySQLCluster")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	if cluster.DeletionTimestamp == nil {
@@ -361,7 +364,7 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 	if err == nil {
 		return false, nil
 	}
-	if !errors.IsNotFound(err) {
+	if !k8serror.IsNotFound(err) {
 		log.Error(err, "unable to get Secret")
 		return false, err
 	}
