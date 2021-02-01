@@ -942,7 +942,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			moco.MOCOBinaryPath + "/entrypoint", "agent",
+			moco.MOCOBinaryPath + "/moco-agent", "server",
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1030,7 +1030,7 @@ func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
 	c := corev1.Container{
 		Name:    binaryCopyContainerName,
 		Image:   r.BinaryCopyContainerImage,
-		Command: []string{"cp", "/entrypoint", "/ping.sh", moco.MOCOBinaryPath},
+		Command: []string{"cp", "/moco-agent", moco.MOCOBinaryPath},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: moco.MOCOBinaryPath,
@@ -1117,7 +1117,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	// use the same image with the 'mysqld' container
 	c.Image = mysqldContainerImage
 
-	c.Command = []string{moco.MOCOBinaryPath + "/entrypoint", "init"}
+	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init"}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
