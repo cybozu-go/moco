@@ -11,51 +11,9 @@ MOCO imposes the following conditions on the container images.
   They must be callable without directory paths.
 * The default command to be executed must be specified with `ENTRYPOINT` unless `.spec.podTemplate.spec.containers[<n>].command` is specified.
   You cannot use `CMD`.
-* The agent executable file must be included as `/entrypoint`.
-  The agent is published as a github.com release asset with the URL of `https://github.com/cybozu-go/moco/releases/download/v<version>/agent`.
+* The agent executable file must be included as `/moco-bin/moco-agent`.
+  The agent is published as a github.com release asset with the URL of `https://github.com/orgs/cybozu-go/packages/container/package/moco-agent`.
 * Only the versions of 8.0.18 and 8.0.20 are tested.
-
-Dockerfile Examples
--------------------
-
-### Import MOCO assets to official MySQL image
-
-This example imports `agent` and `ping.sh` from MOCO's github.com repository into the official MySQL image.
-`ping.sh` is not mandatory, but it is very useful for probing.
-
-The original image has an entrypoint script to initialize and configure MySQL.
-This script should not be executed in MOCO, so the example overrides `ENTRYPONIT`.
-
-Note that this image is configured as `secure_file_priv = /var/lib/mysql-files`.
-Please prepare the directory or disable import/export operations with `secure_file_priv = NULL` in `MySQLCluster`.
-
-```
-ARG MOCO_VERSION=0.4.0
-ARG MYSQL_VERSION=8.0.20
-
-FROM alpine AS download
-
-ARG MOCO_VERSION
-
-RUN apk add --no-cache curl \
-  && curl -fsSL -o /entrypoint https://github.com/cybozu-go/moco/releases/download/v${MOCO_VERSION}/agent \
-  && chmod +x /entrypoint \
-  && curl -fsSL -o /ping.sh https://github.com/cybozu-go/moco/raw/v${MOCO_VERSION}/ping.sh \
-  && chmod +x /ping.sh
-
-FROM mysql:${MYSQL_VERSION}
-
-COPY --from=download /entrypoint /entrypoint
-COPY --from=download /ping.sh /ping.sh
-
-# The docker official MySQL image doesn't have `/var/lib/mysql-files` which is the default path of the `secure_file_priv` option.
-# Please create the directory as follows or specify the `secure_file_priv` option explicitly.
-# 999 is the user ID of `mysql` user in the docker official MySQL image.
-RUN mkdir -p /var/lib/mysql-files \
-    && chown -R 999:999 /var/lib/mysql-files
-
-ENTRYPOINT ["mysqld"]
-```
 
 ### Build MySQL from source code
 
@@ -67,14 +25,7 @@ FROM ubuntu:20.04 AS build
 ARG MOCO_VERSION=0.4.0
 ARG MYSQL_VERSION=8.0.20
 
-RUN apt-get update \
-  && apt-get install -y curl \
-  && curl -fsSL -o /entrypoint https://github.com/cybozu-go/moco/releases/download/v${MOCO_VERSION}/agent \
-  && chmod +x /entrypoint \
-  && curl -fsSL -o /ping.sh https://github.com/cybozu-go/moco/raw/v${MOCO_VERSION}/ping.sh \
-  && chmod +x /ping.sh
-
-RUN apt-get install -y cmake libncurses5-dev libjemalloc-dev libnuma-dev libreadline-dev libssl-dev pkg-config \
+RUN apt-get update && apt-get install -y cmake libncurses5-dev libjemalloc-dev libnuma-dev libreadline-dev libssl-dev pkg-config \
   && curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-${MYSQL_VERSION}.tar.gz \
   && tar -x -z -f mysql-boost-${MYSQL_VERSION}.tar.gz \
   && cd mysql-${MYSQL_VERSION} \

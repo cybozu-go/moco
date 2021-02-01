@@ -121,7 +121,7 @@ The init container receives the merged `my.cnf` template and fills it with run-t
 
 So, in short we prepare the following two init containers.
 1. A container to initialize the MySQL cluster, for example, creating necessary users.
-  The entrypoint binary is provided by this repository.
+  For this purpose, the `moco-agent` binary is provided by [cybozu-go/moco-agent](https://github.com/cybozu-go/moco-agent).
   If users want to use their custom image, they have to include the binary in the image.
 2. A container to fill the `my.cnf` template received from the operator into a file.
   This container is injected by the operator.
