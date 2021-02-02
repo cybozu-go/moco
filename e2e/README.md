@@ -43,11 +43,6 @@ As explained above, tests that cannot be covered by Unit tests and Small tests a
 - Event recording
 - Garbage collector
 
-#### `entrypoint`
-
-- Read password files
-- HTTP server for agent APIs
-
 ### Scenarios
 
 The following feature functions should interact with MySQL on a Kubernetes cluster, so they need to be examined by e2e tests.

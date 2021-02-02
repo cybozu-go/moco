@@ -54,12 +54,13 @@ func subMain() error {
 	}
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:                 mgr.GetClient(),
-		Log:                    ctrl.Log.WithName("controller"),
-		Recorder:               mgr.GetEventRecorderFor("moco-controller"),
-		Scheme:                 mgr.GetScheme(),
-		ConfInitContainerImage: config.confInitContainerImage,
-		CurlContainerImage:     config.curlContainerImage,
+		Client:                   mgr.GetClient(),
+		Log:                      ctrl.Log.WithName("controller"),
+		Recorder:                 mgr.GetEventRecorderFor("moco-controller"),
+		Scheme:                   mgr.GetScheme(),
+		BinaryCopyContainerImage: config.binaryCopyContainerImage,
+		ConfInitContainerImage:   config.confInitContainerImage,
+		CurlContainerImage:       config.curlContainerImage,
 		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   config.connMaxLifeTime,
 			ConnectionTimeout: config.connectionTimeout,

@@ -43,22 +43,15 @@ validate: setup
 .PHONY: test
 test: $(KUBEBUILDER)
 	MYSQL_VERSION=$(MYSQL_VERSION) go test -race -v -coverprofile cover.out ./...
-	docker build -t mysql-with-go:latest ./initialize/ --build-arg MYSQL_VERSION=$(MYSQL_VERSION)
-	docker run -v $(PWD):/go/src/github.com/cybozu-go/moco -e GOPATH=/tmp --rm mysql-with-go:latest sh -c "CGO_ENABLED=0 go test -v ./initialize"
 
 # Build all binaries
 .PHONY: build
-build: build/moco-controller build/entrypoint build/kubectl-moco
+build: build/moco-controller build/kubectl-moco
 
 # Build moco-controller binary
 build/moco-controller: generate $(GO_FILES)
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/moco-controller/main.go
-
-# Build entrypoint binary
-build/entrypoint: $(GO_FILES)
-	mkdir -p build
-	GO111MODULE=on go build -o $@ ./cmd/entrypoint
 
 # Build kubectl-moco binary
 build/kubectl-moco: $(GO_FILES)

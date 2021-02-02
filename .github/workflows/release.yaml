@@ -25,7 +25,6 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: ${{ env.go-version }}
-      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/entrypoint
       - run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/kubectl-moco
           mv build/kubectl-moco kubectl-moco-linux-amd64
@@ -43,15 +42,6 @@ jobs:
             See [CHANGELOG.md](./CHANGELOG.md) for details.
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
-      - name: Upload Agent
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/entrypoint
-          asset_name: agent
-          asset_content_type: application/octet-stream
       - name: Upload kubectl-moco for linux-amd64
         uses: actions/upload-release-asset@v1
         env:
