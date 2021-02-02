@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     branches:
-      - 'master'
+      - 'main'
 env:
   go-version: 1.15
   cache-version: 1
