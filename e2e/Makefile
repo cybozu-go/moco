@@ -50,7 +50,7 @@ load-moco-image: build-moco-image
 	fi
 
 .PHONY: load-mysql-image
-load-mysql-image: build-mysql-image
+load-mysql-image: prepare-mysql-image
 	ID=$$(docker image inspect --format='{{.ID}}' mysql:dev); \
 	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
 		kind load docker-image --name=$(KIND_CLUSTER_NAME) mysql:dev; \
@@ -60,8 +60,8 @@ load-mysql-image: build-mysql-image
 build-moco-image: $(GO_FILES) ../Dockerfile
 	docker build .. -f ../Dockerfile -t controller:dev
 
-.PHONY: build-mysql-image
-build-mysql-image: $(GO_FILES)
+.PHONY: prepare-mysql-image
+prepare-mysql-image: $(GO_FILES)
 	docker pull quay.io/cybozu/moco-mysql:$(MYSQL_VERSION)
 	docker tag quay.io/cybozu/moco-mysql:$(MYSQL_VERSION) mysql:dev
 
