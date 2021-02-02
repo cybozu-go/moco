@@ -62,8 +62,8 @@ build-moco-image: $(GO_FILES) ../Dockerfile
 
 .PHONY: prepare-mysql-image
 prepare-mysql-image: $(GO_FILES)
-	docker pull quay.io/cybozu/moco-mysql:$(MYSQL_VERSION)
-	docker tag quay.io/cybozu/moco-mysql:$(MYSQL_VERSION) mysql:dev
+	docker pull mysql:$(MYSQL_VERSION)
+	docker tag mysql:$(MYSQL_VERSION) mysql:dev
 
 $(KUBECTL_MOCO): $(GO_FILES)
 	mkdir -p bin
