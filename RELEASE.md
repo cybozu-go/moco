@@ -37,10 +37,9 @@ Bump version
 
     ```console
     $ VERSION=1.2.3
-    $ export VERSION
     ```
 
-2. Checkout `master` branch.
+2. Checkout `main` branch.
 3. Make a branch to release, for example by `git neco dev bump-$VERSION`
 4. Update `version.go`.
 5. Edit `CHANGELOG.md` for the new version ([example][]).
@@ -55,7 +54,7 @@ Bump version
 8. Add a new tag and push it as follows:
 
     ```console
-    $ git checkout master
+    $ git checkout main
     $ git pull
     $ git tag v$VERSION
     $ git push origin v$VERSION
