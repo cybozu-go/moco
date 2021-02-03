@@ -31,7 +31,7 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 	}
 
 	registry := prometheus.NewRegistry()
-	RegisterControllerMetrics(registry)
+	RegisterMetrics(registry)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestSyncedReplicasMetricsUpdater(t *testing.T) {
 	}
 
 	registry := prometheus.NewRegistry()
-	RegisterControllerMetrics(registry)
+	RegisterMetrics(registry)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestClusterStatusMetricsUpdater(t *testing.T) {
 		{UpdateClusterStatusAvailableMetrics, "moco_controller_cluster_available_status"},
 	} {
 		registry := prometheus.NewRegistry()
-		RegisterControllerMetrics(registry)
+		RegisterMetrics(registry)
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
