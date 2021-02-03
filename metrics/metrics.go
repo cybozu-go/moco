@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	metricsNamespace           = "moco"
-	metricsControllerSubsystem = "controller"
+	metricsNamespace = "moco"
+	metricsSubsystem = "controller"
 )
 
 var (
@@ -20,10 +20,10 @@ var (
 	syncedReplicasMetrics         *prometheus.GaugeVec
 )
 
-func RegisterControllerMetrics(registry *prometheus.Registry) {
+func RegisterMetrics(registry *prometheus.Registry) {
 	clusterViolationStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "cluster_violation_status",
 		Help:      "The cluster status about violation condition",
 	}, []string{"cluster_name", "status"})
@@ -31,7 +31,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	clusterFailureStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "cluster_failure_status",
 		Help:      "The cluster status about failure condition",
 	}, []string{"cluster_name", "status"})
@@ -39,7 +39,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	clusterAvailableStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "cluster_available_status",
 		Help:      "The cluster status about available condition",
 	}, []string{"cluster_name", "status"})
@@ -47,7 +47,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	clusterHealthyStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "cluster_healthy_status",
 		Help:      "The cluster status about healthy condition",
 	}, []string{"cluster_name", "status"})
@@ -55,7 +55,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	operationPhaseMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "operation_phase",
 		Help:      "The operation is in the labeled phase or not",
 	}, []string{"cluster_name", "phase"})
@@ -63,7 +63,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	failoverCountTotalMetrics = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "failover_count_total",
 		Help:      "The failover count.",
 	}, []string{"cluster_name"})
@@ -71,7 +71,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	totalReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "total_replicas",
 		Help:      "The number of replicas.",
 	}, []string{"cluster_name"})
@@ -79,7 +79,7 @@ func RegisterControllerMetrics(registry *prometheus.Registry) {
 
 	syncedReplicasMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: metricsControllerSubsystem,
+		Subsystem: metricsSubsystem,
 		Name:      "synced_replicas",
 		Help:      "The number of replicas which are in synced state.",
 	}, []string{"cluster_name"})
