@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2021-02-03
+
+**Breaking change**  
+The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5.0` caused by the naming method of k8s resources (PR #161). Please recreate the cluster.
+
+### Added
+
+- Add kubectl-moco release workflow for windows. (#169)
+
+### Changed
+
+- Support official MySQL container image. (#165)
+- Add 'moco-' prefix to resource name and remove UUID suffix (#161)
+
 ## [0.4.0] - 2021-01-26
 
 ### Added

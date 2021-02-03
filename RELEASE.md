@@ -40,7 +40,7 @@ Bump version
     ```
 
 2. Checkout `main` branch.
-3. Make a branch to release, for example by `git neco dev bump-$VERSION`
+3. Make a branch to release, for example by `git neco dev bump-v$VERSION`
 4. Update `version.go`.
 5. Edit `CHANGELOG.md` for the new version ([example][]).
 6. Commit the change and create a pull request:
