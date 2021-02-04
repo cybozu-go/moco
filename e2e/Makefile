@@ -1,5 +1,8 @@
 include ../common.mk
 
+GOOS := $(shell go env GOOS)
+GOARCH := $(shell go env GOARCH)
+
 KUBECTL := $(PWD)/bin/kubectl
 KIND_VERSION=0.10.0
 KUSTOMIZE_VERSION=3.7.0
@@ -72,12 +75,12 @@ $(KUBECTL_MOCO): $(GO_FILES)
 
 $(KUBECTL):
 	mkdir -p bin
-	curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl -o $(KUBECTL)
+	curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
 	chmod 755 $(KUBECTL)
 
 $(KUSTOMIZE):
 	mkdir -p bin
-	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | tar xzf - > kustomize
+	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_$(GOOS)_$(GOARCH).tar.gz | tar xzf - > kustomize
 	mv kustomize $(KUSTOMIZE)
 
 .PHONY: kind
