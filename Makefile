@@ -58,6 +58,24 @@ build/kubectl-moco: $(GO_FILES)
 	mkdir -p build
 	GO111MODULE=on go build -o $@ ./cmd/kubectl-moco
 
+.PHONY: release-build
+release-build: build/kubectl-moco-linux-amd64 build/kubectl-moco-windows-amd64.exe build/kubectl-moco-darwin-amd64
+
+# Build kubectl-moco binary for linux (release build)
+build/kubectl-moco-linux-amd64: $(GO_FILES)
+	mkdir -p build
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+
+# Build kubectl-moco binary for Windows (release build)
+build/kubectl-moco-windows-amd64.exe: $(GO_FILES)
+	mkdir -p build
+	GO111MODULE=on CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+
+# Build kubectl-moco binary for Mac OS (release build)
+build/kubectl-moco-darwin-amd64: $(GO_FILES)
+	mkdir -p build
+	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
 manifests: $(CONTROLLER_GEN)
