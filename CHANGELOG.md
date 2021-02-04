@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2021-02-04
+
+### Changed
+
+- Download e2e test tools for the host OS. (#182)
+
 ## [0.5.0] - 2021-02-03
 
 **Breaking change**  
@@ -96,7 +102,9 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/cybozu-go/moco/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/cybozu-go/moco/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/cybozu-go/moco/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/cybozu-go/moco/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cybozu-go/moco/compare/v0.2.0...v0.3.0
