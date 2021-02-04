@@ -27,9 +27,9 @@ jobs:
           go-version: ${{ env.go-version }}
       - run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build/kubectl-moco
-          mv build/kubectl-moco kubectl-moco-linux-amd64
+          mv build/kubectl-moco build/kubectl-moco-linux-amd64
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 make build/kubectl-moco
-          mv build/kubectl-moco kubectl-moco-windows-amd64
+          mv build/kubectl-moco build/kubectl-moco-windows-amd64
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
