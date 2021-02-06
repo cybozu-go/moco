@@ -16,7 +16,6 @@ import (
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -124,33 +123,43 @@ var _ = Describe("MySQLCluster controller", func() {
 
 	Context("Secrets", func() {
 		It("should create secrets", func() {
-			isUpdated, err := reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			isUpdated, err := reconciler.createControllerSecretIfNotExist(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			isUpdated, err = reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeTrue())
 
 			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
-			initSecretNS := cluster.Namespace
-			initSecretName := moco.GetRootPasswordSecretName(cluster.Name)
+			rootPasswordSecretNS := cluster.Namespace
+			rootPasswordSecretName := moco.GetRootPasswordSecretName(cluster.Name)
 			myCnfSecretName := moco.GetMyCnfSecretName(cluster.Name)
 			myCnfSecretNS := cluster.Namespace
-
-			initSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(initSecret.Data).Should(HaveKey(moco.RootPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
-			Expect(initSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
 
 			ctrlSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: ctrlSecretNS, Name: ctrlSecretName}, ctrlSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.RootPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
+
+			rootPasswordSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: rootPasswordSecretNS, Name: rootPasswordSecretName}, rootPasswordSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.RootPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
+			Expect(rootPasswordSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
 
 			myCnfSecret := &corev1.Secret{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
@@ -160,28 +169,43 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(myCnfSecret.Data).Should(HaveKey(moco.ReadOnlyMyCnfKey))
 			Expect(myCnfSecret.Data).Should(HaveKey(moco.WritableMyCnfKey))
 
-			isUpdated, err = reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			isUpdated, err = reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
 		})
 
-		It("should not recreate secret if init secret does not exist", func() {
-			initSecretNS := cluster.Namespace
-			initSecretName := moco.GetRootPasswordSecretName(cluster.Name)
-			initSecret := &corev1.Secret{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
+		It("if delete rootPasswordSecret and myConfSecret, they will be regenerated", func() {
+			ctrlSecretNS, ctrlSecretName := moco.GetSecretNameForController(cluster)
+			ctrlSecret := &corev1.Secret{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: ctrlSecretNS, Name: ctrlSecretName}, ctrlSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = k8sClient.Delete(ctx, initSecret)
+			rootPasswordSecretNS := cluster.Namespace
+			rootPasswordSecretName := moco.GetRootPasswordSecretName(cluster.Name)
+			rootPasswordSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: rootPasswordSecretNS, Name: rootPasswordSecretName}, rootPasswordSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			isUpdated, err := reconciler.createSecretIfNotExist(ctx, reconciler.Log, cluster)
+			err = k8sClient.Delete(ctx, rootPasswordSecret)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
 
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: initSecretNS, Name: initSecretName}, initSecret)
-			reason := k8serror.ReasonForError(err)
-			Expect(reason).Should(Equal(metav1.StatusReasonNotFound))
+			myCnfSecretNS := cluster.Namespace
+			myCnfSecretName := moco.GetMyCnfSecretName(cluster.Name)
+			myCnfSecret := &corev1.Secret{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, myCnfSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			isUpdated, err := reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: rootPasswordSecretNS, Name: rootPasswordSecretName}, rootPasswordSecret)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 
