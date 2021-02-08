@@ -379,20 +379,7 @@ func (r *MySQLClusterReconciler) createControllerSecretIfNotExist(ctx context.Co
 		return false, err
 	}
 
-	operatorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-	replicatorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-	donorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-
-	if err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName, operatorPass, replicatorPass, donorPass); err != nil {
+	if err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName); err != nil {
 		log.Error(err, "unable to create Secret for Controller")
 		return false, err
 	}
@@ -492,8 +479,7 @@ func (r *MySQLClusterReconciler) createOrUpdateRootPasswordSecret(ctx context.Co
 	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mocov1alpha1.MySQLCluster,
-	namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
+func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, namespace, secretName string) error {
 	var rootPass []byte
 	if cluster.Spec.RootPasswordSecretName != nil {
 		secret := &corev1.Secret{}
@@ -511,6 +497,18 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 		}
 	}
 
+	operatorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
+	replicatorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
+	donorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
 	miscPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
