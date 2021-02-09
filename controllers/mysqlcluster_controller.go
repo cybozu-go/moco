@@ -196,7 +196,13 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 		return false, err
 	}
 
-	isUpdated, err = r.createSecretIfNotExist(ctx, log, cluster)
+	isUpdated, err = r.createControllerSecretIfNotExist(ctx, log, cluster)
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+	if err != nil {
+		return false, err
+	}
+
+	isUpdated, err = r.createOrUpdateSecret(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
 		return false, err
@@ -361,7 +367,7 @@ func (r *MySQLClusterReconciler) setServerIDBaseIfNotAssigned(ctx context.Contex
 	return true, nil
 }
 
-func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+func (r *MySQLClusterReconciler) createControllerSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	secret := &corev1.Secret{}
 	myNS, mySecretName := moco.GetSecretNameForController(cluster)
 	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
@@ -373,73 +379,107 @@ func (r *MySQLClusterReconciler) createSecretIfNotExist(ctx context.Context, log
 		return false, err
 	}
 
-	operatorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-	replicatorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-	donorPass, err := generateRandomBytes(passwordBytes)
-	if err != nil {
-		return false, err
-	}
-
-	err = r.createPasswordSecretForInit(ctx, cluster, operatorPass, replicatorPass, donorPass)
-	if err != nil {
-		log.Error(err, "unable to create Secret for user")
-		return false, err
-	}
-
-	// Secret for controller must be created lastly, because its existence is checked at the beginning of the process
-	err = r.createPasswordSecretForController(ctx, myNS, mySecretName, operatorPass, replicatorPass, donorPass)
-	if err != nil {
+	if err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName); err != nil {
 		log.Error(err, "unable to create Secret for Controller")
-		return false, err
-	}
-
-	err = r.createMyCnfSecretForLocalCLI(ctx, cluster)
-	if err != nil {
-		log.Error(err, "unable to create Secret for local CLI")
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (r *MySQLClusterReconciler) createMyCnfSecretForLocalCLI(ctx context.Context, cluster *mocov1alpha1.MySQLCluster) error {
-	rootPasswordSecret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{
-		Namespace: cluster.Namespace,
-		Name:      moco.GetRootPasswordSecretName(cluster.Name),
-	}, rootPasswordSecret)
+func (r *MySQLClusterReconciler) createOrUpdateSecret(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdatedAtLeastOnce := false
+
+	secret := &corev1.Secret{}
+	myNS, mySecretName := moco.GetSecretNameForController(cluster)
+	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
 	if err != nil {
-		return err
+		log.Error(err, "unable to get Secret")
+		return false, err
 	}
-	rootPass := rootPasswordSecret.Data[moco.RootPasswordKey]
-	readOnlyPass := rootPasswordSecret.Data[moco.ReadOnlyPasswordKey]
-	writablePass := rootPasswordSecret.Data[moco.WritablePasswordKey]
+
+	isUpdated, err := r.createOrUpdateRootPasswordSecret(ctx, log, cluster, secret)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	isUpdated, err = r.createOrUpdateMyCnfSecretForLocalCLI(ctx, log, cluster, secret)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	return isUpdatedAtLeastOnce, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateMyCnfSecretForLocalCLI(ctx context.Context, log logr.Logger,
+	cluster *mocov1alpha1.MySQLCluster, controllerSecret *corev1.Secret) (bool, error) {
+	rootPass := controllerSecret.Data[moco.RootPasswordKey]
+	readOnlyPass := controllerSecret.Data[moco.ReadOnlyPasswordKey]
+	writablePass := controllerSecret.Data[moco.WritablePasswordKey]
 
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
 	secret.SetName(moco.GetMyCnfSecretName(cluster.Name))
-	setStandardLabels(&secret.ObjectMeta, cluster)
-	secret.Data = map[string][]byte{
-		moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
-		moco.ReadOnlyMyCnfKey: formatCredentialAsMyCnf(moco.ReadOnlyUser, string(readOnlyPass)),
-		moco.WritableMyCnfKey: formatCredentialAsMyCnf(moco.WritableUser, string(writablePass)),
-	}
 
-	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
+		setStandardLabels(&secret.ObjectMeta, cluster)
+		secret.Data = map[string][]byte{
+			moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
+			moco.ReadOnlyMyCnfKey: formatCredentialAsMyCnf(moco.ReadOnlyUser, string(readOnlyPass)),
+			moco.WritableMyCnfKey: formatCredentialAsMyCnf(moco.WritableUser, string(writablePass)),
+		}
+		return ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	})
 	if err != nil {
-		return err
+		log.Error(err, "unable to create-or-update MyCnfSecret")
+		return false, err
 	}
 
-	return r.Client.Create(ctx, secret)
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile MyCnfSecret successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, operatorPass, replicatorPass, donorPass []byte) error {
+func (r *MySQLClusterReconciler) createOrUpdateRootPasswordSecret(ctx context.Context, log logr.Logger,
+	cluster *mocov1alpha1.MySQLCluster, controllerSecret *corev1.Secret) (bool, error) {
+	secret := &corev1.Secret{}
+	secret.SetNamespace(cluster.Namespace)
+	secret.SetName(moco.GetRootPasswordSecretName(cluster.Name))
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
+		setStandardLabels(&secret.ObjectMeta, cluster)
+
+		secret.Data = map[string][]byte{
+			moco.RootPasswordKey:        controllerSecret.Data[moco.RootPasswordKey],
+			moco.OperatorPasswordKey:    controllerSecret.Data[moco.OperatorPasswordKey],
+			moco.ReplicationPasswordKey: controllerSecret.Data[moco.ReplicationPasswordKey],
+			moco.CloneDonorPasswordKey:  controllerSecret.Data[moco.CloneDonorPasswordKey],
+			moco.MiscPasswordKey:        controllerSecret.Data[moco.MiscPasswordKey],
+			moco.ReadOnlyPasswordKey:    controllerSecret.Data[moco.ReadOnlyPasswordKey],
+			moco.WritablePasswordKey:    controllerSecret.Data[moco.WritablePasswordKey],
+		}
+
+		return ctrl.SetControllerReference(cluster, secret, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update RootPasswordSecret")
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile RootPasswordSecret successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, namespace, secretName string) error {
 	var rootPass []byte
 	if cluster.Spec.RootPasswordSecretName != nil {
 		secret := &corev1.Secret{}
@@ -456,6 +496,19 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 			return err
 		}
 	}
+
+	operatorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
+	replicatorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
+	donorPass, err := generateRandomBytes(passwordBytes)
+	if err != nil {
+		return err
+	}
 	miscPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
@@ -468,11 +521,10 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 	if err != nil {
 		return err
 	}
-	secret := &corev1.Secret{}
-	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(moco.GetRootPasswordSecretName(cluster.Name))
 
-	setStandardLabels(&secret.ObjectMeta, cluster)
+	secret := &corev1.Secret{}
+	secret.SetNamespace(namespace)
+	secret.SetName(secretName)
 
 	secret.Data = map[string][]byte{
 		moco.RootPasswordKey:        rootPass,
@@ -484,26 +536,11 @@ func (r *MySQLClusterReconciler) createPasswordSecretForInit(ctx context.Context
 		moco.WritablePasswordKey:    writablePass,
 	}
 
-	err = ctrl.SetControllerReference(cluster, secret, r.Scheme)
-	if err != nil {
+	if err := r.Client.Create(ctx, secret); err != nil {
 		return err
 	}
 
-	return r.Client.Create(ctx, secret)
-}
-
-func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, namespace, secretName string, operatorPass, replicatorPass, donorPass []byte) error {
-	secret := &corev1.Secret{}
-	secret.SetNamespace(namespace)
-	secret.SetName(secretName)
-
-	secret.Data = map[string][]byte{
-		moco.OperatorPasswordKey:    operatorPass,
-		moco.ReplicationPasswordKey: replicatorPass,
-		moco.CloneDonorPasswordKey:  donorPass,
-	}
-
-	return r.Client.Create(ctx, secret)
+	return nil
 }
 
 func (r *MySQLClusterReconciler) removeSecrets(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
