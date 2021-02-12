@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -22,6 +23,8 @@ func TestE2E(t *testing.T) {
 
 	SetDefaultEventuallyPollingInterval(time.Second)
 	SetDefaultEventuallyTimeout(20 * time.Second)
+
+	rand.Seed(time.Now().UnixNano())
 
 	RunSpecs(t, "kind test")
 }

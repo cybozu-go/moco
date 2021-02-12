@@ -273,6 +273,14 @@ Tenant users can extract the contents by defining sidecar containers for `slow.l
 
 You can see an example with FileBeat in [Example Document](example_mysql_cluster.md).
 
+### How to delete resources (garbage collection)
+
+The operator sets an owner reference of MySQLCluster to the child resources.
+By the owner reference, when the parent MySQLCluster is deleted, child resources are automatically deleted.
+
+The data volumes (PVCs) are also deleted automatically.
+If you want to prevent the PVCs deletion, please edit the PVCs manifest and remove the owner reference manually.
+
 ### TBD
 
 - Write merge strategy of `my.cnf`.
