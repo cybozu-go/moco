@@ -1014,7 +1014,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			moco.MOCOBinaryPath + "/moco-agent", "server",
+			moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{

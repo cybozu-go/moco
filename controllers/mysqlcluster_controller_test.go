@@ -378,6 +378,9 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(agentContainer).ShouldNot(BeNil())
 			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
+			Expect(agentContainer.Command).Should(Equal([]string{
+				moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
+			}))
 
 			var claim *corev1.PersistentVolumeClaim
 			for i, v := range sts.Spec.VolumeClaimTemplates {
