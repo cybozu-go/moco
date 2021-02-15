@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/controllers"
@@ -46,7 +47,7 @@ func subMain() error {
 		MetricsBindAddress:      config.metricsAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        config.leaderElectionID,
-		LeaderElectionNamespace: os.Getenv("POD_NAMESPACE"),
+		LeaderElectionNamespace: os.Getenv(moco.PodNamespaceEnvName),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -66,7 +67,8 @@ func subMain() error {
 			ConnectionTimeout: config.connectionTimeout,
 			ReadTimeout:       config.readTimeout,
 		}),
-		WaitTime: config.waitTime,
+		WaitTime:        config.waitTime,
+		SystemNamespace: os.Getenv(moco.PodNamespaceEnvName),
 	}).SetupWithManager(mgr, 30*time.Second); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
