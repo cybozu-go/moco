@@ -72,6 +72,7 @@ type MySQLClusterReconciler struct {
 	CurlContainerImage       string
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
+	SystemNamespace          string
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -368,19 +369,20 @@ func (r *MySQLClusterReconciler) setServerIDBaseIfNotAssigned(ctx context.Contex
 }
 
 func (r *MySQLClusterReconciler) createControllerSecretIfNotExist(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	secretName := moco.GetControllerSecretName(cluster)
 	secret := &corev1.Secret{}
-	myNS, mySecretName := moco.GetSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: secretName}, secret)
 	if err == nil {
-		return false, nil
+		// Update from v0.5.1. When the ControllerSecret already exists, try to update it.
+		return r.updateControllerSecretIfNeeded(ctx, log, cluster, secret)
 	}
 	if !k8serror.IsNotFound(err) {
-		log.Error(err, "unable to get Secret")
+		log.Error(err, "unable to get ControllerSecret")
 		return false, err
 	}
 
-	if err = r.createPasswordSecretForController(ctx, cluster, myNS, mySecretName); err != nil {
-		log.Error(err, "unable to create Secret for Controller")
+	if err = r.createControllerSecret(ctx, cluster, r.SystemNamespace, secretName); err != nil {
+		log.Error(err, "unable to create ControllerSecret")
 		return false, err
 	}
 
@@ -389,16 +391,14 @@ func (r *MySQLClusterReconciler) createControllerSecretIfNotExist(ctx context.Co
 
 func (r *MySQLClusterReconciler) createOrUpdateSecret(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	isUpdatedAtLeastOnce := false
-
 	secret := &corev1.Secret{}
-	myNS, mySecretName := moco.GetSecretNameForController(cluster)
-	err := r.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: moco.GetControllerSecretName(cluster)}, secret)
 	if err != nil {
-		log.Error(err, "unable to get Secret")
+		log.Error(err, "unable to get ControllerSecret")
 		return false, err
 	}
 
-	isUpdated, err := r.createOrUpdateRootPasswordSecret(ctx, log, cluster, secret)
+	isUpdated, err := r.createOrUpdateClusterSecret(ctx, log, cluster, secret)
 	if err != nil {
 		return false, err
 	}
@@ -445,11 +445,11 @@ func (r *MySQLClusterReconciler) createOrUpdateMyCnfSecretForLocalCLI(ctx contex
 	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createOrUpdateRootPasswordSecret(ctx context.Context, log logr.Logger,
+func (r *MySQLClusterReconciler) createOrUpdateClusterSecret(ctx context.Context, log logr.Logger,
 	cluster *mocov1alpha1.MySQLCluster, controllerSecret *corev1.Secret) (bool, error) {
 	secret := &corev1.Secret{}
 	secret.SetNamespace(cluster.Namespace)
-	secret.SetName(moco.GetRootPasswordSecretName(cluster.Name))
+	secret.SetName(moco.GetClusterSecretName(cluster.Name))
 
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
 		setStandardLabels(&secret.ObjectMeta, cluster)
@@ -467,19 +467,71 @@ func (r *MySQLClusterReconciler) createOrUpdateRootPasswordSecret(ctx context.Co
 		return ctrl.SetControllerReference(cluster, secret, r.Scheme)
 	})
 	if err != nil {
-		log.Error(err, "unable to create-or-update RootPasswordSecret")
+		log.Error(err, "unable to create-or-update ClusterSecret")
 		return false, err
 	}
 
 	if op != controllerutil.OperationResultNone {
-		log.Info("reconcile RootPasswordSecret successfully", "op", op)
+		log.Info("reconcile ClusterSecret successfully", "op", op)
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, namespace, secretName string) error {
+func (r *MySQLClusterReconciler) updateControllerSecretIfNeeded(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster, current *corev1.Secret) (bool, error) {
+	// Check whether an update is needed.
+	if _, ok := current.Data[moco.RootPasswordKey]; ok {
+		return false, nil
+	}
+
+	clusterSecret := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: moco.GetClusterSecretName(cluster.Name)}, clusterSecret)
+	if err != nil {
+		log.Error(err, "unable to get ClusterSecret")
+		return false, err
+	}
+
+	// Get current password from ClusterSecret.
+	rootPass, ok := clusterSecret.Data[moco.RootPasswordKey]
+	if !ok {
+		log.Error(err, "TBD")
+		return false, err
+	}
+	miscPass, ok := clusterSecret.Data[moco.MiscPasswordKey]
+	if !ok {
+		log.Error(err, "TBD")
+		return false, err
+	}
+	readOnlyPass, ok := clusterSecret.Data[moco.ReadOnlyPasswordKey]
+	if !ok {
+		log.Error(err, "TBD")
+		return false, err
+	}
+	writablePass, ok := clusterSecret.Data[moco.WritablePasswordKey]
+	if !ok {
+		log.Error(err, "TBD")
+		return false, err
+	}
+
+	// Fill in the missing passwords and update ControllerSecret.
+	controllerSecret := current.DeepCopy()
+	controllerSecret.Data[moco.RootPasswordKey] = rootPass
+	controllerSecret.Data[moco.MiscPasswordKey] = miscPass
+	controllerSecret.Data[moco.ReadOnlyPasswordKey] = readOnlyPass
+	controllerSecret.Data[moco.WritablePasswordKey] = writablePass
+
+	err = r.Update(ctx, controllerSecret)
+	if err != nil {
+		log.Error(err, "unable to update ControllerSecret")
+		return false, err
+	}
+	log.Info("update ControllerSecret")
+
+	return true, nil
+}
+
+func (r *MySQLClusterReconciler) createControllerSecret(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, namespace, secretName string) error {
 	var rootPass []byte
 	if cluster.Spec.RootPasswordSecretName != nil {
 		secret := &corev1.Secret{}
@@ -544,11 +596,9 @@ func (r *MySQLClusterReconciler) createPasswordSecretForController(ctx context.C
 }
 
 func (r *MySQLClusterReconciler) removeSecrets(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
-	ns, name := moco.GetSecretNameForController(cluster)
-
 	secrets := []*types.NamespacedName{
-		{Namespace: ns, Name: name},
-		{Namespace: cluster.Namespace, Name: moco.GetRootPasswordSecretName(cluster.Name)},
+		{Namespace: r.SystemNamespace, Name: moco.GetControllerSecretName(cluster)},
+		{Namespace: cluster.Namespace, Name: moco.GetClusterSecretName(cluster.Name)},
 		{Namespace: cluster.Namespace, Name: moco.GetMyCnfSecretName(cluster.Name)},
 	}
 	for _, s := range secrets {
@@ -1029,7 +1079,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			{
 				SecretRef: &corev1.SecretEnvSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: moco.GetRootPasswordSecretName(cluster.Name),
+						Name: moco.GetClusterSecretName(cluster.Name),
 					},
 				},
 			},
@@ -1158,7 +1208,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: moco.GetRootPasswordSecretName(cluster.Name),
+				Name: moco.GetClusterSecretName(cluster.Name),
 			},
 		},
 	})

@@ -81,6 +81,7 @@ var _ = BeforeSuite(func(done Done) {
 		CurlContainerImage:     "dummy",
 		MySQLAccessor:          &AccessorMock{},
 		WaitTime:               10 * time.Second,
+		SystemNamespace:        systemNamespace,
 	}
 	Expect(err).ToNot(HaveOccurred())
 

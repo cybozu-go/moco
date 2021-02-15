@@ -20,8 +20,8 @@ func GetPodName(clusterName string, index int) string {
 	return fmt.Sprintf("moco-%s-%d", clusterName, index)
 }
 
-// GetRootPasswordSecretName returns the name of the root password secret.
-func GetRootPasswordSecretName(clusterName string) string {
+// GetClusterSecretName returns the name of the root password secret.
+func GetClusterSecretName(clusterName string) string {
 	return fmt.Sprintf("moco-root-password-%s", clusterName)
 }
 
@@ -41,18 +41,18 @@ func GetHost(cluster *mocov1alpha1.MySQLCluster, index int) string {
 	return fmt.Sprintf("%s.%s.%s.svc", podName, UniqueName(cluster), cluster.Namespace)
 }
 
-// GetSecretNameForController returns the namespace and Secret name of the cluster
-func GetSecretNameForController(cluster *mocov1alpha1.MySQLCluster) (string, string) {
-	myNS := os.Getenv("POD_NAMESPACE")
+// GetControllerSecretName returns the namespace and Secret name of the cluster
+func GetControllerSecretName(cluster *mocov1alpha1.MySQLCluster) string {
 	mySecretName := cluster.Namespace + "." + cluster.Name // TODO: clarify assumptions for length and charset
-	return myNS, mySecretName
+	return mySecretName
 }
 
 // GetPassword gets a password from secret
 func GetPassword(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, c client.Client, passwordKey string) (string, error) {
+	ctrlNamespace := os.Getenv(PodNamespaceEnvName)
+	ctrlSecretName := GetControllerSecretName(cluster)
 	secret := &corev1.Secret{}
-	myNS, mySecretName := GetSecretNameForController(cluster)
-	err := c.Get(ctx, client.ObjectKey{Namespace: myNS, Name: mySecretName}, secret)
+	err := c.Get(ctx, client.ObjectKey{Namespace: ctrlNamespace, Name: ctrlSecretName}, secret)
 	if err != nil {
 		return "", err
 	}
