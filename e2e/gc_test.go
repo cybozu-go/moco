@@ -3,6 +3,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -17,9 +18,24 @@ func testGarbageCollector() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		stdout, stderr, err := kubectl("delete", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
+		By("deleting ownerReference from a PVC")
+		var allPvcNames []string
+		for i := 0; i < int(cluster.Spec.Replicas); i++ {
+			podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
+			pvcName := fmt.Sprintf("mysql-data-%s", podName)
+			allPvcNames = append(allPvcNames, pvcName)
+		}
+		targetPvcName := allPvcNames[rand.Intn(len(allPvcNames))]
+		fmt.Println("remove ownerReference from " + targetPvcName)
+		stdout, stderr, err := kubectl("patch", "-n", "e2e-test", "pvc", targetPvcName,
+			"--type", "json", `-p=[{"op": "remove", "path": "/metadata/ownerReferences"}]`)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
+		By("deleting MySQLCluster CR")
+		stdout, stderr, err = kubectl("delete", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+
+		By("confirming that resources are removed")
 		kinds := strings.Join([]string{"configmaps", "services", "cronjobs", "jobs", "statefulsets", "pods", "poddisruptionbudgets"}, ",")
 		Eventually(func() error {
 			stdout, stderr, err := kubectl("get", "-n", "e2e-test", kinds, "-o", "name")
@@ -35,7 +51,6 @@ func testGarbageCollector() {
 				return nil
 			}
 			if len(resources) == 1 && resources[0] == "configmap/kube-root-ca.crt" {
-
 				fmt.Println("only remain configmap/kube-root-ca.crt")
 				return nil
 			}
@@ -70,39 +85,47 @@ func testGarbageCollector() {
 			return nil
 		}).Should(Succeed())
 
-		var pvcNames []string
-		for i := 0; i < int(cluster.Spec.Replicas); i++ {
-			podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
-			pvcName := fmt.Sprintf("mysql-data-%s", podName)
-			pvcNames = append(pvcNames, pvcName)
-		}
-
-		var pvNames []string
-		Consistently(func() error {
-			pvNames = make([]string, 0)
-			for _, pvcName := range pvcNames {
-				stdout, stderr, err := kubectl("get", "-n", "e2e-test", "pvc", pvcName, "-o", "json")
-				if err != nil {
-					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
-				}
-				var pvc corev1.PersistentVolumeClaim
-				err = json.Unmarshal(stdout, &pvc)
-				if err != nil {
-					return fmt.Errorf("failed to unmarshal PVC. stdout: %s, err: %v", stdout, err)
-				}
-				pvNames = append(pvNames, pvc.Spec.VolumeName)
+		Eventually(func() error {
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "pvc", "-o", "name")
+			if err != nil {
+				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
+			resources := strings.Split(strings.TrimSuffix(string(stdout), "\n"), "\n")
+
+			if len(resources) == 1 && resources[0] == "persistentvolumeclaim/"+targetPvcName {
+				fmt.Println("only remain " + targetPvcName)
+				return nil
+			}
+
+			return fmt.Errorf("resources remain: %s", resources)
+		}, 2*time.Minute).Should(Succeed())
+
+		By("confirming that pvc which does not have ownerReference is not removed")
+		var pvName string
+		Consistently(func() error {
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "pvc", targetPvcName, "-o", "json")
+			if err != nil {
+				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
+			}
+			var pvc corev1.PersistentVolumeClaim
+			err = json.Unmarshal(stdout, &pvc)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal PVC. stdout: %s, err: %v", stdout, err)
+			}
+			pvName = pvc.Spec.VolumeName
 			return nil
 		}).Should(Succeed())
 
 		Consistently(func() error {
-			for _, pvName := range pvNames {
-				stdout, stderr, err := kubectl("get", "pv", pvName, "-o", "json")
-				if err != nil {
-					return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
-				}
+			stdout, stderr, err := kubectl("get", "pv", pvName, "-o", "json")
+			if err != nil {
+				return fmt.Errorf("failed to get resource. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
 			return nil
 		}).Should(Succeed())
+
+		By("cleaning up")
+		stdout, stderr, err = kubectl("delete", "-n", "e2e-test", "pvc", targetPvcName)
+		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 	})
 }

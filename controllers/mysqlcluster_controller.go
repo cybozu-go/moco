@@ -1228,10 +1228,25 @@ func (r *MySQLClusterReconciler) makeVolumeClaimTemplates(cluster *mocov1alpha1.
 	return newTemplates, nil
 }
 
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alpha1.MySQLCluster) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mysqlDataVolumeName,
+			// Set ownerReference to delete the data PVC automatically when deleting the MySQLCluster CR.
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         cluster.GroupVersionKind().GroupVersion().String(),
+					Kind:               cluster.GroupVersionKind().Kind,
+					Name:               cluster.Name,
+					UID:                cluster.UID,
+					BlockOwnerDeletion: boolPtr(true),
+					Controller:         boolPtr(true),
+				},
+			},
 		},
 		Spec: cluster.Spec.DataVolumeClaimTemplateSpec,
 	}
