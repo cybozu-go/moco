@@ -20,8 +20,8 @@ func GetPodName(clusterName string, index int) string {
 	return fmt.Sprintf("moco-%s-%d", clusterName, index)
 }
 
-// GetRootPasswordSecretName returns the name of the root password secret.
-func GetRootPasswordSecretName(clusterName string) string {
+// GetClusterSecretName returns the name of the root password secret.
+func GetClusterSecretName(clusterName string) string {
 	return fmt.Sprintf("moco-root-password-%s", clusterName)
 }
 

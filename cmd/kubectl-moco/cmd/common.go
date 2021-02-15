@@ -14,7 +14,7 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
-		Name:      moco.GetRootPasswordSecretName(clusterName),
+		Name:      moco.GetClusterSecretName(clusterName),
 	}, secret)
 	if err != nil {
 		return "", err
