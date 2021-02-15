@@ -42,16 +42,17 @@ Bump version
 2. Checkout `main` branch.
 3. Make a branch to release, for example by `git neco dev bump-v$VERSION`
 4. Update `version.go`.
-5. Edit `CHANGELOG.md` for the new version ([example][]).
-6. Commit the change and create a pull request:
+5. Update `e2e/manifests/controller_latest/kustomization.yaml`.
+6. Edit `CHANGELOG.md` for the new version ([example][]).
+7. Commit the change and create a pull request:
 
     ```console
     $ git commit -a -m "Bump version to $VERSION"
     $ git neco review
     ```
 
-7. Merge the new pull request.
-8. Add a new tag and push it as follows:
+8. Merge the new pull request.
+9. Add a new tag and push it as follows:
 
     ```console
     $ git checkout main

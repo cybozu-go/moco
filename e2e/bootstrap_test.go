@@ -15,17 +15,87 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func testBootstrap() {
-	It("should create cluster", func() {
-		By("registering MySQLCluster")
-		stdout, stderr, err := kubectl("apply", "-f", "manifests/namespace.yaml")
+func prepareBooptstrap() {
+	It("should create moco-controller", func() {
+		if doUpgrade {
+			By("applying mooc-controller (latest)")
+			applyControllerManifests("./manifests/controller_latest")
+		} else {
+			By("applying mooc-controller (develop)")
+			applyControllerManifests("./manifests/controller_develop")
+		}
+
+		By("waiting moco-controller")
+		waitController()
+	})
+
+	It("should register MySQLCluster", func() {
+		_, _, _ = kubectl("create", "ns", "e2e-test") // ignore error
+		stdout, stderr, err := kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		stdout, stderr, err = kubectl("apply", "-n", "e2e-test", "-f", "manifests/mysql_cluster.yaml")
-		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+		By("waiting MySQLCluster")
+		waitCluster()
+	})
 
-		By("getting cluster status")
-		Eventually(func() error {
+	if doUpgrade {
+		It("should upgrade moco-controller to develop", func() {
+			By("applying mooc-controller (develop)")
+			applyControllerManifests("./manifests/controller_develop")
+
+			By("waiting moco-controller")
+			waitController()
+
+			// Add upgrade logic here.
+
+			By("waiting MySQLCluster")
+			waitCluster()
+		})
+	}
+}
+
+func applyControllerManifests(path string) {
+	stdout, stderr, err := kustomize(path)
+	Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+	stdout, stderr, err = kubectlWithInput(stdout, "apply", "-f", "-")
+	Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
+}
+
+func waitController() {
+	Eventually(func() error {
+		st := time.Now()
+		for {
+			// Wait for 15 seconds. After the upgrade of controller, it will be temporarily down.
+			if time.Since(st) > 15*time.Second {
+				return nil
+			}
+
+			stdout, _, err := kubectl("-n", "moco-system", "get", "deployment/moco-controller-manager", "-o=json")
+			if err != nil {
+				return err
+			}
+			deployment := new(appsv1.Deployment)
+			err = json.Unmarshal(stdout, deployment)
+			if err != nil {
+				return err
+			}
+
+			if int(deployment.Status.AvailableReplicas) != 1 {
+				return fmt.Errorf("AvailableReplicas is not 1: %d", int(deployment.Status.AvailableReplicas))
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}, 3*time.Minute).Should(Succeed())
+}
+
+func waitCluster() {
+	Eventually(func() error {
+		st := time.Now()
+		for {
+			if time.Since(st) > 35*time.Second {
+				return nil
+			}
+
 			cluster, err := getMySQLCluster()
 			if err != nil {
 				return err
@@ -36,13 +106,24 @@ func testBootstrap() {
 			if cluster.Status.Ready != corev1.ConditionTrue {
 				return errors.New("Status.Ready should be true")
 			}
+			available := findCondition(cluster.Status.Conditions, v1alpha1.ConditionAvailable)
+			if available == nil || available.Status != corev1.ConditionTrue {
+				return errors.New("Conditions.Available should be true")
+			}
 			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
 			if healthy == nil || healthy.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Healthy should be true")
 			}
-			return nil
-		}, 3*time.Minute).Should(Succeed())
+			initialized := findCondition(cluster.Status.Conditions, v1alpha1.ConditionInitialized)
+			if initialized == nil || initialized.Status != corev1.ConditionTrue {
+				return errors.New("Conditions.Initialized should be true")
+			}
+		}
+	}, 3*time.Minute).Should(Succeed())
+}
 
+func testBootstrap() {
+	It("should create cluster", func() {
 		By("getting Secret which contains root password")
 		Eventually(func() error {
 			cluster, err := getMySQLCluster()
@@ -63,7 +144,7 @@ func testBootstrap() {
 				return err
 			}
 
-			stdout, stderr, err = kubectl("get", "-n", "e2e-test", "statefulsets", moco.UniqueName(cluster), "-o", "json")
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "statefulsets", moco.UniqueName(cluster), "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
