@@ -9,7 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Caution**
 
-- Since MOCO v0.6.0, mysql data volumes (PVC) will be automatically deleted when the parent MySQLCluster resource is deleted.
+- Since MOCO v0.6.0, MySQL data volumes (PVC) will be automatically deleted when the parent MySQLCluster resource is deleted.
   If you want to keep the volumes, please edit the volumes (PVCs) manifests and delete their owner references manually.
   https://github.com/cybozu-go/moco/blob/main/docs/design.md#how-to-delete-resources-garbage-collection
 - The `volumeClaimTemplates` field in the generated StatefulSet will be changed. This change will not be applied automatically.
