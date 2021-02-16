@@ -53,10 +53,6 @@ type MySQLClusterSpec struct {
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
-	// LogRotationSecurityContext is a securityContext for log rotation `Job`
-	// +optional
-	LogRotationSecurityContext *corev1.PodSecurityContext `json:"logRotationSecurityContext,omitempty"`
-
 	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is filled, start restoring. This field is unable to be updated.
 	// +optional
