@@ -5,6 +5,25 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2021-02-16
+
+**Caution**
+
+- Since MOCO v0.6.0, MySQL data volumes (PVC) will be automatically deleted when the parent MySQLCluster resource is deleted.
+  If you want to keep the volumes, please  delete the owner reference manually from the volumes (PVCs) resource.
+  https://github.com/cybozu-go/moco/blob/main/docs/design.md#how-to-delete-resources-garbage-collection
+- The `volumeClaimTemplates` field in the generated StatefulSet will be changed. This change will not be applied automatically.
+  After upgrading moco from v0.5.x, please delete the existing StatefulSet manually.
+
+### Added
+
+- Add kubectl-moco command for Mac OS (darwin/amd64). (#184)
+- Add PVC auto deletion. (#189)
+
+### Changed
+
+- Generate secrets for cluster from ControllerSecret. (#185, #192)
+
 ## [0.5.1] - 2021-02-04
 
 ### Changed
@@ -102,7 +121,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/cybozu-go/moco/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/cybozu-go/moco/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/cybozu-go/moco/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/cybozu-go/moco/compare/v0.3.1...v0.4.0
