@@ -289,4 +289,3 @@ If you want to prevent the PVCs deletion, please edit the PVCs manifest and remo
 ### Candidates of additional features
 
 - Backup files verification.
-- Manage MySQL users with [MySQLUser](crd_mysql_user.md).
