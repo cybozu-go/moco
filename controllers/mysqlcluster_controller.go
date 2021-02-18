@@ -17,7 +17,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -89,8 +88,6 @@ type MySQLClusterReconciler struct {
 // +kubebuilder:rbac:groups="",resources=serviceaccounts/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
-// +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="batch",resources=cronjobs/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 
@@ -239,12 +236,6 @@ func (r *MySQLClusterReconciler) reconcileInitialize(ctx context.Context, log lo
 		return false, err
 	}
 
-	isUpdated, err = r.createOrUpdateCronJob(ctx, log, cluster)
-	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
-	if err != nil {
-		return false, err
-	}
-
 	isUpdated, err = r.createOrUpdateServices(ctx, log, cluster)
 	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
 	if err != nil {
@@ -268,11 +259,6 @@ func (r *MySQLClusterReconciler) reconcileFinalize(ctx context.Context, log logr
 	}
 
 	err = r.removeServices(ctx, log, cluster)
-	if err != nil {
-		return err
-	}
-
-	err = r.removeCronJob(ctx, log, cluster)
 	if err != nil {
 		return err
 	}
@@ -333,7 +319,6 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager, watcherInter
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
-		Owns(&batchv1beta1.CronJob{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Watches(&src, &handler.EnqueueRequestForObject{}).
 		WithOptions(
@@ -1029,7 +1014,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			moco.MOCOBinaryPath + "/moco-agent", "server",
+			moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1300,65 +1285,6 @@ func (r *MySQLClusterReconciler) makeDataVolumeClaimTemplate(cluster *mocov1alph
 		},
 		Spec: cluster.Spec.DataVolumeClaimTemplateSpec,
 	}
-}
-
-// createOrUpdateCronJob doesn't remove cron jobs when the replica number is decreased
-func (r *MySQLClusterReconciler) createOrUpdateCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
-	isUpdated := false
-
-	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		podName := moco.GetPodName(cluster.Name, i)
-
-		cronJob := &batchv1beta1.CronJob{}
-		cronJob.SetNamespace(cluster.Namespace)
-		cronJob.SetName(podName)
-
-		op, err := ctrl.CreateOrUpdate(ctx, r.Client, cronJob, func() error {
-			setStandardLabels(&cronJob.ObjectMeta, cluster)
-			cronJob.Spec.Schedule = cluster.Spec.LogRotationSchedule
-			cronJob.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyOnFailure
-			containers := []corev1.Container{
-				{
-					Name:    "curl",
-					Image:   r.CurlContainerImage,
-					Command: []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", podName, moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
-				},
-			}
-			if !equality.Semantic.DeepDerivative(containers, cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers) {
-				cronJob.Spec.JobTemplate.Spec.Template.Spec.Containers = containers
-			}
-			if !equality.Semantic.DeepDerivative(cluster.Spec.LogRotationSecurityContext, cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext) {
-				cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext = cluster.Spec.LogRotationSecurityContext
-			}
-
-			return ctrl.SetControllerReference(cluster, cronJob, r.Scheme)
-		})
-		if err != nil {
-			log.Error(err, "unable to create-or-update CronJob")
-			return isUpdated, err
-		}
-		if op != controllerutil.OperationResultNone {
-			log.Info("reconcile CronJob successfully", "op", op)
-			isUpdated = true
-		}
-	}
-	return isUpdated, nil
-}
-
-func (r *MySQLClusterReconciler) removeCronJob(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
-	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		cronJob := &batchv1beta1.CronJob{}
-		cronJob.SetNamespace(cluster.Namespace)
-		cronJob.SetName(moco.GetPodName(cluster.Name, i))
-
-		opt := metav1.DeletePropagationForeground
-		err := r.Delete(ctx, cronJob, &client.DeleteOptions{PropagationPolicy: &opt})
-		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "unable to delete CronJob")
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateServices(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {

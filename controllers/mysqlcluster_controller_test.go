@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -379,6 +378,9 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(agentContainer).ShouldNot(BeNil())
 			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
+			Expect(agentContainer.Command).Should(Equal([]string{
+				moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
+			}))
 
 			var claim *corev1.PersistentVolumeClaim
 			for i, v := range sts.Spec.VolumeClaimTemplates {
@@ -665,72 +667,6 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).Should(HaveOccurred())
 		})
 
-	})
-
-	Context("CronJob", func() {
-		It("should create cron job", func() {
-			cluster.Status.AgentToken = "test-token"
-
-			isUpdated, err := reconciler.createOrUpdateCronJob(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			job0 := &batchv1beta1.CronJob{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0), Namespace: cluster.Namespace}, job0)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(job0).ShouldNot(BeNil())
-			Expect(job0.Spec.Schedule).Should(Equal(cluster.Spec.LogRotationSchedule))
-			Expect(job0.Spec.JobTemplate.Spec.Template.Spec.RestartPolicy).Should(Equal(corev1.RestartPolicyOnFailure))
-			Expect(len(job0.Spec.JobTemplate.Spec.Template.Spec.Containers)).Should(Equal(1))
-			containers := []corev1.Container{
-				{
-					Name:                     "curl",
-					Image:                    reconciler.CurlContainerImage,
-					Command:                  []string{"curl", "-sf", fmt.Sprintf("http://%s.%s:%d/rotate?token=%s", moco.UniqueName(cluster)+"-0", moco.UniqueName(cluster), moco.AgentPort, cluster.Status.AgentToken)},
-					ImagePullPolicy:          "Always",
-					TerminationMessagePath:   "/dev/termination-log",
-					TerminationMessagePolicy: "File",
-				},
-			}
-			Expect(job0.Spec.JobTemplate.Spec.Template.Spec.Containers).Should(Equal(containers))
-
-			job1 := &batchv1beta1.CronJob{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 1), Namespace: cluster.Namespace}, job1)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(job1).ShouldNot(BeNil())
-
-			isUpdated, err = reconciler.createOrUpdateCronJob(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should use logRotationSecurityContext", func() {
-			newCluster := &mocov1alpha1.MySQLCluster{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			id := int64(10000)
-			securityContext := &corev1.PodSecurityContext{
-				RunAsUser:  &id,
-				RunAsGroup: &id,
-			}
-			newCluster.Spec.LogRotationSecurityContext = securityContext
-			err = k8sClient.Update(ctx, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err := reconciler.createOrUpdateCronJob(ctx, reconciler.Log, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			cronJob := &batchv1beta1.CronJob{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0), Namespace: cluster.Namespace}, cronJob)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(cronJob).ShouldNot(BeNil())
-			Expect(cronJob.Spec.JobTemplate.Spec.Template.Spec.SecurityContext).Should(Equal(securityContext))
-
-			isUpdated, err = reconciler.createOrUpdateCronJob(ctx, reconciler.Log, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
 	})
 
 	Context("Services", func() {

@@ -36,7 +36,7 @@ func testGarbageCollector() {
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		By("confirming that resources are removed")
-		kinds := strings.Join([]string{"configmaps", "services", "cronjobs", "jobs", "statefulsets", "pods", "poddisruptionbudgets"}, ",")
+		kinds := strings.Join([]string{"configmaps", "services", "statefulsets", "pods", "poddisruptionbudgets"}, ",")
 		Eventually(func() error {
 			stdout, stderr, err := kubectl("get", "-n", "e2e-test", kinds, "-o", "name")
 			if err != nil {

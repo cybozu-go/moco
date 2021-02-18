@@ -265,8 +265,7 @@ The detail is TBD.
 The operator configures MySQL to output error logs and slow query logs into files.
 
 To avoid exhaustion of storage resources, the operator appends a sidecar container to the MySQL Pod.
-The sidecar container rotates and deletes the log files.
-The operator creates a CronJob to invoke rotation and deletion periodically.
+The sidecar container rotates and deletes the log files based on the cron spec in `MySQLCluster.spec.logRotationSchedule`.
 
 The operator does not care about gathering the contents of the log files.
 Tenant users can extract the contents by defining sidecar containers for `slow.log` and `error.log`.

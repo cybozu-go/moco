@@ -102,10 +102,6 @@ spec:
           name: slow-filebeat-config
       - name: slow-filebeat-data
         emptyDir: {}
-  logRotationSecurityContext:
-    runAsUser: 10000
-    runAsGroup: 10000
-    fsGroup: 10000
   dataVolumeClaimTemplateSpec:
     storageClassName: topolvm-provisioner
     accessModes: [ "ReadWriteOnce" ]
