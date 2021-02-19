@@ -40,7 +40,6 @@ const (
 	agentContainerName          = "agent"
 	binaryCopyContainerName     = "binary-copy"
 	entrypointInitContainerName = "moco-init"
-	confInitContainerName       = "moco-conf-gen"
 
 	mocoBinaryVolumeName              = "moco-bin"
 	mysqlDataVolumeName               = "mysql-data"
@@ -67,7 +66,6 @@ type MySQLClusterReconciler struct {
 	Recorder                 record.EventRecorder
 	Scheme                   *runtime.Scheme
 	BinaryCopyContainerImage string
-	ConfInitContainerImage   string
 	CurlContainerImage       string
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
@@ -1091,7 +1089,6 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
 		r.makeBinaryCopyContainer(),
-		r.makeConfInitContainer(log, cluster),
 		r.makeEntrypointInitContainer(log, cluster, mysqldContainer.Image),
 	)
 
@@ -1114,74 +1111,6 @@ func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeConfInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) corev1.Container {
-	c := corev1.Container{}
-	c.Name = confInitContainerName
-
-	c.Image = r.ConfInitContainerImage
-
-	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
-	c.Command = []string{"/moco-conf-gen", serverIDOption}
-	c.Env = append(c.Env,
-		corev1.EnvVar{
-			Name: moco.PodNameEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.name",
-				},
-			},
-		},
-		corev1.EnvVar{
-			Name: moco.PodNamespaceEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		},
-		corev1.EnvVar{
-			Name: moco.PodIPEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "status.podIP",
-				},
-			},
-		},
-		corev1.EnvVar{
-			Name: moco.NodeNameEnvName,
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "spec.nodeName",
-				},
-			},
-		},
-	)
-	c.VolumeMounts = append(c.VolumeMounts,
-		corev1.VolumeMount{
-			MountPath: moco.MySQLConfPath,
-			Name:      mysqlConfVolumeName,
-		},
-		corev1.VolumeMount{
-			MountPath: moco.VarRunPath,
-			Name:      varRunVolumeName,
-		},
-		corev1.VolumeMount{
-			MountPath: moco.VarLogPath,
-			Name:      varLogVolumeName,
-		},
-		corev1.VolumeMount{
-			MountPath: moco.TmpPath,
-			Name:      tmpVolumeName,
-		},
-		corev1.VolumeMount{
-			MountPath: moco.MySQLConfTemplatePath,
-			Name:      mysqlConfTemplateVolumeName,
-		},
-	)
-
-	return c
-}
-
 func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cluster *mocov1alpha1.MySQLCluster, mysqldContainerImage string) corev1.Container {
 	c := corev1.Container{}
 	c.Name = entrypointInitContainerName
@@ -1189,7 +1118,9 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 	// use the same image with the 'mysqld' container
 	c.Image = mysqldContainerImage
 
-	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init"}
+	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
+
+	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init", serverIDOption}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{
@@ -1203,6 +1134,16 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 			ValueFrom: &corev1.EnvVarSource{
 				FieldRef: &corev1.ObjectFieldSelector{
 					FieldPath: "status.podIP",
+				},
+			},
+		},
+	)
+	c.Env = append(c.Env,
+		corev1.EnvVar{
+			Name: moco.PodNameEnvName,
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
 				},
 			},
 		},
@@ -1235,6 +1176,10 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 		corev1.VolumeMount{
 			MountPath: moco.TmpPath,
 			Name:      tmpVolumeName,
+		},
+		corev1.VolumeMount{
+			MountPath: moco.MySQLConfTemplatePath,
+			Name:      mysqlConfTemplateVolumeName,
 		},
 	)
 

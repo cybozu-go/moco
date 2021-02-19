@@ -366,6 +366,24 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			var binaryCopyInitContainer *corev1.Container
+			var entrypointInitContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.InitContainers {
+				if c.Name == binaryCopyContainerName {
+					binaryCopyInitContainer = &sts.Spec.Template.Spec.InitContainers[i]
+				} else if c.Name == entrypointInitContainerName {
+					entrypointInitContainer = &sts.Spec.Template.Spec.InitContainers[i]
+				}
+			}
+
+			Expect(binaryCopyInitContainer).ShouldNot(BeNil())
+			Expect(entrypointInitContainer).ShouldNot(BeNil())
+			Expect(len(binaryCopyInitContainer.VolumeMounts)).Should(Equal(1))
+			Expect(len(entrypointInitContainer.VolumeMounts)).Should(Equal(8))
+			Expect(entrypointInitContainer.Command).Should(Equal([]string{
+				moco.MOCOBinaryPath + "/moco-agent", "init", fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase),
+			}))
+
 			var mysqldContainer *corev1.Container
 			var agentContainer *corev1.Container
 			for i, c := range sts.Spec.Template.Spec.Containers {
