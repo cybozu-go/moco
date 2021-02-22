@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2021-02-22
+
+Since v0.7.0, MOCO will no longer use CronJob for log rotation.
+Please remove existing CronJobs manually after upgrading MOCO.
+
+### Changed
+
+- Stop using CronJob for log rotation. (#190, moco-agent#10)
+- Update moco-agent to v0.2.1. (#202)
+
 ## [0.6.0] - 2021-02-16
 
 **Caution**
@@ -121,7 +131,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/cybozu-go/moco/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/cybozu-go/moco/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/cybozu-go/moco/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/cybozu-go/moco/compare/v0.4.0...v0.5.0
