@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.2.0"
+	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.2.1"
 	defaultInitContainerImage       = "quay.io/cybozu/moco-conf-gen:0.3.0"
 	defaultCurlContainerImage       = "quay.io/cybozu/ubuntu:20.04"
 )
