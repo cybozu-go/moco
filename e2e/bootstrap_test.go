@@ -18,10 +18,10 @@ import (
 func prepareBooptstrap() {
 	It("should create moco-controller", func() {
 		if doUpgrade {
-			By("applying mooc-controller (latest)")
+			By("applying moco-controller (latest)")
 			applyControllerManifests("./manifests/controller_latest")
 		} else {
-			By("applying mooc-controller (develop)")
+			By("applying moco-controller (develop)")
 			applyControllerManifests("./manifests/controller_develop")
 		}
 
@@ -40,7 +40,7 @@ func prepareBooptstrap() {
 
 	if doUpgrade {
 		It("should upgrade moco-controller to develop", func() {
-			By("applying mooc-controller (develop)")
+			By("applying moco-controller (develop)")
 			applyControllerManifests("./manifests/controller_develop")
 
 			By("waiting moco-controller")

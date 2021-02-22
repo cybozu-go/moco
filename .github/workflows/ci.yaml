@@ -109,8 +109,8 @@ jobs:
       - name: Prepare
         run: |
           VARIABLES=read_only,super_read_only,rpl_semi_sync_master_wait_for_slave_count,clone_valid_donor_list
-          ./e2e/script/watch_mysql.sh e2e-test          mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
-          ./e2e/script/watch_pod.sh e2e-test          > watch_pod_e2e.txt &
+          ./e2e/script/watch_mysql.sh e2e-test mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
+          ./e2e/script/watch_pod.sh e2e-test > watch_pod_e2e.txt &
       - run: cd e2e && UPGRADE=1 make test KIND_CLUSTER_CONFIG_SUFFIX=-actions
 
       # Print status and log of each component
