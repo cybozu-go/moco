@@ -10,8 +10,6 @@ KUSTOMIZE := $(PWD)/bin/kustomize
 KIND_CLUSTER_NAME=moco-e2e
 KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
 
-MOCO_CONF_GEN_VERSION=0.3.0
-
 GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
 
 .PHONY: default
@@ -40,7 +38,7 @@ test: launch-kind load-image $(KUBECTL_MOCO) setup
 
 .PHONY: telepresence
 telepresence:
-	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run ../cmd/moco-controller/main.go --conf-init-container-image=quay.io/cybozu/moco-conf-gen:$(MOCO_CONF_GEN_VERSION)
+	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run ../cmd/moco-controller/main.go
 
 .PHONY: load-image
 load-image: load-moco-image load-mysql-image
