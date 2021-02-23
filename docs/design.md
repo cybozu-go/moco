@@ -119,12 +119,13 @@ and the User configuration for a certain MySQL cluster specified in the cluster'
 The operator then merges these three configurations to create a `my.cnf` template.
 The init container receives the merged `my.cnf` template and fills it with run-time values, e.g. the Pod's IP address.
 
-So, in short we prepare the following two init containers.
-1. A container to initialize the MySQL cluster, for example, creating necessary users.
-  For this purpose, the `moco-agent` binary is provided by [cybozu-go/moco-agent](https://github.com/cybozu-go/moco-agent).
-  If users want to use their custom image, they have to include the binary in the image.
-2. A container to fill the `my.cnf` template received from the operator into a file.
-  This container is injected by the operator.
+So, in short we prepare an init container that does the following two things.
+
+1. Initialize the MySQL cluster, for example, creating necessary users.
+2. Export the `my.cnf` template received from the operator to a file.
+
+For this purpose, the `moco-agent` binary is provided by [cybozu-go/moco-agent](https://github.com/cybozu-go/moco-agent).
+If users want to use their custom image, they have to include the binary in the image.
 
 If users want to change their MySQL cluster configuration, users basically should execute mysql commands like `SET GLOBAL ...`.
 In case that we cannot avoid restarting MySQL cluster to apply changes in the user-defined `ConfigMap`,
