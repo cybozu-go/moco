@@ -849,7 +849,7 @@ func defaultProbe(probe *corev1.Probe) {
 func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*corev1.PodTemplateSpec, error) {
 	template := cluster.Spec.PodTemplate
 
-	// Workaround: equality.Semantic.DeepDerivative cannot ignore numeric field.
+	// Workaround: equality.Semantic.DeepDerivative cannot ignore numeric field. So set the default values explicitly.
 	for _, c := range template.Spec.Containers {
 		defaultProbe(c.LivenessProbe)
 		defaultProbe(c.ReadinessProbe)
@@ -960,6 +960,33 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			{
 				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP,
 			},
+		}
+		c.LivenessProbe = &corev1.Probe{
+			Handler: corev1.Handler{
+				Exec: &corev1.ExecAction{
+					Command: []string{"/moco-bin/moco-agent", "ping"},
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+
+			TimeoutSeconds:   1,
+			SuccessThreshold: 1,
+			FailureThreshold: 3,
+		}
+		c.ReadinessProbe = &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/health",
+					Port: intstr.FromInt(9080),
+				},
+			},
+			InitialDelaySeconds: 10,
+			PeriodSeconds:       5,
+
+			TimeoutSeconds:   1,
+			SuccessThreshold: 1,
+			FailureThreshold: 3,
 		}
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
