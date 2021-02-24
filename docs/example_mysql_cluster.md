@@ -48,7 +48,7 @@ spec:
             memory: "512Mi"
         livenessProbe:
           exec:
-            command: ["/ping.sh"]
+            command: ["/moco-bin/moco-agent", "ping"]
           initialDelaySeconds: 5
           periodSeconds: 5
         readinessProbe:
@@ -198,11 +198,12 @@ You can [build the container image](build-mysql.md) by yourself or use one from 
 It is a good practice to specify the resource requests.
 
 There are 2 probes in the example: the liveness probe and the readiness probe.
-The liveness probe uses `/ping.sh` to check whether the MySQL server is running or not.
-This script is recommended to be included in the MySQL container image.
+The liveness probe uses `/moco-bin/moco-agent ping` in the `mysqld` container to check whether the MySQL server is running or not.
 The readiness probe uses the `/health` endpoint to check the status of the MySQL server.
-This endpoint is handled by the sidecar container `agent`, which is added by MOCO.
-The executable file for `agent` is bundled in the MySQL container image.
+This endpoint is handled by `/moco-bin/moco-agent server` in the sidecar container `agent`, which is added by MOCO.
+
+The executable file `/moco-bin/moco-agent` is inserted into each container by an init container.
+So you need not prepare the moco-agent binary.
 
 ### logging containers
 
