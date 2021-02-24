@@ -394,6 +394,21 @@ var _ = Describe("MySQLCluster controller", func() {
 				}
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
+			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
+			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
+			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+			Expect(mysqldContainer.ReadinessProbe).ShouldNot(BeNil())
+			Expect(mysqldContainer.ReadinessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/grpc-health-probe", "-addr=localhost:9080"}))
+			Expect(mysqldContainer.ReadinessProbe.InitialDelaySeconds).Should(BeNumerically("==", 10))
+			Expect(mysqldContainer.ReadinessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.ReadinessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.ReadinessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.ReadinessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+
 			Expect(agentContainer).ShouldNot(BeNil())
 			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
 			Expect(agentContainer.Command).Should(Equal([]string{
@@ -536,7 +551,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).Should(HaveOccurred())
 		})
 
-		It("update podTemplate", func() {
+		It("should overwrite probes in mysqld container", func() {
 			serverIDBase := mathrand.Uint32()
 			cluster.Status.ServerIDBase = &serverIDBase
 			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
@@ -548,12 +563,65 @@ var _ = Describe("MySQLCluster controller", func() {
 							LivenessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									Exec: &corev1.ExecAction{
-										Command: []string{"/moco-bin/moco-agent", "ping"},
+										Command: []string{"/dummy/liveness"},
 									},
 								},
-								InitialDelaySeconds: 5,
-								PeriodSeconds:       5,
+								InitialDelaySeconds: 999,
+								PeriodSeconds:       999,
 							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"/dummy/readiness"},
+									},
+								},
+								InitialDelaySeconds: 999,
+								PeriodSeconds:       999,
+							},
+						},
+					},
+				},
+			}
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var mysqldContainer *corev1.Container
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name == "mysqld" {
+					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+			Expect(mysqldContainer).ShouldNot(BeNil())
+			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
+			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
+			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.LivenessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+			Expect(mysqldContainer.ReadinessProbe).ShouldNot(BeNil())
+			Expect(mysqldContainer.ReadinessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/grpc-health-probe", "-addr=localhost:9080"}))
+			Expect(mysqldContainer.ReadinessProbe.InitialDelaySeconds).Should(BeNumerically("==", 10))
+			Expect(mysqldContainer.ReadinessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
+			Expect(mysqldContainer.ReadinessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.ReadinessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
+			Expect(mysqldContainer.ReadinessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+		})
+
+		It("update podTemplate", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
 						},
 						{
 							Name:  "fluent-bit",
@@ -589,14 +657,6 @@ var _ = Describe("MySQLCluster controller", func() {
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(fluentBitContainer).ShouldNot(BeNil())
-
-			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
-			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
-
 			Expect(fluentBitContainer.VolumeMounts).Should(HaveLen(1))
 
 			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
