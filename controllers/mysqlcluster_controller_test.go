@@ -530,7 +530,7 @@ var _ = Describe("MySQLCluster controller", func() {
 							LivenessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									Exec: &corev1.ExecAction{
-										Command: []string{"/ping.sh"},
+										Command: []string{"/moco-bin/moco-agent", "ping"},
 									},
 								},
 								InitialDelaySeconds: 5,
@@ -574,7 +574,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(filebeatContainer).ShouldNot(BeNil())
 
 			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(ContainElement("/ping.sh"))
+			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
 			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
 			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
 			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))

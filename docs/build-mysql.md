@@ -47,13 +47,10 @@ COPY --from=build /usr/local/mysql/LICENSE /usr/local/mysql/LICENSE
 COPY --from=build /usr/local/mysql/bin /usr/local/mysql/bin
 COPY --from=build /usr/local/mysql/lib /usr/local/mysql/lib
 COPY --from=build /usr/local/mysql/share /usr/local/mysql/share
-COPY --from=build /entrypoint /entrypoint
-COPY --from=build /ping.sh /ping.sh
 
 ENV PATH=/usr/local/mysql/bin:"$PATH"
 VOLUME /var/lib/mysql
 ENTRYPOINT ["mysqld"]
-HEALTHCHECK CMD /ping.sh
 EXPOSE 3306 33060 33062 8080
 USER 10000:10000
 ```
