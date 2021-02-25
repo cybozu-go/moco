@@ -1137,8 +1137,6 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 				},
 			},
 		},
-	)
-	c.Env = append(c.Env,
 		corev1.EnvVar{
 			Name: moco.PodNameEnvName,
 			ValueFrom: &corev1.EnvVarSource{
