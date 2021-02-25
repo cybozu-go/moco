@@ -127,9 +127,6 @@ const (
 	// PodNameFlag is a name of the flag of a pod IP.
 	PodIPFlag = "pod-ip"
 
-	// NodeNameEnvName is a name of the environment variable of a node name where the pod runs.
-	NodeNameEnvName = "NODE_NAME"
-
 	// NodeNameFlag is a name of the flag of a node name where the pod runs.
 	NodeNameFlag = "node-name"
 
