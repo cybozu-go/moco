@@ -14,7 +14,6 @@ Flags:
       --binary-copy-container-image string   The container image name that includes moco's binaries (default "ghcr.io/cybozu-go/moco-agent:0.2.0")
       --conn-max-lifetime duration           The maximum amount of time a connection may be reused (default 30m0s)
       --connection-timeout duration          Dial timeout (default 3s)
-      --curl-container-image string          The container image name of curl (default "quay.io/cybozu/ubuntu:20.04")
   -h, --help                                 help for moco-controller
       --leader-election-id string            ID for leader election by controller-runtime (default "moco")
       --log_backtrace_at traceLocation       when logging hits line file:N, emit a stack trace (default :0)
