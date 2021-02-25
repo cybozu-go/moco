@@ -66,7 +66,6 @@ type MySQLClusterReconciler struct {
 	Recorder                 record.EventRecorder
 	Scheme                   *runtime.Scheme
 	BinaryCopyContainerImage string
-	CurlContainerImage       string
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
 	SystemNamespace          string

@@ -15,7 +15,6 @@ var config struct {
 	metricsAddr              string
 	leaderElectionID         string
 	binaryCopyContainerImage string
-	curlContainerImage       string
 	connMaxLifeTime          time.Duration
 	connectionTimeout        time.Duration
 	readTimeout              time.Duration
@@ -36,7 +35,6 @@ var rootCmd = &cobra.Command{
 
 const (
 	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.3.0"
-	defaultCurlContainerImage       = "quay.io/cybozu/ubuntu:20.04"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -53,7 +51,6 @@ func init() {
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.binaryCopyContainerImage, "binary-copy-container-image", defaultBinaryCopyContainerImage, "The container image name that includes moco's binaries")
-	fs.StringVar(&config.curlContainerImage, "curl-container-image", defaultCurlContainerImage, "The container image name of curl")
 	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
 	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")
 	fs.DurationVar(&config.readTimeout, readTimeoutFlag, 30*time.Second, "I/O read timeout")

@@ -74,13 +74,12 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(k8sClient).ToNot(BeNil())
 
 	reconciler = &MySQLClusterReconciler{
-		Client:             k8sClient,
-		Log:                ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
-		Scheme:             sch,
-		CurlContainerImage: "dummy",
-		MySQLAccessor:      &AccessorMock{},
-		WaitTime:           10 * time.Second,
-		SystemNamespace:    systemNamespace,
+		Client:          k8sClient,
+		Log:             ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
+		Scheme:          sch,
+		MySQLAccessor:   &AccessorMock{},
+		WaitTime:        10 * time.Second,
+		SystemNamespace: systemNamespace,
 	}
 	Expect(err).ToNot(HaveOccurred())
 
