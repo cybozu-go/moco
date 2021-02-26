@@ -60,7 +60,6 @@ func subMain() error {
 		Recorder:                 mgr.GetEventRecorderFor("moco-controller"),
 		Scheme:                   mgr.GetScheme(),
 		BinaryCopyContainerImage: config.binaryCopyContainerImage,
-		CurlContainerImage:       config.curlContainerImage,
 		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   config.connMaxLifeTime,
 			ConnectionTimeout: config.connectionTimeout,
