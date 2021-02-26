@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -16,7 +15,6 @@ var config struct {
 	metricsAddr              string
 	leaderElectionID         string
 	binaryCopyContainerImage string
-	confInitContainerImage   string
 	curlContainerImage       string
 	connMaxLifeTime          time.Duration
 	connectionTimeout        time.Duration
@@ -30,12 +28,6 @@ var rootCmd = &cobra.Command{
 	Short:   "MOCO controller",
 	Long:    `MOCO controller manages MySQL cluster with binlog-based semi-sync replication.`,
 
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if config.confInitContainerImage == "" {
-			return errors.New("conf-init-container-image is mandatory")
-		}
-		return nil
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		return subMain()
@@ -43,8 +35,7 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.2.1"
-	defaultInitContainerImage       = "quay.io/cybozu/moco-conf-gen:0.3.0"
+	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.3.0"
 	defaultCurlContainerImage       = "quay.io/cybozu/ubuntu:20.04"
 )
 
@@ -62,7 +53,6 @@ func init() {
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.binaryCopyContainerImage, "binary-copy-container-image", defaultBinaryCopyContainerImage, "The container image name that includes moco's binaries")
-	fs.StringVar(&config.confInitContainerImage, "conf-init-container-image", defaultInitContainerImage, "The container image name of moco-conf-gen")
 	fs.StringVar(&config.curlContainerImage, "curl-container-image", defaultCurlContainerImage, "The container image name of curl")
 	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
 	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")
