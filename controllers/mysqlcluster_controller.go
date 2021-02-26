@@ -16,6 +16,7 @@ import (
 	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -69,6 +70,7 @@ type MySQLClusterReconciler struct {
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
 	SystemNamespace          string
+	AgentConn                []*grpc.ClientConn
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -1043,9 +1045,13 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
 	c := corev1.Container{
-		Name:    binaryCopyContainerName,
-		Image:   r.BinaryCopyContainerImage,
-		Command: []string{"cp", "/moco-agent", moco.MOCOBinaryPath},
+		Name:  binaryCopyContainerName,
+		Image: r.BinaryCopyContainerImage,
+		Command: []string{
+			"cp",
+			"/moco-agent",
+			"/grpc-health-probe",
+			moco.MOCOBinaryPath},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: moco.MOCOBinaryPath,

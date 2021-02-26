@@ -9,3 +9,5 @@ spec:
       containers:
       - name: manager
         imagePullPolicy: Never
+        args:
+          - --binary-copy-container-image=moco-agent:dev

@@ -102,7 +102,7 @@ func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MyS
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword, []string{fmt.Sprintf("%s:%d", test_utils.Host, mysqldPort)})
+	inf := NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword, []string{fmt.Sprintf("%s:%d", test_utils.Host, mysqldPort)}, []string{fmt.Sprintf("%s:%d", test_utils.Host, test_utils.AgentPort)})
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",

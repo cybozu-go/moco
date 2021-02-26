@@ -21,9 +21,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
         readinessProbe:
-          httpGet:
-            path: /health
-            port: 9080
+          exec:
+            command: ["/moco-bin/grpc-health-probe", "-addr=localhost:9080"]
           initialDelaySeconds: 10
           periodSeconds: 5
       - name: err-log

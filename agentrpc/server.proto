@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option go_package = "github.com/cybozu-go/moco/agentrpc";
+
+message HealthRequest {}
+message HealthResponse {
+    bool ok = 1;
+    bool is_out_of_synced = 2;
+    bool is_under_cloning = 3;
+}
+service HealthService {
+    rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message CloneRequest {
+    string token = 1;
+    bool external = 2;
+    string donor_host = 3;
+    int32 donor_port = 4;
+}
+message CloneResponse {}
+service CloneService {
+    rpc Clone(CloneRequest) returns (CloneResponse);
+}
+
+message FlushAndBackupBinlogRequest{
+    string token = 1;
+    string backup_id = 2;
+    string bucket_host = 3;
+    int32 bucket_port = 4;
+    string bucket_name = 5;
+    string bucket_region = 6;
+    string access_key_id = 7;
+    string secret_access_key = 8;
+}
+message FlushAndBackupBinlogResponse {}
+message FlushBinlogRequest {
+    string token = 1;
+    bool delete = 2;
+}
+message FlushBinlogResponse {}
+service BackupBinlogService {
+    rpc FlushAndBackupBinlog(FlushAndBackupBinlogRequest) returns (FlushAndBackupBinlogResponse);
+    rpc FlushBinlog(FlushBinlogRequest) returns (FlushBinlogResponse);
+}

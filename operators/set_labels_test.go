@@ -11,8 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("Set labels", func() {
-
+func testSetLabels() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
@@ -79,4 +78,4 @@ var _ = Describe("Set labels", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(pod1.Labels[moco.RoleKey]).Should(Equal(moco.ReplicaRole))
 	})
-})
+}

@@ -34,11 +34,12 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	var addrs []string
+	var addrs, agentAddrs []string
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
 		addrs = append(addrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.MySQLAdminPort))
+		agentAddrs = append(agentAddrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.AgentPort))
 	}
-	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs)
+	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs, agentAddrs)
 	status, err := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 	if err != nil {
 		condErr := r.setFailureCondition(ctx, cluster, err, nil)

@@ -10,8 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var _ = Describe("Turn off read only", func() {
-
+func testTurnOffReadOnly() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
@@ -52,4 +51,4 @@ var _ = Describe("Turn off read only", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.InstanceStatus[0].GlobalVariablesStatus.ReadOnly).Should(BeFalse())
 	})
-})
+}

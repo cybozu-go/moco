@@ -2,71 +2,59 @@ package operators
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"strconv"
 
 	"github.com/cybozu-go/moco"
-	"github.com/jarcoal/httpmock"
+	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/agentmock"
+	"github.com/cybozu-go/moco/agentrpc"
+	"github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Clone operator", func() {
-	ctx := context.Background()
-	_, infra, cluster := getAccessorInfraCluster()
-	replicaIndex := 1
-	replicaHost := moco.GetHost(&cluster, replicaIndex)
-	primaryHost := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
-	uri := fmt.Sprintf("http://%s:%d/clone", replicaHost, moco.AgentPort)
+func testClone() {
+	var ctx context.Context
+	var infra accessor.Infrastructure
+	var cluster v1alpha1.MySQLCluster
+	var replicaIndex int
+	var primaryHost string
 
-	It("should call /clone API", func() {
-		httpmock.Activate()
-		defer httpmock.DeactivateAndReset()
+	BeforeEach(func() {
+		ctx = context.Background()
+		_, infra, cluster = getAccessorInfraCluster()
+		replicaIndex = 0
+		primaryHost = moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
+	})
 
-		httpmock.RegisterResponderWithQuery(http.MethodGet, uri, map[string]string{
-			moco.CloneParamDonorHostName: primaryHost,
-			moco.CloneParamDonorPort:     strconv.Itoa(moco.MySQLAdminPort),
-			moco.AgentTokenParam:         token,
-		}, httpmock.NewStringResponder(http.StatusOK, ""))
-
+	It("should call clone API", func() {
 		op := cloneOp{replicaIndex: replicaIndex}
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(httpmock.GetTotalCallCount()).Should(Equal(1))
+		expect := &agentrpc.CloneRequest{
+			Token:     token,
+			DonorHost: primaryHost,
+			DonorPort: moco.MySQLAdminPort,
+		}
+		Expect(agentmock.CompareWithLastCloneRequest(expect)).Should(Equal(""))
 	})
 
-	It("should call /clone API with fromExternal flag", func() {
-		httpmock.Activate()
-		defer httpmock.DeactivateAndReset()
-
-		httpmock.RegisterResponderWithQuery(http.MethodGet, uri, map[string]string{
-			moco.CloneParamExternal: "true",
-			moco.AgentTokenParam:    token,
-		}, httpmock.NewStringResponder(http.StatusOK, ""))
-
+	It("should call clone API with fromExternal flag", func() {
 		op := cloneOp{replicaIndex: replicaIndex, fromExternal: true}
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(httpmock.GetTotalCallCount()).Should(Equal(1))
+		expect := &agentrpc.CloneRequest{
+			Token:    token,
+			External: true,
+		}
+		Expect(agentmock.CompareWithLastCloneRequest(expect)).Should(Equal(""))
 	})
 
 	It("should be error when it receives error responce", func() {
-		httpmock.Activate()
-		defer httpmock.DeactivateAndReset()
-
-		httpmock.RegisterResponderWithQuery(http.MethodGet, uri, map[string]string{
-			moco.CloneParamDonorHostName: primaryHost,
-			moco.CloneParamDonorPort:     strconv.Itoa(moco.MySQLAdminPort),
-			moco.AgentTokenParam:         token,
-		}, httpmock.NewStringResponder(http.StatusTooManyRequests, ""))
-
+		agentmock.M.ReturnErr = true
 		op := cloneOp{replicaIndex: replicaIndex}
 		err := op.Run(ctx, infra, &cluster, nil)
 		Expect(err).Should(HaveOccurred())
-
-		Expect(httpmock.GetTotalCallCount()).Should(Equal(1))
 	})
-})
+}

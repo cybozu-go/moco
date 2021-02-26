@@ -14,7 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var _ = Describe("Set clone donor list", func() {
+func testSetCloneDonorList() {
 
 	ctx := context.Background()
 
@@ -50,7 +50,9 @@ var _ = Describe("Set clone donor list", func() {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		})
-		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)})
+		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword,
+			[]string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)},
+			[]string{test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort)})
 
 		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
 		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
@@ -70,4 +72,4 @@ var _ = Describe("Set clone donor list", func() {
 
 		Expect(status.InstanceStatus[1].GlobalVariablesStatus.CloneValidDonorList.Valid).Should(BeFalse())
 	})
-})
+}
