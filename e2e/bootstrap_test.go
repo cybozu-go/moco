@@ -47,6 +47,9 @@ func prepareBooptstrap() {
 			waitController()
 
 			// Add upgrade logic here.
+			// NOTE: Please renew this upgrade test, when MOCO v1 is released.
+			// The purpose of this test is to check the impact on the existing MySQLCluster during the development period (MOCO v0.X).
+			// After MOCO v1 and later, the upgrade test needs to be changed. Please see the design document (TBD).
 
 			By("waiting MySQLCluster")
 			waitCluster()
