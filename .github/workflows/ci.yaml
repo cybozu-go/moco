@@ -95,3 +95,32 @@ jobs:
         if: always()
       - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-2 -c err-log
         if: always()
+  e2e-upgrade:
+    name: End-to-End Upgrade Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          swapon > swapon.txt
+          sudo swapoff -a
+          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+      - run: sudo mkdir /mnt/local-path-provisioner
+      - run: cd e2e && make setup
+      - name: Prepare
+        run: |
+          VARIABLES=read_only,super_read_only,rpl_semi_sync_master_wait_for_slave_count,clone_valid_donor_list
+          ./e2e/script/watch_mysql.sh e2e-test mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
+          ./e2e/script/watch_pod.sh e2e-test > watch_pod_e2e.txt &
+      - run: cd e2e && UPGRADE=1 make test KIND_CLUSTER_CONFIG_SUFFIX=-actions
+
+      # Print status and log of each component
+      - name: Watch MySQL status (e2e-test)
+        run: cat watch_mysql_e2e.txt
+        if: always()
+      - name: Watch pod (e2e-test)
+        run: cat watch_pod_e2e.txt
+        if: always()
+      - run: ./e2e/bin/kubectl -n moco-system get all
+        if: always()
+      - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
+        if: always()

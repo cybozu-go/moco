@@ -14,8 +14,14 @@ const (
 	lineCount = 10000
 )
 
+var (
+	skipE2e     = os.Getenv("E2ETEST") == ""
+	doUpgrade   = os.Getenv("UPGRADE") != ""
+	doBootstrap = os.Getenv("BOOTSTRAP") != ""
+)
+
 func TestE2E(t *testing.T) {
-	if os.Getenv("E2ETEST") == "" {
+	if skipE2e {
 		t.Skip("Run under e2e/")
 	}
 
@@ -30,8 +36,9 @@ func TestE2E(t *testing.T) {
 }
 
 var _ = Describe("MOCO", func() {
+	Context("prepare bootstrap", prepareBooptstrap)
 	Context("bootstrap", testBootstrap)
-	if os.Getenv("BOOTSTRAP") != "" {
+	if doBootstrap {
 		return
 	}
 

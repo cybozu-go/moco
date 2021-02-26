@@ -38,6 +38,10 @@ func kubectlWithInput(input []byte, args ...string) ([]byte, []byte, error) {
 	return execAtLocal("./bin/kubectl", input, args...)
 }
 
+func kustomize(path string) ([]byte, []byte, error) {
+	return execAtLocal("./bin/kustomize", nil, "build", path)
+}
+
 func getMySQLClusterWithNamespace(ns string) (*mocov1alpha1.MySQLCluster, error) {
 	stdout, stderr, err := kubectl("get", "-n"+ns, "mysqlcluster", "mysqlcluster", "-o", "json")
 	if err != nil {
