@@ -24,6 +24,7 @@ GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
 
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
+MOCO_AGENT_VERSION := 0.4.0
 
 .PHONY: all
 all: build
@@ -85,6 +86,10 @@ manifests: $(CONTROLLER_GEN)
 .PHONY: generate
 generate: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: update-agentrpc
+update-agentrpc:
+	# TODO
 
 .PHONY: mod
 mod:

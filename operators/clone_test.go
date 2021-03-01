@@ -5,8 +5,8 @@ import (
 
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
-	"github.com/cybozu-go/moco/agentmock"
 	"github.com/cybozu-go/moco/agentrpc"
+	agentmock "github.com/cybozu-go/moco/agentrpc/mock"
 	"github.com/cybozu-go/moco/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -97,7 +97,7 @@ var HealthService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server.proto",
+	Metadata: "agentrpc/server.proto",
 }
 
 // CloneServiceClient is the client API for CloneService service.
@@ -183,7 +183,7 @@ var CloneService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server.proto",
+	Metadata: "agentrpc/server.proto",
 }
 
 // BackupBinlogServiceClient is the client API for BackupBinlogService service.
@@ -305,5 +305,5 @@ var BackupBinlogService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server.proto",
+	Metadata: "agentrpc/server.proto",
 }

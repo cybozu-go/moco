@@ -1,4 +1,4 @@
-package agentmock
+package mock
 
 import (
 	"context"

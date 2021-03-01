@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco/accessor"
-	"github.com/cybozu-go/moco/agentmock"
+	agentmock "github.com/cybozu-go/moco/agentrpc/mock"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"

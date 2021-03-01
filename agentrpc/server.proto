@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/cybozu-go/moco/agentrpc";
+option go_package = "github.com/cybozu-go/moco-agent/server/agentrpc";
 
 message HealthRequest {}
 message HealthResponse {
