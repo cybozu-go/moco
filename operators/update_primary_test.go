@@ -52,12 +52,13 @@ func testUpdatePrimary() {
 	It("should update primary", func() {
 		_, _, cluster := getAccessorInfraCluster()
 		cluster.Spec.Replicas = 3
-		acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
+		agentAcc := accessor.NewAgentAccessor()
+		dbAcc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 			ConnMaxLifeTime:   30 * time.Minute,
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		})
-		infra := accessor.NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword,
+		infra := accessor.NewInfrastructure(k8sClient, agentAcc, dbAcc, test_utils.OperatorAdminUserPassword,
 			[]string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)},
 			[]string{test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort)})
 

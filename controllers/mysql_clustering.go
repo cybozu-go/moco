@@ -39,7 +39,7 @@ func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log lo
 		addrs = append(addrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.MySQLAdminPort))
 		agentAddrs = append(agentAddrs, fmt.Sprintf("%s:%d", moco.GetHost(cluster, i), moco.AgentPort))
 	}
-	infra := accessor.NewInfrastructure(r.Client, r.MySQLAccessor, password, addrs, agentAddrs)
+	infra := accessor.NewInfrastructure(r.Client, r.AgentAccessor, r.MySQLAccessor, password, addrs, agentAddrs)
 	status, err := accessor.GetMySQLClusterStatus(ctx, log, infra, cluster)
 	if err != nil {
 		condErr := r.setFailureCondition(ctx, cluster, err, nil)

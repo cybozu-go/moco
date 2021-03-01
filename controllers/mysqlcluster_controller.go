@@ -16,7 +16,6 @@ import (
 	"github.com/cybozu-go/moco/runners"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	"google.golang.org/grpc"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -67,10 +66,10 @@ type MySQLClusterReconciler struct {
 	Recorder                 record.EventRecorder
 	Scheme                   *runtime.Scheme
 	BinaryCopyContainerImage string
+	AgentAccessor            *accessor.AgentAccessor
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
 	SystemNamespace          string
-	AgentConn                []*grpc.ClientConn
 }
 
 // +kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
