@@ -26,36 +26,6 @@ spec:
             port: 9080
           initialDelaySeconds: 10
           periodSeconds: 5
-      - name: err-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
-        volumeMounts:
-        - name: err-filebeat-config
-          mountPath: /etc/filebeat.yml
-          readOnly: true
-          subPath: filebeat.yml
-        - name: err-filebeat-data
-          mountPath: /var/lib/filebeat
-        - name: var-log
-          mountPath: /var/log/mysql
-          readOnly: true
-        - name: tmp
-          mountPath: /tmp
-      - name: slow-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
-        volumeMounts:
-        - name: slow-filebeat-config
-          mountPath: /etc/filebeat.yml
-          readOnly: true
-          subPath: filebeat.yml
-        - name: slow-filebeat-data
-          mountPath: /var/lib/filebeat
-        - name: var-log
-          mountPath: /var/log/mysql
-          readOnly: true
-        - name: tmp
-          mountPath: /tmp
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000

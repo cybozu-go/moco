@@ -129,7 +129,6 @@ spec:
                     type: string
                 type: object
               logRotationSchedule:
-                default: '*/5 * * * *'
                 description: LogRotationSchedule is a schedule in Cron format for MySQL log rotation
                 pattern: ^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$
                 type: string

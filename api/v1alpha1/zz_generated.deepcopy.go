@@ -116,6 +116,11 @@ func (in *MySQLClusterSpec) DeepCopyInto(out *MySQLClusterSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LogRotationSchedule != nil {
+		in, out := &in.LogRotationSchedule, &out.LogRotationSchedule
+		*out = new(string)
+		**out = **in
+	}
 	if in.Restore != nil {
 		in, out := &in.Restore, &out.Restore
 		*out = new(RestoreSpec)

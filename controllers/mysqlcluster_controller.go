@@ -954,12 +954,16 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 			return nil, err
 		}
 	}
+
+	agentCommand := []string{moco.MOCOBinaryPath + "/moco-agent", "server"}
+	if cluster.Spec.LogRotationSchedule != nil {
+		agentCommand = append(agentCommand, "--log-rotation-schedule", *cluster.Spec.LogRotationSchedule)
+	}
+
 	agentContainer := corev1.Container{
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
-		Command: []string{
-			moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
-		},
+		Command: agentCommand,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: moco.MOCOBinaryPath,
@@ -1066,7 +1070,11 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 
 	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
 
-	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init", serverIDOption}
+	c.Command = []string{
+		moco.MOCOBinaryPath + "/moco-agent", "init", serverIDOption,
+		"--error-log-output", "stderr",
+		"--slow-query-log-output", "stdout",
+	}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{

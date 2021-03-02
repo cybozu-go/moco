@@ -48,6 +48,7 @@ load-moco-image: build-moco-image
 	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
 		kind load docker-image --name=$(KIND_CLUSTER_NAME) controller:dev; \
 	fi
+	kind load docker-image moco-agent:dev --name moco-e2e
 
 .PHONY: load-mysql-image
 load-mysql-image: prepare-mysql-image
