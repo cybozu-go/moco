@@ -30,16 +30,6 @@ func testAgent() {
 		}
 	})
 
-	It("should run health probe server", func() {
-		Eventually(func() error {
-			stdout, stderr, err := execAtLocal("curl", nil, "-sf", fmt.Sprintf("http://localhost:%d/health", listenPort))
-			if err != nil {
-				return fmt.Errorf("failed to curl. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
-			}
-			return nil
-		}).Should(Succeed())
-	})
-
 	It("should expose metrics", func() {
 		Eventually(func() error {
 			stdout, stderr, err := execAtLocal("curl", nil, "-sf", fmt.Sprintf("http://localhost:%d/metrics", listenPort))
