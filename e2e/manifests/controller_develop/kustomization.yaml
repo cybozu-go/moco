@@ -6,5 +6,6 @@ images:
   - name: ghcr.io/cybozu-go/moco
     newName: controller
     newTag: dev
-patchesStrategicMerge:
-  - patch.yaml
+# Use the below patch if you want try an local build moco-agent image
+# patchesStrategicMerge:
+#   - patch.yaml 
