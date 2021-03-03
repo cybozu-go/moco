@@ -18,7 +18,7 @@ func testAgent() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), 0)
-		portForwardCmd = exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", listenPort, moco.AgentPort))
+		portForwardCmd = exec.Command("./bin/kubectl", "-n", "e2e-test", "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", listenPort, moco.AgentMetricsPort))
 		portForwardCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err = portForwardCmd.Start()
 		Expect(err).ShouldNot(HaveOccurred())
