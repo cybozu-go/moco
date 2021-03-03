@@ -10,7 +10,6 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
 	github.com/google/uuid v1.1.5
-	github.com/jarcoal/httpmock v1.0.7
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4

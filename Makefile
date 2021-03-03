@@ -10,6 +10,7 @@ export KUBEBUILDER_ASSETS
 
 CONTROLLER_GEN := $(PWD)/bin/controller-gen
 KUBEBUILDER := $(PWD)/bin/kubebuilder
+PROTOC := $(PWD)/bin/protoc
 # Produce CRDs with apiextensions.k8s.io/v1
 CRD_OPTIONS ?= "crd:crdVersions=v1"
 
@@ -25,6 +26,7 @@ GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.4.0
 MOCO_AGENT_VERSION := 0.4.0
+PROTOC_VERSION := 3.14.0
 
 .PHONY: all
 all: build
@@ -87,9 +89,11 @@ manifests: $(CONTROLLER_GEN)
 generate: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: update-agentrpc
-update-agentrpc:
-	# TODO
+.PHONY: agentrpc
+agentrpc: $(PROTOC)
+	curl -sfL https://github.com/cybozu-go/moco-agent/releases/download/v$(MOCO_AGENT_VERSION)/agentrpc.proto -O
+	mv agentrpc.proto agentrpc/
+	bin/protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative agentrpc/agentrpc.proto
 
 .PHONY: mod
 mod:
@@ -110,6 +114,13 @@ $(KUBEBUILDER):
 $(CONTROLLER_GEN):
 	mkdir -p bin
 	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen
+
+$(PROTOC):
+	mkdir -p bin
+	curl -sfL -O https://github.com/protocolbuffers/protobuf/releases/download/v$(PROTOC_VERSION)/protoc-$(PROTOC_VERSION)-linux-x86_64.zip
+	unzip -p protoc-$(PROTOC_VERSION)-linux-x86_64.zip bin/protoc > bin/protoc
+	chmod +x bin/protoc
+	rm protoc-$(PROTOC_VERSION)-linux-x86_64.zip
 
 .PHONY: setup
 setup: custom-checker staticcheck nilerr ineffassign

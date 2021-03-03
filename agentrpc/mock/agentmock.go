@@ -10,12 +10,13 @@ import (
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/google/go-cmp/cmp"
 	grpc "google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type MockAgentServer struct {
 	agentrpc.UnimplementedBackupBinlogServiceServer
 	agentrpc.UnimplementedCloneServiceServer
-	agentrpc.UnimplementedHealthServiceServer
+	healthpb.HealthServer
 
 	ReturnErr        bool
 	LastCloneRequest *agentrpc.CloneRequest
@@ -36,7 +37,7 @@ func Start(ctx context.Context) error {
 		return err
 	}
 	grpcServer := grpc.NewServer()
-	agentrpc.RegisterHealthServiceServer(grpcServer, M)
+	healthpb.RegisterHealthServer(grpcServer, M)
 	agentrpc.RegisterCloneServiceServer(grpcServer, M)
 	agentrpc.RegisterBackupBinlogServiceServer(grpcServer, M)
 

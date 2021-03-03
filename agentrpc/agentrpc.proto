@@ -2,16 +2,6 @@ syntax = "proto3";
 
 option go_package = "github.com/cybozu-go/moco-agent/server/agentrpc";
 
-message HealthRequest {}
-message HealthResponse {
-    bool ok = 1;
-    bool is_out_of_synced = 2;
-    bool is_under_cloning = 3;
-}
-service HealthService {
-    rpc Health(HealthRequest) returns (HealthResponse);
-}
-
 message CloneRequest {
     string token = 1;
     bool external = 2;
