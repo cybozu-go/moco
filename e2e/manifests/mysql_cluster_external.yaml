@@ -28,50 +28,36 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 5
       - name: err-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
+        image: fluent/fluent-bit:1.7.2
         volumeMounts:
-        - name: err-filebeat-config
-          mountPath: /etc/filebeat.yml
+        - name: err-fluent-bit-config
+          mountPath: /fluent-bit/etc/fluent-bit.conf
           readOnly: true
-          subPath: filebeat.yml
-        - name: err-filebeat-data
-          mountPath: /var/lib/filebeat
+          subPath: fluent-bit.conf
         - name: var-log
           mountPath: /var/log/mysql
           readOnly: true
-        - name: tmp
-          mountPath: /tmp
       - name: slow-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
+        image: fluent/fluent-bit:1.7.2
         volumeMounts:
-        - name: slow-filebeat-config
-          mountPath: /etc/filebeat.yml
+        - name: slow-fluent-bit-config
+          mountPath: /fluent-bit/etc/fluent-bit.conf
           readOnly: true
-          subPath: filebeat.yml
-        - name: slow-filebeat-data
-          mountPath: /var/lib/filebeat
+          subPath: fluent-bit.conf
         - name: var-log
           mountPath: /var/log/mysql
           readOnly: true
-        - name: tmp
-          mountPath: /tmp
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000
         fsGroup: 10000
       volumes:
-      - name: err-filebeat-config
-        configMap:
-          name: err-filebeat-config
-      - name: err-filebeat-data
-        emptyDir: {}
-      - name: slow-filebeat-config
-        configMap:
-          name: slow-filebeat-config
-      - name: slow-filebeat-data
-        emptyDir: {}
+        - name: err-fluent-bit-config
+          configMap:
+            name: err-fluent-bit-config
+        - name: slow-fluent-bit-config
+          configMap:
+            name: slow-fluent-bit-config
   dataVolumeClaimTemplateSpec:
     accessModes: [ "ReadWriteOnce" ]
     resources:
@@ -93,41 +79,35 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: err-filebeat-config
+  name: err-fluent-bit-config
 data:
-  filebeat.yml: |-
-    path.data: /var/lib/filebeat
-    filebeat.inputs:
-    - type: log
-      enabled: true
-      paths:
-        - /var/log/mysql/mysql.err*
-    output.console:
-      codec.format:
-        string: '%{[message]}'
-    logging.files:
-      path: /tmp
-      name: filebeat
-      keepfiles: 7
-      permissions: 0644
+  fluent-bit.conf: |-
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.err
+      Read_from_Head true
+    [OUTPUT]
+      Name     file
+      Match    *
+      Path     /dev
+      File     stdout
+      Format   template
+      Template {log}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: slow-filebeat-config
+  name: slow-fluent-bit-config
 data:
-  filebeat.yml: |-
-    path.data: /var/lib/filebeat
-    filebeat.inputs:
-    - type: log
-      enabled: true
-      paths:
-        - /var/log/mysql/mysql.slow*
-    output.console:
-      codec.format:
-        string: '%{[message]}'
-    logging.files:
-      path: /tmp
-      name: filebeat
-      keepfiles: 7
-      permissions: 0644
+  fluent-bit.conf: |-
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.slow
+      Read_from_Head true
+    [OUTPUT]
+      Name     file
+      Match    *
+      Path     /dev
+      File     stdout
+      Format   template
+      Template {log}
