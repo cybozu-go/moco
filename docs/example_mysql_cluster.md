@@ -52,9 +52,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
         readinessProbe:
-          httpGet:
-            path: /health
-            port: 9080
+          exec:
+            command: ["/moco-bin/grpc-health-probe", "-addr=localhost:9080"]
           initialDelaySeconds: 10
           periodSeconds: 5
       - name: err-log
@@ -199,8 +198,8 @@ It is a good practice to specify the resource requests.
 
 There are 2 probes in the example: the liveness probe and the readiness probe.
 The liveness probe uses `/moco-bin/moco-agent ping` in the `mysqld` container to check whether the MySQL server is running or not.
-The readiness probe uses the `/health` endpoint to check the status of the MySQL server.
-This endpoint is handled by `/moco-bin/moco-agent server` in the sidecar container `agent`, which is added by MOCO.
+The readiness probe uses the [`grpc.health.v1.Health`](https://pkg.go.dev/google.golang.org/grpc/health/grpc_health_v1) service to check the status of the MySQL server.
+This gRPC service is handled by `/moco-bin/moco-agent server` in the sidecar container `agent`, which is added by MOCO.
 
 The executable file `/moco-bin/moco-agent` is inserted into each container by an init container.
 So you need not prepare the moco-agent binary.
