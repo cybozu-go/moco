@@ -1,6 +1,7 @@
 package accessor
 
 import (
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -31,4 +32,17 @@ func (acc *AgentAccessor) Get(addr string) (*grpc.ClientConn, error) {
 	}
 
 	return acc.conns[addr], nil
+}
+
+func (acc *AgentAccessor) Remove(addr string) {
+	acc.mu.Lock()
+	defer acc.mu.Unlock()
+
+	for uri, conn := range acc.conns {
+		if !strings.Contains(uri, addr) {
+			continue
+		}
+		conn.Close()
+		delete(acc.conns, uri)
+	}
 }

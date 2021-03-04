@@ -177,6 +177,7 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	r.MySQLAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
+	r.AgentAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
 
 	log.Info("finalizing MySQLCluster is completed")
 
