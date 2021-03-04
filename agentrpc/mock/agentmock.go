@@ -9,7 +9,7 @@ import (
 	"github.com/cybozu-go/moco/agentrpc"
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/google/go-cmp/cmp"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 

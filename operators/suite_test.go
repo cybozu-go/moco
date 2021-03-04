@@ -30,7 +30,7 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
-var ctx = context.Background()
+var mockCtx = context.Background()
 
 const (
 	mysqldName1     = "moco-operators-test-mysqld-1"
@@ -79,7 +79,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	agentmock.Start(ctx)
+	agentmock.Start(mockCtx)
 
 	test_utils.StopAndRemoveMySQLD(mysqldName1)
 	test_utils.StopAndRemoveMySQLD(mysqldName2)
@@ -97,7 +97,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
-	ctx.Done()
+	mockCtx.Done()
 
 	test_utils.StopAndRemoveMySQLD(mysqldName1)
 	test_utils.StopAndRemoveMySQLD(mysqldName2)
