@@ -93,7 +93,7 @@ generate: $(CONTROLLER_GEN)
 agentrpc: $(PROTOC)
 	curl -sfL https://github.com/cybozu-go/moco-agent/releases/download/v$(MOCO_AGENT_VERSION)/agentrpc.proto -O
 	mv agentrpc.proto agentrpc/
-	bin/protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative agentrpc/agentrpc.proto
+	$(PROTOC) --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative agentrpc/agentrpc.proto
 
 .PHONY: mod
 mod:
