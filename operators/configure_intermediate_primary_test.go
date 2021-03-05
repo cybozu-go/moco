@@ -16,7 +16,7 @@ import (
 
 var replicationSource = "replication-source"
 
-var _ = Describe("Configure intermediate primary operator", func() {
+func testConfigureIntermediatePrimary() {
 
 	ctx := context.Background()
 
@@ -143,4 +143,4 @@ var _ = Describe("Configure intermediate primary operator", func() {
 			return nil
 		}).Should(Succeed())
 	})
-})
+}

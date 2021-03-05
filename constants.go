@@ -100,6 +100,9 @@ const (
 	// AgentPort is a port number for agent container
 	AgentPort = 9080
 
+	// AgentMetricsPort is a port number for agent container
+	AgentMetricsPort = 8080
+
 	// AgentTokenEnvName is a name of the environment variable of agent token.
 	AgentTokenEnvName = "MOCO_AGENT_TOKEN"
 

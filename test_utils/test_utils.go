@@ -19,6 +19,7 @@ import (
 
 const (
 	Host             = "localhost"
+	AgentPort        = 30000
 	RootUser         = "root"
 	RootUserPassword = "rootpassword"
 

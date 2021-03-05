@@ -66,6 +66,7 @@ type MySQLClusterReconciler struct {
 	Recorder                 record.EventRecorder
 	Scheme                   *runtime.Scheme
 	BinaryCopyContainerImage string
+	AgentAccessor            *accessor.AgentAccessor
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
 	SystemNamespace          string
@@ -176,6 +177,7 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	r.MySQLAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
+	r.AgentAccessor.Remove(moco.UniqueName(cluster) + "." + cluster.Namespace)
 
 	log.Info("finalizing MySQLCluster is completed")
 
@@ -1043,9 +1045,13 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
 	c := corev1.Container{
-		Name:    binaryCopyContainerName,
-		Image:   r.BinaryCopyContainerImage,
-		Command: []string{"cp", "/moco-agent", moco.MOCOBinaryPath},
+		Name:  binaryCopyContainerName,
+		Image: r.BinaryCopyContainerImage,
+		Command: []string{
+			"cp",
+			"/moco-agent",
+			"/grpc-health-probe",
+			moco.MOCOBinaryPath},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: moco.MOCOBinaryPath,

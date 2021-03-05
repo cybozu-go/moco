@@ -12,8 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var _ = Describe("Stop replica IO thread", func() {
-
+func testStopReplicaIOThread() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
@@ -75,4 +74,4 @@ var _ = Describe("Stop replica IO thread", func() {
 			return nil
 		}).Should(Succeed())
 	})
-})
+}

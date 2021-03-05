@@ -87,7 +87,7 @@ jobs:
         if: always()
       - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
         if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v "/health"
+      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v "grpc.health.v1.Health"
         if: always()
       - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-0 -c err-log
         if: always()

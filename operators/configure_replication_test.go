@@ -14,8 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var _ = Describe("Configure replication", func() {
-
+func testConfigureReplication() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
@@ -93,4 +92,4 @@ var _ = Describe("Configure replication", func() {
 			return nil
 		}).Should(Succeed())
 	})
-})
+}

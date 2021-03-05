@@ -1,6 +1,7 @@
 package operators
 
 import (
+	"context"
 	"log" // restrictpkg:ignore to suppress mysql client logs.
 	"path/filepath"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco/accessor"
+	agentmock "github.com/cybozu-go/moco/agentrpc/mock"
 	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"
@@ -28,6 +30,7 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var mockCtx = context.Background()
 
 const (
 	mysqldName1     = "moco-operators-test-mysqld-1"
@@ -76,6 +79,8 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
+	agentmock.Start(mockCtx)
+
 	test_utils.StopAndRemoveMySQLD(mysqldName1)
 	test_utils.StopAndRemoveMySQLD(mysqldName2)
 	test_utils.StopAndRemoveMySQLD(mysqldName3)
@@ -92,6 +97,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
+	mockCtx.Done()
 
 	test_utils.StopAndRemoveMySQLD(mysqldName1)
 	test_utils.StopAndRemoveMySQLD(mysqldName2)
@@ -99,13 +105,27 @@ var _ = AfterSuite(func() {
 	test_utils.RemoveNetwork()
 })
 
+var _ = Describe("Test Operators", func() {
+	Context("clone", testClone)
+	Context("configureIntermediatePrimary", testConfigureIntermediatePrimary)
+	Context("configureReplication", testConfigureReplication)
+	Context("setCloneDonorList", testSetCloneDonorList)
+	Context("setLables", testSetLabels)
+	Context("stopReplicaIOThread", testStopReplicaIOThread)
+	Context("turnOffReadOnly", testTurnOffReadOnly)
+	Context("updatePrimary", testUpdatePrimary)
+})
+
 func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1alpha1.MySQLCluster) {
-	acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
+	agentAcc := accessor.NewAgentAccessor()
+	dbAcc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 		ConnMaxLifeTime:   30 * time.Minute,
 		ConnectionTimeout: 3 * time.Second,
 		ReadTimeout:       30 * time.Second,
 	})
-	inf := accessor.NewInfrastructure(k8sClient, acc, test_utils.OperatorAdminUserPassword, []string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)})
+	inf := accessor.NewInfrastructure(k8sClient, agentAcc, dbAcc, test_utils.OperatorAdminUserPassword,
+		[]string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)},
+		[]string{test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort)})
 	primaryIndex := 0
 	cluster := mocov1alpha1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -146,5 +166,5 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		},
 	}
 
-	return acc, inf, cluster
+	return dbAcc, inf, cluster
 }
