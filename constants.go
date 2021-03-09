@@ -81,6 +81,26 @@ const (
 )
 
 const (
+	// FluentBitConfigName is a filename for fluent-bit conf.
+	FluentBitConfigName = "fluent-bit.conf"
+
+	// DefaultFluentBitConfigTemplate is a template for creating a default fluent-bit config.
+	// If you specify the location of the log file in the Printf function, config can be generated.
+	DefaultFluentBitConfigTemplate = `[INPUT]
+  Name           tail
+  Path           %s
+  Read_from_Head true
+[OUTPUT]
+  Name     file
+  Match    *
+  Path     /dev
+  File     stdout
+  Format   template
+  Template {log}
+`
+)
+
+const (
 	// MySQLPort is a port number for MySQL
 	MySQLPort = 3306
 

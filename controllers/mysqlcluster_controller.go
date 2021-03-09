@@ -539,6 +539,30 @@ func generateRandomBytes(n int) ([]byte, error) {
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdatedAtLeastOnce := false
+
+	isUpdated, err := r.createOrUpdateMySQLConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	isUpdated, err = r.createOrUpdateErrLogAgentConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	isUpdated, err = r.createOrUpdateSlowLogAgentConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	return isUpdatedAtLeastOnce, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateMySQLConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
 	cm.SetName(moco.UniqueName(cluster))
@@ -592,15 +616,74 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	return false, nil
 }
 
-func (r *MySQLClusterReconciler) removeConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateErrLogAgentConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
-	cm.SetName(moco.UniqueName(cluster))
+	cm.SetName(moco.GetErrLogAgentConfigMapName(cluster.Name))
 
-	err := r.Delete(ctx, cm)
-	if client.IgnoreNotFound(err) != nil {
-		log.Error(err, "unable to delete ConfigMap")
-		return err
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		setStandardLabels(&cm.ObjectMeta, cluster)
+
+		cm.Data = make(map[string]string)
+		cm.Data[moco.FluentBitConfigName] = fmt.Sprintf(moco.DefaultFluentBitConfigTemplate, filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName))
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update err-log-agent ConfigMap")
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile err-log-agent ConfigMap successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateSlowLogAgentConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	cm := &corev1.ConfigMap{}
+	cm.SetNamespace(cluster.Namespace)
+	cm.SetName(moco.GetSlowLogAgentConfigMapName(cluster.Name))
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		setStandardLabels(&cm.ObjectMeta, cluster)
+
+		cm.Data = make(map[string]string)
+		cm.Data[moco.FluentBitConfigName] = fmt.Sprintf(moco.DefaultFluentBitConfigTemplate, filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName))
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update slow-log-agent ConfigMap")
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile slow-log-agent ConfigMap successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (r *MySQLClusterReconciler) removeConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	configmaps := []*types.NamespacedName{
+		{Namespace: cluster.Namespace, Name: moco.UniqueName(cluster)},
+		{Namespace: cluster.Namespace, Name: moco.GetErrLogAgentConfigMapName(cluster.Name)},
+		{Namespace: cluster.Namespace, Name: moco.GetSlowLogAgentConfigMapName(cluster.Name)},
+	}
+	for _, c := range configmaps {
+		cm := &corev1.ConfigMap{}
+		cm.SetNamespace(c.Namespace)
+		cm.SetName(c.Name)
+
+		err := r.Delete(ctx, cm)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete ConfigMap")
+			return err
+		}
 	}
 	return nil
 }
