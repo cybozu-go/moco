@@ -16,6 +16,16 @@ spec:
         resources:
           requests:
             memory: "512Mi"
+        livenessProbe:
+          exec:
+            command: ["/moco-bin/moco-agent", "ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["/moco-bin/grpc-health-probe", "-addr=localhost:9080"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
       - name: err-log
         image: fluent/fluent-bit:1.7.2
         volumeMounts:
@@ -40,13 +50,6 @@ spec:
         runAsUser: 10000
         runAsGroup: 10000
         fsGroup: 10000
-      volumes:
-        - name: err-fluent-bit-config
-          configMap:
-            name: err-fluent-bit-config
-        - name: slow-fluent-bit-config
-          configMap:
-            name: slow-fluent-bit-config
   dataVolumeClaimTemplateSpec:
     accessModes: [ "ReadWriteOnce" ]
     resources:
@@ -64,39 +67,3 @@ data:
   max_allowed_packet: 1G
   max_heap_table_size: 64M
   pid_file: /hoge/fuga
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: err-fluent-bit-config
-data:
-  fluent-bit.conf: |-
-    [INPUT]
-      Name           tail
-      Path           /var/log/mysql/mysql.err
-      Read_from_Head true
-    [OUTPUT]
-      Name     file
-      Match    *
-      Path     /dev
-      File     stdout
-      Format   template
-      Template {log}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: slow-fluent-bit-config
-data:
-  fluent-bit.conf: |-
-    [INPUT]
-      Name           tail
-      Path           /var/log/mysql/mysql.slow
-      Read_from_Head true
-    [OUTPUT]
-      Name     file
-      Match    *
-      Path     /dev
-      File     stdout
-      Format   template
-      Template {log}

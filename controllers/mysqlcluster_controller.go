@@ -978,7 +978,9 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	var mysqldContainer *corev1.Container
 	newTemplate.Spec.Containers = make([]corev1.Container, len(template.Spec.Containers))
 	for i, orig := range template.Spec.Containers {
-		if orig.Name != moco.MysqldContainerName {
+		if orig.Name != moco.MysqldContainerName &&
+			orig.Name != moco.ErrLogAgentContainerName &&
+			orig.Name != moco.SlowQueryLogAgentContainerName {
 			newTemplate.Spec.Containers[i] = orig
 			continue
 		}
@@ -1146,6 +1148,38 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, agentContainer)
 
+	// find "err-log" container and update it
+	if cluster.Spec.DisableErrorLogContainer {
+		for _, orig := range template.Spec.Containers {
+			if orig.Name == moco.ErrLogAgentContainerName {
+				newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, orig)
+			}
+		}
+	} else {
+		errLogContainer, err := r.makeErrLogAgentContainer(cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, errLogContainer)
+	}
+
+	// find "slow-log" container and update it
+	if cluster.Spec.DisableSlowQueryLogContainer {
+		for _, orig := range template.Spec.Containers {
+			if orig.Name == moco.SlowQueryLogAgentContainerName {
+				newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, orig)
+			}
+		}
+	} else {
+		slowQueryLogContainer, err := r.makeSlowQueryLogAgentContainer(cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, slowQueryLogContainer)
+	}
+
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
 		r.makeBinaryCopyContainer(),
@@ -1161,12 +1195,8 @@ func (r *MySQLClusterReconciler) makeErrLogAgentContainer(cluster *mocov1alpha1.
 		Image: r.FluentBitImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				MountPath: moco.VarLogPath,
-				Name:      varLogVolumeName,
-			},
-			{
 				MountPath: moco.FluentBitConfigPath,
-				Name:      moco.GetErrLogAgentConfigMapName(cluster.Name),
+				Name:      errLogAgentConfigVolumeName,
 				ReadOnly:  true,
 				SubPath:   moco.FluentBitConfigName,
 			},
@@ -1188,12 +1218,8 @@ func (r *MySQLClusterReconciler) makeSlowQueryLogAgentContainer(cluster *mocov1a
 		Image: r.FluentBitImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				MountPath: moco.VarLogPath,
-				Name:      varLogVolumeName,
-			},
-			{
 				MountPath: moco.FluentBitConfigPath,
-				Name:      moco.GetSlowQueryLogAgentConfigMapName(cluster.Name),
+				Name:      slowQueryLogAgentConfigVolumeName,
 				ReadOnly:  true,
 				SubPath:   moco.FluentBitConfigName,
 			},
