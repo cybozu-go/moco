@@ -52,8 +52,8 @@ func GetErrLogAgentConfigMapName(clusterName string) string {
 	return fmt.Sprintf("moco-err-log-agent-config-%s", clusterName)
 }
 
-// GetSlowLogAgentConfigMapName returns the name of the slow query log agent config name.
-func GetSlowLogAgentConfigMapName(clusterName string) string {
+// GetSlowQueryLogAgentConfigMapName returns the name of the slow query log agent config name.
+func GetSlowQueryLogAgentConfigMapName(clusterName string) string {
 	return fmt.Sprintf("moco-slow-log-agent-config-%s", clusterName)
 }
 

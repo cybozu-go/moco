@@ -84,6 +84,9 @@ const (
 	// FluentBitConfigName is a filename for fluent-bit conf.
 	FluentBitConfigName = "fluent-bit.conf"
 
+	// FluentBitConfigPath is the path for fluent-bit conf.
+	FluentBitConfigPath = "/fluent-bit/etc/fluent-bit.conf"
+
 	// DefaultFluentBitConfigTemplate is a template for creating a default fluent-bit config.
 	// If you specify the location of the log file in the Printf function, config can be generated.
 	DefaultFluentBitConfigTemplate = `[INPUT]
@@ -98,6 +101,12 @@ const (
   Format   template
   Template {log}
 `
+
+	// ErrLogAgentContainerName is a name of the log agent to process mysqld error logs.
+	ErrLogAgentContainerName = "err-log"
+
+	// SlowQueryLogAgentContainerName is a name of the log agent to process mysqld slow query logs.
+	SlowQueryLogAgentContainerName = "slow-log"
 )
 
 const (
