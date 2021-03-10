@@ -199,7 +199,7 @@ You can use other log-shipping tools for exporting logs to `stdout` and/or the e
 The logging containers mount several volumes including `var-log`.
 `var-log` is not listed explicitly in `volumes` because they are managed by MOCO.
 
-The ConfigMaps used to give the configuration of Filebeat have general names, `err-fluent-bit-config` and `slow-fluent-bit-config`, because they can be shared among multiple MySQLClusters.
+The ConfigMaps used to give the configuration of Fluent Bit have general names, `err-fluent-bit-config` and `slow-fluent-bit-config`, because they can be shared among multiple MySQLClusters.
 
 .spec.podTemplate.spec.volumes
 ------------------------------
