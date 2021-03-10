@@ -271,7 +271,7 @@ The sidecar container rotates and deletes the log files based on the cron spec i
 The operator does not care about gathering the contents of the log files.
 Tenant users can extract the contents by defining sidecar containers for `slow.log` and `error.log`.
 
-You can see an example with FileBeat in [Example Document](example_mysql_cluster.md).
+You can see an example with Fluent Bit in [Example Document](example_mysql_cluster.md).
 
 ### How to delete resources (garbage collection)
 

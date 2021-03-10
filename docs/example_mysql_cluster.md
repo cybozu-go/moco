@@ -57,50 +57,36 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 5
       - name: err-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
+        image: fluent/fluent-bit:1.7.2
         volumeMounts:
-        - name: err-filebeat-config
-          mountPath: /etc/filebeat.yml
+        - name: err-fluent-bit-config
+          mountPath: /fluent-bit/etc/fluent-bit.conf
           readOnly: true
-          subPath: filebeat.yml
-        - name: err-filebeat-data
-          mountPath: /var/lib/filebeat
+          subPath: fluent-bit.conf
         - name: var-log
           mountPath: /var/log/mysql
           readOnly: true
-        - name: tmp
-          mountPath: /tmp
       - name: slow-log
-        image: quay.io/cybozu/filebeat:7.9.2.1
-        args: ["-c", "/etc/filebeat.yml"]
+        image: fluent/fluent-bit:1.7.2
         volumeMounts:
-        - name: slow-filebeat-config
-          mountPath: /etc/filebeat.yml
+        - name: slow-fluent-bit-config
+          mountPath: /fluent-bit/etc/fluent-bit.conf
           readOnly: true
-          subPath: filebeat.yml
-        - name: slow-filebeat-data
-          mountPath: /var/lib/filebeat
+          subPath: fluent-bit.conf
         - name: var-log
           mountPath: /var/log/mysql
           readOnly: true
-        - name: tmp
-          mountPath: /tmp
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000
         fsGroup: 10000
       volumes:
-      - name: err-filebeat-config
+      - name: err-fluent-bit-config
         configMap:
-          name: err-filebeat-config
-      - name: err-filebeat-data
-        emptyDir: {}
-      - name: slow-filebeat-config
+          name: err-fluent-bit-config
+      - name: slow-fluent-bit-config
         configMap:
-          name: slow-filebeat-config
-      - name: slow-filebeat-data
-        emptyDir: {}
+          name: slow-fluent-bit-config
   dataVolumeClaimTemplateSpec:
     storageClassName: topolvm-provisioner
     accessModes: [ "ReadWriteOnce" ]
@@ -123,46 +109,40 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: err-filebeat-config
+  name: err-fluent-bit-config
   namespace: sandbox
 data:
-  filebeat.yml: |-
-    path.data: /var/lib/filebeat
-    filebeat.inputs:
-    - type: log
-      enabled: true
-      paths:
-        - /var/log/mysql/mysql.err*
-    output.console:
-      codec.format:
-        string: '%{[message]}'
-    logging.files:
-      path: /tmp
-      name: filebeat
-      keepfiles: 7
-      permissions: 0644
+  fluent-bit.conf: |-
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.err
+      Read_from_Head true
+    [OUTPUT]
+      Name     file
+      Match    *
+      Path     /dev
+      File     stdout
+      Format   template
+      Template {log}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: slow-filebeat-config
+  name: slow-fluent-bit-config
   namespace: sandbox
 data:
-  filebeat.yml: |-
-    path.data: /var/lib/filebeat
-    filebeat.inputs:
-    - type: log
-      enabled: true
-      paths:
-        - /var/log/mysql/mysql.slow*
-    output.console:
-      codec.format:
-        string: '%{[message]}'
-    logging.files:
-      path: /tmp
-      name: filebeat
-      keepfiles: 7
-      permissions: 0644
+  fluent-bit.conf: |-
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.slow
+      Read_from_Head true
+    [OUTPUT]
+      Name     file
+      Match    *
+      Path     /dev
+      File     stdout
+      Format   template
+      Template {log}
 ```
 
 .metadata.namespace
@@ -211,14 +191,14 @@ They extract logs from MySQL log files into their `stdout` streams.
 The logs are then handled by Kubernetes.
 You can see the logs by `kubectl logs -c err-log <pod_name>` and `kubectl logs -c slow-log <pod_name>`.
 
-The logging containers use [Filebeat](https://www.elastic.co/beats/filebeat) to tail the rotated log files without loss.
+The logging containers use [Fluent Bit](https://fluentbit.io/) to tail the rotated log files without loss.
 This command is not included in the MySQL container image.
 You can use other log-shipping tools for exporting logs to `stdout` and/or the external log database.
 
-The logging containers mount several volumes including `var-log` and `tmp`.
-The two are not listed explicitly in `volumes` because they are managed by MOCO.
+The logging containers mount several volumes including `var-log`.
+`var-log` is not listed explicitly in `volumes` because they are managed by MOCO.
 
-The ConfigMaps used to give the configuration of Filebeat have general names, `err-filebeat-config` and `slow-filebeat-config`, because they can be shared among multiple MySQLClusters.
+The ConfigMaps used to give the configuration of Fluent Bit have general names, `err-fluent-bit-config` and `slow-fluent-bit-config`, because they can be shared among multiple MySQLClusters.
 
 .spec.podTemplate.spec.volumes
 ------------------------------

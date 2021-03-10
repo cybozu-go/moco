@@ -556,15 +556,14 @@ var _ = Describe("MySQLCluster controller", func() {
 							},
 						},
 						{
-							Name:  "filebeat",
-							Image: "filebeat:dev",
-							Args:  []string{"-c", "/etc/filebeat.yml"},
+							Name:  "fluent-bit",
+							Image: "fluent-bit:dev",
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "config",
 									ReadOnly:  true,
-									MountPath: "/etc/filebeat.yml",
-									SubPath:   "filebeat.yml",
+									MountPath: "/fluent-bit/etc/fluent-bit.conf",
+									SubPath:   "fluent-bit.conf",
 								},
 							},
 						},
@@ -580,16 +579,16 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			var mysqldContainer *corev1.Container
-			var filebeatContainer *corev1.Container
+			var fluentBitContainer *corev1.Container
 			for i, c := range sts.Spec.Template.Spec.Containers {
 				if c.Name == "mysqld" {
 					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				} else if c.Name == "filebeat" {
-					filebeatContainer = &sts.Spec.Template.Spec.Containers[i]
+				} else if c.Name == "fluent-bit" {
+					fluentBitContainer = &sts.Spec.Template.Spec.Containers[i]
 				}
 			}
 			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(filebeatContainer).ShouldNot(BeNil())
+			Expect(fluentBitContainer).ShouldNot(BeNil())
 
 			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
 			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
@@ -598,7 +597,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
 			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
 
-			Expect(filebeatContainer.VolumeMounts).Should(HaveLen(1))
+			Expect(fluentBitContainer.VolumeMounts).Should(HaveLen(1))
 
 			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
