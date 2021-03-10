@@ -53,6 +53,20 @@ type MySQLClusterSpec struct {
 	// If this field is filled, start restoring. This field is unable to be updated.
 	// +optional
 	Restore *RestoreSpec `json:"restore,omitempty"`
+
+	// DisableErrorLogContainer controls whether to add a log agent container name of the "err-log" to handle mysqld error logs.
+	// If set to true, no log agent container will be added. The default is false.
+	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "err-log",
+	// it will be merged with the default container definition using StrategicMergePatch.
+	// +optional
+	DisableErrorLogContainer bool `json:"disableErrorLogContainer"`
+
+	// DisableSlowQueryLogContainer controls whether to add a log agent container name of the "slow-log" to handle mysqld slow query logs.
+	// If set to true, no log agent container will be added. The default is false.
+	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "slow-log",
+	// it will be merged with the default container definition using StrategicMergePatch.
+	// +optional
+	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer"`
 }
 
 // ObjectMeta is metadata of objects.
