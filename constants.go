@@ -94,12 +94,12 @@ const (
   Path           %s
   Read_from_Head true
 [OUTPUT]
-  Name     file
-  Match    *
-  Path     /dev
-  File     stdout
-  Format   template
-  Template {log}
+  Name           file
+  Match          *
+  Path           /dev
+  File           stdout
+  Format         template
+  Template       {log}
 `
 
 	// ErrLogAgentContainerName is a name of the log agent to process mysqld error logs.
