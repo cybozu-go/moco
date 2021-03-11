@@ -3,9 +3,11 @@ package test_utils
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -63,16 +65,16 @@ func run(cmd *well.LogCmd) error {
 func StartMySQLD(name string, port int, serverID int) error {
 	ctx := context.Background()
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return errors.New("failed to get file path")
 	}
 	cmd := well.CommandContext(ctx,
 		"docker", "run", "-d", "--restart=always",
 		"--network="+networkName,
 		"--name", name,
 		"-p", fmt.Sprintf("%d:%d", port, port),
-		"-v", filepath.Join(wd, "..", "my.cnf")+":/etc/mysql/conf.d/my.cnf",
+		"-v", filepath.Join(filepath.Dir(thisFile), "my.cnf")+":/etc/mysql/conf.d/my.cnf",
 		"-e", "MYSQL_ROOT_PASSWORD="+RootUserPassword,
 		"mysql:"+MySQLVersion,
 		fmt.Sprintf("--port=%d", port),
