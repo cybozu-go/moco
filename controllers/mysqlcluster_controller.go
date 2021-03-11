@@ -774,7 +774,7 @@ func (r *MySQLClusterReconciler) removeStatefulSet(ctx context.Context, log logr
 	return nil
 }
 
-func defaultProbe(probe *corev1.Probe) {
+func setDefaultProbeParams(probe *corev1.Probe) {
 	if probe == nil {
 		return
 	}
@@ -795,14 +795,14 @@ func defaultProbe(probe *corev1.Probe) {
 func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (*corev1.PodTemplateSpec, error) {
 	template := cluster.Spec.PodTemplate
 
-	// Workaround: equality.Semantic.DeepDerivative cannot ignore numeric field.
+	// Workaround: equality.Semantic.DeepDerivative cannot ignore numeric field. So set the default values explicitly.
 	for _, c := range template.Spec.Containers {
-		defaultProbe(c.LivenessProbe)
-		defaultProbe(c.ReadinessProbe)
+		setDefaultProbeParams(c.LivenessProbe)
+		setDefaultProbeParams(c.ReadinessProbe)
 	}
 	for _, c := range template.Spec.InitContainers {
-		defaultProbe(c.LivenessProbe)
-		defaultProbe(c.ReadinessProbe)
+		setDefaultProbeParams(c.LivenessProbe)
+		setDefaultProbeParams(c.ReadinessProbe)
 	}
 
 	newTemplate := corev1.PodTemplateSpec{
@@ -907,6 +907,30 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				ContainerPort: moco.MySQLAdminPort, Protocol: corev1.ProtocolTCP,
 			},
 		}
+		c.LivenessProbe = &corev1.Probe{
+			Handler: corev1.Handler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "ping",
+					},
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       5,
+		}
+		setDefaultProbeParams(c.LivenessProbe)
+		c.ReadinessProbe = &corev1.Probe{
+			Handler: corev1.Handler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						filepath.Join(moco.MOCOBinaryPath, "grpc-health-probe"), fmt.Sprintf("-addr=localhost:%d", moco.AgentPort),
+					},
+				},
+			},
+			InitialDelaySeconds: 10,
+			PeriodSeconds:       5,
+		}
+		setDefaultProbeParams(c.ReadinessProbe)
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
 				MountPath: moco.MOCOBinaryPath,
@@ -960,7 +984,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
+			filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1072,7 +1096,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 
 	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
 
-	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init", serverIDOption}
+	c.Command = []string{filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "init", serverIDOption}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{

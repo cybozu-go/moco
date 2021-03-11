@@ -16,16 +16,6 @@ spec:
         resources:
           requests:
             memory: "512Mi"
-        livenessProbe:
-          exec:
-            command: ["/moco-bin/moco-agent", "ping"]
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        readinessProbe:
-          exec:
-            command: ["/moco-bin/grpc-health-probe", "-addr=localhost:9080"]
-          initialDelaySeconds: 10
-          periodSeconds: 5
       - name: err-log
         image: fluent/fluent-bit:1.7.2
         volumeMounts:
