@@ -134,20 +134,24 @@ func TestClusterStatusMetricsUpdater(t *testing.T) {
 	const clusterName = "testcluster"
 
 	tests := []struct {
-		name  string
-		input corev1.ConditionStatus
+		name     string
+		input    corev1.ConditionStatus
+		expected float64
 	}{
 		{
-			name:  "first update",
-			input: corev1.ConditionTrue,
+			name:     "update with true",
+			input:    corev1.ConditionTrue,
+			expected: 1.0,
 		},
 		{
-			name:  "next update",
-			input: corev1.ConditionUnknown,
+			name:     "update with false",
+			input:    corev1.ConditionFalse,
+			expected: 0.0,
 		},
 		{
-			name:  "same update",
-			input: corev1.ConditionUnknown,
+			name:     "update with unknown",
+			input:    corev1.ConditionUnknown,
+			expected: 0.0,
 		},
 	}
 
@@ -175,25 +179,13 @@ func TestClusterStatusMetricsUpdater(t *testing.T) {
 
 				for _, mf := range metricsFamily {
 					if *mf.Name == nf.name {
-						found := false
 						for _, met := range mf.Metric {
 							m := labelToMap(met.Label)
 							if m["cluster_name"] == clusterName {
-								status := m["status"]
-								if status == string(tt.input) {
-									if *met.Gauge.Value != 1.0 {
-										t.Errorf("metric value is not 1: status=%#v", status)
-									}
-									found = true
-								} else {
-									if *met.Gauge.Value != 0.0 {
-										t.Errorf("metric value is not 0: status=%#v", status)
-									}
+								if *met.Gauge.Value != tt.expected {
+									t.Errorf("unexpected metric value for %s: expected=%f, actual=%f", nf.name, tt.expected, *met.Gauge.Value)
 								}
 							}
-						}
-						if !found {
-							t.Errorf("could not find metrics whose value is 1")
 						}
 					} else {
 						t.Errorf("unknown metrics name: %s", *mf.Name)

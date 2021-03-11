@@ -24,14 +24,10 @@ func TestDeleteAllMetrics(t *testing.T) {
 		UpdateTotalReplicasMetrics(c, 3)
 		UpdateSyncedReplicasMetrics(c, intPointer(2))
 		IncrementFailoverCountTotalMetrics(c)
-		for _, f := range []func(c string, status corev1.ConditionStatus){
-			UpdateClusterStatusViolationMetrics,
-			UpdateClusterStatusFailureMetrics,
-			UpdateClusterStatusHealthyMetrics,
-			UpdateClusterStatusAvailableMetrics,
-		} {
-			f(c, corev1.ConditionTrue)
-		}
+		UpdateClusterStatusViolationMetrics(c, corev1.ConditionTrue)
+		UpdateClusterStatusFailureMetrics(c, corev1.ConditionTrue)
+		UpdateClusterStatusHealthyMetrics(c, corev1.ConditionTrue)
+		UpdateClusterStatusAvailableMetrics(c, corev1.ConditionTrue)
 	}
 
 	beforeDelete, err := registry.Gather()

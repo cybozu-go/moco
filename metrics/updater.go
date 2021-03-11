@@ -49,11 +49,9 @@ func UpdateClusterStatusAvailableMetrics(clusterName string, status corev1.Condi
 }
 
 func updateClusterStatusMetrics(target *prometheus.GaugeVec, clusterName string, status corev1.ConditionStatus) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		if status == c {
-			target.WithLabelValues(clusterName, string(c)).Set(1)
-			continue
-		}
-		target.WithLabelValues(clusterName, string(c)).Set(0)
+	if status == corev1.ConditionTrue {
+		target.WithLabelValues(clusterName).Set(1)
+	} else {
+		target.WithLabelValues(clusterName).Set(0)
 	}
 }

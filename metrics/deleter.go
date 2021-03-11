@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"github.com/cybozu-go/moco"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func DeleteAllControllerMetrics(clusterName string) {
@@ -35,25 +34,17 @@ func deleteSyncedReplicasMetrics(clusterName string) {
 }
 
 func deleteClusterStatusViolationMetrics(clusterName string) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		clusterViolationStatusMetrics.DeleteLabelValues(clusterName, string(c))
-	}
+	clusterViolationStatusMetrics.DeleteLabelValues(clusterName)
 }
 
 func deleteClusterStatusFailureMetrics(clusterName string) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		clusterFailureStatusMetrics.DeleteLabelValues(clusterName, string(c))
-	}
+	clusterFailureStatusMetrics.DeleteLabelValues(clusterName)
 }
 
 func deleteClusterStatusHealthyMetrics(clusterName string) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		clusterHealthyStatusMetrics.DeleteLabelValues(clusterName, string(c))
-	}
+	clusterHealthyStatusMetrics.DeleteLabelValues(clusterName)
 }
 
 func deleteClusterStatusAvailableMetrics(clusterName string) {
-	for _, c := range []corev1.ConditionStatus{corev1.ConditionFalse, corev1.ConditionTrue, corev1.ConditionUnknown} {
-		clusterAvailableStatusMetrics.DeleteLabelValues(clusterName, string(c))
-	}
+	clusterAvailableStatusMetrics.DeleteLabelValues(clusterName)
 }
