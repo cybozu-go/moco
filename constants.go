@@ -110,7 +110,7 @@ const (
 	AgentTokenParam = "token"
 )
 
-// env names must correspond to options in entrypoint/init.go
+// environment variables for agent
 const (
 	// PodNameEnvName is a name of the environment variable of a pod name.
 	PodNameEnvName = "POD_NAME"
@@ -118,20 +118,11 @@ const (
 	// PodNameFlag is a name of the flag of a pod name.
 	PodNameFlag = "pod-name"
 
-	// PodNamespaceEnvName is a name of the environment variable of a pod namespace.
-	PodNamespaceEnvName = "POD_NAMESPACE"
-
-	// PodNamespaceFlag is a name of the flag of a pod namespace.
-	PodNamespaceFlag = "pod-namespace"
-
 	// PodIPEnvName is a name of the environment variable of a pod IP.
 	PodIPEnvName = "POD_IP"
 
-	// PodNameFlag is a name of the flag of a pod IP.
+	// PodIPFlag is a name of the flag of a pod IP.
 	PodIPFlag = "pod-ip"
-
-	// NodeNameFlag is a name of the flag of a node name where the pod runs.
-	NodeNameFlag = "node-name"
 
 	// RootPasswordEnvName is a name of the environment variable of a root password.
 	RootPasswordEnvName = "ROOT_PASSWORD"
@@ -214,6 +205,9 @@ const (
 	ReplicaRole = "replica"
 
 	MysqldContainerName = "mysqld"
+
+	// PodNamespaceEnvName is a name of the environment variable of a pod namespace.
+	PodNamespaceEnvName = "POD_NAMESPACE"
 )
 
 const (
