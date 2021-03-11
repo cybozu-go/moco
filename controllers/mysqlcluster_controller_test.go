@@ -136,11 +136,10 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: systemNamespace, Name: ctrlSecretName}, ctrlSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.RootPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.AdminPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+			Expect(ctrlSecret.Data).Should(HaveKey(moco.AgentPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
 			Expect(ctrlSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
 
@@ -148,11 +147,10 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: clusterSecretNS, Name: clusterSecretName}, clusterSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Expect(clusterSecret.Data).Should(HaveKey(moco.RootPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.OperatorPasswordKey))
+			Expect(clusterSecret.Data).Should(HaveKey(moco.AdminPasswordKey))
 			Expect(clusterSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
 			Expect(clusterSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.MiscPasswordKey))
+			Expect(clusterSecret.Data).Should(HaveKey(moco.AgentPasswordKey))
 			Expect(clusterSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
 			Expect(clusterSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
 
@@ -160,7 +158,6 @@ var _ = Describe("MySQLCluster controller", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Expect(myCnfSecret.Data).Should(HaveKey(moco.RootMyCnfKey))
 			Expect(myCnfSecret.Data).Should(HaveKey(moco.ReadOnlyMyCnfKey))
 			Expect(myCnfSecret.Data).Should(HaveKey(moco.WritableMyCnfKey))
 

@@ -19,28 +19,26 @@ var _ = Describe("MySQL Accessor", func() {
 			ConnectionTimeout: 3 * time.Second,
 			ReadTimeout:       30 * time.Second,
 		})
-		_, err := acc.Get(addr, moco.OperatorAdminUser, test_utils.OperatorAdminUserPassword)
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(acc.dbs).Should(HaveLen(1))
 
-		_, err = acc.Get(addr, moco.OperatorUser, "wrong password")
+		_, err := acc.Get(addr, moco.AdminUser, "wrong password")
 		Expect(err).Should(HaveOccurred())
-		Expect(acc.dbs).Should(HaveLen(1))
+		Expect(acc.dbs).Should(HaveLen(0))
 
-		_, err = acc.Get(addr, moco.OperatorAdminUser, test_utils.OperatorAdminUserPassword)
+		_, err = acc.Get(addr, moco.AdminUser, test_utils.OperatorAdminUserPassword)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(acc.dbs).Should(HaveLen(1))
 
-		_, err = acc.Get(addr, moco.OperatorUser, test_utils.OperatorUserPassword)
+		// Use cached connection
+		_, err = acc.Get(addr, moco.AdminUser, test_utils.OperatorAdminUserPassword)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(acc.dbs).Should(HaveLen(2))
-
-		acc.Remove(moco.OperatorAdminUser + ":" + test_utils.OperatorAdminUserPassword + "@tcp(" + addr + ")")
 		Expect(acc.dbs).Should(HaveLen(1))
 
-		_, err = acc.Get(addr, moco.OperatorAdminUser, test_utils.OperatorAdminUserPassword)
+		acc.Remove(moco.AdminUser + ":" + test_utils.OperatorAdminUserPassword + "@tcp(" + addr + ")")
+		Expect(acc.dbs).Should(HaveLen(0))
+
+		_, err = acc.Get(addr, moco.AdminUser, test_utils.OperatorAdminUserPassword)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(acc.dbs).Should(HaveLen(2))
+		Expect(acc.dbs).Should(HaveLen(1))
 
 		acc.Remove(addr)
 		Expect(acc.dbs).Should(HaveLen(0))

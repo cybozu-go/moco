@@ -83,7 +83,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 
 func init() {
 	fs := mysqlCmd.Flags()
-	fs.StringVarP(&mysqlConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql [`root`, `moco-writable` or `moco-readonly`]")
+	fs.StringVarP(&mysqlConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql [`moco-writable` or `moco-readonly`]")
 	fs.IntVar(&mysqlConfig.index, "index", -1, "Index of a target mysql instance")
 	fs.BoolVarP(&mysqlConfig.stdin, "stdin", "i", false, "Pass stdin to the mysql container")
 	fs.BoolVarP(&mysqlConfig.tty, "tty", "t", false, "Stdin is a TTY")

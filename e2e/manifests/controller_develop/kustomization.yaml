@@ -7,5 +7,5 @@ images:
     newName: controller
     newTag: dev
 # Use the below patch if you want try an local build moco-agent image
-# patchesStrategicMerge:
-#   - patch.yaml 
+patchesStrategicMerge:
+  - patch.yaml 

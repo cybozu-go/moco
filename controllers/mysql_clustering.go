@@ -30,7 +30,7 @@ type Operation struct {
 
 // reconcileMySQLCluster reconciles MySQL cluster
 func (r *MySQLClusterReconciler) reconcileClustering(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (ctrl.Result, error) {
-	password, err := moco.GetPassword(ctx, cluster, r.Client, moco.OperatorPasswordKey)
+	password, err := moco.GetPassword(ctx, cluster, r.Client, moco.AdminPasswordKey)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

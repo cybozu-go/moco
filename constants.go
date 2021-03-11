@@ -7,25 +7,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// MySQL user names for MOCO
 const (
-	// RootUser is the name of root user in the MySQL context.
-	RootUser = "root"
-
-	// OperatorUser is a name of MOCO operator user in the MySQL context.
-	OperatorUser = "moco"
-
-	// OperatorAdminUser is a name of MOCO operator-admin user in the MySQL context.
+	// AdminUser is a name of MOCO operator-admin user.
 	// This user is a super user especially for creating and granting privileges to other users.
-	OperatorAdminUser = "moco-admin"
+	AdminUser = "moco-admin"
 
-	// ReplicationUser is a name of MOCO replicator user in the MySQL context.
+	// AgentUser is a name of MOCO agent user.
+	AgentUser = "moco-agent"
+
+	// ReplicationUser is a name of MOCO replicator user.
 	ReplicationUser = "moco-repl"
 
-	// CloneDonorUser is a name of MOCO clone-donor user in the MySQL context.
+	// CloneDonorUser is a name of MOCO clone-donor user.
 	CloneDonorUser = "moco-clone-donor"
-
-	// MiscUser is a name of MOCO misc user in the MySQL context.
-	MiscUser = "moco-misc"
 
 	// ReadOnlyUser is a name of MOCO predefined human user with wide read-only rights used for manual operation.
 	ReadOnlyUser = "moco-readonly"
@@ -74,8 +69,8 @@ const (
 	// DonorPasswordPath is the path to donor user passsword file
 	DonorPasswordPath = MySQLDataPath + "/donor-password"
 
-	// MiscPasswordPath is the path to misc user passsword file
-	MiscPasswordPath = MySQLDataPath + "/misc-password"
+	// AgentPasswordPath is the path to misc user passsword file
+	AgentPasswordPath = MySQLDataPath + "/agent-password"
 
 	// ReplicationSourceSecretPath is the path to replication source secret file
 	ReplicationSourceSecretPath = MySQLDataPath + "/replication-source-secret"
@@ -124,20 +119,17 @@ const (
 	// PodIPFlag is a name of the flag of a pod IP.
 	PodIPFlag = "pod-ip"
 
-	// RootPasswordEnvName is a name of the environment variable of a root password.
-	RootPasswordEnvName = "ROOT_PASSWORD"
+	// AdminPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
+	AdminPasswordEnvName = "ADMIN_PASSWORD"
 
-	// OperatorPasswordEnvName is a name of the environment variable of a password for both operator and operator-admin.
-	OperatorPasswordEnvName = "OPERATOR_PASSWORD"
+	// AgentPasswordEnvName is a name of the environment variable of a password for the misc user.
+	AgentPasswordEnvName = "AGENT_PASSWORD"
 
 	// ReplicationPasswordEnvName is a name of the environment variable of a password for replication user.
 	ReplicationPasswordEnvName = "REPLICATION_PASSWORD"
 
 	// ClonePasswordEnvName is a name of the environment variable of a password for donor user.
 	ClonePasswordEnvName = "CLONE_DONOR_PASSWORD"
-
-	// MiscPasswordEnvName is a name of the environment variable of a password for the misc user.
-	MiscPasswordEnvName = "MISC_PASSWORD"
 
 	// ReadOnlyPasswordEnvName is a name of the environment variable of a password for moco-readonly.
 	ReadOnlyPasswordEnvName = "READONLY_PASSWORD"
@@ -147,11 +139,11 @@ const (
 )
 
 const (
-	// RootPasswordKey is a Secret key for root password.
-	RootPasswordKey = "ROOT_PASSWORD"
+	// AdminPasswordKey is a Secret key for operator password.
+	AdminPasswordKey = "ADMIN_PASSWORD"
 
-	// OperatorPasswordKey is a Secret key for operator password.
-	OperatorPasswordKey = "OPERATOR_PASSWORD"
+	// AgentPasswordKey is a Secret key for misc user password.
+	AgentPasswordKey = "AGENT_PASSWORD"
 
 	// ReplicationPasswordKey is a Secret key for operator replication password.
 	ReplicationPasswordKey = "REPLICATION_PASSWORD"
@@ -159,17 +151,11 @@ const (
 	// CloneDonorPasswordKey is a Secret key for operator donor password.
 	CloneDonorPasswordKey = "CLONE_DONOR_PASSWORD"
 
-	// MiscPasswordKey is a Secret key for misc user password.
-	MiscPasswordKey = "MISC_PASSWORD"
-
 	// ReadOnlyPasswordKey is a Secret key for moco-readonly user password.
 	ReadOnlyPasswordKey = "READONLY_PASSWORD"
 
 	// ReadOnlyPasswordKey is a Secret key for moco-writable user password.
 	WritablePasswordKey = "WRITABLE_PASSWORD"
-
-	// RootMyCnfKey is the username and password of root formated as my.cnf
-	RootMyCnfKey = RootUser + "-my.cnf"
 
 	// ReadOnlyMyCnfKey is the username and password of moco-readonly formated as my.cnf
 	ReadOnlyMyCnfKey = ReadOnlyUser + "-my.cnf"

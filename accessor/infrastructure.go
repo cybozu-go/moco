@@ -50,7 +50,7 @@ func (i Infrastructure) GetDB(index int) (*sqlx.DB, error) {
 		return nil, errors.New("index is out of range")
 	}
 
-	db, err := i.mySQLAccessor.Get(i.dbAddresses[index], moco.OperatorAdminUser, i.dbPassword)
+	db, err := i.mySQLAccessor.Get(i.dbAddresses[index], moco.AdminUser, i.dbPassword)
 	if err != nil {
 		return nil, err
 	}

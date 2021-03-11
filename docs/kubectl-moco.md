@@ -18,12 +18,12 @@ For example, the following options are available.
 
 Run `mysql` command in a specified MySQL instance.
 
-| Options            | Default value        | Description                                                               |
-| ------------------ | -------------------- | ------------------------------------------------------------------------- |
-| `-u, --mysql-user` | `moco-readonly`      | Run mysql as a specified user: `root`, `moco-writable` or `moco-readonly` |
-| `--index`          | index of the primary | Index of a target mysql instance                                          |
-| `-i, --stdin`      | `false`              | Pass stdin to the mysql container                                         |
-| `-t, --tty`        | `false`              | Stdin is a TTY                                                            |
+| Options            | Default value        | Description                                                       |
+| ------------------ | -------------------- | ----------------------------------------------------------------- |
+| `-u, --mysql-user` | `moco-readonly`      | Run mysql as a specified user: `moco-writable` or `moco-readonly` |
+| `--index`          | index of the primary | Index of a target mysql instance                                  |
+| `-i, --stdin`      | `false`              | Pass stdin to the mysql container                                 |
+| `-t, --tty`        | `false`              | Stdin is a TTY                                                    |
 
 The normal `mysql` command can be run as follows:
 
@@ -47,7 +47,7 @@ kubectl moco mysql -i -t mycluster
 
 Fetch the credential information of a specified user
 
-| Options            | Default value   | Description                                                                          |
-| ------------------ | --------------- | ------------------------------------------------------------------------------------ |
-| `-u, --mysql-user` | `moco-readonly` | Fetch the credential of a specified user: `root`, `moco-writable` or `moco-readonly` |
-| `--format`         | `plain`         | Output format: `plain` or `myconf`                                                   |
+| Options            | Default value   | Description                                                                  |
+| ------------------ | --------------- | ---------------------------------------------------------------------------- |
+| `-u, --mysql-user` | `moco-readonly` | Fetch the credential of a specified user: `moco-writable` or `moco-readonly` |
+| `--format`         | `plain`         | Output format: `plain` or `myconf`                                           |
