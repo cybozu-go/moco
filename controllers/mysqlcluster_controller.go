@@ -910,27 +910,27 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		c.LivenessProbe = &corev1.Probe{
 			Handler: corev1.Handler{
 				Exec: &corev1.ExecAction{
-					Command: []string{moco.MOCOBinaryPath + "/moco-agent", "ping"},
+					Command: []string{
+						filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "ping",
+					},
 				},
 			},
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       5,
-			TimeoutSeconds:      1,
-			SuccessThreshold:    1,
-			FailureThreshold:    3,
 		}
+		setDefaultProbeParams(c.LivenessProbe)
 		c.ReadinessProbe = &corev1.Probe{
 			Handler: corev1.Handler{
 				Exec: &corev1.ExecAction{
-					Command: []string{moco.MOCOBinaryPath + "/grpc-health-probe", fmt.Sprintf("-addr=localhost:%d", moco.AgentPort)},
+					Command: []string{
+						filepath.Join(moco.MOCOBinaryPath, "grpc-health-probe"), fmt.Sprintf("-addr=localhost:%d", moco.AgentPort),
+					},
 				},
 			},
 			InitialDelaySeconds: 10,
 			PeriodSeconds:       5,
-			TimeoutSeconds:      1,
-			SuccessThreshold:    1,
-			FailureThreshold:    3,
 		}
+		setDefaultProbeParams(c.ReadinessProbe)
 		c.VolumeMounts = append(c.VolumeMounts,
 			corev1.VolumeMount{
 				MountPath: moco.MOCOBinaryPath,
@@ -984,7 +984,7 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 		Name:  agentContainerName,
 		Image: mysqldContainer.Image,
 		Command: []string{
-			moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
+			filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1096,7 +1096,7 @@ func (r *MySQLClusterReconciler) makeEntrypointInitContainer(log logr.Logger, cl
 
 	serverIDOption := fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase)
 
-	c.Command = []string{moco.MOCOBinaryPath + "/moco-agent", "init", serverIDOption}
+	c.Command = []string{filepath.Join(moco.MOCOBinaryPath, "moco-agent"), "init", serverIDOption}
 	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{

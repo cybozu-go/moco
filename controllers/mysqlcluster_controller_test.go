@@ -381,7 +381,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(len(binaryCopyInitContainer.VolumeMounts)).Should(Equal(1))
 			Expect(len(entrypointInitContainer.VolumeMounts)).Should(Equal(8))
 			Expect(entrypointInitContainer.Command).Should(Equal([]string{
-				moco.MOCOBinaryPath + "/moco-agent", "init", fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase),
+				"/moco-bin/moco-agent", "init", fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase),
 			}))
 
 			var mysqldContainer *corev1.Container
@@ -412,7 +412,7 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(agentContainer).ShouldNot(BeNil())
 			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
 			Expect(agentContainer.Command).Should(Equal([]string{
-				moco.MOCOBinaryPath + "/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
+				"/moco-bin/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 			}))
 
 			var claim *corev1.PersistentVolumeClaim
