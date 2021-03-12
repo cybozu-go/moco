@@ -26,7 +26,7 @@ func RegisterMetrics(registry *prometheus.Registry) {
 		Subsystem: metricsSubsystem,
 		Name:      "cluster_violation_status",
 		Help:      "The cluster status about violation condition",
-	}, []string{"cluster_name", "status"})
+	}, []string{"cluster_name"})
 	registry.MustRegister(clusterViolationStatusMetrics)
 
 	clusterFailureStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -34,7 +34,7 @@ func RegisterMetrics(registry *prometheus.Registry) {
 		Subsystem: metricsSubsystem,
 		Name:      "cluster_failure_status",
 		Help:      "The cluster status about failure condition",
-	}, []string{"cluster_name", "status"})
+	}, []string{"cluster_name"})
 	registry.MustRegister(clusterFailureStatusMetrics)
 
 	clusterAvailableStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -42,7 +42,7 @@ func RegisterMetrics(registry *prometheus.Registry) {
 		Subsystem: metricsSubsystem,
 		Name:      "cluster_available_status",
 		Help:      "The cluster status about available condition",
-	}, []string{"cluster_name", "status"})
+	}, []string{"cluster_name"})
 	registry.MustRegister(clusterAvailableStatusMetrics)
 
 	clusterHealthyStatusMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -50,7 +50,7 @@ func RegisterMetrics(registry *prometheus.Registry) {
 		Subsystem: metricsSubsystem,
 		Name:      "cluster_healthy_status",
 		Help:      "The cluster status about healthy condition",
-	}, []string{"cluster_name", "status"})
+	}, []string{"cluster_name"})
 	registry.MustRegister(clusterHealthyStatusMetrics)
 
 	operationPhaseMetrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{

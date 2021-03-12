@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/cybozu-go/moco"
 
 	. "github.com/onsi/ginkgo"
@@ -92,5 +90,5 @@ func selectInitializedCluster(obj client.Object) []string {
 			return []string{string(cond.Status)}
 		}
 	}
-	return []string{string(corev1.ConditionUnknown)}
+	return nil
 }

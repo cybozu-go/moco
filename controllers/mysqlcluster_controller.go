@@ -334,7 +334,7 @@ func selectInitializedCluster(obj client.Object) []string {
 			return []string{string(cond.Status)}
 		}
 	}
-	return []string{string(corev1.ConditionUnknown)}
+	return nil
 }
 
 func (r *MySQLClusterReconciler) setServerIDBaseIfNotAssigned(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
