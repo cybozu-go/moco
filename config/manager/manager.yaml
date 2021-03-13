@@ -24,7 +24,7 @@ spec:
       - name: manager
         command:
         - /moco-controller
-        image: ghcr.io/cybozu-go/moco:latest
+        image: ghcr.io/cybozu-go/moco:0.7.0
         resources:
           requests:
             memory: 256Mi
