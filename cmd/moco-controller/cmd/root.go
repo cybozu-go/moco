@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.4.0"
+	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.5.0"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
