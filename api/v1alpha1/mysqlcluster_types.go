@@ -37,10 +37,6 @@ type MySQLClusterSpec struct {
 	// +optional
 	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
-	// RootPasswordSecretName is a `Secret` name for root user config.
-	// +optional
-	RootPasswordSecretName *string `json:"rootPasswordSecretName,omitempty"`
-
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
 	// Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.
 	// If this field is given, the `MySQLCluster` works as an intermediate primary.

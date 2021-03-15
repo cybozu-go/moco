@@ -60,7 +60,7 @@ func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
 	return getMySQLClusterWithNamespace("e2e-test")
 }
 
-func getRootPasswordWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+func getPasswordSecretWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
 	stdout, stderr, err := kubectl("get", "-n"+ns, "secret", "moco-root-password-"+mysqlCluster.Name, "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
@@ -74,8 +74,8 @@ func getRootPasswordWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLClu
 	return &secret, nil
 }
 
-func getRootPassword(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
-	return getRootPasswordWithNamespace("e2e-test", mysqlCluster)
+func getPasswordSecret(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+	return getPasswordSecretWithNamespace("e2e-test", mysqlCluster)
 }
 
 type mysqlConnector struct {
@@ -131,12 +131,12 @@ func (c *mysqlConnector) connectToPrimary() (*sqlx.DB, error) {
 func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
 	port := c.basePort + index
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	secret, err := getRootPasswordWithNamespace(c.cluster.Namespace, c.cluster)
+	secret, err := getPasswordSecretWithNamespace(c.cluster.Namespace, c.cluster)
 	if err != nil {
 		return nil, err
 	}
-	password := string(secret.Data[moco.OperatorPasswordEnvName])
-	return c.accessor.Get(addr, moco.OperatorAdminUser, password)
+	password := string(secret.Data[moco.AdminPasswordEnvName])
+	return c.accessor.Get(addr, moco.AdminUser, password)
 }
 
 func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionType mocov1alpha1.MySQLClusterConditionType) *mocov1alpha1.MySQLClusterCondition {

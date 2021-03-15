@@ -3918,9 +3918,6 @@ spec:
                 - pointInTime
                 - restore
                 type: object
-              rootPasswordSecretName:
-                description: RootPasswordSecretName is a `Secret` name for root user config.
-                type: string
               serviceTemplate:
                 description: ServiceTemplate is a `Service` template for both primary and replicas.
                 properties:

@@ -21,7 +21,6 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	}
 
 	userPassKeys := map[string]string{
-		"root":            moco.RootPasswordEnvName,
 		moco.WritableUser: moco.WritablePasswordEnvName,
 		moco.ReadOnlyUser: moco.ReadOnlyPasswordEnvName,
 	}

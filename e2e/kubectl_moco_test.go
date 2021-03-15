@@ -15,7 +15,8 @@ func testKubectlMoco() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "mysql", "-u", "root", cluster.Name, "--", "--version")
+		fmt.Println("./bin/kubectl-moco", "-n", cluster.Namespace, "mysql", "-u", "moco-writabel", cluster.Name, "--", "--version")
+		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "mysql", "-u", "moco-writable", cluster.Name, "--", "--version")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
 		Expect(string(stdout)).Should(ContainSubstring("mysql  Ver 8"))
@@ -31,30 +32,30 @@ func testKubectlMoco() {
 		Expect(string(stdout)).Should(ContainSubstring(strconv.Itoa(lineCount)))
 	})
 
-	It("should fetch credential for root", func() {
+	It("should fetch credential for moco-writable", func() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "credential", "-u", "moco-writable", cluster.Name)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		secret, err := getRootPassword(cluster)
+		secret, err := getPasswordSecret(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[moco.WritablePasswordEnvName])))
 	})
 
-	It("should fetch credential for root formatted by my.conf", func() {
+	It("should fetch credential for moco-writable formatted by my.conf", func() {
 		cluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "credential", "-u", "root", "--format", "myconf", cluster.Name)
+		stdout, stderr, err := execAtLocal("./bin/kubectl-moco", []byte{}, "-n", cluster.Namespace, "credential", "-u", "moco-writable", "--format", "myconf", cluster.Name)
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s", stdout, stderr)
 
-		secret, err := getRootPassword(cluster)
+		secret, err := getPasswordSecret(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(string(stdout)).Should(Equal(fmt.Sprintf(`[client]
-user=root
+user=moco-writable
 password="%s"
-`, secret.Data[moco.RootPasswordEnvName])))
+`, secret.Data[moco.WritablePasswordEnvName])))
 	})
 }

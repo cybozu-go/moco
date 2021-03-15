@@ -398,7 +398,6 @@ func (r *MySQLClusterReconciler) createOrUpdateSecret(ctx context.Context, log l
 
 func (r *MySQLClusterReconciler) createOrUpdateMyCnfSecretForLocalCLI(ctx context.Context, log logr.Logger,
 	cluster *mocov1alpha1.MySQLCluster, controllerSecret *corev1.Secret) (bool, error) {
-	rootPass := controllerSecret.Data[moco.RootPasswordKey]
 	readOnlyPass := controllerSecret.Data[moco.ReadOnlyPasswordKey]
 	writablePass := controllerSecret.Data[moco.WritablePasswordKey]
 
@@ -409,7 +408,6 @@ func (r *MySQLClusterReconciler) createOrUpdateMyCnfSecretForLocalCLI(ctx contex
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, secret, func() error {
 		setStandardLabels(&secret.ObjectMeta, cluster)
 		secret.Data = map[string][]byte{
-			moco.RootMyCnfKey:     formatCredentialAsMyCnf(moco.RootUser, string(rootPass)),
 			moco.ReadOnlyMyCnfKey: formatCredentialAsMyCnf(moco.ReadOnlyUser, string(readOnlyPass)),
 			moco.WritableMyCnfKey: formatCredentialAsMyCnf(moco.WritableUser, string(writablePass)),
 		}
@@ -438,11 +436,10 @@ func (r *MySQLClusterReconciler) createOrUpdateClusterSecret(ctx context.Context
 		setStandardLabels(&secret.ObjectMeta, cluster)
 
 		secret.Data = map[string][]byte{
-			moco.RootPasswordKey:        controllerSecret.Data[moco.RootPasswordKey],
-			moco.OperatorPasswordKey:    controllerSecret.Data[moco.OperatorPasswordKey],
+			moco.AdminPasswordKey:       controllerSecret.Data[moco.AdminPasswordKey],
+			moco.AgentPasswordKey:       controllerSecret.Data[moco.AgentPasswordKey],
 			moco.ReplicationPasswordKey: controllerSecret.Data[moco.ReplicationPasswordKey],
 			moco.CloneDonorPasswordKey:  controllerSecret.Data[moco.CloneDonorPasswordKey],
-			moco.MiscPasswordKey:        controllerSecret.Data[moco.MiscPasswordKey],
 			moco.ReadOnlyPasswordKey:    controllerSecret.Data[moco.ReadOnlyPasswordKey],
 			moco.WritablePasswordKey:    controllerSecret.Data[moco.WritablePasswordKey],
 		}
@@ -463,24 +460,7 @@ func (r *MySQLClusterReconciler) createOrUpdateClusterSecret(ctx context.Context
 }
 
 func (r *MySQLClusterReconciler) createControllerSecret(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, namespace, secretName string) error {
-	var rootPass []byte
-	if cluster.Spec.RootPasswordSecretName != nil {
-		secret := &corev1.Secret{}
-		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.RootPasswordSecretName}, secret)
-		if err != nil {
-			return err
-		}
-		rootPass = secret.Data[moco.RootPasswordKey]
-	}
-	if len(rootPass) == 0 {
-		var err error
-		rootPass, err = generateRandomBytes(passwordBytes)
-		if err != nil {
-			return err
-		}
-	}
-
-	operatorPass, err := generateRandomBytes(passwordBytes)
+	adminPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
@@ -492,7 +472,7 @@ func (r *MySQLClusterReconciler) createControllerSecret(ctx context.Context, clu
 	if err != nil {
 		return err
 	}
-	miscPass, err := generateRandomBytes(passwordBytes)
+	agentPass, err := generateRandomBytes(passwordBytes)
 	if err != nil {
 		return err
 	}
@@ -510,11 +490,10 @@ func (r *MySQLClusterReconciler) createControllerSecret(ctx context.Context, clu
 	secret.SetName(secretName)
 
 	secret.Data = map[string][]byte{
-		moco.RootPasswordKey:        rootPass,
-		moco.OperatorPasswordKey:    operatorPass,
+		moco.AdminPasswordKey:       adminPass,
+		moco.AgentPasswordKey:       agentPass,
 		moco.ReplicationPasswordKey: replicatorPass,
 		moco.CloneDonorPasswordKey:  donorPass,
-		moco.MiscPasswordKey:        miscPass,
 		moco.ReadOnlyPasswordKey:    readOnlyPass,
 		moco.WritablePasswordKey:    writablePass,
 	}

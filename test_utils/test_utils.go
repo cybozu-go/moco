@@ -140,12 +140,12 @@ func InitializeMySQL(port int) error {
 		password string
 	}{
 		{
-			name:     moco.OperatorUser,
-			password: OperatorUserPassword,
+			name:     moco.AdminUser,
+			password: OperatorAdminUserPassword,
 		},
 		{
-			name:     moco.OperatorAdminUser,
-			password: OperatorAdminUserPassword,
+			name:     moco.AgentUser,
+			password: MiscUserPassword,
 		},
 		{
 			name:     moco.ReplicationUser,
@@ -154,10 +154,6 @@ func InitializeMySQL(port int) error {
 		{
 			name:     moco.CloneDonorUser,
 			password: CloneDonorUserPassword,
-		},
-		{
-			name:     moco.MiscUser,
-			password: MiscUserPassword,
 		},
 	}
 	for _, user := range users {

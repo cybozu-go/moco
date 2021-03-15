@@ -25,7 +25,7 @@ func testIntermediatePrimary() {
 		By("creating replication source secret")
 		donorCluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
-		rootPassword, err := getRootPassword(donorCluster)
+		passwordSecret, err := getPasswordSecret(donorCluster)
 
 		secret := fmt.Sprintf(`apiVersion: v1
 kind: Secret
@@ -42,9 +42,9 @@ stringData:
   INIT_AFTER_CLONE_USER: %s
   INIT_AFTER_CLONE_PASSWORD: %s
 `, fmt.Sprintf("%s-replica", moco.UniqueName(donorCluster)), "3306",
-			moco.ReplicationUser, string(rootPassword.Data[moco.ReplicationPasswordKey]),
-			moco.CloneDonorUser, string(rootPassword.Data[moco.CloneDonorPasswordKey]),
-			"root", string(rootPassword.Data[moco.RootPasswordKey]))
+			moco.ReplicationUser, string(passwordSecret.Data[moco.ReplicationPasswordKey]),
+			moco.CloneDonorUser, string(passwordSecret.Data[moco.CloneDonorPasswordKey]),
+			"moco-admin", string(passwordSecret.Data[moco.AdminPasswordKey]))
 		stdout, stderr, err := kubectlWithInput([]byte(secret), "apply", "-n"+nsExternal, "-f", "-")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s, secret=%v", stdout, stderr, secret)
 

@@ -133,7 +133,7 @@ func testBootstrap() {
 			if err != nil {
 				return err
 			}
-			_, err = getRootPassword(cluster)
+			_, err = getPasswordSecret(cluster)
 			if err != nil {
 				return err
 			}
