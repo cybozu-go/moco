@@ -7,10 +7,10 @@ WORKDIR /workspace
 COPY ./ .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o moco-controller ./cmd/moco-controller/main.go
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o moco-controller ./cmd/moco-controller/main.go
 
 # stage2
-FROM quay.io/cybozu/ubuntu:20.04
+FROM scratch
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
 WORKDIR /
