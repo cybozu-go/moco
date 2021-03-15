@@ -713,6 +713,10 @@ var _ = Describe("MySQLCluster controller", func() {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
+						},
+						{
 							Name:  "err-log",
 							Image: "fluent-bit:dev",
 							Env: []corev1.EnvVar{
