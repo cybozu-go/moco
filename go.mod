@@ -1,6 +1,6 @@
 module github.com/cybozu-go/moco
 
-go 1.15
+go 1.16
 
 require (
 	github.com/cybozu-go/log v1.6.0 // indirect
@@ -18,6 +18,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1 // indirect
+	golang.org/x/tools v0.0.0-20200616195046-dc31b401abb5 // indirect
 	google.golang.org/grpc v1.35.0
 	google.golang.org/protobuf v1.25.0
 	k8s.io/api v0.20.2
@@ -27,6 +28,5 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.20.2
 	sigs.k8s.io/controller-runtime v0.8.1
-	sigs.k8s.io/controller-tools v0.4.1
 	sigs.k8s.io/yaml v1.2.0
 )
