@@ -24,8 +24,13 @@ GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
 
 KUBEBUILDER_VERSION := 2.3.1
 CTRLTOOLS_VERSION := 0.5.0
+CONTROLLER_RUNTIME_VERSION := $(shell awk '/sigs\.k8s\.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 MOCO_AGENT_VERSION := 0.4.0
 PROTOC_VERSION := 3.14.0
+
+# Set the shell used to bash for better error handling.
+SHELL = /bin/bash
+.SHELLFLAGS = -e -o pipefail -c
 
 .PHONY: all
 all: build
@@ -50,7 +55,7 @@ test: $(KUBEBUILDER)
 build: build/moco-controller build/kubectl-moco
 
 # Build moco-controller binary
-build/moco-controller: generate $(GO_FILES)
+build/moco-controller: $(GO_FILES)
 	mkdir -p build
 	go build -o $@ ./cmd/moco-controller/main.go
 
@@ -98,16 +103,21 @@ mod:
 	go mod tidy
 	git add go.mod
 
+ENVTEST_SCRIPT_URL := https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CONTROLLER_RUNTIME_VERSION)/hack/setup-envtest.sh
 $(KUBEBUILDER):
 	rm -rf tmp && mkdir -p tmp
 	mkdir -p bin
 	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C tmp/
 	mv tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
-	curl -sfL https://github.com/kubernetes/kubernetes/archive/v$(KUBERNETES_VERSION).tar.gz | tar zxf - -C tmp/
-	mv tmp/kubernetes-$(KUBERNETES_VERSION) tmp/kubernetes
-	cd tmp/kubernetes; make all WHAT="cmd/kube-apiserver"
-	mv tmp/kubernetes/_output/bin/kube-apiserver bin/
-	rm -rf tmp
+	rm -f bin/kube-apisever bin/etcd bin/kubectl
+# Run tests, and set up envtest if not done already.
+ifeq (,$(wildcard bin/setup-envtest.sh))
+	curl -sSLo bin/setup-envtest.sh $(ENVTEST_SCRIPT_URL)
+endif
+	{ \
+	source bin/setup-envtest.sh && \
+	fetch_envtest_tools $(PWD) ; \
+	}
 
 $(CONTROLLER_GEN):
 	mkdir -p bin
