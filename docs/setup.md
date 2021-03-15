@@ -11,7 +11,7 @@ Setup
 
 ### Quick setup
 
-You can point at [../config] to build kustomized components, like so
+You can point at [config](../config) to build kustomized components, like so
 
 ```shell
 # Assumption: you're in the project root
