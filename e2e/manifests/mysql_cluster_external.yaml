@@ -26,26 +26,6 @@ spec:
             command: ["/moco-bin/grpc-health-probe", "-addr=localhost:9080"]
           initialDelaySeconds: 10
           periodSeconds: 5
-      - name: err-log
-        image: fluent/fluent-bit:1.7.2
-        volumeMounts:
-        - name: err-fluent-bit-config
-          mountPath: /fluent-bit/etc/fluent-bit.conf
-          readOnly: true
-          subPath: fluent-bit.conf
-        - name: var-log
-          mountPath: /var/log/mysql
-          readOnly: true
-      - name: slow-log
-        image: fluent/fluent-bit:1.7.2
-        volumeMounts:
-        - name: slow-fluent-bit-config
-          mountPath: /fluent-bit/etc/fluent-bit.conf
-          readOnly: true
-          subPath: fluent-bit.conf
-        - name: var-log
-          mountPath: /var/log/mysql
-          readOnly: true
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000
