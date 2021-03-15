@@ -106,11 +106,6 @@ func (in *MySQLClusterSpec) DeepCopyInto(out *MySQLClusterSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.RootPasswordSecretName != nil {
-		in, out := &in.RootPasswordSecretName, &out.RootPasswordSecretName
-		*out = new(string)
-		**out = **in
-	}
 	if in.ReplicationSourceSecretName != nil {
 		in, out := &in.ReplicationSourceSecretName, &out.ReplicationSourceSecretName
 		*out = new(string)
