@@ -84,7 +84,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ShouldNot(HaveOccurred())
 
 	close(done)
-}, 60)
+}, 120)
 
 var _ = AfterSuite(func() {
 	By("stopping MySQL server")

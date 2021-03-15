@@ -71,6 +71,7 @@ stringData:
 			}
 			return nil
 		}, 10*time.Minute).Should(Succeed())
+		// TODO: this timeout duration can be reduced by using MOCO cluster with replicas == 1 as donor
 
 		By("checking data from donor")
 		cluster, err := getMySQLClusterWithNamespace(nsExternal)
