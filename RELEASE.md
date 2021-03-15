@@ -60,6 +60,7 @@ Bump version
     $ git tag v$VERSION
     $ git push origin v$VERSION
     ```
+10. Update the image tag of `ghcr.io/cybozu-go/moco` in `config/manager/manager.yaml`
 
 ## (Option) Edit GitHub release page
 
