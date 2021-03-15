@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM quay.io/cybozu/golang:1.15-focal as builder
+FROM quay.io/cybozu/golang:1.16-focal as builder
 
 WORKDIR /workspace
 
@@ -7,8 +7,9 @@ WORKDIR /workspace
 COPY ./ .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o moco-controller ./cmd/moco-controller/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o moco-controller ./cmd/moco-controller/main.go
 
+# stage2
 FROM quay.io/cybozu/ubuntu:20.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 

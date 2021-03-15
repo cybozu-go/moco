@@ -15,8 +15,6 @@
 /.vscode
 /.idea
 
-/go.sum
-
 # ignore binaries
 /bin
 /build

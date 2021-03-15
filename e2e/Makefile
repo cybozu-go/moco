@@ -83,7 +83,7 @@ $(KUSTOMIZE):
 .PHONY: kind
 kind:
 	if [ ! "$(shell kind version | grep $(KIND_VERSION))" ]; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get sigs.k8s.io/kind@v$(KIND_VERSION); \
+		env GOFLAGS= go install sigs.k8s.io/kind@v$(KIND_VERSION); \
 	fi
 
 .PHONY: clean

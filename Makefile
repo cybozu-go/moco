@@ -1,7 +1,6 @@
 include common.mk
 
 # For Go
-GO111MODULE = on
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
 
@@ -24,7 +23,7 @@ endif
 GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
 
 KUBEBUILDER_VERSION := 2.3.1
-CTRLTOOLS_VERSION := 0.4.0
+CTRLTOOLS_VERSION := 0.5.0
 MOCO_AGENT_VERSION := 0.4.0
 PROTOC_VERSION := 3.14.0
 
@@ -37,7 +36,6 @@ validate: setup
 	staticcheck ./...
 	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
 	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... ) 2>&1 | tee /dev/stderr)"
-	ineffassign .
 	go build ./...
 	go vet ./...
 	test -z "$$(go vet ./... | tee /dev/stderr)"
@@ -54,12 +52,12 @@ build: build/moco-controller build/kubectl-moco
 # Build moco-controller binary
 build/moco-controller: generate $(GO_FILES)
 	mkdir -p build
-	GO111MODULE=on go build -o $@ ./cmd/moco-controller/main.go
+	go build -o $@ ./cmd/moco-controller/main.go
 
 # Build kubectl-moco binary
 build/kubectl-moco: $(GO_FILES)
 	mkdir -p build
-	GO111MODULE=on go build -o $@ ./cmd/kubectl-moco
+	go build -o $@ ./cmd/kubectl-moco
 
 .PHONY: release-build
 release-build: build/kubectl-moco-linux-amd64 build/kubectl-moco-windows-amd64.exe build/kubectl-moco-darwin-amd64
@@ -67,17 +65,17 @@ release-build: build/kubectl-moco-linux-amd64 build/kubectl-moco-windows-amd64.e
 # Build kubectl-moco binary for linux (release build)
 build/kubectl-moco-linux-amd64: $(GO_FILES)
 	mkdir -p build
-	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
 
 # Build kubectl-moco binary for Windows (release build)
 build/kubectl-moco-windows-amd64.exe: $(GO_FILES)
 	mkdir -p build
-	GO111MODULE=on CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
 
 # Build kubectl-moco binary for Mac OS (release build)
 build/kubectl-moco-darwin-amd64: $(GO_FILES)
 	mkdir -p build
-	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
 
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
@@ -113,7 +111,7 @@ $(KUBEBUILDER):
 
 $(CONTROLLER_GEN):
 	mkdir -p bin
-	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen
+	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
 
 $(PROTOC):
 	mkdir -p bin
@@ -123,30 +121,24 @@ $(PROTOC):
 	rm protoc-$(PROTOC_VERSION)-linux-x86_64.zip
 
 .PHONY: setup
-setup: custom-checker staticcheck nilerr ineffassign
+setup: custom-checker staticcheck nilerr
 
 .PHONY: custom-checker
 custom-checker:
 	if ! which custom-checker >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker; \
+		env GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker@latest; \
 	fi
 
 .PHONY: staticcheck
 staticcheck:
 	if ! which staticcheck >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get honnef.co/go/tools/cmd/staticcheck; \
+		env GOFLAGS= go install honnef.co/go/tools/cmd/staticcheck@latest; \
 	fi
 
 .PHONY: nilerr
 nilerr:
 	if ! which nilerr >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/gostaticanalysis/nilerr/cmd/nilerr; \
-	fi
-
-.PHONY: ineffassign
-ineffassign:
-	if ! which ineffassign >/dev/null; then \
-		cd /tmp; env GOFLAGS= GO111MODULE=on go get github.com/gordonklaus/ineffassign; \
+		env GOFLAGS= go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest; \
 	fi
 
 .PHONY: clean
