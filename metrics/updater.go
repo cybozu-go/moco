@@ -1,13 +1,13 @@
 package metrics
 
 import (
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func UpdateOperationPhase(clusterName string, phase moco.OperationPhase) {
-	for _, labelPhase := range moco.AllOperationPhases {
+func UpdateOperationPhase(clusterName string, phase constants.OperationPhase) {
+	for _, labelPhase := range constants.AllOperationPhases {
 		if labelPhase == phase {
 			operationPhaseMetrics.WithLabelValues(clusterName, string(labelPhase)).Set(1)
 		} else {

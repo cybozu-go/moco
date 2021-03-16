@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -109,15 +109,15 @@ func waitCluster() {
 			if cluster.Status.Ready != corev1.ConditionTrue {
 				return errors.New("Status.Ready should be true")
 			}
-			available := findCondition(cluster.Status.Conditions, v1alpha1.ConditionAvailable)
+			available := findCondition(cluster.Status.Conditions, v1beta1.ConditionAvailable)
 			if available == nil || available.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Available should be true")
 			}
-			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
+			healthy := findCondition(cluster.Status.Conditions, v1beta1.ConditionHealthy)
 			if healthy == nil || healthy.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Healthy should be true")
 			}
-			initialized := findCondition(cluster.Status.Conditions, v1alpha1.ConditionInitialized)
+			initialized := findCondition(cluster.Status.Conditions, v1beta1.ConditionInitialized)
 			if initialized == nil || initialized.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Initialized should be true")
 			}
@@ -147,7 +147,7 @@ func testBootstrap() {
 				return err
 			}
 
-			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "statefulsets", moco.UniqueName(cluster), "-o", "json")
+			stdout, stderr, err := kubectl("get", "-n", "e2e-test", "statefulsets", cluster.PrefixedName(), "-o", "json")
 			if err != nil {
 				return fmt.Errorf("failed to get StatefulSet. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 			}
@@ -182,10 +182,10 @@ func testBootstrap() {
 		initialized := false
 		completed := false
 		for _, e := range events.Items {
-			if equalEvent(e, moco.EventInitializationSucceeded) {
+			if equalEvent(e, event.EventInitializationSucceeded) {
 				initialized = true
 			}
-			if equalEvent(e, moco.EventClusteringCompletedSynced) {
+			if equalEvent(e, event.EventClusteringCompletedSynced) {
 				completed = true
 			}
 		}
@@ -261,6 +261,6 @@ func testBootstrap() {
 	})
 }
 
-func equalEvent(actual corev1.Event, expected moco.MOCOEvent) bool {
+func equalEvent(actual corev1.Event, expected event.MOCOEvent) bool {
 	return actual.Reason == expected.Reason && actual.Type == expected.Type && actual.Message == expected.Message
 }

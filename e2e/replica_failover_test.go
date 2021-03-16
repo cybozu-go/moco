@@ -7,8 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -58,7 +57,7 @@ func testReplicaFailOver() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		By("deleting PVC of the target replica")
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), targetReplica)
+		podName := fmt.Sprintf("%s-%d", cluster.PrefixedName(), targetReplica)
 		pvcName := fmt.Sprintf("mysql-data-%s", podName)
 
 		stdout, stderr, err := kubectl("-n", "e2e-test", "delete", "pvc", pvcName, "--wait=false")
@@ -82,7 +81,7 @@ func testReplicaFailOver() {
 
 		Eventually(func() error {
 			cluster, err = getMySQLCluster()
-			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
+			healthy := findCondition(cluster.Status.Conditions, v1beta1.ConditionHealthy)
 			if healthy == nil || healthy.Status != corev1.ConditionTrue {
 				return errors.New("should recover")
 			}

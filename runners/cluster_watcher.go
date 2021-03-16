@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/cybozu-go/moco"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
-
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -46,8 +45,8 @@ func (w mySQLClusterWatcher) Start(ctx context.Context) error {
 }
 
 func (w mySQLClusterWatcher) fireEventForInitializedMySQLClusters(ctx context.Context) error {
-	clusters := mocov1alpha1.MySQLClusterList{}
-	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{moco.InitializedClusterIndexField: string(corev1.ConditionTrue)}))
+	clusters := mocov1beta1.MySQLClusterList{}
+	err := w.client.List(ctx, &clusters, client.MatchingFields(map[string]string{constants.InitializedClusterIndexField: string(corev1.ConditionTrue)}))
 	if err != nil {
 		return err
 	}

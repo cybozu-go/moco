@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/jmoiron/sqlx"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -42,13 +42,13 @@ func kustomize(path string) ([]byte, []byte, error) {
 	return execAtLocal("./bin/kustomize", nil, "build", path)
 }
 
-func getMySQLClusterWithNamespace(ns string) (*mocov1alpha1.MySQLCluster, error) {
+func getMySQLClusterWithNamespace(ns string) (*mocov1beta1.MySQLCluster, error) {
 	stdout, stderr, err := kubectl("get", "-n"+ns, "mysqlcluster", "mysqlcluster", "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get MySQLCluster. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
 	}
 
-	var mysqlCluster mocov1alpha1.MySQLCluster
+	var mysqlCluster mocov1beta1.MySQLCluster
 	err = json.Unmarshal(stdout, &mysqlCluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal MySQLCluster. stdout: %s, err: %v", stdout, err)
@@ -56,11 +56,11 @@ func getMySQLClusterWithNamespace(ns string) (*mocov1alpha1.MySQLCluster, error)
 	return &mysqlCluster, nil
 }
 
-func getMySQLCluster() (*mocov1alpha1.MySQLCluster, error) {
+func getMySQLCluster() (*mocov1beta1.MySQLCluster, error) {
 	return getMySQLClusterWithNamespace("e2e-test")
 }
 
-func getPasswordSecretWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+func getPasswordSecretWithNamespace(ns string, mysqlCluster *mocov1beta1.MySQLCluster) (*corev1.Secret, error) {
 	stdout, stderr, err := kubectl("get", "-n"+ns, "secret", "moco-root-password-"+mysqlCluster.Name, "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Secret. stdout: %s, stderr: %s, err: %v", stdout, stderr, err)
@@ -74,18 +74,18 @@ func getPasswordSecretWithNamespace(ns string, mysqlCluster *mocov1alpha1.MySQLC
 	return &secret, nil
 }
 
-func getPasswordSecret(mysqlCluster *mocov1alpha1.MySQLCluster) (*corev1.Secret, error) {
+func getPasswordSecret(mysqlCluster *mocov1beta1.MySQLCluster) (*corev1.Secret, error) {
 	return getPasswordSecretWithNamespace("e2e-test", mysqlCluster)
 }
 
 type mysqlConnector struct {
-	cluster             *mocov1alpha1.MySQLCluster
+	cluster             *mocov1beta1.MySQLCluster
 	portForwardCommands []*exec.Cmd
 	accessor            *accessor.MySQLAccessor
 	basePort            int
 }
 
-func newMySQLConnector(cluster *mocov1alpha1.MySQLCluster) *mysqlConnector {
+func newMySQLConnector(cluster *mocov1beta1.MySQLCluster) *mysqlConnector {
 	acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 		ConnMaxLifeTime:   30 * time.Minute,
 		ConnectionTimeout: 3 * time.Second,
@@ -100,9 +100,10 @@ func newMySQLConnector(cluster *mocov1alpha1.MySQLCluster) *mysqlConnector {
 
 func (c *mysqlConnector) startPortForward() error {
 	for i := 0; i < int(c.cluster.Spec.Replicas); i++ {
-		podName := fmt.Sprintf("%s-%d", moco.UniqueName(c.cluster), i)
+		podName := fmt.Sprintf("%s-%d", c.cluster.PrefixedName(), i)
 		port := c.basePort + i
-		command := exec.Command("./bin/kubectl", "-n"+c.cluster.Namespace, "port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, moco.MySQLPort))
+		command := exec.Command("./bin/kubectl", "-n"+c.cluster.Namespace,
+			"port-forward", "pod/"+podName, fmt.Sprintf("%d:%d", port, constants.MySQLPort))
 		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		err := command.Start()
 		if err != nil {
@@ -135,11 +136,11 @@ func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	password := string(secret.Data[moco.AdminPasswordEnvName])
-	return c.accessor.Get(addr, moco.AdminUser, password)
+	password := string(secret.Data[constants.AdminPasswordEnvName])
+	return c.accessor.Get(addr, constants.AdminUser, password)
 }
 
-func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionType mocov1alpha1.MySQLClusterConditionType) *mocov1alpha1.MySQLClusterCondition {
+func findCondition(conditions []mocov1beta1.MySQLClusterCondition, conditionType mocov1beta1.MySQLClusterConditionType) *mocov1beta1.MySQLClusterCondition {
 	for i, c := range conditions {
 		if c.Type == conditionType {
 			return &conditions[i]
@@ -148,7 +149,7 @@ func findCondition(conditions []mocov1alpha1.MySQLClusterCondition, conditionTyp
 	return nil
 }
 
-func minIndexReplica(cluster *mocov1alpha1.MySQLCluster) (int, error) {
+func minIndexReplica(cluster *mocov1beta1.MySQLCluster) (int, error) {
 	if cluster.Status.CurrentPrimaryIndex == nil {
 		return 0, errors.New("CurrentPrimaryIndex is nil")
 	}

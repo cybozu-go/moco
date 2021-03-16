@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
@@ -65,10 +64,10 @@ func testStopReplicaIOThread() {
 				return err
 			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
-			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+			if replicaStatus.SlaveIORunning != "No" {
 				return errors.New("IO thread should not be running")
 			}
-			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+			if replicaStatus.SlaveSQLRunning != "Yes" {
 				return errors.New("SQL thread should be running")
 			}
 			return nil

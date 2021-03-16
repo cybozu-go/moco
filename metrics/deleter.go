@@ -1,8 +1,6 @@
 package metrics
 
-import (
-	"github.com/cybozu-go/moco"
-)
+import "github.com/cybozu-go/moco/pkg/constants"
 
 func DeleteAllControllerMetrics(clusterName string) {
 	deleteOperationPhase(clusterName)
@@ -16,7 +14,7 @@ func DeleteAllControllerMetrics(clusterName string) {
 }
 
 func deleteOperationPhase(clusterName string) {
-	for _, labelPhase := range moco.AllOperationPhases {
+	for _, labelPhase := range constants.AllOperationPhases {
 		operationPhaseMetrics.DeleteLabelValues(clusterName, string(labelPhase))
 	}
 }

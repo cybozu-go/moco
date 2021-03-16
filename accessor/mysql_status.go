@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/go-logr/logr"
 	"github.com/jmoiron/sqlx"
 	corev1 "k8s.io/api/core/v1"
@@ -133,14 +133,14 @@ type MySQLCloneStateStatus struct {
 // GetMySQLClusterStatus gathers current cluster status and return it.
 // If the operator failed to gather status of individual replica, the Available field of corresponding replica becomes false.
 // If the operator failed to gather status of cluster itself, returns error.
-func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastructure, cluster *mocov1alpha1.MySQLCluster) (*MySQLClusterStatus, error) {
+func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastructure, cluster *mocov1beta1.MySQLCluster) (*MySQLClusterStatus, error) {
 	status := &MySQLClusterStatus{
 		InstanceStatus: make([]MySQLInstanceStatus, int(cluster.Spec.Replicas)),
 	}
 	for instanceIdx := 0; instanceIdx < int(cluster.Spec.Replicas); instanceIdx++ {
 		status.InstanceStatus[instanceIdx].Available = false
 
-		podName := moco.GetPodName(cluster.Name, instanceIdx)
+		podName := cluster.PodName(instanceIdx)
 
 		db, err := infra.GetDB(instanceIdx)
 		if err != nil {
@@ -190,7 +190,7 @@ func GetMySQLClusterStatus(ctx context.Context, log logr.Logger, infra Infrastru
 			continue
 		}
 		if len(pod.Labels) != 0 {
-			status.InstanceStatus[instanceIdx].Role = pod.Labels[moco.RoleKey]
+			status.InstanceStatus[instanceIdx].Role = pod.Labels[constants.LabelMocoRole]
 		}
 
 		status.InstanceStatus[instanceIdx].Available = true
@@ -222,7 +222,7 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 	var latest int
 	for i := 0; i < len(status); i++ {
 		if status[i].PrimaryStatus == nil {
-			return nil, moco.ErrCannotCompareGTIDs
+			return nil, constants.ErrCannotCompareGTIDs
 		}
 	}
 
@@ -247,7 +247,7 @@ func GetLatestInstance(ctx context.Context, db *sqlx.DB, status []MySQLInstanceS
 			continue
 		}
 
-		return nil, moco.ErrCannotCompareGTIDs
+		return nil, constants.ErrCannotCompareGTIDs
 	}
 
 	return &latest, nil
@@ -275,7 +275,7 @@ func CheckAllRelayLogsExecuted(ctx context.Context, db *sqlx.DB, status *MySQLRe
 		return false, nil
 	}
 
-	return false, moco.ErrCannotCompareGTIDs
+	return false, constants.ErrCannotCompareGTIDs
 }
 
 func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error) {
@@ -285,7 +285,7 @@ func compareGTIDs(ctx context.Context, db *sqlx.DB, src, dst string) (int, error
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return 0, moco.ErrCannotCompareGTIDs
+		return 0, constants.ErrCannotCompareGTIDs
 	}
 
 	var res struct {
@@ -375,7 +375,7 @@ func GetMySQLCloneStateStatus(ctx context.Context, db *sqlx.DB) (*MySQLCloneStat
 	return &status, nil
 }
 
-func GetIntermediatePrimaryOptions(ctx context.Context, cli client.Client, cluster *mocov1alpha1.MySQLCluster) (*IntermediatePrimaryOptions, error) {
+func GetIntermediatePrimaryOptions(ctx context.Context, cli client.Client, cluster *mocov1beta1.MySQLCluster) (*IntermediatePrimaryOptions, error) {
 	if cluster.Spec.ReplicationSourceSecretName == nil {
 		return nil, nil
 	}
@@ -394,22 +394,22 @@ func parseIntermediatePrimaryOptions(options map[string][]byte) (*IntermediatePr
 	var result IntermediatePrimaryOptions
 	for k, v := range options {
 		switch k {
-		case moco.ReplicationSourcePrimaryHostKey:
+		case constants.ReplicationSourcePrimaryHostKey:
 			result.PrimaryHost = string(v)
-		case moco.ReplicationSourcePrimaryUserKey:
+		case constants.ReplicationSourcePrimaryUserKey:
 			result.PrimaryUser = string(v)
-		case moco.ReplicationSourcePrimaryPasswordKey:
+		case constants.ReplicationSourcePrimaryPasswordKey:
 			result.PrimaryPassword = string(v)
-		case moco.ReplicationSourcePrimaryPortKey:
+		case constants.ReplicationSourcePrimaryPortKey:
 			port, err := strconv.Atoi(string(v))
 			if err != nil {
 				return nil, err
 			}
 			result.PrimaryPort = port
-		case moco.ReplicationSourceCloneUserKey:
-		case moco.ReplicationSourceClonePasswordKey:
-		case moco.ReplicationSourceInitAfterCloneUserKey:
-		case moco.ReplicationSourceInitAfterClonePasswordKey:
+		case constants.ReplicationSourceCloneUserKey:
+		case constants.ReplicationSourceClonePasswordKey:
+		case constants.ReplicationSourceInitAfterCloneUserKey:
+		case constants.ReplicationSourceInitAfterClonePasswordKey:
 		default:
 			return nil, errors.New("unknown option for intermediate primary")
 		}

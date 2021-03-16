@@ -1,8 +1,12 @@
 package v1beta1
 
 import (
+	"fmt"
+
+	"github.com/cybozu-go/moco/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -22,12 +26,10 @@ type MySQLClusterSpec struct {
 	// PodTemplate is a `Pod` template for MySQL server container.
 	PodTemplate PodTemplateSpec `json:"podTemplate"`
 
-	// DataVolumeClaimTemplateSpec is a `PersistentVolumeClaimSpec` template for the MySQL data volume.
-	DataVolumeClaimTemplateSpec corev1.PersistentVolumeClaimSpec `json:"dataVolumeClaimTemplateSpec"`
-
-	// VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container, except for the MySQL data volume.
-	// +optional
-	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+	// VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container.
+	// A claim named "mysql-data" must be included in the list.
+	// +kubebuilder:validation:MinItems=1
+	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates"`
 
 	// ServiceTemplate is a `Service` template for both primary and replicas.
 	// +optional
@@ -46,9 +48,9 @@ type MySQLClusterSpec struct {
 	// ServerIDBase, if set, will become the base number of server-id of each MySQL
 	// instance of this cluster.  For example, if this is 100, the server-ids will be
 	// 100, 101, 102, and so on.
-	// If the field is not given, MOCO automatically sets a random number.
+	// If the field is not given or zero, MOCO automatically sets a random positive integer.
 	// +optional
-	ServerIDBase *uint32 `json:"serverIDBase,omitempty"`
+	ServerIDBase int32 `json:"serverIDBase,omitempty"`
 
 	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation.
 	// If not set, the default is to rotate logs every 5 minutes.
@@ -74,6 +76,103 @@ type MySQLClusterSpec struct {
 	// it will be merged with the default container definition using StrategicMergePatch.
 	// +optional
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer"`
+}
+
+func (s MySQLClusterSpec) validateCreate() field.ErrorList {
+	var allErrs field.ErrorList
+	p := field.NewPath("spec")
+	pp := p.Child("volumeClaimTemplates")
+	ok := false
+	for _, vc := range s.VolumeClaimTemplates {
+		if vc.Name == constants.MySQLDataVolumeName {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s is missing", constants.MySQLDataVolumeName)))
+	}
+
+	pp = p.Child("serverIDBase")
+	if s.ServerIDBase <= 0 {
+		allErrs = append(allErrs, field.Invalid(pp, s.ServerIDBase, "serverIDBase must be a positive integer"))
+	}
+
+	p = p.Child("podTemplate", "spec")
+
+	pp = p.Child("containers")
+	mysqldIndex := -1
+	for i, container := range s.PodTemplate.Spec.Containers {
+		if container.Name == constants.MysqldContainerName {
+			mysqldIndex = i
+		}
+		if container.Name == constants.AgentContainerName {
+			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved container name"))
+		}
+		if container.Name == constants.SlowQueryLogAgentContainerName && !s.DisableSlowQueryLogContainer {
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
+		}
+		if container.Name == constants.ErrorLogAgentContainerName && !s.DisableErrorLogContainer {
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
+		}
+	}
+	if mysqldIndex == -1 {
+		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required container %s is missing", constants.MysqldContainerName)))
+	} else {
+		pp := p.Child("containers").Index(mysqldIndex).Child("ports")
+		for i, port := range s.PodTemplate.Spec.Containers[mysqldIndex].Ports {
+			switch port.ContainerPort {
+			case constants.MySQLPort, constants.MySQLXPort, constants.MySQLAdminPort, constants.MySQLHealthPort:
+				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.ContainerPort, "reserved port"))
+			}
+			switch port.Name {
+			case constants.MySQLPortName, constants.MySQLXPortName, constants.MySQLAdminPortName, constants.MySQLHealthPortName:
+				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.Name, "reserved port name"))
+			}
+		}
+	}
+
+	pp = p.Child("initContainers")
+	for i, container := range s.PodTemplate.Spec.InitContainers {
+		switch container.Name {
+		case constants.InitContainerName:
+			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved init container name"))
+		}
+	}
+
+	pp = p.Child("volumes")
+	for i, vol := range s.PodTemplate.Spec.Volumes {
+		switch vol.Name {
+		case constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
+			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
+			constants.MySQLConfSecretVolumeName, constants.ErrorLogAgentConfigVolumeName,
+			constants.SlowQueryLogAgentConfigVolumeName, constants.MOCOBinVolumeName:
+
+			allErrs = append(allErrs, field.Invalid(pp.Index(i), vol.Name, "reserved volume name"))
+		}
+	}
+
+	return allErrs
+}
+
+func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
+	var allErrs field.ErrorList
+	p := field.NewPath("spec")
+
+	if s.Replicas < old.Replicas {
+		p := p.Child("replicas")
+		allErrs = append(allErrs, field.Forbidden(p, "decreasing replicas is not supported yet"))
+	}
+	if s.ReplicationSourceSecretName != nil {
+		p := p.Child("replicationSourceSecretName")
+		if old.ReplicationSourceSecretName == nil {
+			allErrs = append(allErrs, field.Forbidden(p, "replication can be initiated only with new clusters"))
+		} else if *s.ReplicationSourceSecretName != *old.ReplicationSourceSecretName {
+			allErrs = append(allErrs, field.Forbidden(p, "replication source secret name cannot be modified"))
+		}
+	}
+
+	return append(allErrs, s.validateCreate()...)
 }
 
 // ObjectMeta is metadata of objects.
@@ -114,6 +213,30 @@ type PersistentVolumeClaim struct {
 	Spec corev1.PersistentVolumeClaimSpec `json:"spec"`
 }
 
+func (p PersistentVolumeClaim) ToCoreV1() corev1.PersistentVolumeClaim {
+	claim := corev1.PersistentVolumeClaim{}
+	claim.Name = p.Name
+	if len(p.Labels) > 0 {
+		claim.Labels = make(map[string]string)
+		for k, v := range p.Labels {
+			claim.Labels[k] = v
+		}
+	}
+	if len(p.Annotations) > 0 {
+		claim.Annotations = make(map[string]string)
+		for k, v := range p.Annotations {
+			claim.Annotations[k] = v
+		}
+	}
+	claim.Spec = *p.Spec.DeepCopy()
+	if claim.Spec.VolumeMode == nil {
+		modeFilesystem := corev1.PersistentVolumeFilesystem
+		claim.Spec.VolumeMode = &modeFilesystem
+	}
+	claim.Status.Phase = corev1.ClaimPending
+	return claim
+}
+
 // ServiceTemplate defines the desired spec and annotations of Service
 type ServiceTemplate struct {
 	// Standard object's metadata.  Only `annotations` and `labels` are valid.
@@ -145,6 +268,7 @@ type MySQLClusterStatus struct {
 	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
 
 	// Ready represents the status of readiness.
+	// +optional
 	Ready corev1.ConditionStatus `json:"ready"`
 
 	// CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
@@ -152,7 +276,12 @@ type MySQLClusterStatus struct {
 	CurrentPrimaryIndex *int `json:"currentPrimaryIndex,omitempty"`
 
 	// SyncedReplicas is the number of synced instances including the primary.
+	// +optional
 	SyncedReplicas int `json:"syncedReplicas"`
+
+	// ReconcileInfo represents version information for reconciler.
+	// +optional
+	ReconcileInfo ReconcileInfo `json:"reconcileInfo"`
 }
 
 // MySQLClusterCondition defines the condition of MySQLCluster.
@@ -189,6 +318,17 @@ const (
 	ConditionViolation   MySQLClusterConditionType = "Violation"
 )
 
+type ReconcileInfo struct {
+	// Generation is the `metadata.generation` value of the last reconciliation.
+	// See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+
+	// ReconcileVersion is the version of the operator reconciler.
+	// +optional
+	ReconcileVersion int `json:"reconcileVersion"`
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.ready"
@@ -202,6 +342,64 @@ type MySQLCluster struct {
 
 	Spec   MySQLClusterSpec   `json:"spec,omitempty"`
 	Status MySQLClusterStatus `json:"status,omitempty"`
+}
+
+// PrefixedName returns "moco-<<metadata.name>>"
+func (r *MySQLCluster) PrefixedName() string {
+	return "moco-" + r.Name
+}
+
+// PodName returns PrefixedName() + "-" + index
+func (r *MySQLCluster) PodName(index int) string {
+	return fmt.Sprintf("%s-%d", r.PrefixedName(), index)
+}
+
+// UserSecretName returns the name of the Secret for users.
+// This Secret is placed in the same namespace as r.
+func (r *MySQLCluster) UserSecretName() string {
+	return "moco-" + r.Name
+}
+
+// MyCnfSecretName returns the name of the Secret for users.
+// The contents are formatted for mysql commands (as my.cnf).
+func (r *MySQLCluster) MyCnfSecretName() string {
+	return "moco-my-cnf-" + r.Name
+}
+
+// ControllerSecretName returns the name of the Secret for MOCO controller.
+// This Secret is placed in the namespace of the controller.
+func (r *MySQLCluster) ControllerSecretName() string {
+	return fmt.Sprintf("mysql-%s.%s", r.Namespace, r.Name)
+}
+
+// HeadlessServiceName returns the name of Service for StatefulSet.
+func (r *MySQLCluster) HeadlessServiceName() string {
+	return r.PrefixedName()
+}
+
+// PrimaryServiceName returns the name of Service for the primary mysqld instance.
+func (r *MySQLCluster) PrimaryServiceName() string {
+	return r.PrefixedName() + "-primary"
+}
+
+// ReplicaServiceName returns the name of Service for replica mysqld instances.
+func (r *MySQLCluster) ReplicaServiceName() string {
+	return r.PrefixedName() + "-replica"
+}
+
+// PodHostname returns the hostname of a Pod with the given index.
+func (r *MySQLCluster) PodHostname(index int) string {
+	return fmt.Sprintf("%s.%s.%s.svc", r.PodName(index), r.PrefixedName(), r.Namespace)
+}
+
+// ErrorLogAgentConfigMapName returns the name of the error log agent config name.
+func (r *MySQLCluster) ErrorLogAgentConfigMapName() string {
+	return fmt.Sprintf("moco-error-log-agent-config-%s", r.Name)
+}
+
+// SlowQueryLogAgentConfigMapName returns the name of the slow query log agent config name.
+func (r *MySQLCluster) SlowQueryLogAgentConfigMapName() string {
+	return fmt.Sprintf("moco-slow-log-agent-config-%s", r.Name)
 }
 
 //+kubebuilder:object:root=true

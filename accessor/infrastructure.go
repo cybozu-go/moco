@@ -3,7 +3,7 @@ package accessor
 import (
 	"errors"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,7 +50,7 @@ func (i Infrastructure) GetDB(index int) (*sqlx.DB, error) {
 		return nil, errors.New("index is out of range")
 	}
 
-	db, err := i.mySQLAccessor.Get(i.dbAddresses[index], moco.AdminUser, i.dbPassword)
+	db, err := i.mySQLAccessor.Get(i.dbAddresses[index], constants.AdminUser, i.dbPassword)
 	if err != nil {
 		return nil, err
 	}

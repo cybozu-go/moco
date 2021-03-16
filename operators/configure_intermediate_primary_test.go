@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
@@ -92,10 +91,10 @@ func testConfigureIntermediatePrimary() {
 				return err
 			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
-			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
+			if replicaStatus.SlaveIORunning != "Yes" {
 				return errors.New("IO thread should be running")
 			}
-			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+			if replicaStatus.SlaveSQLRunning != "Yes" {
 				return errors.New("SQL thread should be running")
 			}
 			return nil
@@ -134,10 +133,10 @@ func testConfigureIntermediatePrimary() {
 				return err
 			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
-			if replicaStatus.SlaveIORunning != moco.ReplicaNotRun {
+			if replicaStatus.SlaveIORunning != "No" {
 				return errors.New("IO thread should not be running")
 			}
-			if replicaStatus.SlaveSQLRunning != moco.ReplicaNotRun {
+			if replicaStatus.SlaveSQLRunning != "No" {
 				return errors.New("SQL thread should not be running")
 			}
 			return nil

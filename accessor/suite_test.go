@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
@@ -96,7 +96,7 @@ var _ = AfterSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MySQLCluster) {
+func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1beta1.MySQLCluster) {
 	agentAcc := NewAgentAccessor()
 	dbAcc := NewMySQLAccessor(&MySQLAccessorConfig{
 		ConnMaxLifeTime:   30 * time.Minute,
@@ -104,14 +104,14 @@ func getAccessorInfraCluster() (*MySQLAccessor, Infrastructure, mocov1alpha1.MyS
 		ReadTimeout:       30 * time.Second,
 	})
 	inf := NewInfrastructure(k8sClient, agentAcc, dbAcc, test_utils.OperatorAdminUserPassword, []string{fmt.Sprintf("%s:%d", test_utils.Host, mysqldPort)}, []string{fmt.Sprintf("%s:%d", test_utils.Host, test_utils.AgentPort)})
-	cluster := mocov1alpha1.MySQLCluster{
+	cluster := mocov1beta1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",
 			ClusterName: "test-cluster",
 			Namespace:   namespace,
 			UID:         "test-uid",
 		},
-		Spec: mocov1alpha1.MySQLClusterSpec{
+		Spec: mocov1beta1.MySQLClusterSpec{
 			Replicas: 1,
 		},
 	}

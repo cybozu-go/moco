@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/well"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -140,19 +140,19 @@ func InitializeMySQL(port int) error {
 		password string
 	}{
 		{
-			name:     moco.AdminUser,
+			name:     constants.AdminUser,
 			password: OperatorAdminUserPassword,
 		},
 		{
-			name:     moco.AgentUser,
+			name:     constants.AgentUser,
 			password: MiscUserPassword,
 		},
 		{
-			name:     moco.ReplicationUser,
+			name:     constants.ReplicationUser,
 			password: ReplicationUserPassword,
 		},
 		{
-			name:     moco.CloneDonorUser,
+			name:     constants.CloneDonorUser,
 			password: CloneDonorUserPassword,
 		},
 	}

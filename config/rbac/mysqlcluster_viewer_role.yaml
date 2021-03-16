@@ -5,7 +5,7 @@ metadata:
   name: mysqlcluster-viewer-role
 rules:
 - apiGroups:
-  - moco.cybozu.com.cybozu.com
+  - moco.cybozu.com
   resources:
   - mysqlclusters
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - moco.cybozu.com.cybozu.com
+  - moco.cybozu.com
   resources:
   - mysqlclusters/status
   verbs:

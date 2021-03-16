@@ -1,7 +1,16 @@
 # Tool versions
 CTRL_TOOLS_VERSION=0.5.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-KUSTOMIZE_VERSOIN = 3.8.7
+KUSTOMIZE_VERSION = 3.8.7
+
+# Test tools
+BIN_DIR := $(shell pwd)/bin
+STATICCHECK = $(BIN_DIR)/staticcheck
+NILERR = $(BIN_DIR)/nilerr
+
+# Set the shell used to bash for better error handling.
+SHELL = /bin/bash
+.SHELLFLAGS = -e -o pipefail -c
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
@@ -42,17 +51,27 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	go mod tidy
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-vet: ## Run go vet against code.
-	go vet ./...
-
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: manifests generate fmt vet ## Run tests.
+.PHONY: envtest
+envtest:
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CTRL_RUNTIME_VERSION)/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		export DEBUG_CONTROLLER=1; \
+		go test -v -count 1 -race ./controllers -ginkgo.progress -ginkgo.v -ginkgo.failFast
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		go test -v -count 1 -race ./api/... -ginkgo.progress
+		#go test -v -count 1 -race ./...
+
+.PHONY: test
+test: test-tools
+	go test -v -count 1 -race ./pkg/...
+	$(STATICCHECK) ./...
+	$(NILERR) ./...
 
 ##@ Build
 
@@ -90,7 +109,7 @@ controller-gen: ## Download controller-gen locally if necessary.
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v$(KUSTOMIZE_VERSOIN))
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v$(KUSTOMIZE_VERSION))
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -101,3 +120,14 @@ echo "Downloading $(2)" ;\
 GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 }
 endef
+
+.PHONY: test-tools
+test-tools: $(STATICCHECK) $(NILERR)
+
+$(STATICCHECK):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
+
+$(NILERR):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest

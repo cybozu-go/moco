@@ -10,7 +10,7 @@ import (
 
 	"github.com/cybozu-go/moco/accessor"
 	agentmock "github.com/cybozu-go/moco/agentrpc/mock"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/test_utils"
 	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
@@ -72,7 +72,7 @@ var _ = BeforeSuite(func(done Done) {
 	sch := runtime.NewScheme()
 	err = clientgoscheme.AddToScheme(sch)
 	Expect(err).NotTo(HaveOccurred())
-	err = mocov1alpha1.AddToScheme(sch)
+	err = mocov1beta1.AddToScheme(sch)
 	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
@@ -116,7 +116,7 @@ var _ = Describe("Test Operators", func() {
 	Context("updatePrimary", testUpdatePrimary)
 })
 
-func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1alpha1.MySQLCluster) {
+func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure, mocov1beta1.MySQLCluster) {
 	agentAcc := accessor.NewAgentAccessor()
 	dbAcc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
 		ConnMaxLifeTime:   30 * time.Minute,
@@ -127,17 +127,17 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 		[]string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2)},
 		[]string{test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort)})
 	primaryIndex := 0
-	cluster := mocov1alpha1.MySQLCluster{
+	cluster := mocov1beta1.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test",
 			ClusterName: "test-cluster",
 			Namespace:   namespace,
 			UID:         "test-uid",
 		},
-		Spec: mocov1alpha1.MySQLClusterSpec{
+		Spec: mocov1beta1.MySQLClusterSpec{
 			Replicas: 2,
-			PodTemplate: mocov1alpha1.PodTemplateSpec{
-				ObjectMeta: mocov1alpha1.ObjectMeta{
+			PodTemplate: mocov1beta1.PodTemplateSpec{
+				ObjectMeta: mocov1beta1.ObjectMeta{
 					Name: "test",
 				},
 				Spec: corev1.PodSpec{
@@ -149,9 +149,9 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 					},
 				},
 			},
-			VolumeClaimTemplates: []mocov1alpha1.PersistentVolumeClaim{
+			VolumeClaimTemplates: []mocov1beta1.PersistentVolumeClaim{
 				{
-					ObjectMeta: mocov1alpha1.ObjectMeta{
+					ObjectMeta: mocov1beta1.ObjectMeta{
 						Name: "test",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
@@ -160,9 +160,8 @@ func getAccessorInfraCluster() (*accessor.MySQLAccessor, accessor.Infrastructure
 				},
 			},
 		},
-		Status: mocov1alpha1.MySQLClusterStatus{
+		Status: mocov1beta1.MySQLClusterStatus{
 			CurrentPrimaryIndex: &primaryIndex,
-			AgentToken:          token,
 		},
 	}
 

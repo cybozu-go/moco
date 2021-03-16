@@ -57,8 +57,6 @@ Components
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
   - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
   - [ObjectStorage](crd_object_storage.md) represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
-  - [MySQLBackupSchedule](crd_mysql_backup_schedule.md) represents a full dump & binlog schedule.
-  - [SwitchoverJob](crd_mysql_switch_over_job.md) represents a switchover job.
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
 - [cert-manager](https://cert-manager.io/): Provide client certifications and primary-replica certifications automatically.
 
@@ -89,6 +87,8 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
   - `ConfigMap` to store cluster configuration.
   - `ServiceAccount`, `Role` and `RoleBinding` to allow Pods to access resources.
 
+Read [reconcile.md](reconcile.md) on how MOCO reconciles the StatefulSet.
+
 #### How to implement the initialization of MySQL pods with avoiding unnecessary restart at the operator update
 
 When initializing MySQL pods, the following procedures should be executed in their init containers.
@@ -102,34 +102,26 @@ When upgrading the operator, we want to avoid unnecessary restarts of MySQL pods
 Creating mysql users and initializing data-dir are done in an init container of which image is the same with
 the `mysqld` container, so the MySQL pods are not restarted at the upgrade.
 
-On the other hand, `my.cnf` is created by merging the following three configurations.
+`my.cnf` is created by merging the following three configurations.
 
 - Default: This is created by the operator and contains default value of `my.cnf`.
 - User: This is created by users and contains user-defined values of `my.cnf`. This overwrites Default values.
 - Constant: This is created by the operator. This overwrites User values.
 
-If the default and constant configurations are implemented in an init container, the container might be updated
-every time the version of the operator changes and the operator restarts the existing MySQL clusters frequently.
-
-To avoid these unnecessary restarts of the clusters, we implement the merging logic in the operator
-and prepare another container image that is responsible only for outputting the merged contents to `my.cnf`.
-This container image is independent of the operator's image.
 The operator contains the Default and Constant configurations for all MySQL clusters,
 and the User configuration for a certain MySQL cluster specified in the cluster's CR.
-The operator then merges these three configurations to create a `my.cnf` template.
-The init container receives the merged `my.cnf` template and fills it with run-time values, e.g. the Pod's IP address.
+The operator merges these three files and creates a ConfigMap that will be mounted on MySQL Pods.
+For instance-specific parameters such as `server-id`, an init container creates a supplementary config file.
+The main `my.cnf` contains a stanza to include this supplementary config file.
+
+If users want to change their MySQL cluster configurations without restarting Pods, they should use `SET GLOBAL ...`.
 
 So, in short we prepare an init container that does the following two things.
 
 1. Initialize the MySQL cluster, for example, creating necessary users.
-2. Export the `my.cnf` template received from the operator to a file.
+2. Create a supplementary config file for `my.cnf`.
 
 For this purpose, the `moco-agent` binary is provided by [cybozu-go/moco-agent](https://github.com/cybozu-go/moco-agent).
-If users want to use their custom image, they have to include the binary in the image.
-
-If users want to change their MySQL cluster configuration, users basically should execute mysql commands like `SET GLOBAL ...`.
-In case that we cannot avoid restarting MySQL cluster to apply changes in the user-defined `ConfigMap`,
-we should execute a command like `kubectl moco graceful-restart CLUSTER`.
 
 Behaviors
 ---------

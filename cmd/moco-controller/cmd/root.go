@@ -12,14 +12,14 @@ import (
 )
 
 var config struct {
-	metricsAddr              string
-	leaderElectionID         string
-	binaryCopyContainerImage string
-	fluentBitImage           string
-	connMaxLifeTime          time.Duration
-	connectionTimeout        time.Duration
-	readTimeout              time.Duration
-	waitTime                 time.Duration
+	metricsAddr         string
+	leaderElectionID    string
+	agentContainerImage string
+	fluentBitImage      string
+	connMaxLifeTime     time.Duration
+	connectionTimeout   time.Duration
+	readTimeout         time.Duration
+	waitTime            time.Duration
 }
 
 var rootCmd = &cobra.Command{
@@ -35,8 +35,8 @@ var rootCmd = &cobra.Command{
 }
 
 const (
-	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.5.0"
-	defaultFluentBitImage           = "fluent/fluent-bit:1.7.2"
+	defaultAgentContainerImage = "ghcr.io/cybozu-go/moco-agent:0.5.0"
+	defaultFluentBitImage      = "fluent/fluent-bit:1.7.2"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -52,7 +52,7 @@ func init() {
 	fs := rootCmd.Flags()
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
-	fs.StringVar(&config.binaryCopyContainerImage, "binary-copy-container-image", defaultBinaryCopyContainerImage, "The container image name that includes moco's binaries")
+	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
 	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", defaultFluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
 	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
 	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")

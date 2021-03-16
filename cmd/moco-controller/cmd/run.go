@@ -5,11 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/metrics"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -34,7 +33,7 @@ const (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
-	_ = mocov1alpha1.AddToScheme(scheme)
+	_ = mocov1beta1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -47,7 +46,7 @@ func subMain() error {
 		MetricsBindAddress:      config.metricsAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        config.leaderElectionID,
-		LeaderElectionNamespace: os.Getenv(moco.PodNamespaceEnvName),
+		LeaderElectionNamespace: os.Getenv(constants.PodNamespaceEnvName),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -55,21 +54,13 @@ func subMain() error {
 	}
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:                   mgr.GetClient(),
-		Log:                      ctrl.Log.WithName("controller"),
-		Recorder:                 mgr.GetEventRecorderFor("moco-controller"),
-		Scheme:                   mgr.GetScheme(),
-		BinaryCopyContainerImage: config.binaryCopyContainerImage,
-		FluentBitImage:           config.fluentBitImage,
-		AgentAccessor:            accessor.NewAgentAccessor(),
-		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   config.connMaxLifeTime,
-			ConnectionTimeout: config.connectionTimeout,
-			ReadTimeout:       config.readTimeout,
-		}),
-		WaitTime:        config.waitTime,
-		SystemNamespace: os.Getenv(moco.PodNamespaceEnvName),
-	}).SetupWithManager(mgr, 30*time.Second); err != nil {
+		Client:              mgr.GetClient(),
+		Recorder:            mgr.GetEventRecorderFor("moco-controller"),
+		Scheme:              mgr.GetScheme(),
+		AgentContainerImage: config.agentContainerImage,
+		FluentBitImage:      config.fluentBitImage,
+		SystemNamespace:     os.Getenv(constants.PodNamespaceEnvName),
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}

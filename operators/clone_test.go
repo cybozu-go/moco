@@ -3,11 +3,11 @@ package operators
 import (
 	"context"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/agentrpc"
 	agentmock "github.com/cybozu-go/moco/agentrpc/mock"
-	"github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -15,7 +15,7 @@ import (
 func testClone() {
 	var ctx context.Context
 	var infra accessor.Infrastructure
-	var cluster v1alpha1.MySQLCluster
+	var cluster v1beta1.MySQLCluster
 	var replicaIndex int
 	var primaryHost string
 
@@ -23,7 +23,7 @@ func testClone() {
 		ctx = context.Background()
 		_, infra, cluster = getAccessorInfraCluster()
 		replicaIndex = 0
-		primaryHost = moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
+		primaryHost = cluster.PodHostname(*cluster.Status.CurrentPrimaryIndex)
 	})
 
 	It("should call clone API", func() {
@@ -34,7 +34,7 @@ func testClone() {
 		expect := &agentrpc.CloneRequest{
 			Token:     token,
 			DonorHost: primaryHost,
-			DonorPort: moco.MySQLAdminPort,
+			DonorPort: constants.MySQLAdminPort,
 		}
 		Expect(agentmock.CompareWithLastCloneRequest(expect)).Should(Equal(""))
 	})

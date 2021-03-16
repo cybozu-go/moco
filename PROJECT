@@ -8,7 +8,7 @@ resources:
     namespaced: true
   controller: true
   domain: cybozu.com
-  group: moco.cybozu.com
+  group: moco
   kind: MySQLCluster
   path: github.com/cybozu-go/moco/api/v1beta1
   version: v1beta1

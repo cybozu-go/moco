@@ -4,55 +4,80 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	mathrand "math/rand"
+	"strings"
+	"sync"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/operators"
+	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
+
+type mockManager struct {
+	mu       sync.Mutex
+	clusters map[string]struct{}
+}
+
+var _ operators.ClusterManager = &mockManager{}
+
+func (m *mockManager) Update(ctx context.Context, cluster *mocov1beta1.MySQLCluster) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := client.ObjectKeyFromObject(cluster)
+	m.clusters[key.String()] = struct{}{}
+}
+
+func (m *mockManager) Stop(key types.NamespacedName) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.clusters, key.String())
+}
+
+func (m *mockManager) getKeys() map[string]bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	keys := make(map[string]bool)
+	for k := range m.clusters {
+		keys[k] = true
+	}
+	return keys
+}
 
 const (
-	systemNamespace  = "test-moco-system"
-	clusterNamespace = "controllers-test"
-	clusterName      = "mysqlcluster"
+	testMocoSystemNamespace = "moco-system"
+	testAgentImage          = "foobar:123"
+	testFluentBitImage      = "fluent-hoge:134"
 )
 
-var replicationSourceSecretName = "replication-source-secret"
-
-func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
-	cluster := &mocov1alpha1.MySQLCluster{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "MySQLCluster",
-			APIVersion: mocov1alpha1.GroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName,
-			Namespace: clusterNamespace,
-		},
-		Spec: mocov1alpha1.MySQLClusterSpec{
-			Replicas: 3,
-			PodTemplate: mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mysqld",
-							Image: "mysql:dev",
-						},
-					},
-				},
-			},
-			DataVolumeClaimTemplateSpec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+func testNewMySQLCluster(ns string) *mocov1beta1.MySQLCluster {
+	cluster := &mocov1beta1.MySQLCluster{}
+	cluster.Namespace = ns
+	cluster.Name = "test"
+	cluster.Finalizers = []string{constants.MySQLClusterFinalizer}
+	cluster.Spec.Replicas = 3
+	cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{
+		{Name: "mysqld", Image: "moco-mysql:latest"},
+	}
+	cluster.Spec.VolumeClaimTemplates = []mocov1beta1.PersistentVolumeClaim{
+		{
+			ObjectMeta: mocov1beta1.ObjectMeta{Name: "mysql-data"},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				StorageClassName: pointer.String("hoge"),
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI),
@@ -64,1003 +89,831 @@ func mysqlClusterResource() *mocov1alpha1.MySQLCluster {
 	return cluster
 }
 
-var _ = Describe("MySQLCluster controller", func() {
+func testDeleteMySQLCluster(ctx context.Context, ns, name string) {
+	cluster := &mocov1beta1.MySQLCluster{}
+	cluster.Namespace = ns
+	cluster.Name = name
+	err := k8sClient.Delete(ctx, cluster)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+}
 
+var _ = Describe("MySQLCluster reconciler", func() {
 	ctx := context.Background()
-	cluster := &mocov1alpha1.MySQLCluster{}
+	var stopFunc func()
+	var mockMgr *mockManager
 
 	BeforeEach(func() {
-		sysNs := corev1.Namespace{}
-		sysNs.Name = systemNamespace
-		_, err := ctrl.CreateOrUpdate(ctx, k8sClient, &sysNs, func() error {
+		cs := &mocov1beta1.MySQLClusterList{}
+		err := k8sClient.List(ctx, cs, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		for _, cluster := range cs.Items {
+			cluster.Finalizers = nil
+			err := k8sClient.Update(ctx, &cluster)
+			Expect(err).NotTo(HaveOccurred())
+		}
+		svcs := &corev1.ServiceList{}
+		err = k8sClient.List(ctx, svcs, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		for _, svc := range svcs.Items {
+			err := k8sClient.Delete(ctx, &svc)
+			Expect(err).NotTo(HaveOccurred())
+		}
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta1.MySQLCluster{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.ConfigMap{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.ServiceAccount{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &policyv1beta1.PodDisruptionBudget{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+
+		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+			Scheme:             scheme,
+			LeaderElection:     false,
+			MetricsBindAddress: "0",
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		mockMgr = &mockManager{
+			clusters: make(map[string]struct{}),
+		}
+		mysqlr := &MySQLClusterReconciler{
+			Client:              mgr.GetClient(),
+			Scheme:              scheme,
+			Recorder:            mgr.GetEventRecorderFor("moco-controller"),
+			SystemNamespace:     testMocoSystemNamespace,
+			Manager:             mockMgr,
+			AgentContainerImage: testAgentImage,
+			FluentBitImage:      testFluentBitImage,
+		}
+		err = mysqlr.SetupWithManager(mgr)
+		Expect(err).ToNot(HaveOccurred())
+
+		ctx, cancel := context.WithCancel(ctx)
+		stopFunc = cancel
+		go func() {
+			err := mgr.Start(ctx)
+			if err != nil {
+				panic(err)
+			}
+		}()
+		time.Sleep(100 * time.Millisecond)
+	})
+
+	AfterEach(func() {
+		stopFunc()
+		time.Sleep(100 * time.Millisecond)
+	})
+
+	It("should create password secrets", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			key := client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}
+			if err := k8sClient.Get(ctx, key, secret); err != nil {
+				return err
+			}
+
+			if secret.Annotations["moco.cybozu.com/secret-version"] != "1" {
+				return fmt.Errorf("the controller secret does not have an annotation for version")
+			}
+
+			if secret.Labels["app.kubernetes.io/name"] != "mysql" {
+				return fmt.Errorf("the controller secret does not have the correct app name label: %s", secret.Labels["app.kubernetes.io/name"])
+			}
+			if secret.Labels["app.kubernetes.io/instance"] != "test" {
+				return fmt.Errorf("the controller secret does not have the correct app instance label: %s", secret.Labels["app.kubernetes.io/instance"])
+			}
+			if secret.Labels["app.kubernetes.io/instance-namespace"] != "test" {
+				return fmt.Errorf("the controller secret does not have the correct app namespace label: %s", secret.Labels["app.kubernetes.io/instance-namespace"])
+			}
+
+			userSecret := &corev1.Secret{}
+			key = client.ObjectKey{Namespace: "test", Name: "moco-test"}
+			if err := k8sClient.Get(ctx, key, userSecret); err != nil {
+				return err
+			}
+
+			if userSecret.Annotations["moco.cybozu.com/secret-version"] != "1" {
+				return fmt.Errorf("the user secret does not have an annotation for version")
+			}
+			if userSecret.Labels["app.kubernetes.io/name"] != "mysql" {
+				return fmt.Errorf("the user secret does not have the correct app name label: %s", userSecret.Labels["app.kubernetes.io/name"])
+			}
+			if userSecret.Labels["app.kubernetes.io/instance"] != "test" {
+				return fmt.Errorf("the user secret does not have the correct app instance label: %s", userSecret.Labels["app.kubernetes.io/instance"])
+			}
+			if len(userSecret.OwnerReferences) != 1 {
+				return fmt.Errorf("the user secret does not have an owner reference")
+			}
+
+			mycnfSecret := &corev1.Secret{}
+			key = client.ObjectKey{Namespace: "test", Name: "moco-my-cnf-test"}
+			if err := k8sClient.Get(ctx, key, mycnfSecret); err != nil {
+				return err
+			}
+
+			if mycnfSecret.Annotations["moco.cybozu.com/secret-version"] != "1" {
+				return fmt.Errorf("the my.cnf secret does not have an annotation for version")
+			}
+			if mycnfSecret.Labels["app.kubernetes.io/name"] != "mysql" {
+				return fmt.Errorf("the my.cnf secret does not have the correct app name label: %s", mycnfSecret.Labels["app.kubernetes.io/name"])
+			}
+			if mycnfSecret.Labels["app.kubernetes.io/instance"] != "test" {
+				return fmt.Errorf("the my.cnf secret does not have the correct app instance label: %s", mycnfSecret.Labels["app.kubernetes.io/instance"])
+			}
+			if len(mycnfSecret.OwnerReferences) != 1 {
+				return fmt.Errorf("the my.cnf secret does not have an owner reference")
+			}
+
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should update user secret", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var userSecret *corev1.Secret
+		Eventually(func() error {
+			userSecret = &corev1.Secret{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-test"}
+			return k8sClient.Get(ctx, key, userSecret)
+		}).Should(Succeed())
+
+		Expect(userSecret.OwnerReferences).NotTo(BeEmpty())
+
+		userSecret.Data = nil
+		err = k8sClient.Update(ctx, userSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			userSecret = &corev1.Secret{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-test"}
+			if err := k8sClient.Get(ctx, key, userSecret); err != nil {
+				return err
+			}
+			if len(userSecret.Data) == 0 {
+				return fmt.Errorf("the user secret is not reconciled yet")
+			}
 			return nil
 		})
-		Expect(err).ShouldNot(HaveOccurred())
-		ns := corev1.Namespace{}
-		ns.Name = clusterNamespace
-		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &ns, func() error {
+	})
+
+	It("should create config maps for fluent-bit", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var slowCM *corev1.ConfigMap
+		Eventually(func() error {
+			slowCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
+			return k8sClient.Get(ctx, key, slowCM)
+		}).Should(Succeed())
+
+		Expect(slowCM.OwnerReferences).NotTo(BeEmpty())
+
+		slowCM.Data = nil
+		err = k8sClient.Update(ctx, slowCM)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			slowCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
+			if err := k8sClient.Get(ctx, key, slowCM); err != nil {
+				return err
+			}
+			if len(slowCM.Data) == 0 {
+				return fmt.Errorf("the config map is not reconciled yet")
+			}
 			return nil
-		})
-		Expect(err).ShouldNot(HaveOccurred())
+		}).Should(Succeed())
 
-		cluster = mysqlClusterResource()
-		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, cluster, func() error {
+		var errorCM *corev1.ConfigMap
+		Eventually(func() error {
+			errorCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
+			return k8sClient.Get(ctx, key, errorCM)
+		}).Should(Succeed())
+
+		Expect(errorCM.OwnerReferences).NotTo(BeEmpty())
+
+		errorCM.Data = nil
+		err = k8sClient.Update(ctx, errorCM)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			errorCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
+			if err := k8sClient.Get(ctx, key, errorCM); err != nil {
+				return err
+			}
+			if len(errorCM.Data) == 0 {
+				return fmt.Errorf("the config map is not reconciled yet")
+			}
 			return nil
-		})
-		Expect(err).ShouldNot(HaveOccurred())
+		}).Should(Succeed())
+
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.DisableSlowQueryLogContainer = true
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			slowCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
+			err := k8sClient.Get(ctx, key, slowCM)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Spec.DisableErrorLogContainer = true
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			slowCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
+			err := k8sClient.Get(ctx, key, slowCM)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
 	})
 
-	Context("ServerIDBase", func() {
-		It("should set ServerIDBase", func() {
-			isUpdated, err := reconciler.setServerIDBaseIfNotAssigned(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+	It("should create config maps for my.cnf", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
 
-			Eventually(func() error {
-				var actual mocov1alpha1.MySQLCluster
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, &actual)
-				if err != nil {
-					return err
+		Eventually(func() error {
+			c := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
+				return err
+			}
+			if c.Status.ReconcileInfo.Generation != c.Generation {
+				return fmt.Errorf("not yet reconciled: generation=%d", c.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		var cm *corev1.ConfigMap
+		Eventually(func() error {
+			cms := &corev1.ConfigMapList{}
+			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
+				return err
+			}
+
+			var mycnfCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if strings.HasPrefix(cm.Name, "moco-test.") {
+					mycnfCMs = append(mycnfCMs, &cms.Items[i])
 				}
+			}
 
-				if actual.Status.ServerIDBase == nil {
-					return errors.New("status.ServerIDBase is not yet assigned")
+			if len(mycnfCMs) != 1 {
+				return fmt.Errorf("the number of config maps is not 1: %d", len(mycnfCMs))
+			}
+
+			cm = mycnfCMs[0]
+			return nil
+		}).Should(Succeed())
+
+		Expect(cm.OwnerReferences).NotTo(BeEmpty())
+		Expect(cm.Data).To(HaveKey("my.cnf"))
+
+		userCM := &corev1.ConfigMap{}
+		userCM.Namespace = "test"
+		userCM.Name = "user-conf"
+		userCM.Data = map[string]string{
+			"foo": "bar",
+		}
+
+		err = k8sClient.Create(ctx, userCM)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		oldName := cm.Name
+		Eventually(func() error {
+			cms := &corev1.ConfigMapList{}
+			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
+				return err
+			}
+
+			var mycnfCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if cm.Name == oldName {
+					continue
 				}
+				if strings.HasPrefix(cm.Name, "moco-test.") {
+					mycnfCMs = append(mycnfCMs, &cms.Items[i])
+				}
+			}
 
-				return nil
-			}, 5*time.Second).Should(Succeed())
+			if len(mycnfCMs) != 1 {
+				return fmt.Errorf("the number of config maps is not 1: %d", len(mycnfCMs))
+			}
 
-			isUpdated, err = reconciler.setServerIDBaseIfNotAssigned(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
+			cm = mycnfCMs[0]
+			return nil
+		}).Should(Succeed())
+
+		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = bar"))
 	})
 
-	Context("Secrets", func() {
-		It("should create secrets", func() {
-			isUpdated, err := reconciler.createControllerSecretIfNotExist(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+	It("should reconcile service account", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
 
-			isUpdated, err = reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+		var sa *corev1.ServiceAccount
+		Eventually(func() error {
+			sa = &corev1.ServiceAccount{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sa)
+		}).Should(Succeed())
 
-			ctrlSecretName := moco.GetControllerSecretName(cluster)
-			clusterSecretNS := cluster.Namespace
-			clusterSecretName := moco.GetClusterSecretName(cluster.Name)
-			myCnfSecretName := moco.GetMyCnfSecretName(cluster.Name)
-			myCnfSecretNS := cluster.Namespace
-
-			ctrlSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: systemNamespace, Name: ctrlSecretName}, ctrlSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.AdminPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.AgentPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
-			Expect(ctrlSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
-
-			clusterSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: clusterSecretNS, Name: clusterSecretName}, clusterSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(clusterSecret.Data).Should(HaveKey(moco.AdminPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.ReplicationPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.CloneDonorPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.AgentPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.ReadOnlyPasswordKey))
-			Expect(clusterSecret.Data).Should(HaveKey(moco.WritablePasswordKey))
-
-			myCnfSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(myCnfSecret.Data).Should(HaveKey(moco.ReadOnlyMyCnfKey))
-			Expect(myCnfSecret.Data).Should(HaveKey(moco.WritableMyCnfKey))
-
-			isUpdated, err = reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("if delete clusterSecret and myConfSecret, they will be regenerated", func() {
-			ctrlSecretName := moco.GetControllerSecretName(cluster)
-			ctrlSecret := &corev1.Secret{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: systemNamespace, Name: ctrlSecretName}, ctrlSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			clusterSecretNS := cluster.Namespace
-			clusterSecretName := moco.GetClusterSecretName(cluster.Name)
-			clusterSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: clusterSecretNS, Name: clusterSecretName}, clusterSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = k8sClient.Delete(ctx, clusterSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			myCnfSecretNS := cluster.Namespace
-			myCnfSecretName := moco.GetMyCnfSecretName(cluster.Name)
-			myCnfSecret := &corev1.Secret{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = k8sClient.Delete(ctx, myCnfSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err := reconciler.createOrUpdateSecret(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: clusterSecretNS, Name: clusterSecretName}, clusterSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: myCnfSecretNS, Name: myCnfSecretName}, myCnfSecret)
-			Expect(err).ShouldNot(HaveOccurred())
-		})
+		Expect(sa.OwnerReferences).NotTo(BeEmpty())
 	})
 
-	Context("ConfigMaps", func() {
-		It("should create configmap", func() {
-			isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+	It("should reconcile services", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
 
-			cm := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
-
-			errLogConf := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetErrLogAgentConfigMapName(cluster.Name), Namespace: cluster.Namespace}, errLogConf)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(errLogConf.Data).Should(HaveKey(moco.FluentBitConfigName))
-
-			slowLogConf := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetErrLogAgentConfigMapName(cluster.Name), Namespace: cluster.Namespace}, slowLogConf)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(slowLogConf.Data).Should(HaveKey(moco.FluentBitConfigName))
-
-			isUpdated, err = reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should merge with user defined configuration", func() {
-			userDefinedConfName := "user-defined-my.cnf"
-			cluster.Spec.MySQLConfigMapName = &userDefinedConfName
-
-			userDefinedConf := &corev1.ConfigMap{}
-			userDefinedConf.Namespace = cluster.Namespace
-			userDefinedConf.Name = userDefinedConfName
-			userDefinedConf.Data = map[string]string{
-				"max_connections": "5000",
+		var headless, primary, replica *corev1.Service
+		Eventually(func() error {
+			headless = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless); err != nil {
+				return err
 			}
-			err := k8sClient.Create(ctx, userDefinedConf)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			cm := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
-			conf := cm.Data[moco.MySQLConfName]
-			Expect(conf).Should(ContainSubstring("max_connections = 5000"))
-		})
-
-		It("should set innodb_buffer_pool_size", func() {
-			By("using default value if resource request is empty", func() {
-				cm := &corev1.ConfigMap{}
-				err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
-				conf := cm.Data[moco.MySQLConfName]
-				Expect(conf).ShouldNot(ContainSubstring("innodb_buffer_pool_size"))
-			})
-
-			By("using default value if the container has less memory than the default", func() {
-				cluster.Spec.PodTemplate.Spec.Containers[0].Resources = corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceMemory: *resource.NewQuantity(100<<20, resource.BinarySI),
-					},
-				}
-				cm := &corev1.ConfigMap{}
-				isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(isUpdated).Should(BeTrue())
-
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
-				conf := cm.Data[moco.MySQLConfName]
-				Expect(conf).ShouldNot(ContainSubstring("innodb_buffer_pool_size"))
-			})
-
-			By("setting the size of 70% of the request", func() {
-				cm := &corev1.ConfigMap{}
-				cluster.Spec.PodTemplate.Spec.Containers[0].Resources = corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceMemory: *resource.NewQuantity(256<<20, resource.BinarySI),
-					},
-				}
-
-				isUpdated, err := reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(isUpdated).Should(BeTrue())
-
-				err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, cm)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
-				conf := cm.Data[moco.MySQLConfName]
-				Expect(conf).Should(ContainSubstring("innodb_buffer_pool_size = 179M")) // 256*0.7=179
-			})
-		})
-	})
-
-	Context("Headless service", func() {
-		It("should create services", func() {
-			isUpdated, err := reconciler.createOrUpdateHeadlessService(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			svc := &corev1.Service{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, svc)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err = reconciler.createOrUpdateHeadlessService(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-	})
-
-	Context("RBAC", func() {
-		It("should not create service account if service account is given", func() {
-			cluster.Spec.PodTemplate.Spec.ServiceAccountName = "test"
-			isUpdated, err := reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should create service account", func() {
-			isUpdated, err := reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sa := &corev1.ServiceAccount{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetServiceAccountName(cluster.Name), Namespace: cluster.Namespace}, sa)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err = reconciler.createOrUpdateRBAC(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-	})
-
-	Context("Agent token", func() {
-		It("should create agent token", func() {
-			isUpdated, err := reconciler.generateAgentToken(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(cluster.Status.AgentToken).ShouldNot(BeEmpty())
-
-			isUpdated, err = reconciler.generateAgentToken(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-	})
-
-	Context("StatefulSet", func() {
-		It("should create statefulset", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var binaryCopyInitContainer *corev1.Container
-			var entrypointInitContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.InitContainers {
-				if c.Name == binaryCopyContainerName {
-					binaryCopyInitContainer = &sts.Spec.Template.Spec.InitContainers[i]
-				} else if c.Name == entrypointInitContainerName {
-					entrypointInitContainer = &sts.Spec.Template.Spec.InitContainers[i]
-				}
+			primary = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
+				return err
 			}
-
-			Expect(binaryCopyInitContainer).ShouldNot(BeNil())
-			Expect(entrypointInitContainer).ShouldNot(BeNil())
-			Expect(len(binaryCopyInitContainer.VolumeMounts)).Should(Equal(1))
-			Expect(len(entrypointInitContainer.VolumeMounts)).Should(Equal(8))
-			Expect(entrypointInitContainer.Command).Should(Equal([]string{
-				"/moco-bin/moco-agent", "init", fmt.Sprintf("--server-id-base=%d", *cluster.Status.ServerIDBase),
-			}))
-
-			var mysqldContainer *corev1.Container
-			var agentContainer *corev1.Container
-			var errLogContainer *corev1.Container
-			var slowLogContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				switch c.Name {
-				case "mysqld":
-					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				case "agent":
-					agentContainer = &sts.Spec.Template.Spec.Containers[i]
-				case "err-log":
-					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				case "slow-log":
-					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
 			}
+			return nil
+		}).Should(Succeed())
 
-			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
-			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
-			Expect(mysqldContainer.ReadinessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.ReadinessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/grpc-health-probe", "-addr=localhost:9080"}))
-			Expect(mysqldContainer.ReadinessProbe.InitialDelaySeconds).Should(BeNumerically("==", 10))
-			Expect(mysqldContainer.ReadinessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.ReadinessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.ReadinessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.ReadinessProbe.FailureThreshold).Should(BeNumerically("==", 3))
+		Expect(headless.OwnerReferences).NotTo(BeEmpty())
+		Expect(primary.OwnerReferences).NotTo(BeEmpty())
+		Expect(replica.OwnerReferences).NotTo(BeEmpty())
 
-			Expect(agentContainer).ShouldNot(BeNil())
-			Expect(errLogContainer).ShouldNot(BeNil())
-			Expect(slowLogContainer).ShouldNot(BeNil())
-			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
-			Expect(agentContainer.Command).Should(Equal([]string{
-				"/moco-bin/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
-			}))
+		Expect(headless.Spec.ClusterIP).To(Equal("None"))
+		Expect(primary.Spec.ClusterIP).NotTo(Equal("None"))
+		Expect(primary.Spec.ClusterIP).NotTo(BeEmpty())
+		Expect(replica.Spec.ClusterIP).NotTo(Equal("None"))
+		Expect(replica.Spec.ClusterIP).NotTo(BeEmpty())
 
-			Expect(errLogContainer.VolumeMounts).
-				Should(ContainElements(
-					corev1.VolumeMount{
-						MountPath: moco.FluentBitConfigPath,
-						Name:      errLogAgentConfigVolumeName,
-						ReadOnly:  true,
-						SubPath:   moco.FluentBitConfigName,
-					},
-					corev1.VolumeMount{
-						MountPath: moco.VarLogPath,
-						Name:      varLogVolumeName,
-					}))
-			Expect(slowLogContainer.VolumeMounts).
-				Should(ContainElements(
-					corev1.VolumeMount{
-						MountPath: moco.FluentBitConfigPath,
-						Name:      slowQueryLogAgentConfigVolumeName,
-						ReadOnly:  true,
-						SubPath:   moco.FluentBitConfigName,
-					},
-					corev1.VolumeMount{
-						MountPath: moco.VarLogPath,
-						Name:      varLogVolumeName,
-					}))
+		Expect(headless.Spec.Selector).NotTo(HaveKey("moco.cybozu.com/role"))
+		Expect(primary.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "primary"))
+		Expect(replica.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "replica"))
 
-			var claim *corev1.PersistentVolumeClaim
-			for i, v := range sts.Spec.VolumeClaimTemplates {
-				if v.Name == mysqlDataVolumeName {
-					claim = &sts.Spec.VolumeClaimTemplates[i]
-				}
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+			ObjectMeta: mocov1beta1.ObjectMeta{
+				Annotations: map[string]string{"foo": "bar"},
+				Labels:      map[string]string{"foo": "baz"},
+			},
+		}
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			headless = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless); err != nil {
+				return err
 			}
-			Expect(claim).ShouldNot(BeNil())
-			Expect(claim.Spec.Resources.Requests.Storage().Value()).Should(BeNumerically("==", 1<<30))
-
-			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should mount volumes of MyCnfSecret", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.ReplicationSourceSecretName = &replicationSourceSecretName
-
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var mysqldContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name == "mysqld" {
-					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
+			if headless.Annotations["foo"] != "bar" {
+				return errors.New("no annotation")
 			}
-			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(len(mysqldContainer.VolumeMounts)).Should(Equal(8))
-			Expect(mysqldContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
-				MountPath: moco.MyCnfSecretPath,
-				Name:      myCnfSecretVolumeName,
-			}))
-			defaultMode := corev1.SecretVolumeSourceDefaultMode
-			Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElement(corev1.Volume{
-				Name: myCnfSecretVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  moco.GetMyCnfSecretName(cluster.Name),
-						DefaultMode: &defaultMode,
-					},
-				},
-			}))
-		})
-
-		It("should mount volumes of ReplicationSourceSecret", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.ReplicationSourceSecretName = &replicationSourceSecretName
-
-			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: replicationSourceSecretName, Namespace: cluster.Namespace},
-				Data:       make(map[string][]byte),
+			if headless.Labels["foo"] != "baz" {
+				return errors.New("no label")
 			}
-			_, err := ctrl.CreateOrUpdate(ctx, k8sClient, secret, func() error {
-				return nil
-			})
-			Expect(err).ShouldNot(HaveOccurred())
+			return nil
+		}).Should(Succeed())
 
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+		newPrimary := &corev1.Service{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, newPrimary)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(newPrimary.Spec.ClusterIP).To(Equal(primary.Spec.ClusterIP))
 
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var agentContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name == "agent" {
-					agentContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
-			}
-			Expect(agentContainer).ShouldNot(BeNil())
-			Expect(len(agentContainer.VolumeMounts)).Should(Equal(6))
-			Expect(agentContainer.VolumeMounts).Should(ContainElement(corev1.VolumeMount{
-				MountPath: moco.ReplicationSourceSecretPath,
-				Name:      replicationSourceSecretVolumeName,
-			}))
-			defaultMode := corev1.SecretVolumeSourceDefaultMode
-			Expect(sts.Spec.Template.Spec.Volumes).Should(ContainElement(corev1.Volume{
-				Name: replicationSourceSecretVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  replicationSourceSecretName,
-						DefaultMode: &defaultMode,
-					},
-				},
-			}))
-		})
-
-		It("should return error, when template does not contain mysqld container", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "unknown",
-							Image: "mysql:dev",
-						},
-					},
-				},
-			}
-
-			_, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).Should(HaveOccurred())
-		})
-
-		It("should return error, when template contains agent container", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mysqld",
-							Image: "mysql:dev",
-						},
-						{
-							Name:  "agent",
-							Image: "mysql:dev",
-						},
-					},
-				},
-			}
-			_, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).Should(HaveOccurred())
-		})
-
-		It("should overwrite probes in mysqld container", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mysqld",
-							Image: "mysql:dev",
-							LivenessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									Exec: &corev1.ExecAction{
-										Command: []string{"/dummy/liveness"},
-									},
-								},
-								InitialDelaySeconds: 999,
-								PeriodSeconds:       999,
-							},
-							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									Exec: &corev1.ExecAction{
-										Command: []string{"/dummy/readiness"},
-									},
-								},
-								InitialDelaySeconds: 999,
-								PeriodSeconds:       999,
-							},
-						},
-					},
-				},
-			}
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var mysqldContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name == "mysqld" {
-					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
-			}
-			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
-			Expect(mysqldContainer.LivenessProbe.InitialDelaySeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.LivenessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.LivenessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.LivenessProbe.FailureThreshold).Should(BeNumerically("==", 3))
-			Expect(mysqldContainer.ReadinessProbe).ShouldNot(BeNil())
-			Expect(mysqldContainer.ReadinessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/grpc-health-probe", "-addr=localhost:9080"}))
-			Expect(mysqldContainer.ReadinessProbe.InitialDelaySeconds).Should(BeNumerically("==", 10))
-			Expect(mysqldContainer.ReadinessProbe.PeriodSeconds).Should(BeNumerically("==", 5))
-			Expect(mysqldContainer.ReadinessProbe.TimeoutSeconds).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.ReadinessProbe.SuccessThreshold).Should(BeNumerically("==", 1))
-			Expect(mysqldContainer.ReadinessProbe.FailureThreshold).Should(BeNumerically("==", 3))
-		})
-
-		It("update podTemplate", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mysqld",
-							Image: "mysql:dev",
-						},
-						{
-							Name:  "fluent-bit",
-							Image: "fluent-bit:dev",
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config",
-									ReadOnly:  true,
-									MountPath: "/fluent-bit/etc/fluent-bit.conf",
-									SubPath:   "fluent-bit.conf",
-								},
-							},
-						},
-					},
-				},
-			}
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var mysqldContainer *corev1.Container
-			var fluentBitContainer *corev1.Container
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name == "mysqld" {
-					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				} else if c.Name == "fluent-bit" {
-					fluentBitContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
-			}
-			Expect(mysqldContainer).ShouldNot(BeNil())
-			Expect(fluentBitContainer).ShouldNot(BeNil())
-			Expect(fluentBitContainer.VolumeMounts).Should(HaveLen(1))
-
-			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should merged with user-defined fluent-bit container spec", func() {
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "mysqld",
-							Image: "mysql:dev",
-						},
-						{
-							Name:  "err-log",
-							Image: "fluent-bit:dev",
-							Env: []corev1.EnvVar{
-								{
-									Name:  "USER_DEFINED_ENV",
-									Value: "user-defined-env",
-								},
-							},
-						},
-						{
-							Name:  "slow-log",
-							Image: "fluent-bit:dev",
-							Env: []corev1.EnvVar{
-								{
-									Name:  "USER_DEFINED_ENV",
-									Value: "user-defined-env",
-								},
-							},
-						},
-					},
-				},
-			}
-
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var errLogContainer *corev1.Container
-			var slowLogContainer *corev1.Container
-
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				switch c.Name {
-				case "err-log":
-					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				case "slow-log":
-					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
-			}
-
-			Expect(errLogContainer).ShouldNot(BeNil())
-			Expect(slowLogContainer).ShouldNot(BeNil())
-			Expect(errLogContainer.Image).Should(Equal("fluent-bit:dev"))
-			Expect(slowLogContainer.Image).Should(Equal("fluent-bit:dev"))
-			Expect(errLogContainer.Env).Should(ContainElements(corev1.EnvVar{
-				Name:  "USER_DEFINED_ENV",
-				Value: "user-defined-env",
-			}))
-			Expect(slowLogContainer.Env).Should(ContainElements(corev1.EnvVar{
-				Name:  "USER_DEFINED_ENV",
-				Value: "user-defined-env",
-			}))
-		})
-
-		It("should disable log container", func() {
-			oldSts := &appsv1.StatefulSet{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Delete(ctx, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.DisableErrorLogContainer = true
-			cluster.Spec.DisableSlowQueryLogContainer = true
-
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var errLogContainer *corev1.Container
-			var slowLogContainer *corev1.Container
-
-			for i, c := range sts.Spec.Template.Spec.Containers {
-				switch c.Name {
-				case "err-log":
-					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				case "slow-log":
-					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
-				}
-			}
-
-			Expect(errLogContainer).Should(BeNil())
-			Expect(slowLogContainer).Should(BeNil())
-		})
-
-		It("should use volumeTemplate", func() {
-			oldSts := &appsv1.StatefulSet{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Delete(ctx, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.VolumeClaimTemplates = []mocov1alpha1.PersistentVolumeClaim{
-				{
-					ObjectMeta: mocov1alpha1.ObjectMeta{
-						Name: "test-volume",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
-							},
-						},
-					},
-				},
-			}
-
-			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			sts := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var testClaim *corev1.PersistentVolumeClaim
-			var dataClaim *corev1.PersistentVolumeClaim
-			for i, v := range sts.Spec.VolumeClaimTemplates {
-				if v.Name == "test-volume" {
-					testClaim = &sts.Spec.VolumeClaimTemplates[i]
-				}
-				if v.Name == mysqlDataVolumeName {
-					dataClaim = &sts.Spec.VolumeClaimTemplates[i]
-				}
-			}
-			Expect(testClaim).ShouldNot(BeNil())
-			Expect(dataClaim).ShouldNot(BeNil())
-
-			isUpdated, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should return error, when volumeTemplate contains mysql-data", func() {
-			oldSts := &appsv1.StatefulSet{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Delete(ctx, oldSts)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			serverIDBase := mathrand.Uint32()
-			cluster.Status.ServerIDBase = &serverIDBase
-			cluster.Spec.VolumeClaimTemplates = []mocov1alpha1.PersistentVolumeClaim{
-				{
-					ObjectMeta: mocov1alpha1.ObjectMeta{
-						Name: mysqlDataVolumeName,
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: *resource.NewQuantity(1<<10, resource.BinarySI),
-							},
-						},
-					},
-				},
-			}
-
-			_, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
-			Expect(err).Should(HaveOccurred())
-		})
-	})
-
-	Context("Services", func() {
-		It("should create services", func() {
-			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			createdPrimaryService := &corev1.Service{}
-			createdReplicaService := &corev1.Service{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(cluster)), Namespace: clusterNamespace}, createdPrimaryService)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(cluster)), Namespace: clusterNamespace}, createdReplicaService)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeClusterIP))
-			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeClusterIP))
-
-			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
-			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
-			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
-
-			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdReplicaService.Spec.Ports[0].Name).Should(Equal("mysql"))
-			Expect(createdReplicaService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-			Expect(createdReplicaService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
-			Expect(createdReplicaService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
-
-			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should use serviceTemplate", func() {
-			newCluster := &mocov1alpha1.MySQLCluster{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: clusterNamespace}, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			newCluster.Spec.ServiceTemplate = &mocov1alpha1.ServiceTemplate{}
-			annotation := map[string]string{
-				"annotation-key": "annotation-value",
-			}
-			newCluster.Spec.ServiceTemplate.Annotations = annotation
-			labelKey := "label-key"
-			labelValue := "label-value"
-			newCluster.Spec.ServiceTemplate.Labels = map[string]string{
-				labelKey: labelValue,
-			}
-			newCluster.Spec.ServiceTemplate.Spec = &corev1.ServiceSpec{
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+			Spec: &corev1.ServiceSpec{
 				Type: corev1.ServiceTypeLoadBalancer,
-				Ports: []corev1.ServicePort{
-					{
-						Name:       "mysql",
-						Protocol:   corev1.ProtocolTCP,
-						Port:       8888,
-						TargetPort: intstr.FromInt(8888),
-					},
-				},
+			},
+		}
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			primary = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
+				return err
 			}
-			err = k8sClient.Update(ctx, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			isUpdated, err := reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
-
-			createdPrimaryService := &corev1.Service{}
-			createdReplicaService := &corev1.Service{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-primary", moco.UniqueName(newCluster)), Namespace: clusterNamespace}, createdPrimaryService)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: fmt.Sprintf("%s-replica", moco.UniqueName(newCluster)), Namespace: clusterNamespace}, createdReplicaService)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(createdPrimaryService.ObjectMeta.Annotations).Should(Equal(annotation))
-			Expect(createdReplicaService.ObjectMeta.Annotations).Should(Equal(annotation))
-
-			Expect(createdPrimaryService.ObjectMeta.Labels[labelKey]).Should(Equal(labelValue))
-			Expect(createdReplicaService.ObjectMeta.Labels[labelKey]).Should(Equal(labelValue))
-
-			Expect(createdPrimaryService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
-			Expect(createdReplicaService.Spec.Type).Should(Equal(corev1.ServiceTypeLoadBalancer))
-
-			Expect(createdPrimaryService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdPrimaryService.Spec.Ports[0].Name).Should(Equal("mysql"))
-			Expect(createdPrimaryService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-			Expect(createdPrimaryService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
-			Expect(createdPrimaryService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
-
-			Expect(createdReplicaService.Spec.Ports).Should(HaveLen(2))
-			Expect(createdReplicaService.Spec.Ports[0].Name).Should(Equal("mysql"))
-			Expect(createdReplicaService.Spec.Ports[0].Port).Should(BeNumerically("==", moco.MySQLPort))
-			Expect(createdReplicaService.Spec.Ports[1].Name).Should(Equal("mysqlx"))
-			Expect(createdReplicaService.Spec.Ports[1].Port).Should(BeNumerically("==", moco.MySQLXPort))
-
-			isUpdated, err = reconciler.createOrUpdateServices(ctx, reconciler.Log, newCluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
+			if primary.Spec.Type != corev1.ServiceTypeLoadBalancer {
+				return errors.New("service type is not updated")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 
-	Context("PodDisruptionBudget", func() {
-		It("should create pod disruption budget", func() {
-			expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
-				MaxUnavailable: &intstr.IntOrString{
-					Type:   intstr.Int,
-					IntVal: 1,
-				},
-				Selector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						moco.ClusterKey:   moco.UniqueName(cluster),
-						moco.AppNameKey:   moco.AppName,
-						moco.ManagedByKey: moco.MyName,
-					},
-				},
+	It("should reconcile statefulset", func() {
+		cluster := testNewMySQLCluster("test")
+		cluster.Spec.ReplicationSourceSecretName = pointer.String("source-secret")
+		cluster.Spec.PodTemplate.Annotations = map[string]string{"foo": "bar"}
+		cluster.Spec.PodTemplate.Labels = map[string]string{"foo": "baz"}
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var sts *appsv1.StatefulSet
+		Eventually(func() error {
+			sts = &appsv1.StatefulSet{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		}).Should(Succeed())
+
+		By("checking new statefulset")
+		Expect(sts.OwnerReferences).NotTo(BeEmpty())
+		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("foo", "bar"))
+		Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("foo", "baz"))
+		Expect(sts.Spec.Replicas).NotTo(BeNil())
+		Expect(*sts.Spec.Replicas).To(Equal(cluster.Spec.Replicas))
+
+		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
+		foundMysqld := false
+		foundAgent := false
+		foundSlowLogAgent := false
+		foundErrorLogAgent := false
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			switch c.Name {
+			case constants.MysqldContainerName:
+				foundMysqld = true
+				Expect(c.Image).To(Equal("moco-mysql:latest"))
+			case constants.AgentContainerName:
+				foundAgent = true
+				Expect(c.Image).To(Equal(testAgentImage))
+			case constants.SlowQueryLogAgentContainerName:
+				foundSlowLogAgent = true
+				Expect(c.Image).To(Equal(testFluentBitImage))
+			case constants.ErrorLogAgentContainerName:
+				foundErrorLogAgent = true
+				Expect(c.Image).To(Equal(testFluentBitImage))
 			}
+		}
+		Expect(foundMysqld).To(BeTrue())
+		Expect(foundAgent).To(BeTrue())
+		Expect(foundSlowLogAgent).To(BeTrue())
+		Expect(foundErrorLogAgent).To(BeTrue())
 
-			cluster.Spec.Replicas = 1
+		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+		initContainer := &sts.Spec.Template.Spec.InitContainers[0]
+		Expect(initContainer.Name).To(Equal(constants.InitContainerName))
+		Expect(initContainer.Image).To(Equal("moco-mysql:latest"))
+		Expect(initContainer.Command).To(ContainElement(fmt.Sprintf("%d", cluster.Spec.ServerIDBase)))
 
-			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+		Expect(sts.Spec.VolumeClaimTemplates).To(HaveLen(1))
+		Expect(sts.Spec.VolumeClaimTemplates[0].Name).To(Equal(constants.MySQLDataVolumeName))
 
-			pdb := &policyv1beta1.PodDisruptionBudget{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(pdb.Spec).Should(Equal(expectedSpec))
-
-			isUpdated, err = reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeFalse())
-		})
-
-		It("should fill appropriate MaxUnavailable", func() {
-			expectedSpec := policyv1beta1.PodDisruptionBudgetSpec{
-				MaxUnavailable: &intstr.IntOrString{
-					Type:   intstr.Int,
-					IntVal: 1,
-				},
-				Selector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						moco.ClusterKey:   moco.UniqueName(cluster),
-						moco.AppNameKey:   moco.AppName,
-						moco.ManagedByKey: moco.MyName,
-					},
-				},
+		foundUserSecret := false
+		foundMyCnfConfig := false
+		foundSlowLogConfig := false
+		foundErrorLogConfig := false
+		for _, v := range sts.Spec.Template.Spec.Volumes {
+			switch v.Name {
+			case constants.MySQLConfSecretVolumeName:
+				foundUserSecret = true
+			case constants.MySQLConfVolumeName:
+				foundMyCnfConfig = true
+			case constants.SlowQueryLogAgentConfigVolumeName:
+				foundSlowLogConfig = true
+			case constants.ErrorLogAgentConfigVolumeName:
+				foundErrorLogConfig = true
 			}
+		}
+		Expect(foundUserSecret).To(BeTrue())
+		Expect(foundMyCnfConfig).To(BeTrue())
+		Expect(foundSlowLogConfig).To(BeTrue())
+		Expect(foundErrorLogConfig).To(BeTrue())
 
-			By("checking in case of 5 replicas")
-			cluster.Spec.Replicas = 5
-			isUpdated, err := reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+		By("editing statefulset")
+		for i, c := range sts.Spec.Template.Spec.Containers {
+			switch c.Name {
+			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName, constants.ErrorLogAgentContainerName:
+				sts.Spec.Template.Spec.Containers[i].Image = "invalid"
+			}
+		}
+		err = k8sClient.Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
 
-			pdb := &policyv1beta1.PodDisruptionBudget{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
-			Expect(err).ShouldNot(HaveOccurred())
-			expectedSpec.MaxUnavailable.IntVal = 2
-			Expect(pdb.Spec).Should(Equal(expectedSpec))
+		Eventually(func() error {
+			sts = &appsv1.StatefulSet{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+			if err != nil {
+				return err
+			}
+			for _, c := range sts.Spec.Template.Spec.Containers {
+				if c.Name != constants.AgentContainerName {
+					continue
+				}
+				if c.Image != testAgentImage {
+					return errors.New("c.Image is not reconciled yet")
+				}
+			}
+			return nil
+		}).Should(Succeed())
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			switch c.Name {
+			case constants.SlowQueryLogAgentContainerName, constants.ErrorLogAgentContainerName:
+				Expect(c.Image).To(Equal("invalid"), c.Name)
+			}
+		}
 
-			By("checking in case of 3 replicas")
-			cluster.Spec.Replicas = 3
-			isUpdated, err = reconciler.createOrUpdatePodDisruptionBudget(ctx, reconciler.Log, cluster)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(isUpdated).Should(BeTrue())
+		By("updating MySQLCluster")
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
 
+		cluster.Spec.Replicas = 5
+		cluster.Spec.ReplicationSourceSecretName = nil
+		cluster.Spec.LogRotationSchedule = "0 * * * *"
+		cluster.Spec.DisableSlowQueryLogContainer = true
+		cluster.Spec.PodTemplate.Spec.PriorityClassName = "hoge"
+		cluster.Spec.PodTemplate.Spec.Containers = append(cluster.Spec.PodTemplate.Spec.Containers,
+			corev1.Container{Name: "dummy", Image: "dummy:latest"})
+		cluster.Spec.PodTemplate.Spec.InitContainers = append(cluster.Spec.PodTemplate.Spec.InitContainers,
+			corev1.Container{Name: "init-dummy", Image: "init-dummy:latest"})
+		cluster.Spec.PodTemplate.Spec.Volumes = append(cluster.Spec.PodTemplate.Spec.Volumes,
+			corev1.Volume{Name: "dummy-vol", VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}})
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			c := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
+				return err
+			}
+			if c.Status.ReconcileInfo.Generation != c.Generation {
+				return fmt.Errorf("not yet reconciled: generation=%d", c.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		sts = &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(sts.Spec.Replicas).NotTo(BeNil())
+		Expect(*sts.Spec.Replicas).To(Equal(cluster.Spec.Replicas))
+		Expect(sts.Spec.Template.Spec.PriorityClassName).To(Equal("hoge"))
+
+		foundErrorLogAgent = false
+		foundDummyContainer := false
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
+			switch c.Name {
+			case constants.AgentContainerName:
+				Expect(c.Args).To(ContainElement("0 * * * *"))
+			case constants.ErrorLogAgentContainerName:
+				foundErrorLogAgent = true
+			case "dummy":
+				foundDummyContainer = true
+			}
+		}
+		Expect(foundErrorLogAgent).To(BeTrue())
+		Expect(foundDummyContainer).To(BeTrue())
+
+		foundInitDummyContainer := false
+		for _, c := range sts.Spec.Template.Spec.InitContainers {
+			switch c.Name {
+			case "init-dummy":
+				foundInitDummyContainer = true
+			}
+		}
+		Expect(foundInitDummyContainer).To(BeTrue())
+
+		foundDummyVolume := false
+		for _, v := range sts.Spec.Template.Spec.Volumes {
+			switch v.Name {
+			case "dummy-vol":
+				foundDummyVolume = true
+			}
+		}
+		Expect(foundDummyVolume).To(BeTrue())
+
+		By("updating MySQLCluster again")
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Spec.DisableErrorLogContainer = true
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			c := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
+				return err
+			}
+			if c.Status.ReconcileInfo.Generation != c.Generation {
+				return fmt.Errorf("not yet reconciled: generation=%d", c.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		sts = &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			Expect(c.Name).NotTo(Equal(constants.ErrorLogAgentContainerName))
+		}
+	})
+
+	It("should reconcile a pod disruption budget", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cluster = &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
+				return fmt.Errorf("not yet reconciled")
+			}
+			return nil
+		}).Should(Succeed())
+
+		var pdb *policyv1beta1.PodDisruptionBudget
+		Eventually(func() error {
 			pdb = &policyv1beta1.PodDisruptionBudget{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, pdb)
-			Expect(err).ShouldNot(HaveOccurred())
-			expectedSpec.MaxUnavailable.IntVal = 1
-			Expect(pdb.Spec).Should(Equal(expectedSpec))
-		})
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
+		}).Should(Succeed())
+
+		Expect(pdb.Spec.MaxUnavailable).NotTo(BeNil())
+		Expect(pdb.Spec.MaxUnavailable.IntVal).To(Equal(int32(1)))
+
+		Eventually(func() error {
+			cluster = &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
+				return fmt.Errorf("not yet reconciled")
+			}
+			return nil
+		}).Should(Succeed())
+		cluster.Spec.Replicas = 1
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			pdb = &policyv1beta1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+	})
+
+	It("should have a correct status.reconcileInfo value", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cluster2 := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			if cluster2.Status.ReconcileInfo.ReconcileVersion != 1 {
+				return fmt.Errorf("reconcile version is not 1: %d", cluster2.Status.ReconcileInfo.ReconcileVersion)
+			}
+			if cluster2.Status.ReconcileInfo.Generation != 1 {
+				return fmt.Errorf("generation is not 1: %d", cluster2.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Annotations = map[string]string{"foo": "bar"}
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Consistently(func() error {
+			cluster2 := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			if cluster2.Status.ReconcileInfo.ReconcileVersion != 1 {
+				return fmt.Errorf("reconcile version is not 1: %d", cluster2.Status.ReconcileInfo.ReconcileVersion)
+			}
+			if cluster2.Status.ReconcileInfo.Generation != 1 {
+				return fmt.Errorf("generation is not 1: %d", cluster2.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Spec.Replicas = 5
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cluster2 := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			if cluster2.Status.ReconcileInfo.ReconcileVersion != 1 {
+				return fmt.Errorf("reconcile version is not 1: %d", cluster2.Status.ReconcileInfo.ReconcileVersion)
+			}
+			if cluster2.Status.ReconcileInfo.Generation != 2 {
+				return fmt.Errorf("generation is not 2: %d", cluster2.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should call manager methods properly", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = testNewMySQLCluster("test")
+		cluster.Name = "test2"
+		err = k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			keys := mockMgr.getKeys()
+			return keys["test/test"] && keys["test/test2"]
+		}).Should(BeTrue())
+
+		testDeleteMySQLCluster(ctx, "test", "test2")
+
+		Eventually(func() bool {
+			return mockMgr.getKeys()["test/test2"]
+		}).Should(BeFalse())
+
+		Expect(mockMgr.getKeys()["test/test"]).To(BeTrue())
+	})
+
+	It("should delete all related resources", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			key := client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}
+			return k8sClient.Get(ctx, key, secret)
+		}).Should(Succeed())
+
+		testDeleteMySQLCluster(ctx, "test", "test")
+
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			key := client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}
+			err := k8sClient.Get(ctx, key, secret)
+			if err == nil {
+				return fmt.Errorf("the secret in controller namespace still exists")
+			}
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
 	})
 })

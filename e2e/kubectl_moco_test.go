@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/password"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -41,7 +41,7 @@ func testKubectlMoco() {
 
 		secret, err := getPasswordSecret(cluster)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[moco.WritablePasswordEnvName])))
+		Expect(strings.TrimSpace(string(stdout))).Should(Equal(string(secret.Data[password.WritablePasswordKey])))
 	})
 
 	It("should fetch credential for moco-writable formatted by my.conf", func() {
@@ -56,6 +56,6 @@ func testKubectlMoco() {
 		Expect(string(stdout)).Should(Equal(fmt.Sprintf(`[client]
 user=moco-writable
 password="%s"
-`, secret.Data[moco.WritablePasswordEnvName])))
+`, secret.Data[password.WritablePasswordKey])))
 	})
 }

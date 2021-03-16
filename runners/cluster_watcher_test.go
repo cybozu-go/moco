@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +20,7 @@ func testMySQLClusterWatcher() {
 		watcher := NewMySQLClusterWatcher(k8sClient, ch, time.Second)
 		go watcher.Start(ctx)
 
-		manifest := `apiVersion: moco.cybozu.com/v1alpha1
+		manifest := `apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
 metadata:
   name: mysqlcluster
@@ -39,14 +39,14 @@ spec:
         storage: 1Gi
   mysqlConfigMapName: mycnf
 `
-		cluster := mocov1alpha1.MySQLCluster{}
+		cluster := mocov1beta1.MySQLCluster{}
 		err := yaml.Unmarshal([]byte(manifest), &cluster)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = k8sClient.Create(context.Background(), &cluster)
 		Expect(err).ShouldNot(HaveOccurred())
-		cluster.Status.Conditions = []mocov1alpha1.MySQLClusterCondition{
+		cluster.Status.Conditions = []mocov1beta1.MySQLClusterCondition{
 			{
-				Type:               mocov1alpha1.ConditionInitialized,
+				Type:               mocov1beta1.ConditionInitialized,
 				Status:             corev1.ConditionTrue,
 				LastTransitionTime: metav1.NewTime(time.Now()),
 			},

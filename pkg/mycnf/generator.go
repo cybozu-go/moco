@@ -1,4 +1,4 @@
-package controllers
+package mycnf
 
 import (
 	"fmt"
@@ -7,21 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cybozu-go/moco"
-	"github.com/go-logr/logr"
+	"github.com/cybozu-go/moco/pkg/constants"
 )
 
 var (
-	confKeyPrefixes = []string{
-		"enable_",
-		"disable_",
-		"skip_",
-	}
-
 	// Default options of mysqld section
 	defaultMycnf = map[string]string{
-		"tmpdir":               moco.TmpPath,
-		"innodb_tmpdir":        moco.TmpPath,
+		"tmpdir":               constants.TmpPath,
+		"innodb_tmpdir":        constants.TmpPath,
 		"character_set_server": "utf8mb4",
 		"collation_server":     "utf8mb4_unicode_ci",
 
@@ -95,27 +88,25 @@ var (
 
 	constMycnf = map[string]map[string]string{
 		"mysqld": {
-			"port":    strconv.Itoa(moco.MySQLPort),
-			"socket":  filepath.Join(moco.VarRunPath, "mysqld.sock"),
-			"datadir": moco.MySQLDataPath,
+			"port":             strconv.Itoa(constants.MySQLPort),
+			"socket":           filepath.Join(constants.RunPath, "mysqld.sock"),
+			"datadir":          constants.MySQLDataPath,
+			"secure_file_priv": "NULL",
 
 			"skip_name_resolve": "ON",
 
-			"log_error":           filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName),
-			"slow_query_log_file": filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName),
+			"log_error":           filepath.Join(constants.LogDirPath, constants.MySQLErrorLogName),
+			"slow_query_log_file": filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName),
 
 			"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
 			"gtid_mode":                "ON",
 			"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
-			"mysqlx_port": strconv.Itoa(moco.MySQLXPort),
-			"admin_port":  strconv.Itoa(moco.MySQLAdminPort),
+			"mysqlx_port": strconv.Itoa(constants.MySQLXPort),
+			"admin_port":  strconv.Itoa(constants.MySQLAdminPort),
 
-			"pid_file":       filepath.Join(moco.VarRunPath, "mysqld.pid"),
+			"pid_file":       filepath.Join(constants.RunPath, "mysqld.pid"),
 			"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
-
-			"server_id":     "{{ .ServerID }}",
-			"admin_address": "{{ .AdminAddress }}",
 
 			"read_only":        "ON",
 			"super_read_only":  "ON",
@@ -124,8 +115,8 @@ var (
 			"loose_rpl_semi_sync_master_timeout": strconv.Itoa(24 * 60 * 60 * 1000),
 		},
 		"client": {
-			"port":                        strconv.Itoa(moco.MySQLPort),
-			"socket":                      filepath.Join(moco.VarRunPath, "mysqld.sock"),
+			"port":                        strconv.Itoa(constants.MySQLPort),
+			"socket":                      filepath.Join(constants.RunPath, "mysqld.sock"),
 			"loose_default_character_set": "utf8mb4",
 		},
 		"mysql": {
@@ -135,37 +126,18 @@ var (
 	}
 )
 
-type mysqlConfGenerator struct {
-	conf map[string]map[string]string
-	log  logr.Logger
-}
+func Generate(mysqldConf map[string]string) string {
+	conf := make(map[string]map[string]string)
 
-func (g *mysqlConfGenerator) mergeSection(section string, conf map[string]string) {
-	if g.conf == nil {
-		g.conf = make(map[string]map[string]string)
-	}
-	if _, ok := g.conf[section]; !ok {
-		g.conf[section] = make(map[string]string)
-	}
-	for k, v := range conf {
-		nk := normalizeConfKey(k)
-		for _, kk := range listConfKeyVariations(nk) {
-			delete(g.conf[section], kk)
-		}
-		g.conf[section][nk] = v
-	}
-}
+	conf["mysqld"] = mergeSection(defaultMycnf, mysqldConf)
 
-func (g *mysqlConfGenerator) merge(conf map[string]map[string]string) {
-	for k, v := range conf {
-		g.mergeSection(k, v)
+	for sec, secConf := range constMycnf {
+		conf[sec] = mergeSection(conf[sec], secConf)
 	}
-}
 
-func (g *mysqlConfGenerator) generate() (string, error) {
 	// sort keys to generate reproducible my.cnf
-	sections := make([]string, 0, len(g.conf))
-	for sec := range g.conf {
+	sections := make([]string, 0, len(conf))
+	for sec := range conf {
 		sections = append(sections, sec)
 	}
 	sort.Strings(sections)
@@ -174,10 +146,10 @@ func (g *mysqlConfGenerator) generate() (string, error) {
 	for _, sec := range sections {
 		_, err := fmt.Fprintf(b, "[%s]\n", sec)
 		if err != nil {
-			return "", err
+			panic(err)
 		}
 
-		confSec := g.conf[sec]
+		confSec := conf[sec]
 		// sort keys to generate reproducible my.cnf
 		confKeys := make([]string, 0, len(confSec))
 		for k := range confSec {
@@ -188,11 +160,38 @@ func (g *mysqlConfGenerator) generate() (string, error) {
 		for _, k := range confKeys {
 			_, err = fmt.Fprintf(b, "%s = %s\n", k, confSec[k])
 			if err != nil {
-				return "", err
+				panic(err)
 			}
 		}
+
+		fmt.Fprintf(b, "\n")
 	}
-	return b.String(), nil
+
+	_, err := fmt.Fprintf(b, "!includedir %s\n", constants.MySQLInitConfPath)
+	if err != nil {
+		panic(err)
+	}
+
+	return b.String()
+}
+
+func mergeSection(conf1, conf2 map[string]string) map[string]string {
+	conf := make(map[string]string)
+
+	for k, v := range conf1 {
+		nk := normalizeConfKey(k)
+		conf[nk] = v
+	}
+
+	for k, v := range conf2 {
+		nk := normalizeConfKey(k)
+		for _, kk := range listConfKeyVariations(nk) {
+			delete(conf, kk)
+		}
+		conf[nk] = v
+	}
+
+	return conf
 }
 
 func normalizeConfKey(k string) string {
@@ -201,14 +200,5 @@ func normalizeConfKey(k string) string {
 
 func listConfKeyVariations(k string) []string {
 	base := strings.TrimPrefix(k, "loose_")
-	for _, prefix := range confKeyPrefixes {
-		base = strings.TrimPrefix(base, prefix)
-	}
-
-	variations := []string{base, "loose_" + base}
-	for _, prefix := range confKeyPrefixes {
-		variations = append(variations, prefix+base, "loose_"+prefix+base)
-	}
-
-	return variations
+	return []string{base, "loose_" + base}
 }

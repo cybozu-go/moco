@@ -1,47 +1,70 @@
-Reconcile procedure
-===================
+# How MOCO reconciles MySQLCluster
 
-MOCO constructs the MySQL Cluster by its reconcile loop.  Note that the reconcile loop is called periodically even if there is no CRUD of Kubernetes API resources.
+MOCO creates and updates a StatefulSet and related resources for each MySQLCluster custom resource.
+This document describes how and when MOCO updates them.
 
-Concepts
---------
+## Reconciler versions
 
-### Constraints always to keep
+MOCO's reconciliation routine should be consistent to avoid frequent updates.
 
-In the reconcile loop, MOCO keeps the following constraints:
-- An instance that can accept write requests exits alone.  In other words, there is at most one instance with the setting `read_only=off`
-  - A Multi-primary cluster requires a completely different reconcile process.  MOCO only supports single-primary cluster
-- Any other instance except for the primary must not have the setting `read_only=off`.  The primary instance is indicated at `.status.currentPrimaryIndex` in the `MySQLCluster` custom resource
+That said, we may need to modify the reconciliation process in the future.
+To avoid updating the StatefulSet, MOCO has multiple versions of reconcilers.
 
-### Primary Selection
+For example, if a MySQLCluster is reconciled with version 1 of the reconciler,
+MOCO will keep using the version 1 reconciler to reconcile the MySQLCluster.
 
-- MOCO saves the result of primary selection in `.status.currentPrimaryIndex` and it is the single source of truth.
-    - If user manipulates `.status` or executes `CHANGE MASTER TO` to a mysqld, Moco doesn't take care of it.
+If the user edits MySQLCluster's `spec` field, MOCO can reconcile the MySQLCluster
+with the latest reconciler, for example version 2, because the user shall be
+ready for mysqld restarts.
 
-### When MOCO can execute failover
+## StatefulSet
 
-- Executes failover only if it can confirm all instances' statuses.
-- Replica's Retrieved_Gtid_Set and Executed_Gtid_set are identical.
-- Executes failover process when Moco detects empty instances if one of the following conditions is met.
-    - A primary which `.status.currentPrimaryIndex` indicates is available.
-    - Two replicas are available. (Three instances if a cluster is consist of Five instances) 
+MOCO tries not to update the StatefulSet frequently.
+It updates the StatefulSet only when the update is a must.
 
-### Settings for initial and rebooted instance
+### The conditions for StatefulSet update
 
-- Initial and rebooted mysqld instance has following configurations because only MOCO determines to start replication and accept write requests.
-    - `read_only=on`
-    - `super_read_only=on`
-    - `skip slave start=on`
-    
-Reconcile Flows
----------------
+The StatefulSet will be updated when:
 
-1. Retrieve all mysqld instances' statuses and `.status.currentPrimaryIndex`.
-2. Confirm if all constraints are complied.
-3. If a instance with `read_only=off` does not exist, select a primary instance.
-4. Update the primary index to `.status.currentPrimaryIndex`.
-5. Clone the data from the new primary to replica instances, if necessary.
-6. Configure replication settings with the new primary.
-7. Wait for replicas to catch up with the new primary.
-8. Create Service resources to access to the primary and replicas.
-9. Turn off `read_only` mode on the primary.
+- The fields under `spec` of MySQLCluster are modified.
+- `my.cnf` for mysqld is updated.
+- the version of the reconciler used to reconcile the StatefulSet is obsoleted.
+- the image of moco-agent given to the controller is updated.
+
+### When the StatefulSet is _not_ updated
+
+- the image of fluent-bit given to the controller is changed.
+    - because the controller does not depend on fluent-bit.
+
+## Service
+
+MOCO creates three Services for each MySQLCluster, that is:
+
+- A headless Service, required for every StatefulSet
+- A Service for the primary mysqld instance
+- A Service for replica mysql instances
+
+The Services' labels, annotations, and `spec` fields can be customized
+with MySQLCluster's `status.serviceTemplate` field.
+
+The following fields in Service `spec` may not be customized, though.
+
+- `clusterIP`
+- `ports`
+- `selector`
+
+## PodDisruptionBudget
+
+MOCO creates a PodDisruptionBudget for each MySQLCluster to prevent
+too few semi-sync replica servers.
+
+The `spec.maxUnavailable` value is calculated from MySQLCluster's
+`spec.replicas` as follows:
+
+    `spec.maxUnavailable` = floor(`spec.replicas` / 2)
+
+If `spec.replicas` is 1, MOCO does not create a PDB.
+
+## The update policy of moco-agent container
+
+We shall try to avoid updating moco-agent as much as possible.

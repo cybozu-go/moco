@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco/accessor"
-	"github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -84,7 +84,7 @@ func testUpdatePrimary() {
 		err = op.Run(ctx, infra, &cluster, status)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		updateCluster := v1alpha1.MySQLCluster{}
+		updateCluster := v1beta1.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.Name}, &updateCluster)
 		Expect(err).ShouldNot(HaveOccurred())
 

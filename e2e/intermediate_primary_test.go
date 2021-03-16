@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/moco/api/v1alpha1"
+	"github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/operators"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,6 +27,9 @@ func testIntermediatePrimary() {
 		donorCluster, err := getMySQLCluster()
 		Expect(err).ShouldNot(HaveOccurred())
 		passwordSecret, err := getPasswordSecret(donorCluster)
+		Expect(err).NotTo(HaveOccurred())
+		password, err := operators.NewMySQLPasswordFromSecret(passwordSecret)
+		Expect(err).NotTo(HaveOccurred())
 
 		secret := fmt.Sprintf(`apiVersion: v1
 kind: Secret
@@ -41,10 +45,10 @@ stringData:
   CLONE_PASSWORD: %s
   INIT_AFTER_CLONE_USER: %s
   INIT_AFTER_CLONE_PASSWORD: %s
-`, fmt.Sprintf("%s-replica", moco.UniqueName(donorCluster)), "3306",
-			moco.ReplicationUser, string(passwordSecret.Data[moco.ReplicationPasswordKey]),
-			moco.CloneDonorUser, string(passwordSecret.Data[moco.CloneDonorPasswordKey]),
-			"moco-admin", string(passwordSecret.Data[moco.AdminPasswordKey]))
+`, fmt.Sprintf("%s-replica", donorCluster.PrefixedName()), "3306",
+			constants.ReplicationUser, string(password.Replicator()),
+			constants.CloneDonorUser, string(password.Donor()),
+			"moco-admin", string(password.Admin()))
 		stdout, stderr, err := kubectlWithInput([]byte(secret), "apply", "-n"+nsExternal, "-f", "-")
 		Expect(err).ShouldNot(HaveOccurred(), "stdout=%s, stderr=%s, secret=%v", stdout, stderr, secret)
 
@@ -65,7 +69,7 @@ stringData:
 			if cluster.Status.Ready != corev1.ConditionTrue {
 				return errors.New("Status.Ready should be true")
 			}
-			healthy := findCondition(cluster.Status.Conditions, v1alpha1.ConditionHealthy)
+			healthy := findCondition(cluster.Status.Conditions, v1beta1.ConditionHealthy)
 			if healthy == nil || healthy.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Healthy should be true")
 			}

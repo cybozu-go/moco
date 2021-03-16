@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 )
 
 type stopReplicaIOThread struct {
@@ -23,7 +23,7 @@ func (o stopReplicaIOThread) Name() string {
 	return OperatorStopReplicaIOThread
 }
 
-func (o stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o stopReplicaIOThread) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1beta1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	db, err := infra.GetDB(o.Index)
 	if err != nil {
 		return err

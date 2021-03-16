@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
@@ -40,7 +39,7 @@ func testConfigureReplication() {
 		secret.Name = namespace + ".test"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &secret, func() error {
 			secret.Data = map[string][]byte{
-				moco.ReplicationPasswordKey: []byte(test_utils.RootUserPassword),
+				replicationPasswordKey: []byte(test_utils.RootUserPassword),
 			}
 			return nil
 		})
@@ -83,10 +82,10 @@ func testConfigureReplication() {
 				return err
 			}
 			replicaStatus = status.InstanceStatus[0].ReplicaStatus
-			if replicaStatus.SlaveIORunning != moco.ReplicaRunConnect {
+			if replicaStatus.SlaveIORunning != "Yes" {
 				return errors.New("IO thread should be running")
 			}
-			if replicaStatus.SlaveSQLRunning != moco.ReplicaRunConnect {
+			if replicaStatus.SlaveSQLRunning != "Yes" {
 				return errors.New("SQL thread should be running")
 			}
 			return nil

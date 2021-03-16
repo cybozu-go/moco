@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cybozu-go/moco"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +20,7 @@ func testGarbageCollector() {
 		By("deleting ownerReference from a PVC")
 		var allPvcNames []string
 		for i := 0; i < int(cluster.Spec.Replicas); i++ {
-			podName := fmt.Sprintf("%s-%d", moco.UniqueName(cluster), i)
+			podName := fmt.Sprintf("%s-%d", cluster.PrefixedName(), i)
 			pvcName := fmt.Sprintf("mysql-data-%s", podName)
 			allPvcNames = append(allPvcNames, pvcName)
 		}

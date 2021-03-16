@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cybozu-go/moco"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,7 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -53,7 +52,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(cfg).ToNot(BeNil())
 
 	sch := runtime.NewScheme()
-	err = mocov1alpha1.AddToScheme(sch)
+	err = mocov1beta1.AddToScheme(sch)
 	Expect(err).NotTo(HaveOccurred())
 
 	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
@@ -61,7 +60,7 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = mgr.GetFieldIndexer().IndexField(context.Background(), &mocov1alpha1.MySQLCluster{}, moco.InitializedClusterIndexField, selectInitializedCluster)
+	err = mgr.GetFieldIndexer().IndexField(context.Background(), &mocov1beta1.MySQLCluster{}, constants.InitializedClusterIndexField, selectInitializedCluster)
 	Expect(err).ToNot(HaveOccurred())
 
 	go mgr.Start(ctrl.SetupSignalHandler())
@@ -83,10 +82,10 @@ var _ = Describe("Test runners", func() {
 })
 
 func selectInitializedCluster(obj client.Object) []string {
-	cluster := obj.(*mocov1alpha1.MySQLCluster)
+	cluster := obj.(*mocov1beta1.MySQLCluster)
 
 	for _, cond := range cluster.Status.Conditions {
-		if cond.Type == mocov1alpha1.ConditionInitialized {
+		if cond.Type == mocov1beta1.ConditionInitialized {
 			return []string{string(cond.Status)}
 		}
 	}

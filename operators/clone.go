@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
 	"github.com/cybozu-go/moco/agentrpc"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 )
 
 type cloneOp struct {
@@ -27,16 +27,15 @@ func (o cloneOp) Name() string {
 	return OperatorClone
 }
 
-func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o cloneOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1beta1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	req := &agentrpc.CloneRequest{
 		External: o.fromExternal,
-		Token:    cluster.Status.AgentToken,
 	}
 
 	if !o.fromExternal {
-		primaryHost := moco.GetHost(cluster, *cluster.Status.CurrentPrimaryIndex)
+		primaryHost := cluster.PodHostname(*cluster.Status.CurrentPrimaryIndex)
 		req.DonorHost = primaryHost
-		req.DonorPort = moco.MySQLAdminPort
+		req.DonorPort = constants.MySQLAdminPort
 	}
 
 	conn, err := infra.GetAgentConn(o.replicaIndex)

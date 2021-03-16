@@ -4,25 +4,29 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/password"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func getPassword(ctx context.Context, clusterName, user string) (string, error) {
+	cluster := &mocov1beta1.MySQLCluster{}
+	cluster.Name = clusterName
+	cluster.Namespace = namespace
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
-		Name:      moco.GetClusterSecretName(clusterName),
+		Name:      cluster.UserSecretName(),
 	}, secret)
 	if err != nil {
 		return "", err
 	}
 
 	userPassKeys := map[string]string{
-		moco.WritableUser: moco.WritablePasswordEnvName,
-		moco.ReadOnlyUser: moco.ReadOnlyPasswordEnvName,
+		constants.ReadOnlyUser: password.ReadOnlyPasswordKey,
+		constants.WritableUser: password.WritablePasswordKey,
 	}
 	key, ok := userPassKeys[user]
 	if !ok {
@@ -35,7 +39,7 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	return string(password), nil
 }
 
-func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index int) (string, error) {
+func getPodName(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
 	if index >= int(cluster.Spec.Replicas) {
 		return "", errors.New("index should be smaller than replicas")
 	}
@@ -47,5 +51,5 @@ func getPodName(ctx context.Context, cluster *mocov1alpha1.MySQLCluster, index i
 		}
 	}
 
-	return moco.GetPodName(cluster.Name, index), nil
+	return cluster.PodName(index), nil
 }

@@ -3,7 +3,7 @@ package metrics
 import (
 	"testing"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/google/go-cmp/cmp"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -20,7 +20,7 @@ func TestDeleteAllMetrics(t *testing.T) {
 	RegisterMetrics(registry)
 
 	for _, c := range []string{clusterName, anotherClusterName} {
-		UpdateOperationPhase(c, moco.PhaseCompleted)
+		UpdateOperationPhase(c, constants.PhaseCompleted)
 		UpdateTotalReplicasMetrics(c, 3)
 		UpdateSyncedReplicasMetrics(c, intPointer(2))
 		IncrementFailoverCountTotalMetrics(c)

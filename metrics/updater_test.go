@@ -3,7 +3,7 @@ package metrics
 import (
 	"testing"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	corev1 "k8s.io/api/core/v1"
@@ -14,19 +14,19 @@ func TestOperationPhaseMetricsUpdater(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		input moco.OperationPhase
+		input constants.OperationPhase
 	}{
 		{
 			name:  "first update",
-			input: moco.PhaseInitializing,
+			input: constants.PhaseInitializing,
 		},
 		{
 			name:  "next update",
-			input: moco.PhaseCompleted,
+			input: constants.PhaseCompleted,
 		},
 		{
 			name:  "same update",
-			input: moco.PhaseCompleted,
+			input: constants.PhaseCompleted,
 		},
 	}
 

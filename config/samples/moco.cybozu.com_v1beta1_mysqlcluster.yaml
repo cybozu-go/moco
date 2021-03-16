@@ -1,4 +1,4 @@
-apiVersion: moco.cybozu.com.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
 metadata:
   name: mysqlcluster-sample

@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -42,7 +42,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
-	cluster := &mocov1alpha1.MySQLCluster{}
+	cluster := &mocov1beta1.MySQLCluster{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      clusterName,
@@ -56,7 +56,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 		return err
 	}
 
-	myCnfPath := fmt.Sprintf("%s/%s-my.cnf", moco.MyCnfSecretPath, mysqlConfig.user)
+	myCnfPath := fmt.Sprintf("%s/%s-my.cnf", constants.MyCnfSecretPath, mysqlConfig.user)
 	commands := append([]string{podName, "--", "mysql", "--defaults-extra-file=" + myCnfPath}, args...)
 	argsLenAtDash := 2
 	options := &cmdexec.ExecOptions{

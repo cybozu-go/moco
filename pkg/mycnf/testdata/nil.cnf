@@ -1,0 +1,76 @@
+[client]
+loose_default_character_set = utf8mb4
+port = 3306
+socket = /run/mysqld.sock
+
+[mysql]
+auto_rehash = OFF
+init_command = "SET autocommit=0"
+
+[mysqld]
+admin_port = 33062
+back_log = 900
+character_set_server = utf8mb4
+collation_server = utf8mb4_unicode_ci
+datadir = /var/lib/mysql
+default_time_zone = +0:00
+disabled_storage_engines = MyISAM
+enforce_gtid_consistency = ON
+gtid_mode = ON
+information_schema_stats_expiry = 0
+innodb_adaptive_hash_index = ON
+innodb_buffer_pool_dump_at_shutdown = 1
+innodb_buffer_pool_dump_pct = 100
+innodb_buffer_pool_in_core_file = OFF
+innodb_buffer_pool_load_at_startup = 0
+innodb_flush_method = O_DIRECT
+innodb_flush_neighbors = 0
+innodb_lock_wait_timeout = 60
+innodb_log_file_size = 800M
+innodb_log_files_in_group = 2
+innodb_log_write_ahead_size = 0
+innodb_online_alter_log_max_size = 1073741824
+innodb_print_all_deadlocks = 1
+innodb_random_read_ahead = false
+innodb_read_ahead_threshold = 0
+innodb_tmpdir = /tmp
+join_buffer_size = 2M
+lock_wait_timeout = 60
+log_error = /var/log/mysql/mysql.err
+log_error_verbosity = 3
+log_slow_extra = ON
+long_query_time = 2
+loose_binlog_transaction_compression = ON
+loose_innodb_numa_interleave = ON
+loose_innodb_validate_tablespace_paths = OFF
+loose_rpl_semi_sync_master_timeout = 86400000
+max_allowed_packet = 1G
+max_connect_errors = 10
+max_connections = 100000
+max_heap_table_size = 64M
+max_sp_recursion_depth = 20
+mysqlx_port = 33060
+pid_file = /run/mysqld.pid
+port = 3306
+print_identified_with_as_hex = ON
+read_only = ON
+relay_log_recovery = OFF
+secure_file_priv = NULL
+skip_name_resolve = ON
+skip_slave_start = ON
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/mysql.slow
+socket = /run/mysqld.sock
+sort_buffer_size = 4M
+super_read_only = ON
+symbolic_links = OFF
+table_definition_cache = 65536
+table_open_cache = 65536
+temptable_use_mmap = OFF
+thread_cache_size = 100
+tmp_table_size = 64M
+tmpdir = /tmp
+transaction_isolation = READ-COMMITTED
+wait_timeout = 604800
+
+!includedir /etc/mysql-conf.d

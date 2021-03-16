@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/accessor"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/test_utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -55,8 +55,8 @@ func testSetCloneDonorList() {
 			[]string{test_utils.Host + ":" + strconv.Itoa(mysqldPort1), test_utils.Host + ":" + strconv.Itoa(mysqldPort2), test_utils.Host + ":" + strconv.Itoa(mysqldPort3)},
 			[]string{test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort), test_utils.Host + ":" + strconv.Itoa(test_utils.AgentPort)})
 
-		host := moco.GetHost(&cluster, *cluster.Status.CurrentPrimaryIndex)
-		hostWithPort := fmt.Sprintf("%s:%d", host, moco.MySQLAdminPort)
+		host := cluster.PodHostname(*cluster.Status.CurrentPrimaryIndex)
+		hostWithPort := fmt.Sprintf("%s:%d", host, constants.MySQLAdminPort)
 		op := setCloneDonorListOp{index: []int{0, 2}, donar: hostWithPort}
 
 		err := op.Run(ctx, infra, &cluster, nil)

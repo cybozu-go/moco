@@ -3,7 +3,7 @@ package operators
 import (
 	"context"
 
-	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +27,7 @@ func testSetLabels() {
 		pod0.Name = "pod-0"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &pod0, func() error {
 			pod0.Labels = map[string]string{
-				moco.ClusterKey: "moco-test",
+				constants.LabelAppInstance: "moco-test",
 			}
 			pod0.Spec.Containers = []corev1.Container{
 				{
@@ -44,7 +44,7 @@ func testSetLabels() {
 		pod1.Name = "pod-1"
 		_, err = ctrl.CreateOrUpdate(ctx, k8sClient, &pod1, func() error {
 			pod1.Labels = map[string]string{
-				moco.ClusterKey: "moco-test",
+				constants.LabelAppInstance: "moco-test",
 			}
 			pod1.Spec.Containers = []corev1.Container{
 				{
@@ -71,11 +71,11 @@ func testSetLabels() {
 		pod0 := corev1.Pod{}
 		err = infra.GetClient().Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: "pod-0"}, &pod0)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(pod0.Labels[moco.RoleKey]).Should(Equal(moco.PrimaryRole))
+		Expect(pod0.Labels[constants.LabelMocoRole]).Should(Equal(constants.RolePrimary))
 
 		pod1 := corev1.Pod{}
 		err = infra.GetClient().Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: "pod-1"}, &pod1)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(pod1.Labels[moco.RoleKey]).Should(Equal(moco.ReplicaRole))
+		Expect(pod1.Labels[constants.LabelMocoRole]).Should(Equal(constants.RoleReplica))
 	})
 }

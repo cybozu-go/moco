@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 )
 
 type setCloneDonorListOp struct {
@@ -22,7 +22,7 @@ func (o setCloneDonorListOp) Name() string {
 	return OperatorSetCloneDonorList
 }
 
-func (o setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1alpha1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
+func (o setCloneDonorListOp) Run(ctx context.Context, infra accessor.Infrastructure, cluster *mocov1beta1.MySQLCluster, status *accessor.MySQLClusterStatus) error {
 	for _, i := range o.index {
 		db, err := infra.GetDB(i)
 		if err != nil {
