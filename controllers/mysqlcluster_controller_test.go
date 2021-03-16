@@ -212,6 +212,16 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(cm.Data).Should(HaveKey(moco.MySQLConfName))
 
+			errLogConf := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetErrLogAgentConfigMapName(cluster.Name), Namespace: cluster.Namespace}, errLogConf)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(errLogConf.Data).Should(HaveKey(moco.FluentBitConfigName))
+
+			slowLogConf := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.GetErrLogAgentConfigMapName(cluster.Name), Namespace: cluster.Namespace}, slowLogConf)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(slowLogConf.Data).Should(HaveKey(moco.FluentBitConfigName))
+
 			isUpdated, err = reconciler.createOrUpdateConfigMap(ctx, reconciler.Log, cluster)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(isUpdated).Should(BeFalse())
@@ -383,13 +393,21 @@ var _ = Describe("MySQLCluster controller", func() {
 
 			var mysqldContainer *corev1.Container
 			var agentContainer *corev1.Container
+			var errLogContainer *corev1.Container
+			var slowLogContainer *corev1.Container
 			for i, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name == "mysqld" {
+				switch c.Name {
+				case "mysqld":
 					mysqldContainer = &sts.Spec.Template.Spec.Containers[i]
-				} else if c.Name == "agent" {
+				case "agent":
 					agentContainer = &sts.Spec.Template.Spec.Containers[i]
+				case "err-log":
+					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
+				case "slow-log":
+					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
 				}
 			}
+
 			Expect(mysqldContainer).ShouldNot(BeNil())
 			Expect(mysqldContainer.LivenessProbe).ShouldNot(BeNil())
 			Expect(mysqldContainer.LivenessProbe.Exec.Command).Should(Equal([]string{"/moco-bin/moco-agent", "ping"}))
@@ -407,10 +425,37 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(mysqldContainer.ReadinessProbe.FailureThreshold).Should(BeNumerically("==", 3))
 
 			Expect(agentContainer).ShouldNot(BeNil())
+			Expect(errLogContainer).ShouldNot(BeNil())
+			Expect(slowLogContainer).ShouldNot(BeNil())
 			Expect(len(agentContainer.VolumeMounts)).Should(Equal(5))
 			Expect(agentContainer.Command).Should(Equal([]string{
 				"/moco-bin/moco-agent", "server", "--log-rotation-schedule", cluster.Spec.LogRotationSchedule,
 			}))
+
+			Expect(errLogContainer.VolumeMounts).
+				Should(ContainElements(
+					corev1.VolumeMount{
+						MountPath: moco.FluentBitConfigPath,
+						Name:      errLogAgentConfigVolumeName,
+						ReadOnly:  true,
+						SubPath:   moco.FluentBitConfigName,
+					},
+					corev1.VolumeMount{
+						MountPath: moco.VarLogPath,
+						Name:      varLogVolumeName,
+					}))
+			Expect(slowLogContainer.VolumeMounts).
+				Should(ContainElements(
+					corev1.VolumeMount{
+						MountPath: moco.FluentBitConfigPath,
+						Name:      slowQueryLogAgentConfigVolumeName,
+						ReadOnly:  true,
+						SubPath:   moco.FluentBitConfigName,
+					},
+					corev1.VolumeMount{
+						MountPath: moco.VarLogPath,
+						Name:      varLogVolumeName,
+					}))
 
 			var claim *corev1.PersistentVolumeClaim
 			for i, v := range sts.Spec.VolumeClaimTemplates {
@@ -661,6 +706,110 @@ var _ = Describe("MySQLCluster controller", func() {
 			Expect(isUpdated).Should(BeFalse())
 		})
 
+		It("should merged with user-defined fluent-bit container spec", func() {
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.PodTemplate = mocov1alpha1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "mysqld",
+							Image: "mysql:dev",
+						},
+						{
+							Name:  "err-log",
+							Image: "fluent-bit:dev",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "USER_DEFINED_ENV",
+									Value: "user-defined-env",
+								},
+							},
+						},
+						{
+							Name:  "slow-log",
+							Image: "fluent-bit:dev",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "USER_DEFINED_ENV",
+									Value: "user-defined-env",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var errLogContainer *corev1.Container
+			var slowLogContainer *corev1.Container
+
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				switch c.Name {
+				case "err-log":
+					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
+				case "slow-log":
+					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+
+			Expect(errLogContainer).ShouldNot(BeNil())
+			Expect(slowLogContainer).ShouldNot(BeNil())
+			Expect(errLogContainer.Image).Should(Equal("fluent-bit:dev"))
+			Expect(slowLogContainer.Image).Should(Equal("fluent-bit:dev"))
+			Expect(errLogContainer.Env).Should(ContainElements(corev1.EnvVar{
+				Name:  "USER_DEFINED_ENV",
+				Value: "user-defined-env",
+			}))
+			Expect(slowLogContainer.Env).Should(ContainElements(corev1.EnvVar{
+				Name:  "USER_DEFINED_ENV",
+				Value: "user-defined-env",
+			}))
+		})
+
+		It("should disable log container", func() {
+			oldSts := &appsv1.StatefulSet{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = k8sClient.Delete(ctx, oldSts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			serverIDBase := mathrand.Uint32()
+			cluster.Status.ServerIDBase = &serverIDBase
+			cluster.Spec.DisableErrorLogContainer = true
+			cluster.Spec.DisableSlowQueryLogContainer = true
+
+			isUpdated, err := reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(isUpdated).Should(BeTrue())
+
+			sts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, sts)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var errLogContainer *corev1.Container
+			var slowLogContainer *corev1.Container
+
+			for i, c := range sts.Spec.Template.Spec.Containers {
+				switch c.Name {
+				case "err-log":
+					errLogContainer = &sts.Spec.Template.Spec.Containers[i]
+				case "slow-log":
+					slowLogContainer = &sts.Spec.Template.Spec.Containers[i]
+				}
+			}
+
+			Expect(errLogContainer).Should(BeNil())
+			Expect(slowLogContainer).Should(BeNil())
+		})
+
 		It("should use volumeTemplate", func() {
 			oldSts := &appsv1.StatefulSet{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Name: moco.UniqueName(cluster), Namespace: cluster.Namespace}, oldSts)
@@ -740,7 +889,6 @@ var _ = Describe("MySQLCluster controller", func() {
 			_, err = reconciler.createOrUpdateStatefulSet(ctx, reconciler.Log, cluster)
 			Expect(err).Should(HaveOccurred())
 		})
-
 	})
 
 	Context("Services", func() {

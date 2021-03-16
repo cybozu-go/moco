@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	mathrand "math/rand"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +53,8 @@ const (
 	mysqlConfTemplateVolumeName       = "mysql-conf-template"
 	replicationSourceSecretVolumeName = "replication-source-secret"
 	myCnfSecretVolumeName             = "my-cnf-secret"
+	errLogAgentConfigVolumeName       = "err-fluent-bit-config"
+	slowQueryLogAgentConfigVolumeName = "slow-fluent-bit-config"
 
 	passwordBytes = 16
 
@@ -66,6 +70,7 @@ type MySQLClusterReconciler struct {
 	Recorder                 record.EventRecorder
 	Scheme                   *runtime.Scheme
 	BinaryCopyContainerImage string
+	FluentBitImage           string
 	AgentAccessor            *accessor.AgentAccessor
 	MySQLAccessor            accessor.DataBaseAccessor
 	WaitTime                 time.Duration
@@ -538,6 +543,30 @@ func generateRandomBytes(n int) ([]byte, error) {
 }
 
 func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	isUpdatedAtLeastOnce := false
+
+	isUpdated, err := r.createOrUpdateMySQLConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	isUpdated, err = r.createOrUpdateErrLogAgentConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	isUpdated, err = r.createOrUpdateSlowLogAgentConfConfigMap(ctx, log, cluster)
+	if err != nil {
+		return false, err
+	}
+	isUpdatedAtLeastOnce = isUpdatedAtLeastOnce || isUpdated
+
+	return isUpdatedAtLeastOnce, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateMySQLConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
 	cm.SetName(moco.UniqueName(cluster))
@@ -591,15 +620,74 @@ func (r *MySQLClusterReconciler) createOrUpdateConfigMap(ctx context.Context, lo
 	return false, nil
 }
 
-func (r *MySQLClusterReconciler) removeConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) createOrUpdateErrLogAgentConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
 	cm := &corev1.ConfigMap{}
 	cm.SetNamespace(cluster.Namespace)
-	cm.SetName(moco.UniqueName(cluster))
+	cm.SetName(moco.GetErrLogAgentConfigMapName(cluster.Name))
 
-	err := r.Delete(ctx, cm)
-	if client.IgnoreNotFound(err) != nil {
-		log.Error(err, "unable to delete ConfigMap")
-		return err
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		setStandardLabels(&cm.ObjectMeta, cluster)
+
+		cm.Data = make(map[string]string)
+		cm.Data[moco.FluentBitConfigName] = fmt.Sprintf(moco.DefaultFluentBitConfigTemplate, filepath.Join(moco.VarLogPath, moco.MySQLErrorLogName))
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update err-log-agent ConfigMap")
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile err-log-agent ConfigMap successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (r *MySQLClusterReconciler) createOrUpdateSlowLogAgentConfConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) (bool, error) {
+	cm := &corev1.ConfigMap{}
+	cm.SetNamespace(cluster.Namespace)
+	cm.SetName(moco.GetSlowQueryLogAgentConfigMapName(cluster.Name))
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
+		setStandardLabels(&cm.ObjectMeta, cluster)
+
+		cm.Data = make(map[string]string)
+		cm.Data[moco.FluentBitConfigName] = fmt.Sprintf(moco.DefaultFluentBitConfigTemplate, filepath.Join(moco.VarLogPath, moco.MySQLSlowLogName))
+
+		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
+	})
+	if err != nil {
+		log.Error(err, "unable to create-or-update slow-log-agent ConfigMap")
+		return false, err
+	}
+
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile slow-log-agent ConfigMap successfully", "op", op)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (r *MySQLClusterReconciler) removeConfigMap(ctx context.Context, log logr.Logger, cluster *mocov1alpha1.MySQLCluster) error {
+	configmaps := []*types.NamespacedName{
+		{Namespace: cluster.Namespace, Name: moco.UniqueName(cluster)},
+		{Namespace: cluster.Namespace, Name: moco.GetErrLogAgentConfigMapName(cluster.Name)},
+		{Namespace: cluster.Namespace, Name: moco.GetSlowQueryLogAgentConfigMapName(cluster.Name)},
+	}
+	for _, c := range configmaps {
+		cm := &corev1.ConfigMap{}
+		cm.SetNamespace(c.Namespace)
+		cm.SetName(c.Name)
+
+		err := r.Delete(ctx, cm)
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to delete ConfigMap")
+			return err
+		}
 	}
 	return nil
 }
@@ -863,6 +951,26 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 				},
 			},
 		},
+		corev1.Volume{
+			Name: errLogAgentConfigVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: moco.GetErrLogAgentConfigMapName(cluster.Name),
+					},
+				},
+			},
+		},
+		corev1.Volume{
+			Name: slowQueryLogAgentConfigVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: moco.GetSlowQueryLogAgentConfigMapName(cluster.Name),
+					},
+				},
+			},
+		},
 	)
 
 	// find "mysqld" container and update it
@@ -1037,6 +1145,47 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 
 	newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, agentContainer)
 
+	// find "err-log" container and update it
+	if !cluster.Spec.DisableErrorLogContainer {
+		errLogContainer, err := r.makeErrLogAgentContainer(cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		found := false
+
+		for i, c := range newTemplate.Spec.Containers {
+			if c.Name == moco.ErrLogAgentContainerName {
+				newTemplate.Spec.Containers[i] = errLogContainer
+				found = true
+			}
+		}
+
+		if !found {
+			newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, errLogContainer)
+		}
+	}
+
+	// find "slow-log" container and update it
+	if !cluster.Spec.DisableSlowQueryLogContainer {
+		slowQueryLogContainer, err := r.makeSlowQueryLogAgentContainer(cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		found := false
+
+		for i, c := range newTemplate.Spec.Containers {
+			if c.Name == moco.SlowQueryLogAgentContainerName {
+				newTemplate.Spec.Containers[i] = slowQueryLogContainer
+			}
+		}
+
+		if !found {
+			newTemplate.Spec.Containers = append(newTemplate.Spec.Containers, slowQueryLogContainer)
+		}
+	}
+
 	// create init containers and append them to Pod
 	newTemplate.Spec.InitContainers = append(newTemplate.Spec.InitContainers,
 		r.makeBinaryCopyContainer(),
@@ -1044,6 +1193,60 @@ func (r *MySQLClusterReconciler) makePodTemplate(log logr.Logger, cluster *mocov
 	)
 
 	return &newTemplate, nil
+}
+
+func (r *MySQLClusterReconciler) makeErrLogAgentContainer(cluster *mocov1alpha1.MySQLCluster) (corev1.Container, error) {
+	base := corev1.Container{
+		Name:  moco.ErrLogAgentContainerName,
+		Image: r.FluentBitImage,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: moco.FluentBitConfigPath,
+				Name:      errLogAgentConfigVolumeName,
+				ReadOnly:  true,
+				SubPath:   moco.FluentBitConfigName,
+			},
+			{
+				MountPath: moco.VarLogPath,
+				Name:      varLogVolumeName,
+			},
+		},
+	}
+
+	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+		if c.Name == moco.ErrLogAgentContainerName {
+			return mergePatchContainers(base, c)
+		}
+	}
+
+	return base, nil
+}
+
+func (r *MySQLClusterReconciler) makeSlowQueryLogAgentContainer(cluster *mocov1alpha1.MySQLCluster) (corev1.Container, error) {
+	base := corev1.Container{
+		Name:  moco.SlowQueryLogAgentContainerName,
+		Image: r.FluentBitImage,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: moco.FluentBitConfigPath,
+				Name:      slowQueryLogAgentConfigVolumeName,
+				ReadOnly:  true,
+				SubPath:   moco.FluentBitConfigName,
+			},
+			{
+				MountPath: moco.VarLogPath,
+				Name:      varLogVolumeName,
+			},
+		},
+	}
+
+	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+		if c.Name == moco.SlowQueryLogAgentContainerName {
+			return mergePatchContainers(base, c)
+		}
+	}
+
+	return base, nil
 }
 
 func (r *MySQLClusterReconciler) makeBinaryCopyContainer() corev1.Container {
@@ -1428,4 +1631,28 @@ func formatCredentialAsMyCnf(user, password string) []byte {
 user="%s"
 password="%s"
 `, user, password))
+}
+
+// mergePatchContainers adds patches to base using a strategic merge patch.
+func mergePatchContainers(base, patches corev1.Container) (corev1.Container, error) {
+	containerBytes, err := json.Marshal(base)
+	if err != nil {
+		return corev1.Container{}, fmt.Errorf("failed to marshal json for container %s, err: %w", base.Name, err)
+	}
+	patchBytes, err := json.Marshal(patches)
+	if err != nil {
+		return corev1.Container{}, fmt.Errorf("failed to marshal json for patch container %s, err: %w", patches.Name, err)
+	}
+
+	jsonResult, err := strategicpatch.StrategicMergePatch(containerBytes, patchBytes, corev1.Container{})
+	if err != nil {
+		return corev1.Container{}, fmt.Errorf("failed to generate merge patch for %s, err: %w", base.Name, err)
+	}
+
+	var patchResult corev1.Container
+	if err := json.Unmarshal(jsonResult, &patchResult); err != nil {
+		return corev1.Container{}, fmt.Errorf("failed to unmarshal merged container %s, err: %w", base.Name, err)
+	}
+
+	return patchResult, nil
 }
