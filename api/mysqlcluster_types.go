@@ -1,4 +1,4 @@
-package v1alpha1
+package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,7 @@ type MySQLClusterSpec struct {
 	// +kubebuilder:validation:Enum=1;3;5
 	// +kubebuilder:default=1
 	// +optional
-	Replicas int32 `json:"replicas,omitempty"`
+	Replicas int32 `json:"replicas"`
 
 	// PodTemplate is a `Pod` template for MySQL server container.
 	PodTemplate PodTemplateSpec `json:"podTemplate"`
@@ -43,8 +43,15 @@ type MySQLClusterSpec struct {
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
-	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation
-	// +kubebuilder:default="*/5 * * * *"
+	// ServerIDBase, if set, will become the base number of server-id of each MySQL
+	// instance of this cluster.  For example, if this is 100, the server-ids will be
+	// 100, 101, 102, and so on.
+	// If the field is not given, MOCO automatically sets a random number.
+	// +optional
+	ServerIDBase *uint32 `json:"serverIDBase,omitempty"`
+
+	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation.
+	// If not set, the default is to rotate logs every 5 minutes.
 	// +kubebuilder:validation:Pattern=`^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$`
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
@@ -119,12 +126,13 @@ type ServiceTemplate struct {
 }
 
 // RestoreSpec defines the desired spec of Point-in-Time-Recovery
+// TBD
 type RestoreSpec struct {
-	// SourceClusterName is the name of the source `MySQLCluster`.
-	SourceClusterName string `json:"restore"`
+	// // SourceClusterName is the name of the source `MySQLCluster`.
+	// SourceClusterName string `json:"restore"`
 
-	// PointInTime is the point-in-time of the state which the cluster is restored to.
-	PointInTime metav1.Time `json:"pointInTime"`
+	// // PointInTime is the point-in-time of the state which the cluster is restored to.
+	// PointInTime metav1.Time `json:"pointInTime"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
@@ -145,13 +153,6 @@ type MySQLClusterStatus struct {
 
 	// SyncedReplicas is the number of synced instances including the primary.
 	SyncedReplicas int `json:"syncedReplicas"`
-
-	// AgentToken is the token to call API exposed by the agent sidecar
-	AgentToken string `json:"agentToken"`
-
-	// ServerIDBase is the number, which is used as server-id base number of each MySQL instance.
-	// +optional
-	ServerIDBase *uint32 `json:"serverIDBase,omitempty"`
 }
 
 // MySQLClusterCondition defines the condition of MySQLCluster.
@@ -199,11 +200,11 @@ type MySQLCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MySQLClusterSpec   `json:"spec"`
+	Spec   MySQLClusterSpec   `json:"spec,omitempty"`
 	Status MySQLClusterStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // MySQLClusterList contains a list of MySQLCluster
 type MySQLClusterList struct {

@@ -1,7 +1,18 @@
 domain: cybozu.com
+layout: go.kubebuilder.io/v3
+projectName: moco
 repo: github.com/cybozu-go/moco
 resources:
-- group: moco
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cybozu.com
+  group: moco.cybozu.com
   kind: MySQLCluster
-  version: v1alpha1
-version: "2"
+  path: github.com/cybozu-go/moco/api/v1beta1
+  version: v1beta1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+version: "3"

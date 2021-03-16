@@ -18,6 +18,4 @@
 # ignore binaries
 /bin
 /build
-
-# ignore tmp files (created by make kubebuilder)
-/tmp
+/testbin

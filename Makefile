@@ -1,157 +1,103 @@
-include common.mk
+# Tool versions
+CTRL_TOOLS_VERSION=0.5.0
+CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
+KUSTOMIZE_VERSOIN = 3.8.7
 
-# For Go
-GOOS := $(shell go env GOOS)
-GOARCH := $(shell go env GOARCH)
-
-KUBEBUILDER_ASSETS := $(PWD)/bin
-export KUBEBUILDER_ASSETS
-
-CONTROLLER_GEN := $(PWD)/bin/controller-gen
-KUBEBUILDER := $(PWD)/bin/kubebuilder
-PROTOC := $(PWD)/bin/protoc
-# Produce CRDs with apiextensions.k8s.io/v1
-CRD_OPTIONS ?= "crd:crdVersions=v1"
+# Image URL to use all building/pushing image targets
+IMG ?= controller:latest
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
-GOBIN := $(shell go env GOPATH)/bin
+GOBIN=$(shell go env GOPATH)/bin
 else
-GOBIN := $(shell go env GOBIN)
+GOBIN=$(shell go env GOBIN)
 endif
 
-GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
-
-KUBEBUILDER_VERSION := 2.3.1
-CTRLTOOLS_VERSION := 0.5.0
-CONTROLLER_RUNTIME_VERSION := $(shell awk '/sigs\.k8s\.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-MOCO_AGENT_VERSION := 0.4.0
-PROTOC_VERSION := 3.14.0
-
-# Set the shell used to bash for better error handling.
-SHELL = /bin/bash
-.SHELLFLAGS = -e -o pipefail -c
-
-.PHONY: all
 all: build
 
-.PHONY: validate
-validate: setup
-	test -z "$$(gofmt -s -l . | tee /dev/stderr)"
-	staticcheck ./...
-	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
-	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... ) 2>&1 | tee /dev/stderr)"
-	go build ./...
-	go vet ./...
-	test -z "$$(go vet ./... | tee /dev/stderr)"
+##@ General
 
-# Run tests
-.PHONY: test
-test: $(KUBEBUILDER)
-	MYSQL_VERSION=$(MYSQL_VERSION) go test -race -v -coverprofile cover.out ./...
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
 
-# Build all binaries
-.PHONY: build
-build: build/moco-controller build/kubectl-moco
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-# Build moco-controller binary
-build/moco-controller: $(GO_FILES)
-	mkdir -p build
-	go build -o $@ ./cmd/moco-controller/main.go
+##@ Development
 
-# Build kubectl-moco binary
-build/kubectl-moco: $(GO_FILES)
-	mkdir -p build
-	go build -o $@ ./cmd/kubectl-moco
-
-.PHONY: release-build
-release-build: build/kubectl-moco-linux-amd64 build/kubectl-moco-windows-amd64.exe build/kubectl-moco-darwin-amd64
-
-# Build kubectl-moco binary for linux (release build)
-build/kubectl-moco-linux-amd64: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Build kubectl-moco binary for Windows (release build)
-build/kubectl-moco-windows-amd64.exe: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Build kubectl-moco binary for Mac OS (release build)
-build/kubectl-moco-darwin-amd64: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Generate manifests e.g. CRD, RBAC etc.
-.PHONY: manifests
-manifests: $(CONTROLLER_GEN)
+manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-# Generate code
-.PHONY: generate
-generate: $(CONTROLLER_GEN)
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	go mod tidy
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: agentrpc
-agentrpc: $(PROTOC)
-	curl -sfL https://github.com/cybozu-go/moco-agent/releases/download/v$(MOCO_AGENT_VERSION)/agentrpc.proto -O
-	mv agentrpc.proto agentrpc/
-	$(PROTOC) --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative agentrpc/agentrpc.proto
+fmt: ## Run go fmt against code.
+	go fmt ./...
 
-.PHONY: mod
-mod:
-	go mod tidy
-	git add go.mod
+vet: ## Run go vet against code.
+	go vet ./...
 
-ENVTEST_SCRIPT_URL := https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CONTROLLER_RUNTIME_VERSION)/hack/setup-envtest.sh
-$(KUBEBUILDER):
-	rm -rf tmp && mkdir -p tmp
-	mkdir -p bin
-	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C tmp/
-	mv tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
-	rm -f bin/kube-apisever bin/etcd bin/kubectl
-# Run tests, and set up envtest if not done already.
-ifeq (,$(wildcard bin/setup-envtest.sh))
-	curl -sSLo bin/setup-envtest.sh $(ENVTEST_SCRIPT_URL)
-endif
-	{ \
-	source bin/setup-envtest.sh && \
-	fetch_envtest_tools $(PWD) ; \
-	}
+ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
+test: manifests generate fmt vet ## Run tests.
+	mkdir -p ${ENVTEST_ASSETS_DIR}
+	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CTRL_RUNTIME_VERSION)/hack/setup-envtest.sh
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
 
-$(CONTROLLER_GEN):
-	mkdir -p bin
-	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
+##@ Build
 
-$(PROTOC):
-	mkdir -p bin
-	curl -sfL -O https://github.com/protocolbuffers/protobuf/releases/download/v$(PROTOC_VERSION)/protoc-$(PROTOC_VERSION)-linux-x86_64.zip
-	unzip -p protoc-$(PROTOC_VERSION)-linux-x86_64.zip bin/protoc > bin/protoc
-	chmod +x bin/protoc
-	rm protoc-$(PROTOC_VERSION)-linux-x86_64.zip
+build: generate fmt vet ## Build manager binary.
+	go build -o bin/manager main.go
 
-.PHONY: setup
-setup: custom-checker staticcheck nilerr
+run: manifests generate fmt vet ## Run a controller from your host.
+	go run ./main.go
 
-.PHONY: custom-checker
-custom-checker:
-	if ! which custom-checker >/dev/null; then \
-		env GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker@latest; \
-	fi
+docker-build: test ## Build docker image with the manager.
+	docker build -t ${IMG} .
 
-.PHONY: staticcheck
-staticcheck:
-	if ! which staticcheck >/dev/null; then \
-		env GOFLAGS= go install honnef.co/go/tools/cmd/staticcheck@latest; \
-	fi
+docker-push: ## Push docker image with the manager.
+	docker push ${IMG}
 
-.PHONY: nilerr
-nilerr:
-	if ! which nilerr >/dev/null; then \
-		env GOFLAGS= go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest; \
-	fi
+##@ Deployment
 
-.PHONY: clean
-clean:
-	rm -rf build
-	rm -rf bin
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+
+deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
+
+
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRL_TOOLS_VERSION))
+
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v$(KUSTOMIZE_VERSOIN))
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
+}
+endef

@@ -3,11 +3,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: mysqlcluster-viewer-role
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-view: "true"
 rules:
 - apiGroups:
-  - moco.cybozu.com
+  - moco.cybozu.com.cybozu.com
   resources:
   - mysqlclusters
   verbs:
@@ -15,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - moco.cybozu.com
+  - moco.cybozu.com.cybozu.com
   resources:
   - mysqlclusters/status
   verbs:
