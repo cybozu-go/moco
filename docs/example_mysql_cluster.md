@@ -165,6 +165,43 @@ spec:
           defaultMode: 420
           name: moco-slow-log-agent-config-<MySQLClusterName>
         name: slow-fluent-bit-config
+...
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moco-err-log-agent-config-<MySQLClusterName>
+data:
+  fluent-bit.conf: |
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.err
+      Read_from_Head true
+    [OUTPUT]
+      Name           file
+      Match          *
+      Path           /dev
+      File           stdout
+      Format         template
+      Template       {log}
+---
+apiVersion: v1`
+kind: ConfigMap
+metadata:
+  name: moco-slow-log-agent-config-<MySQLClusterName>
+data:
+  fluent-bit.conf: |
+    [INPUT]
+      Name           tail
+      Path           /var/log/mysql/mysql.slow
+      Read_from_Head true
+    [OUTPUT]
+      Name           file
+      Match          *
+      Path           /dev
+      File           stdout
+      Format         template
+      Template       {log}
 ```
 
 The definition of logging containers can be patched by user definition.
