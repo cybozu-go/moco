@@ -22,7 +22,7 @@ func testPrimaryFailOver() {
 		Expect(err).ShouldNot(HaveOccurred())
 		defer connector.stopPortForward()
 		Expect(cluster.Status.CurrentPrimaryIndex).ShouldNot(BeNil())
-		firstPrimary := *cluster.Status.CurrentPrimaryIndex
+		firstPrimary := cluster.Status.CurrentPrimaryIndex
 
 		By("deleting PVC of primary")
 		podName := fmt.Sprintf("%s-%d", cluster.PrefixedName(), firstPrimary)
@@ -62,10 +62,7 @@ func testPrimaryFailOver() {
 				return errors.New("should recover")
 			}
 
-			if cluster.Status.CurrentPrimaryIndex == nil {
-				return errors.New("current primary index is unknown")
-			}
-			newPrimary := *cluster.Status.CurrentPrimaryIndex
+			newPrimary := cluster.Status.CurrentPrimaryIndex
 			if newPrimary == firstPrimary {
 				return fmt.Errorf("current primary is still %d", firstPrimary)
 			}

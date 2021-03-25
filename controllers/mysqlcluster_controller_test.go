@@ -9,7 +9,7 @@ import (
 	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
-	"github.com/cybozu-go/moco/operators"
+	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +30,7 @@ type mockManager struct {
 	clusters map[string]struct{}
 }
 
-var _ operators.ClusterManager = &mockManager{}
+var _ clustering.ClusterManager = &mockManager{}
 
 func (m *mockManager) Update(ctx context.Context, cluster *mocov1beta1.MySQLCluster) {
 	m.mu.Lock()
@@ -144,9 +144,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		mysqlr := &MySQLClusterReconciler{
 			Client:              mgr.GetClient(),
 			Scheme:              scheme,
-			Recorder:            mgr.GetEventRecorderFor("moco-controller"),
 			SystemNamespace:     testMocoSystemNamespace,
-			Manager:             mockMgr,
+			ClusterManager:      mockMgr,
 			AgentContainerImage: testAgentImage,
 			FluentBitImage:      testFluentBitImage,
 		}
@@ -355,6 +354,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should create config maps for my.cnf", func() {
 		cluster := testNewMySQLCluster("test")
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Limits = make(corev1.ResourceList)
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("1000Mi")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -393,6 +394,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(cm.OwnerReferences).NotTo(BeEmpty())
 		Expect(cm.Data).To(HaveKey("my.cnf"))
+		Expect(cm.Data["my.cnf"]).To(ContainSubstring("innodb_buffer_pool_size = 734003200"))
 
 		userCM := &corev1.ConfigMap{}
 		userCM.Namespace = "test"
@@ -408,6 +410,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Requests = make(corev1.ResourceList)
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("500Mi")
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -437,6 +441,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = bar"))
+		Expect(cm.Data["my.cnf"]).To(ContainSubstring("innodb_buffer_pool_size = 367001600"))
 	})
 
 	It("should reconcile service account", func() {
@@ -563,6 +568,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("foo", "baz"))
 		Expect(sts.Spec.Replicas).NotTo(BeNil())
 		Expect(*sts.Spec.Replicas).To(Equal(cluster.Spec.Replicas))
+		Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).NotTo(BeNil())
+		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", defaultTerminationGracePeriodSeconds))
 
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
 		foundMysqld := false
@@ -660,8 +667,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
+		cluster.Spec.MaxDelaySeconds = 20
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
+		cluster.Spec.PodTemplate.Spec.TerminationGracePeriodSeconds = pointer.Int64(512)
 		cluster.Spec.PodTemplate.Spec.PriorityClassName = "hoge"
 		cluster.Spec.PodTemplate.Spec.Containers = append(cluster.Spec.PodTemplate.Spec.Containers,
 			corev1.Container{Name: "dummy", Image: "dummy:latest"})
@@ -691,6 +700,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(sts.Spec.Replicas).NotTo(BeNil())
 		Expect(*sts.Spec.Replicas).To(Equal(cluster.Spec.Replicas))
+		Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).NotTo(BeNil())
+		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", 512))
 		Expect(sts.Spec.Template.Spec.PriorityClassName).To(Equal("hoge"))
 
 		foundErrorLogAgent = false
@@ -699,6 +710,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
 			switch c.Name {
 			case constants.AgentContainerName:
+				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
 			case constants.ErrorLogAgentContainerName:
 				foundErrorLogAgent = true

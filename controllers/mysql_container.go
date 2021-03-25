@@ -25,6 +25,11 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(desired, current []corev1
 
 	c := source.DeepCopy()
 	c.Args = []string{"--defaults-file=" + filepath.Join(constants.MySQLConfPath, constants.MySQLConfName)}
+	c.Lifecycle = &corev1.Lifecycle{
+		PreStop: &corev1.Handler{
+			Exec: &corev1.ExecAction{Command: []string{"sleep", constants.PreStopSeconds}},
+		},
+	}
 	c.Ports = append(c.Ports,
 		corev1.ContainerPort{ContainerPort: constants.MySQLPort, Name: constants.MySQLPortName, Protocol: corev1.ProtocolTCP},
 		corev1.ContainerPort{ContainerPort: constants.MySQLXPort, Name: constants.MySQLXPortName, Protocol: corev1.ProtocolTCP},
@@ -99,8 +104,11 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta1.MySQL
 	c := corev1.Container{}
 	c.Name = constants.AgentContainerName
 	c.Image = r.AgentContainerImage
+	if cluster.Spec.MaxDelaySeconds > 0 {
+		c.Args = append(c.Args, "--max-delay", fmt.Sprintf("%ds", cluster.Spec.MaxDelaySeconds))
+	}
 	if cluster.Spec.LogRotationSchedule != "" {
-		c.Args = []string{"--log-rotation-schedule", cluster.Spec.LogRotationSchedule}
+		c.Args = append(c.Args, "--log-rotation-schedule", cluster.Spec.LogRotationSchedule)
 	}
 	c.VolumeMounts = []corev1.VolumeMount{
 		{

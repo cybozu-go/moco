@@ -1,8 +1,9 @@
-include ../common.mk
-
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
 
+BINDIR := $(shell cd ..; pwd)
+KUBERNETES_VERSION=1.19.4
+MYSQL_VERSION = 8.0.20
 KUBECTL := $(PWD)/bin/kubectl
 KIND_VERSION=0.10.0
 KUSTOMIZE_VERSION=3.7.0

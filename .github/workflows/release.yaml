@@ -4,65 +4,65 @@ on:
     tags:
     - 'v*'
 env:
-  go-version: 1.13
+  go-version: 1.16
 jobs:
   image:
     name: Push Container Image
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - run: docker build . -t moco:dev
-      - name: Login to ghcr.io
-        run: echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-      - run: docker tag moco:dev ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
-      - run: docker push ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
+    - uses: actions/checkout@v2
+    - run: docker build . -t moco:dev
+    - name: Login to ghcr.io
+      run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+    - run: docker tag moco:dev ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
+    - run: docker push ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
   release:
     name: Release on GitHub
     needs: image
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.go-version }}
-      - run: |
-          make release-build
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            See [CHANGELOG.md](./CHANGELOG.md) for details.
-          draft: false
-          prerelease: ${{ contains(github.ref, '-') }}
-      - name: Upload kubectl-moco for linux-amd64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/kubectl-moco-linux-amd64
-          asset_name: kubectl-moco-linux-amd64
-          asset_content_type: application/octet-stream
-      - name: Upload kubectl-moco for windows-amd64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/kubectl-moco-windows-amd64.exe
-          asset_name: kubectl-moco-windows-amd64.exe
-          asset_content_type: application/octet-stream
-      - name: Upload kubectl-moco for darwin-amd64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/kubectl-moco-darwin-amd64
-          asset_name: kubectl-moco-darwin-amd64
-          asset_content_type: application/octet-stream
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: |
+        make release-build
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          See [CHANGELOG.md](./CHANGELOG.md) for details.
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+    - name: Upload kubectl-moco for linux-amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/kubectl-moco-linux-amd64
+        asset_name: kubectl-moco-linux-amd64
+        asset_content_type: application/octet-stream
+    - name: Upload kubectl-moco for windows-amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/kubectl-moco-windows-amd64.exe
+        asset_name: kubectl-moco-windows-amd64.exe
+        asset_content_type: application/octet-stream
+    - name: Upload kubectl-moco for darwin-amd64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/kubectl-moco-darwin-amd64
+        asset_name: kubectl-moco-darwin-amd64
+        asset_content_type: application/octet-stream

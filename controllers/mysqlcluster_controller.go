@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
-	"github.com/cybozu-go/moco/operators"
+	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/mycnf"
+	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+const defaultTerminationGracePeriodSeconds = 300
 
 var debugController = os.Getenv("DEBUG_CONTROLLER") == "1"
 
@@ -62,11 +64,10 @@ func mergeMap(m1, m2 map[string]string) map[string]string {
 type MySQLClusterReconciler struct {
 	client.Client
 	Scheme              *runtime.Scheme
-	Recorder            record.EventRecorder
 	AgentContainerImage string
 	FluentBitImage      string
 	SystemNamespace     string
-	Manager             operators.ClusterManager
+	ClusterManager      clustering.ClusterManager
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;create;update;patch;delete
@@ -93,7 +94,7 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	cluster := &mocov1beta1.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Manager.Stop(req.NamespacedName)
+			r.ClusterManager.Stop(req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
 
@@ -130,7 +131,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 		log.Info("start finalizing MySQLCluster")
 
-		r.Manager.Stop(req.NamespacedName)
+		r.ClusterManager.Stop(req.NamespacedName)
 
 		if err := r.finalizeV1(ctx, req, cluster); err != nil {
 			log.Error(err, "failed to finalize")
@@ -147,8 +148,6 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 		return ctrl.Result{}, nil
 	}
-
-	r.Manager.Update(ctx, cluster)
 
 	if err := r.reconcileV1Secret(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile secret")
@@ -191,6 +190,8 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, err
 		}
 	}
+
+	r.ClusterManager.Update(ctx, cluster)
 	return ctrl.Result{}, nil
 }
 
@@ -201,7 +202,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: secretName}, secret)
 	if err == nil {
-		password, err := operators.NewMySQLPasswordFromSecret(secret)
+		passwd, err := password.NewMySQLPasswordFromSecret(secret)
 		if err != nil {
 			return fmt.Errorf("failed to create password from secret %s/%s: %w", secret.Namespace, secret.Name, err)
 		}
@@ -209,7 +210,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		userSecret.Namespace = cluster.Namespace
 		userSecret.Name = cluster.UserSecretName()
 		result, err := ctrl.CreateOrUpdate(ctx, r.Client, userSecret, func() error {
-			newSecret := password.ToSecret()
+			newSecret := passwd.ToSecret()
 			userSecret.Annotations = mergeMap(userSecret.Annotations, newSecret.Annotations)
 			userSecret.Labels = mergeMap(userSecret.Labels, labelSet(cluster, false))
 			userSecret.Data = newSecret.Data
@@ -245,12 +246,12 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		return err
 	}
 
-	password, err := operators.NewMySQLPassword()
+	passwd, err := password.NewMySQLPassword()
 	if err != nil {
 		return err
 	}
 
-	secret = password.ToSecret()
+	secret = passwd.ToSecret()
 	secret.Namespace = r.SystemNamespace
 	secret.Name = secretName
 	secret.Labels = labelSet(cluster, true)
@@ -258,7 +259,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		return err
 	}
 
-	userSecret := password.ToSecret()
+	userSecret := passwd.ToSecret()
 	userSecret.Namespace = cluster.Namespace
 	userSecret.Name = cluster.UserSecretName()
 	userSecret.Labels = labelSet(cluster, false)
@@ -286,6 +287,26 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta1.MySQLCluster) (*corev1.ConfigMap, error) {
 	log := crlog.FromContext(ctx)
 
+	var mysqldContainer *corev1.Container
+	for i, c := range cluster.Spec.PodTemplate.Spec.Containers {
+		if c.Name == constants.MysqldContainerName {
+			mysqldContainer = &cluster.Spec.PodTemplate.Spec.Containers[i]
+			break
+		}
+	}
+	if mysqldContainer == nil {
+		return nil, fmt.Errorf("MySQLD container not found")
+	}
+
+	// resources.requests.memory takes precedence over resources.limits.memory.
+	var totalMem int64
+	if res := mysqldContainer.Resources.Limits.Memory(); !res.IsZero() {
+		totalMem = res.Value()
+	}
+	if res := mysqldContainer.Resources.Requests.Memory(); !res.IsZero() {
+		totalMem = res.Value()
+	}
+
 	var userConf map[string]string
 	if cluster.Spec.MySQLConfigMapName != nil {
 		cm := &corev1.ConfigMap{}
@@ -297,7 +318,7 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 		userConf = cm.Data
 	}
 
-	conf := mycnf.Generate(userConf)
+	conf := mycnf.Generate(userConf, totalMem)
 
 	fnv32a := fnv.New32a()
 	fnv32a.Write([]byte(conf))
@@ -566,7 +587,13 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 		sts.Spec.VolumeClaimTemplates = make([]corev1.PersistentVolumeClaim, len(cluster.Spec.VolumeClaimTemplates))
 		for i, v := range cluster.Spec.VolumeClaimTemplates {
-			sts.Spec.VolumeClaimTemplates[i] = v.ToCoreV1()
+			pvc := v.ToCoreV1()
+			pvc.Namespace = cluster.Namespace
+			if err := ctrl.SetControllerReference(cluster, &pvc, r.Scheme); err != nil {
+				panic(err)
+			}
+			pvc.Namespace = ""
+			sts.Spec.VolumeClaimTemplates[i] = pvc
 		}
 
 		sts.Spec.Template.Annotations = mergeMap(sts.Spec.Template.Annotations, cluster.Spec.PodTemplate.Annotations)
@@ -575,12 +602,13 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 		podSpec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 		podSpec.ServiceAccountName = cluster.PrefixedName()
+
 		podSpec.DeprecatedServiceAccount = sts.Spec.Template.Spec.DeprecatedServiceAccount
 		if len(podSpec.RestartPolicy) == 0 {
 			podSpec.RestartPolicy = sts.Spec.Template.Spec.RestartPolicy
 		}
 		if podSpec.TerminationGracePeriodSeconds == nil {
-			podSpec.TerminationGracePeriodSeconds = sts.Spec.Template.Spec.TerminationGracePeriodSeconds
+			podSpec.TerminationGracePeriodSeconds = pointer.Int64(defaultTerminationGracePeriodSeconds)
 		}
 		if len(podSpec.DNSPolicy) == 0 {
 			podSpec.DNSPolicy = sts.Spec.Template.Spec.DNSPolicy

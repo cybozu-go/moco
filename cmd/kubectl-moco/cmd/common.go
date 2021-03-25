@@ -44,11 +44,7 @@ func getPodName(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index in
 		return "", errors.New("index should be smaller than replicas")
 	}
 	if index < 0 {
-		if cluster.Status.CurrentPrimaryIndex != nil {
-			index = *cluster.Status.CurrentPrimaryIndex
-		} else {
-			return "", errors.New("primary instance not found")
-		}
+		index = cluster.Status.CurrentPrimaryIndex
 	}
 
 	return cluster.PodName(index), nil

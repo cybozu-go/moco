@@ -1,9 +1,9 @@
 package event
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 )
 
 type MOCOEvent struct {
@@ -12,68 +12,54 @@ type MOCOEvent struct {
 	Message string
 }
 
-func (e MOCOEvent) FillVariables(val ...interface{}) *MOCOEvent {
-	e.Message = fmt.Sprintf(e.Message, val...)
-	return &e
+func (e MOCOEvent) Emit(obj runtime.Object, r record.EventRecorder, args ...interface{}) {
+	r.Eventf(obj, e.Type, e.Reason, e.Message, args...)
 }
 
 var (
-	EventInitializationSucceeded = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Initialization Succeeded",
-		"Initialization phase finished successfully.",
+	InitCloneSucceeded = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "InitCloned",
+		Message: "Clone from an external mysqld succeeded",
 	}
-	EventInitializationFailed = MOCOEvent{
-		corev1.EventTypeWarning,
-		"Initialization Failed",
-		"Initialization phase failed. err=%s",
+	InitCloneFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "InitCloneFailed",
+		Message: "Clone from an external mysqld failed: %v",
 	}
-	EventWaitingAllInstancesAvailable = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Waiting All Instances Available",
-		"Waiting for all instances to become connected from MOCO. unavailable=%v",
+	SwitchOverSucceeded = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "SwitchOver",
+		Message: "The primary was changed to instance %d due to a switchover",
 	}
-	EventViolationOccurred = MOCOEvent{
-		corev1.EventTypeWarning,
-		"Violation Occurred",
-		"Constraint violation occurred. Please resolve via manual operation. err=%v",
+	SwitchOverFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "SwitchOverFailed",
+		Message: "The primary could not be changed: %v",
 	}
-	EventWatingRelayLogExecution = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Waiting Relay Log Execution",
-		"Waiting relay log execution on replica instance(s).",
+	FailOverSucceeded = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "FailOver",
+		Message: "The primary was changed to instance %d due to a failover",
 	}
-	EventWaitingCloneFromExternal = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Waiting External Clone",
-		"Waiting for the intermediate primary to clone from the external primary",
+	FailOverFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "FailOverFailed",
+		Message: "The primary could not be changed: %v",
 	}
-	EventRestoringReplicaInstances = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Restoring Replica Instance(s)",
-		"Restoring replica instance(s) by cloning with primary instance.",
+	CloneSucceeded = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "Cloned",
+		Message: "Clone from the primary succeeded for instance %d",
 	}
-	EventPrimaryChanged = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Primary Changed",
-		"Primary instance was changed from %s to %s because of failover or switchover.",
+	CloneFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "CloneFailed",
+		Message: "Clone from the primary failed for instance %d: %v",
 	}
-	EventIntermediatePrimaryConfigured = MOCOEvent{
-		corev1.EventTypeNormal, "Intermediate Primary Configured",
-		"Intermediate primary instance was configured with host=%s",
-	}
-	EventIntermediatePrimaryUnset = MOCOEvent{
-		corev1.EventTypeNormal, "Intermediate Primary Unset",
-		"Intermediate primary instance was unset.",
-	}
-	EventClusteringCompletedSynced = MOCOEvent{
-		corev1.EventTypeNormal,
-		"Clustering Completed and Synced",
-		"Clustering are completed. All instances are synced.",
-	}
-	EventClusteringCompletedNotSynced = MOCOEvent{
-		corev1.EventTypeWarning,
-		"Clustering Completed but Not Synced",
-		"Clustering are completed. Some instance(s) are not synced. out_of_sync=%v",
+	SetWritable = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "Writable",
+		Message: "The primary became writable",
 	}
 )

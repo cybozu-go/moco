@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"syscall"
-	"time"
 
-	"github.com/cybozu-go/moco/accessor"
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/jmoiron/sqlx"
@@ -81,19 +79,14 @@ func getPasswordSecret(mysqlCluster *mocov1beta1.MySQLCluster) (*corev1.Secret, 
 type mysqlConnector struct {
 	cluster             *mocov1beta1.MySQLCluster
 	portForwardCommands []*exec.Cmd
-	accessor            *accessor.MySQLAccessor
+	accessor            interface{}
 	basePort            int
 }
 
 func newMySQLConnector(cluster *mocov1beta1.MySQLCluster) *mysqlConnector {
-	acc := accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
-		ConnMaxLifeTime:   30 * time.Minute,
-		ConnectionTimeout: 3 * time.Second,
-		ReadTimeout:       30 * time.Second,
-	})
 	return &mysqlConnector{
 		cluster:  cluster,
-		accessor: acc,
+		accessor: nil,
 		basePort: 13306,
 	}
 }
@@ -123,21 +116,19 @@ func (c *mysqlConnector) stopPortForward() {
 }
 
 func (c *mysqlConnector) connectToPrimary() (*sqlx.DB, error) {
-	if c.cluster.Status.CurrentPrimaryIndex == nil {
-		return nil, errors.New("CurrentPrimaryIndex is nil")
-	}
-	return c.connect(*c.cluster.Status.CurrentPrimaryIndex)
+	return c.connect(c.cluster.Status.CurrentPrimaryIndex)
 }
 
 func (c *mysqlConnector) connect(index int) (*sqlx.DB, error) {
-	port := c.basePort + index
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	secret, err := getPasswordSecretWithNamespace(c.cluster.Namespace, c.cluster)
-	if err != nil {
-		return nil, err
-	}
-	password := string(secret.Data[constants.AdminPasswordEnvName])
-	return c.accessor.Get(addr, constants.AdminUser, password)
+	// port := c.basePort + index
+	// addr := fmt.Sprintf("127.0.0.1:%d", port)
+	// secret, err := getPasswordSecretWithNamespace(c.cluster.Namespace, c.cluster)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// password := string(secret.Data[constants.AdminPasswordEnvName])
+	// return c.accessor.Get(addr, constants.AdminUser, password)
+	return nil, nil
 }
 
 func findCondition(conditions []mocov1beta1.MySQLClusterCondition, conditionType mocov1beta1.MySQLClusterConditionType) *mocov1beta1.MySQLClusterCondition {
@@ -150,11 +141,8 @@ func findCondition(conditions []mocov1beta1.MySQLClusterCondition, conditionType
 }
 
 func minIndexReplica(cluster *mocov1beta1.MySQLCluster) (int, error) {
-	if cluster.Status.CurrentPrimaryIndex == nil {
-		return 0, errors.New("CurrentPrimaryIndex is nil")
-	}
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		if i == *cluster.Status.CurrentPrimaryIndex {
+		if i == cluster.Status.CurrentPrimaryIndex {
 			continue
 		}
 		return i, nil

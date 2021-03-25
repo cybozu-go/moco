@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cybozu-go/moco/api/v1beta1"
-	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -103,12 +102,9 @@ func waitCluster() {
 			if err != nil {
 				return err
 			}
-			if cluster.Status.CurrentPrimaryIndex == nil {
-				return errors.New("CurrentPrimaryIndex should be set")
-			}
-			if cluster.Status.Ready != corev1.ConditionTrue {
-				return errors.New("Status.Ready should be true")
-			}
+			// if cluster.Status.Ready != corev1.ConditionTrue {
+			// 	return errors.New("Status.Ready should be true")
+			// }
 			available := findCondition(cluster.Status.Conditions, v1beta1.ConditionAvailable)
 			if available == nil || available.Status != corev1.ConditionTrue {
 				return errors.New("Conditions.Available should be true")
@@ -181,14 +177,14 @@ func testBootstrap() {
 
 		initialized := false
 		completed := false
-		for _, e := range events.Items {
-			if equalEvent(e, event.EventInitializationSucceeded) {
-				initialized = true
-			}
-			if equalEvent(e, event.EventClusteringCompletedSynced) {
-				completed = true
-			}
-		}
+		// for _, e := range events.Items {
+		// 	if equalEvent(e, event.EventInitializationSucceeded) {
+		// 		initialized = true
+		// 	}
+		// 	if equalEvent(e, event.EventClusteringCompletedSynced) {
+		// 		completed = true
+		// 	}
+		// }
 		Expect(initialized).Should(BeTrue())
 		Expect(completed).Should(BeTrue())
 	})
@@ -259,8 +255,4 @@ func testBootstrap() {
 			return nil
 		}).Should(Succeed())
 	})
-}
-
-func equalEvent(actual corev1.Event, expected event.MOCOEvent) bool {
-	return actual.Reason == expected.Reason && actual.Type == expected.Type && actual.Message == expected.Message
 }

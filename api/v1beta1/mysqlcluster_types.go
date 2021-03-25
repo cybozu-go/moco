@@ -21,7 +21,7 @@ type MySQLClusterSpec struct {
 	// +kubebuilder:validation:Enum=1;3;5
 	// +kubebuilder:default=1
 	// +optional
-	Replicas int32 `json:"replicas"`
+	Replicas int32 `json:"replicas,omitempty"`
 
 	// PodTemplate is a `Pod` template for MySQL server container.
 	PodTemplate PodTemplateSpec `json:"podTemplate"`
@@ -40,7 +40,6 @@ type MySQLClusterSpec struct {
 	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
-	// Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html.
 	// If this field is given, the `MySQLCluster` works as an intermediate primary.
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
@@ -51,6 +50,14 @@ type MySQLClusterSpec struct {
 	// If the field is not given or zero, MOCO automatically sets a random positive integer.
 	// +optional
 	ServerIDBase int32 `json:"serverIDBase,omitempty"`
+
+	// MaxDelaySeconds, if set, configures the readiness probe of mysqld container.
+	// For a replica mysqld instance, if it is delayed to apply transactions over this threshold,
+	// the mysqld instance will be marked as non-ready.
+	// The default is 60 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxDelaySeconds int `json:"maxDelaySeconds,omitempty"`
 
 	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation.
 	// If not set, the default is to rotate logs every 5 minutes.
@@ -68,14 +75,14 @@ type MySQLClusterSpec struct {
 	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "err-log",
 	// it will be merged with the default container definition using StrategicMergePatch.
 	// +optional
-	DisableErrorLogContainer bool `json:"disableErrorLogContainer"`
+	DisableErrorLogContainer bool `json:"disableErrorLogContainer,omitempty"`
 
 	// DisableSlowQueryLogContainer controls whether to add a log agent container name of the "slow-log" to handle mysqld slow query logs.
 	// If set to true, no log agent container will be added. The default is false.
 	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "slow-log",
 	// it will be merged with the default container definition using StrategicMergePatch.
 	// +optional
-	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer"`
+	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
 }
 
 func (s MySQLClusterSpec) validateCreate() field.ErrorList {
@@ -267,17 +274,21 @@ type MySQLClusterStatus struct {
 	// +optional
 	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
 
-	// Ready represents the status of readiness.
-	// +optional
-	Ready corev1.ConditionStatus `json:"ready"`
-
-	// CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
-	// +optional
-	CurrentPrimaryIndex *int `json:"currentPrimaryIndex,omitempty"`
+	// CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet.
+	// Initially, this is zero.
+	CurrentPrimaryIndex int `json:"currentPrimaryIndex"`
 
 	// SyncedReplicas is the number of synced instances including the primary.
 	// +optional
-	SyncedReplicas int `json:"syncedReplicas"`
+	SyncedReplicas int `json:"syncedReplicas,omitempty"`
+
+	// ErrantReplicas is the number of instances that have errant transactions.
+	// +optional
+	ErrantReplicas int `json:"errantReplicas,omitempty"`
+
+	// ErrantReplicaList is the list of indices of errant replicas.
+	// +optional
+	ErrantReplicaList []int `json:"errantReplicaList,omitempty"`
 
 	// ReconcileInfo represents version information for reconciler.
 	// +optional
@@ -305,17 +316,14 @@ type MySQLClusterCondition struct {
 }
 
 // MySQLClusterConditionType is the type of MySQLCluster condition.
-// +kubebuilder:validation:Enum=Initialized;Healthy;Available;OutOfSync;Failure;Violation
+// +kubebuilder:validation:Enum=Initialized;Available;Healthy
 type MySQLClusterConditionType string
 
 // Valid values for MySQLClusterConditionType
 const (
 	ConditionInitialized MySQLClusterConditionType = "Initialized"
-	ConditionHealthy     MySQLClusterConditionType = "Healthy"
 	ConditionAvailable   MySQLClusterConditionType = "Available"
-	ConditionOutOfSync   MySQLClusterConditionType = "OutOfSync"
-	ConditionFailure     MySQLClusterConditionType = "Failure"
-	ConditionViolation   MySQLClusterConditionType = "Violation"
+	ConditionHealthy     MySQLClusterConditionType = "Healthy"
 )
 
 type ReconcileInfo struct {
@@ -331,9 +339,11 @@ type ReconcileInfo struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.ready"
-// +kubebuilder:printcolumn:name="PRIMARY",type="integer",JSONPath=".status.currentPrimaryIndex"
-// +kubebuilder:printcolumn:name="SYNCED",type="integer",JSONPath=".status.syncedReplicas"
+// +kubebuilder:printcolumn:name="Available",type="string",JSONPath=".status.conditions[?(@.type=='Available')].status"
+// +kubebuilder:printcolumn:name="Healthy",type="string",JSONPath=".status.conditions[?(@.type=='Healthy')].status"
+// +kubebuilder:printcolumn:name="Primary",type="integer",JSONPath=".status.currentPrimaryIndex"
+// +kubebuilder:printcolumn:name="Synced replicas",type="integer",JSONPath=".status.syncedReplicas"
+// +kubebuilder:printcolumn:name="Errant replicas",type="integer",JSONPath=".status.errantReplicas"
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {

@@ -17,5 +17,6 @@ const (
 
 // annotation keys and values
 const (
-	SecretVersionAnnKey = "moco.cybozu.com/secret-version"
+	AnnDemote        = "moco.cybozu.com/demote"
+	AnnSecretVersion = "moco.cybozu.com/secret-version"
 )

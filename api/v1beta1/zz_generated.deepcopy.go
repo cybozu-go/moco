@@ -137,10 +137,10 @@ func (in *MySQLClusterStatus) DeepCopyInto(out *MySQLClusterStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.CurrentPrimaryIndex != nil {
-		in, out := &in.CurrentPrimaryIndex, &out.CurrentPrimaryIndex
-		*out = new(int)
-		**out = **in
+	if in.ErrantReplicaList != nil {
+		in, out := &in.ErrantReplicaList, &out.ErrantReplicaList
+		*out = make([]int, len(*in))
+		copy(*out, *in)
 	}
 	out.ReconcileInfo = in.ReconcileInfo
 }

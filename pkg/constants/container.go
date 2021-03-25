@@ -27,3 +27,6 @@ const (
 const (
 	InitCommand = "moco-init"
 )
+
+// PreStop sleep duration
+const PreStopSeconds = "20"

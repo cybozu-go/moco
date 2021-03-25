@@ -17,14 +17,20 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.ready
-      name: READY
+    - jsonPath: .status.conditions[?(@.type=='Available')].status
+      name: Available
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Healthy')].status
+      name: Healthy
       type: string
     - jsonPath: .status.currentPrimaryIndex
-      name: PRIMARY
+      name: Primary
       type: integer
     - jsonPath: .status.syncedReplicas
-      name: SYNCED
+      name: Synced replicas
+      type: integer
+    - jsonPath: .status.errantReplicas
+      name: Errant replicas
       type: integer
     name: v1beta1
     schema:
@@ -52,6 +58,10 @@ spec:
                 description: LogRotationSchedule is a schedule in Cron format for MySQL log rotation. If not set, the default is to rotate logs every 5 minutes.
                 pattern: ^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$
                 type: string
+              maxDelaySeconds:
+                description: MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.
+                minimum: 0
+                type: integer
               mysqlConfigMapName:
                 description: MySQLConfigMapName is a `ConfigMap` name of MySQL config.
                 type: string
@@ -3821,7 +3831,7 @@ spec:
                 format: int32
                 type: integer
               replicationSourceSecretName:
-                description: ReplicationSourceSecretName is a `Secret` name which contains replication source info. Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html. If this field is given, the `MySQLCluster` works as an intermediate primary.
+                description: ReplicationSourceSecretName is a `Secret` name which contains replication source info. If this field is given, the `MySQLCluster` works as an intermediate primary.
                 type: string
               restore:
                 description: Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is filled, start restoring. This field is unable to be updated.
@@ -4111,11 +4121,8 @@ spec:
                       description: Type is the type of the condition.
                       enum:
                       - Initialized
-                      - Healthy
                       - Available
-                      - OutOfSync
-                      - Failure
-                      - Violation
+                      - Healthy
                       type: string
                   required:
                   - lastTransitionTime
@@ -4124,11 +4131,16 @@ spec:
                   type: object
                 type: array
               currentPrimaryIndex:
-                description: CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
+                description: CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.
                 type: integer
-              ready:
-                description: Ready represents the status of readiness.
-                type: string
+              errantReplicaList:
+                description: ErrantReplicaList is the list of indices of errant replicas.
+                items:
+                  type: integer
+                type: array
+              errantReplicas:
+                description: ErrantReplicas is the number of instances that have errant transactions.
+                type: integer
               reconcileInfo:
                 description: ReconcileInfo represents version information for reconciler.
                 properties:
@@ -4143,6 +4155,8 @@ spec:
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances including the primary.
                 type: integer
+            required:
+            - currentPrimaryIndex
             type: object
         type: object
     served: true
