@@ -1,0 +1,6 @@
+resources:
+- config/default
+
+images:
+- name: ghcr.io/cybozu-go/moco
+  newTag: 0.7.0

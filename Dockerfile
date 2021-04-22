@@ -7,7 +7,7 @@ WORKDIR /workspace
 COPY ./ .
 
 # Build
-RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o moco-controller ./cmd/moco-controller/main.go
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o moco-controller ./cmd/moco-controller
 
 # stage2
 FROM scratch

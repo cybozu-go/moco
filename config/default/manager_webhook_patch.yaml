@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: controller
   namespace: system
 spec:
   template:
     spec:
       containers:
-      - name: manager
+      - name: moco-controller
         ports:
         - containerPort: 9443
           name: webhook-server
@@ -20,4 +20,4 @@ spec:
       - name: cert
         secret:
           defaultMode: 420
-          secretName: webhook-server-cert
+          secretName: moco-controller-cert

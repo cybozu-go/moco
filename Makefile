@@ -1,7 +1,7 @@
 # Tool versions
 CTRL_TOOLS_VERSION=0.5.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-KUSTOMIZE_VERSION = 3.8.7
+KUSTOMIZE_VERSION = 4.1.2
 CRD_TO_MARKDOWN_VERSION = 0.0.3
 
 # Test tools
@@ -94,7 +94,8 @@ test: test-tools
 
 .PHONY: build
 build:
-	go build -o bin/manager main.go
+	mkdir -p bin
+	GOBIN=$(shell pwd)/bin go install ./cmd/...
 
 ##@ Tools
 
@@ -103,8 +104,13 @@ controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRL_TOOLS_VERSION))
 
 KUSTOMIZE := $(shell pwd)/bin/kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v$(KUSTOMIZE_VERSION))
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+
+$(KUSTOMIZE):
+	mkdir -p bin
+	curl -fsL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | \
+	tar -C bin -xzf -
 
 CRD_TO_MARKDOWN := $(shell pwd)/bin/crd-to-markdown
 crd-to-markdown: ## Download crd-to-markdown locally if necessary.
