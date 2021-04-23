@@ -1,6 +1,7 @@
 package dbop
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -90,7 +91,7 @@ func testContainerName(cluster *mocov1beta1.MySQLCluster, index int) string {
 	return fmt.Sprintf("moco-%s-%d.%s", cluster.Name, index, cluster.Namespace)
 }
 
-func (f *testFactory) New(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) Operator {
+func (f *testFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
 	mapKey := fmt.Sprintf("%s_%s", cluster.Namespace, cluster.Name)
 	instances, ok := f.instanceMap[mapKey]
 	if !ok {
@@ -107,7 +108,7 @@ func (f *testFactory) New(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQL
 			}
 			out, err := exec.Command("docker", args...).CombinedOutput()
 			if err != nil {
-				panic(fmt.Sprintf("%s: %v", out, err))
+				return nil, fmt.Errorf("failed to run docker %v: %s: %w", args, out, err)
 			}
 			instances[i] = port
 		}
@@ -123,7 +124,7 @@ func (f *testFactory) New(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQL
 					break
 				}
 				if time.Since(st) > 1*time.Minute {
-					panic(fmt.Sprintf("failed to connect to mysqld %d", port))
+					return nil, fmt.Errorf("failed to connect to mysqld %d", port)
 				}
 				time.Sleep(1 * time.Second)
 			}
@@ -159,7 +160,7 @@ func (f *testFactory) New(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQL
 	return newTestOperator(cluster, pwd, index, instances[index])
 }
 
-func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index, port int) Operator {
+func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index, port int) (Operator, error) {
 	cfg := mysql.NewConfig()
 	cfg.User = constants.AdminUser
 	cfg.Passwd = pwd.Admin()
@@ -169,16 +170,20 @@ func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassw
 	cfg.ParseTime = true
 	cfg.Timeout = connTimeout
 	cfg.ReadTimeout = readTimeout
-	udb := sqlx.MustOpen("mysql", cfg.FormatDSN())
+	udb, err := sqlx.Connect("mysql", cfg.FormatDSN())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %w", cfg.FormatDSN(), err)
+	}
 	udb.SetMaxIdleConns(1)
 	udb.SetConnMaxIdleTime(30 * time.Second)
 
 	return &operator{
-		cluster: cluster,
-		passwd:  pwd,
-		index:   index,
-		db:      udb,
-	}
+		namespace: cluster.Namespace,
+		name:      cluster.PodName(index),
+		passwd:    pwd,
+		index:     index,
+		db:        udb,
+	}, nil
 }
 
 func (f *testFactory) Cleanup() {

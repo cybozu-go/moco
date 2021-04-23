@@ -424,9 +424,17 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 
 	// clone and start replication for all non-errant replicas
 	if st.GlobalVariables.ExecutedGTID == "" && ss.ExecutedGTID != "" && st.ReplicaStatus == nil {
+		addr := ss.Pods[ss.Primary].Status.PodIP
+		if addr == "0.0.0.0" {
+			addr = ss.Cluster.PodHostname(ss.Primary)
+		}
+		if addr == "" {
+			return false, fmt.Errorf("pod %s has not been assigned an IP address", ss.Pods[ss.Primary].Name)
+		}
+
 		redo = true
 		req := &agent.CloneRequest{
-			Host:         ss.Cluster.PodHostname(ss.Primary),
+			Host:         addr,
 			Port:         constants.MySQLAdminPort,
 			User:         constants.CloneDonorUser,
 			Password:     ss.Password.Donor(),

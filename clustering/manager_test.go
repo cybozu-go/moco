@@ -56,6 +56,9 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 		pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
 		err = k8sClient.Create(ctx, pod)
 		Expect(err).NotTo(HaveOccurred())
+		pod.Status.PodIP = "0.0.0.0"
+		err = k8sClient.Status().Update(ctx, pod)
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 	passwd := mysqlPassword.ToSecret()
@@ -143,16 +146,10 @@ var _ = Describe("manager", func() {
 		of.Cleanup()
 	})
 
-	newClusterManager := func() ClusterManager {
-		cm := NewClusterManager(1*time.Second, mgr, of, stdr.New(nil))
-		cm.(*clusterManager).agentf = af
-		return cm
-	}
-
 	It("should setup one-instance cluster and clean up metrics when the cluster is deleted", func() {
 		testSetupResources(ctx, 1, "")
 
-		cm := newClusterManager()
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
@@ -273,7 +270,7 @@ var _ = Describe("manager", func() {
 	It("should manage an intermediate primary, switchover, and scaling out the cluster", func() {
 		testSetupResources(ctx, 1, "source")
 
-		cm := newClusterManager()
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(ctx, cluster)
@@ -416,6 +413,9 @@ var _ = Describe("manager", func() {
 			}
 			pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
 			err = k8sClient.Create(ctx, pod)
+			Expect(err).NotTo(HaveOccurred())
+			pod.Status.PodIP = "0.0.0.0"
+			err = k8sClient.Status().Update(ctx, pod)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -611,7 +611,7 @@ var _ = Describe("manager", func() {
 	It("should handle failover and errant replicas", func() {
 		testSetupResources(ctx, 5, "")
 
-		cm := newClusterManager()
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(ctx, cluster)

@@ -14,7 +14,8 @@ import (
 // Note that the pool size can't be lower than 128MiB, which is the default value of `innodb_buffer_pool_size`.
 const InnoDBBufferPoolRatioPercent = 70
 
-// DefaultMycnf is the default options of mysqld
+// DefaultMycnf is the default options of mysqld.
+// These can be overridden by users.
 var DefaultMycnf = map[string]string{
 	"tmpdir":               constants.TmpPath,
 	"innodb_tmpdir":        constants.TmpPath,
@@ -38,7 +39,7 @@ var DefaultMycnf = map[string]string{
 	// since open_files_limit and table_open_cache are interdependent and those values are set dynamically
 	// See https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html#error_er_ib_msg_277
 	"table_open_cache":       "65536",
-	"table_definition_cache": "65536", // mitigate a innodb table cache eviction.
+	"table_definition_cache": "65536", // mitigate an InnoDB table cache eviction.
 
 	"transaction_isolation": "READ-COMMITTED",
 	"tmp_table_size":        "64M",
@@ -55,10 +56,6 @@ var DefaultMycnf = map[string]string{
 	// Available since MySQL 8.0.20
 	"loose_binlog_transaction_compression": "ON",
 
-	// Enabling this would take long time at startup if there are a lot of tables.
-	// Available since MySQL 8.0.21
-	"loose_innodb_validate_tablespace_paths": "OFF",
-
 	// Disabled because of https://bugs.mysql.com/bug.php?id=98739
 	// Fixed in MySQL 8.0.21
 	"temptable_use_mmap": "OFF",
@@ -67,6 +64,7 @@ var DefaultMycnf = map[string]string{
 	"information_schema_stats_expiry": "0",
 
 	"disabled_storage_engines": "MyISAM",
+	"default_storage_engine":   "InnoDB",
 
 	// InnoDB Specific options
 	"innodb_flush_method":                 "O_DIRECT",
@@ -82,11 +80,14 @@ var DefaultMycnf = map[string]string{
 	"innodb_buffer_pool_dump_at_shutdown": "1",
 	"innodb_buffer_pool_load_at_startup":  "0",
 
+	// Enabling this would take long time at startup if there are a lot of tables.
+	// Should only be disabled for MySQL 8.0.24 or better.
+	"loose_innodb_validate_tablespace_paths": "OFF",
+
 	// Optimization options for SSD
 	"innodb_flush_neighbors":      "0",
 	"innodb_random_read_ahead":    "false",
 	"innodb_read_ahead_threshold": "0",
-	"innodb_log_write_ahead_size": "0",
 }
 
 // ConstMycnf is the mysqld configurations that MOCO applies forcibly.
@@ -94,12 +95,11 @@ var ConstMycnf = map[string]map[string]string{
 	"mysqld": {
 		"port":             strconv.Itoa(constants.MySQLPort),
 		"socket":           filepath.Join(constants.RunPath, "mysqld.sock"),
-		"datadir":          constants.MySQLDataPath,
+		"datadir":          filepath.Join(constants.MySQLDataPath, "data"),
 		"secure_file_priv": "NULL",
 
 		"skip_name_resolve": "ON",
 
-		"log_error":           filepath.Join(constants.LogDirPath, constants.MySQLErrorLogName),
 		"slow_query_log_file": filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName),
 
 		"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
@@ -112,8 +112,7 @@ var ConstMycnf = map[string]map[string]string{
 		"mysqlx_port": strconv.Itoa(constants.MySQLXPort),
 		"admin_port":  strconv.Itoa(constants.MySQLAdminPort),
 
-		"pid_file":       filepath.Join(constants.RunPath, "mysqld.pid"),
-		"symbolic_links": "OFF", // Disabling symbolic-links to prevent assorted security risks
+		"pid_file": filepath.Join(constants.RunPath, "mysqld.pid"),
 
 		"read_only":        "ON",
 		"super_read_only":  "ON",
@@ -152,6 +151,9 @@ func Generate(userConf map[string]string, memTotal int64) string {
 	if _, ok := mysqldConf["innodb_buffer_pool_size"]; !ok {
 		mysqldConf["innodb_buffer_pool_size"] = fmt.Sprint(calcBufferSize(memTotal))
 	}
+
+	// to put error logs to stderr
+	delete(mysqldConf, "log_error")
 
 	conf := make(map[string]map[string]string)
 	conf["mysqld"] = mysqldConf

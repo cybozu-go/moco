@@ -5,7 +5,6 @@ const (
 	AgentContainerName             = "agent"
 	InitContainerName              = "moco-init"
 	MysqldContainerName            = "mysqld"
-	ErrorLogAgentContainerName     = "error-log"
 	SlowQueryLogAgentContainerName = "slow-log"
 )
 
@@ -18,7 +17,6 @@ const (
 	RunVolumeName                     = "run"
 	VarLogVolumeName                  = "var-log"
 	TmpVolumeName                     = "tmp"
-	ErrorLogAgentConfigVolumeName     = "error-fluent-bit-config"
 	SlowQueryLogAgentConfigVolumeName = "slow-fluent-bit-config"
 	MOCOBinVolumeName                 = "moco-bin"
 )

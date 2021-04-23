@@ -1,53 +1,67 @@
 # kubectl moco plugin
 
-`kubectl-moco` is a tool to help maintain the MySQL cluster build by MOCO.
+`kubectl-moco` is a kubectl plugin for MOCO.
 
 ```
 kubectl moco [global options] <subcommand> [sub options] args...
 ```
 
+## Global options
+
 Global options are compatible with kubectl.
 For example, the following options are available.
 
-| Global options    | Default value    | Description                                           |
-| ----------------- | ---------------- | ----------------------------------------------------- |
-| `--kubeconfig`    | `~/.kube/config` | Path to the kubeconfig file to use for CLI requests.  |
-| `-n, --namespace` |                  | If present, the namespace scope for this CLI request. |
+| Global options    | Default value        | Description                                           |
+| ----------------- | -------------------- | ----------------------------------------------------- |
+| `--kubeconfig`    | `$HOME/.kube/config` | Path to the kubeconfig file to use for CLI requests.  |
+| `-n, --namespace` | `default`            | If present, the namespace scope for this CLI request. |
 
-## `kubectl moco [global options] mysql [options] CLUSTER_NAME [-- args...]`
+## MySQL users
+
+You can choose one of the following user for `--mysql-user` option value.
+
+| Name            | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `moco-readable` | A read-only user.                                  |
+| `moco-writable` | A user that can edit users, databases, and tables. |
+| `moco-admin`    | The super-user.                                    |
+
+## `kubectl moco mysql [options] CLUSTER_NAME [-- mysql args...]`
 
 Run `mysql` command in a specified MySQL instance.
 
-| Options            | Default value        | Description                                                       |
-| ------------------ | -------------------- | ----------------------------------------------------------------- |
-| `-u, --mysql-user` | `moco-readonly`      | Run mysql as a specified user: `moco-writable` or `moco-readonly` |
-| `--index`          | index of the primary | Index of a target mysql instance                                  |
-| `-i, --stdin`      | `false`              | Pass stdin to the mysql container                                 |
-| `-t, --tty`        | `false`              | Stdin is a TTY                                                    |
+| Options            | Default value        | Description                        |
+| ------------------ | -------------------- | ---------------------------------- |
+| `-u, --mysql-user` | `moco-readonly`      | Login as the specified user        |
+| `--index`          | index of the primary | Index of the target mysql instance |
+| `-i, --stdin`      | `false`              | Pass stdin to the mysql container  |
+| `-t, --tty`        | `false`              | Stdin is a TTY                     |
 
-The normal `mysql` command can be run as follows:
+### Examples
 
-```
-kubectl moco mysql mycluster -- --version
-```
+This executes `SELECT VERSION()` on the primary instance in `mycluster` in `foo` namespace:
 
-You can redirect SQL file as follows:
-
-```
-cat sample.sql | kubectl moco mysql -i mycluster
+```console
+$ kubectl moco -n foo mysql mycluster -- -N -e 'SELECT VERSION()'
 ```
 
-You can run `mysql` interactively as follows:
+To execute SQL from a file:
 
-```
-kubectl moco mysql -i -t mycluster
+```console
+$ cat sample.sql | kubectl moco -n foo mysql -u moco-writable -i mycluster
 ```
 
-## `kubectl moco [global options] credential [options] CLUSTER_NAME`
+To run `mysql` interactively for the instance 2 in `mycluster` in the default namespace:
+
+```console
+$ kubectl moco mysql --index 2 -it mycluster
+```
+
+## `kubectl moco credential [options] CLUSTER_NAME`
 
 Fetch the credential information of a specified user
 
-| Options            | Default value   | Description                                                                  |
-| ------------------ | --------------- | ---------------------------------------------------------------------------- |
-| `-u, --mysql-user` | `moco-readonly` | Fetch the credential of a specified user: `moco-writable` or `moco-readonly` |
-| `--format`         | `plain`         | Output format: `plain` or `myconf`                                           |
+| Options            | Default value   | Description                                |
+| ------------------ | --------------- | ------------------------------------------ |
+| `-u, --mysql-user` | `moco-readonly` | Fetch the credential of the specified user |
+| `--format`         | `plain`         | Output format: `plain` or `mycnf`          |

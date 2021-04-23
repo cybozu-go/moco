@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moco-controller
+  namespace: moco-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: moco-controller
+        image: ghcr.io/cybozu-go/moco:latest
+        args:
+        - --check-interval=5s

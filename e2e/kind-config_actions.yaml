@@ -1,0 +1,16 @@
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+nodes:
+- role: control-plane
+- role: worker
+  extraMounts:
+  - hostPath: /mnt/local-path-provisioner0
+    containerPath: /var/local-path-provisioner
+- role: worker
+  extraMounts:
+  - hostPath: /mnt/local-path-provisioner1
+    containerPath: /var/local-path-provisioner
+- role: worker
+  extraMounts:
+  - hostPath: /mnt/local-path-provisioner2
+    containerPath: /var/local-path-provisioner

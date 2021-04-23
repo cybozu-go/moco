@@ -129,8 +129,9 @@ password="%s"
 			},
 		},
 		Data: map[string][]byte{
-			constants.ReadOnlyMyCnfKey: formatMyCnf(constants.ReadOnlyUser, p.readOnly),
-			constants.WritableMyCnfKey: formatMyCnf(constants.WritableUser, p.writable),
+			constants.ReadOnlyMyCnf: formatMyCnf(constants.ReadOnlyUser, p.readOnly),
+			constants.WritableMyCnf: formatMyCnf(constants.WritableUser, p.writable),
+			constants.AdminMyCnf:    formatMyCnf(constants.AdminUser, p.admin),
 		},
 	}
 }

@@ -164,7 +164,11 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 
 	ss.DBOps = make([]dbop.Operator, cluster.Spec.Replicas)
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
-		ss.DBOps[i] = p.dbf.New(cluster, passwd, i)
+		op, err := p.dbf.New(ctx, cluster, passwd, i)
+		if err != nil {
+			return nil, err
+		}
+		ss.DBOps[i] = op
 	}
 	defer func() {
 		if ss.State == StateUndecided {

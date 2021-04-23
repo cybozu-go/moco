@@ -28,13 +28,13 @@ type ClusterManager interface {
 	Stop(types.NamespacedName)
 }
 
-func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, log logr.Logger) ClusterManager {
+func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, af AgentFactory, log logr.Logger) ClusterManager {
 	return &clusterManager{
 		client:    m.GetClient(),
 		reader:    m.GetAPIReader(),
 		recorder:  m.GetEventRecorderFor("moco-controller"),
 		dbf:       opf,
-		agentf:    defaultAgentFactory{},
+		agentf:    af,
 		interval:  interval,
 		log:       log,
 		processes: make(map[string]*managerProcess),
@@ -48,7 +48,7 @@ type clusterManager struct {
 	reader   client.Reader
 	recorder record.EventRecorder
 	dbf      dbop.OperatorFactory
-	agentf   agentFactory
+	agentf   AgentFactory
 	interval time.Duration
 	log      logr.Logger
 

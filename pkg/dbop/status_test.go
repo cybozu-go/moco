@@ -20,7 +20,8 @@ var _ = Describe("status", func() {
 		passwd, err := password.NewMySQLPassword()
 		Expect(err).NotTo(HaveOccurred())
 
-		op := factory.New(cluster, passwd, 0)
+		op, err := factory.New(context.Background(), cluster, passwd, 0)
+		Expect(err).NotTo(HaveOccurred())
 
 		By("checking the initial stauts")
 		status, err := op.GetStatus(context.Background())

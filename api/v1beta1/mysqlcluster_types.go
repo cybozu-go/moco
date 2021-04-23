@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/robfig/cron"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -59,9 +60,9 @@ type MySQLClusterSpec struct {
 	// +optional
 	MaxDelaySeconds int `json:"maxDelaySeconds,omitempty"`
 
-	// LogRotationSchedule is a schedule in Cron format for MySQL log rotation.
+	// LogRotationSchedule specifies the schedule to rotate MySQL logs.
 	// If not set, the default is to rotate logs every 5 minutes.
-	// +kubebuilder:validation:Pattern=`^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$`
+	// See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
@@ -70,17 +71,9 @@ type MySQLClusterSpec struct {
 	// +optional
 	Restore *RestoreSpec `json:"restore,omitempty"`
 
-	// DisableErrorLogContainer controls whether to add a log agent container name of the "err-log" to handle mysqld error logs.
-	// If set to true, no log agent container will be added. The default is false.
-	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "err-log",
-	// it will be merged with the default container definition using StrategicMergePatch.
-	// +optional
-	DisableErrorLogContainer bool `json:"disableErrorLogContainer,omitempty"`
-
-	// DisableSlowQueryLogContainer controls whether to add a log agent container name of the "slow-log" to handle mysqld slow query logs.
-	// If set to true, no log agent container will be added. The default is false.
-	// If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "slow-log",
-	// it will be merged with the default container definition using StrategicMergePatch.
+	// DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log"
+	// to output slow logs as the containers output.
+	// If set to true, the sidecar container is not added. The default is false.
 	// +optional
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
 }
@@ -105,6 +98,14 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(pp, s.ServerIDBase, "serverIDBase must be a positive integer"))
 	}
 
+	pp = p.Child("logRotationSchedule")
+	if s.LogRotationSchedule != "" {
+		_, err := cron.Parse(s.LogRotationSchedule)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSchedule, err.Error()))
+		}
+	}
+
 	p = p.Child("podTemplate", "spec")
 
 	pp = p.Child("containers")
@@ -117,9 +118,6 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved container name"))
 		}
 		if container.Name == constants.SlowQueryLogAgentContainerName && !s.DisableSlowQueryLogContainer {
-			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
-		}
-		if container.Name == constants.ErrorLogAgentContainerName && !s.DisableErrorLogContainer {
 			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
 		}
 	}
@@ -152,8 +150,8 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		switch vol.Name {
 		case constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
 			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
-			constants.MySQLConfSecretVolumeName, constants.ErrorLogAgentConfigVolumeName,
-			constants.SlowQueryLogAgentConfigVolumeName, constants.MOCOBinVolumeName:
+			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName,
+			constants.MOCOBinVolumeName:
 
 			allErrs = append(allErrs, field.Invalid(pp.Index(i), vol.Name, "reserved volume name"))
 		}
@@ -400,11 +398,6 @@ func (r *MySQLCluster) ReplicaServiceName() string {
 // PodHostname returns the hostname of a Pod with the given index.
 func (r *MySQLCluster) PodHostname(index int) string {
 	return fmt.Sprintf("%s.%s.%s.svc", r.PodName(index), r.PrefixedName(), r.Namespace)
-}
-
-// ErrorLogAgentConfigMapName returns the name of the error log agent config name.
-func (r *MySQLCluster) ErrorLogAgentConfigMapName() string {
-	return fmt.Sprintf("moco-error-log-agent-config-%s", r.Name)
 }
 
 // SlowQueryLogAgentConfigMapName returns the name of the slow query log agent config name.

@@ -277,7 +277,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 	if err := ctrl.SetControllerReference(cluster, mycnfSecret, r.Scheme); err != nil {
 		return err
 	}
-	if err := r.Client.Create(ctx, userSecret); err != nil {
+	if err := r.Client.Create(ctx, mycnfSecret); err != nil {
 		return err
 	}
 
@@ -361,7 +361,9 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, req ctrl.Request, cluster *mocov1beta1.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	configTmpl := `[INPUT]
+	configTmpl := `[SERVICE]
+  Log_Level      error
+[INPUT]
   Name           tail
   Path           %s
   Read_from_Head true
@@ -399,34 +401,6 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 		err := r.Client.Delete(ctx, cm)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete configmap for slow logs: %w", err)
-		}
-	}
-
-	if !cluster.Spec.DisableErrorLogContainer {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.ErrorLogAgentConfigMapName()
-		result, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-			cm.Labels = mergeMap(cm.Labels, labelSet(cluster, false))
-			confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLErrorLogName))
-			cm.Data = map[string]string{
-				constants.FluentBitConfigName: confVal,
-			}
-			return ctrl.SetControllerReference(cluster, cm, r.Scheme)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to reconcile configmap for error logs: %w", err)
-		}
-		if result != controllerutil.OperationResultNone {
-			log.Info("reconciled configmap for error logs", "operation", string(result))
-		}
-	} else {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.ErrorLogAgentConfigMapName()
-		err := r.Client.Delete(ctx, cm)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete configmap for error logs: %w", err)
 		}
 	}
 
@@ -671,19 +645,6 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 				},
 			})
 		}
-		if !cluster.Spec.DisableErrorLogContainer {
-			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
-				Name: constants.ErrorLogAgentConfigVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cluster.ErrorLogAgentConfigMapName(),
-						},
-						DefaultMode: pointer.Int32(0644),
-					},
-				},
-			})
-		}
 
 		containers := make([]corev1.Container, 0, 4)
 		mysqldContainer, err := r.makeV1MySQLDContainer(podSpec.Containers, sts.Spec.Template.Spec.Containers)
@@ -694,9 +655,6 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		containers = append(containers, r.makeV1AgentContainer(cluster, sts.Spec.Template.Spec.Containers))
 		if !cluster.Spec.DisableSlowQueryLogContainer {
 			containers = append(containers, r.makeV1SlowQueryLogContainer(sts))
-		}
-		if !cluster.Spec.DisableErrorLogContainer {
-			containers = append(containers, r.makeV1ErrorLogContainer(sts))
 		}
 		containers = append(containers, r.makeV1OptionalContainers(cluster, sts.Spec.Template.Spec.Containers)...)
 		podSpec.Containers = containers

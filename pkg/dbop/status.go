@@ -11,30 +11,28 @@ import (
 var statusGlobalVarsString = strings.Join(statusGlobalVars, ",")
 
 func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) {
-	podName := o.cluster.PodName(o.index)
-	namespace := o.cluster.Namespace
 
 	status := &MySQLInstanceStatus{}
 
 	globalVariablesStatus, err := o.getGlobalVariablesStatus(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get global variables: pod=%s, namespace=%s: %w", podName, namespace, err)
+		return nil, fmt.Errorf("failed to get global variables: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 	status.GlobalVariables = *globalVariablesStatus
 
 	if err := o.db.Select(&status.ReplicaHosts, `SHOW SLAVE HOSTS`); err != nil {
-		return nil, fmt.Errorf("failed to get slave hosts: pod=%s, namespace=%s: %w", podName, namespace, err)
+		return nil, fmt.Errorf("failed to get slave hosts: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 
 	replicaStatus, err := o.getReplicaStatus(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get replica status: pod=%s, namespace=%s: %w", podName, namespace, err)
+		return nil, fmt.Errorf("failed to get replica status: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 	status.ReplicaStatus = replicaStatus
 
 	cloneStatus, err := o.getCloneStateStatus(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get clone status: pod=%s, namespace=%s: %w", podName, namespace, err)
+		return nil, fmt.Errorf("failed to get clone status: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 	status.CloneStatus = cloneStatus
 

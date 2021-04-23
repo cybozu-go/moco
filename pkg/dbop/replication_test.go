@@ -36,7 +36,8 @@ var _ = Describe("replication", func() {
 
 		ops := make([]*operator, cluster.Spec.Replicas)
 		for i := 0; i < int(cluster.Spec.Replicas); i++ {
-			op := factory.New(cluster, passwd, i)
+			op, err := factory.New(context.Background(), cluster, passwd, i)
+			Expect(err).NotTo(HaveOccurred())
 			ops[i] = op.(*operator)
 		}
 		defer func() {

@@ -87,6 +87,20 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should allow a valid logRotationSchedule", func() {
+		r := makeMySQLCluster()
+		r.Spec.LogRotationSchedule = "@every 30s"
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should deny an invalid logRotationSchedule", func() {
+		r := makeMySQLCluster()
+		r.Spec.LogRotationSchedule = "hoge fuga"
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny without mysqld container", func() {
 		r := makeMySQLCluster()
 		r.Spec.PodTemplate.Spec.Containers = nil
@@ -116,8 +130,8 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		for _, volname := range []string{
 			constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
 			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
-			constants.MySQLConfSecretVolumeName, constants.ErrorLogAgentConfigVolumeName,
-			constants.SlowQueryLogAgentConfigVolumeName, constants.MOCOBinVolumeName,
+			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName,
+			constants.MOCOBinVolumeName,
 		} {
 			r := makeMySQLCluster()
 			r.Spec.PodTemplate.Spec.Volumes = []corev1.Volume{{Name: volname}}
@@ -144,31 +158,12 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should deny error log container if not disabled", func() {
-		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.ErrorLogAgentContainerName,
-		})
-		err := k8sClient.Create(ctx, r)
-		Expect(err).To(HaveOccurred())
-	})
-
 	It("should allow slow log container if disabled", func() {
 		r := makeMySQLCluster()
 		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
 			Name: constants.SlowQueryLogAgentContainerName,
 		})
 		r.Spec.DisableSlowQueryLogContainer = true
-		err := k8sClient.Create(ctx, r)
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	It("should allow error log container if disabled", func() {
-		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.ErrorLogAgentContainerName,
-		})
-		r.Spec.DisableErrorLogContainer = true
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})

@@ -297,31 +297,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		var errorCM *corev1.ConfigMap
-		Eventually(func() error {
-			errorCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
-			return k8sClient.Get(ctx, key, errorCM)
-		}).Should(Succeed())
-
-		Expect(errorCM.OwnerReferences).NotTo(BeEmpty())
-
-		errorCM.Data = nil
-		err = k8sClient.Update(ctx, errorCM)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() error {
-			errorCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
-			if err := k8sClient.Get(ctx, key, errorCM); err != nil {
-				return err
-			}
-			if len(errorCM.Data) == 0 {
-				return fmt.Errorf("the config map is not reconciled yet")
-			}
-			return nil
-		}).Should(Succeed())
-
 		cluster = &mocov1beta1.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -332,21 +307,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Eventually(func() bool {
 			slowCM = &corev1.ConfigMap{}
 			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
-			err := k8sClient.Get(ctx, key, slowCM)
-			return apierrors.IsNotFound(err)
-		}).Should(BeTrue())
-
-		cluster = &mocov1beta1.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Spec.DisableErrorLogContainer = true
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() bool {
-			slowCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-error-log-agent-config-test"}
 			err := k8sClient.Get(ctx, key, slowCM)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
@@ -571,11 +531,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).NotTo(BeNil())
 		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", defaultTerminationGracePeriodSeconds))
 
-		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(4))
+		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 		foundMysqld := false
 		foundAgent := false
 		foundSlowLogAgent := false
-		foundErrorLogAgent := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			switch c.Name {
 			case constants.MysqldContainerName:
@@ -587,15 +546,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.SlowQueryLogAgentContainerName:
 				foundSlowLogAgent = true
 				Expect(c.Image).To(Equal(testFluentBitImage))
-			case constants.ErrorLogAgentContainerName:
-				foundErrorLogAgent = true
-				Expect(c.Image).To(Equal(testFluentBitImage))
 			}
 		}
 		Expect(foundMysqld).To(BeTrue())
 		Expect(foundAgent).To(BeTrue())
 		Expect(foundSlowLogAgent).To(BeTrue())
-		Expect(foundErrorLogAgent).To(BeTrue())
 
 		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 		initContainer := &sts.Spec.Template.Spec.InitContainers[0]
@@ -609,7 +564,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		foundUserSecret := false
 		foundMyCnfConfig := false
 		foundSlowLogConfig := false
-		foundErrorLogConfig := false
 		for _, v := range sts.Spec.Template.Spec.Volumes {
 			switch v.Name {
 			case constants.MySQLConfSecretVolumeName:
@@ -618,19 +572,16 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				foundMyCnfConfig = true
 			case constants.SlowQueryLogAgentConfigVolumeName:
 				foundSlowLogConfig = true
-			case constants.ErrorLogAgentConfigVolumeName:
-				foundErrorLogConfig = true
 			}
 		}
 		Expect(foundUserSecret).To(BeTrue())
 		Expect(foundMyCnfConfig).To(BeTrue())
 		Expect(foundSlowLogConfig).To(BeTrue())
-		Expect(foundErrorLogConfig).To(BeTrue())
 
 		By("editing statefulset")
 		for i, c := range sts.Spec.Template.Spec.Containers {
 			switch c.Name {
-			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName, constants.ErrorLogAgentContainerName:
+			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName:
 				sts.Spec.Template.Spec.Containers[i].Image = "invalid"
 			}
 		}
@@ -655,7 +606,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			switch c.Name {
-			case constants.SlowQueryLogAgentContainerName, constants.ErrorLogAgentContainerName:
+			case constants.SlowQueryLogAgentContainerName:
 				Expect(c.Image).To(Equal("invalid"), c.Name)
 			}
 		}
@@ -704,7 +655,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", 512))
 		Expect(sts.Spec.Template.Spec.PriorityClassName).To(Equal("hoge"))
 
-		foundErrorLogAgent = false
 		foundDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
@@ -712,13 +662,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
-			case constants.ErrorLogAgentContainerName:
-				foundErrorLogAgent = true
 			case "dummy":
 				foundDummyContainer = true
 			}
 		}
-		Expect(foundErrorLogAgent).To(BeTrue())
 		Expect(foundDummyContainer).To(BeTrue())
 
 		foundInitDummyContainer := false
@@ -738,34 +685,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 		}
 		Expect(foundDummyVolume).To(BeTrue())
-
-		By("updating MySQLCluster again")
-		cluster = &mocov1beta1.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Spec.DisableErrorLogContainer = true
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() error {
-			c := &mocov1beta1.MySQLCluster{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
-				return err
-			}
-			if c.Status.ReconcileInfo.Generation != c.Generation {
-				return fmt.Errorf("not yet reconciled: generation=%d", c.Status.ReconcileInfo.Generation)
-			}
-			return nil
-		}).Should(Succeed())
-
-		sts = &appsv1.StatefulSet{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
-		Expect(err).NotTo(HaveOccurred())
-
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			Expect(c.Name).NotTo(Equal(constants.ErrorLogAgentContainerName))
-		}
 	})
 
 	It("should reconcile a pod disruption budget", func() {

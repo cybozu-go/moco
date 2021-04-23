@@ -115,7 +115,7 @@ type mockAgentFactory struct {
 	orphaned int64
 }
 
-var _ agentFactory = &mockAgentFactory{}
+var _ AgentFactory = &mockAgentFactory{}
 
 func (af *mockAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (AgentConn, error) {
 	a := &mockAgentConn{
@@ -489,7 +489,7 @@ func newMockOpFactory() *mockOpFactory {
 
 var _ dbop.OperatorFactory = &mockOpFactory{}
 
-func (f *mockOpFactory) New(cluster *mocov1beta1.MySQLCluster, passwd *password.MySQLPassword, index int) dbop.Operator {
+func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, passwd *password.MySQLPassword, index int) (dbop.Operator, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -510,7 +510,7 @@ func (f *mockOpFactory) New(cluster *mocov1beta1.MySQLCluster, passwd *password.
 		orphaned: &f.orphaned,
 		mysql:    m,
 		factory:  f,
-	}
+	}, nil
 }
 
 func (f *mockOpFactory) Cleanup() {}

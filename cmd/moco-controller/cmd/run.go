@@ -1,15 +1,20 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
+
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -25,6 +30,24 @@ func init() {
 
 	utilruntime.Must(mocov1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+}
+
+type resolver struct {
+	reader client.Reader
+}
+
+var _ dbop.Resolver = resolver{}
+
+func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
+	pod := &corev1.Pod{}
+	err := r.reader.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PodName(index)}, pod)
+	if err != nil {
+		return "", err
+	}
+	if pod.Status.PodIP == "" {
+		return "", fmt.Errorf("pod %s/%s has not been assigned an IP address", pod.Namespace, pod.Name)
+	}
+	return pod.Status.PodIP, nil
 }
 
 func subMain(ns, addr string, port int) error {
@@ -48,8 +71,11 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
-	clusterMgr := clustering.NewClusterManager(config.interval, mgr, dbop.DefaultOperatorFactory, clusterLog)
-	defer dbop.DefaultOperatorFactory.Cleanup()
+	r := resolver{reader: mgr.GetClient()}
+	opf := dbop.NewFactory(r)
+	defer opf.Cleanup()
+	af := clustering.NewAgentFactory(r)
+	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
 
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:              mgr.GetClient(),

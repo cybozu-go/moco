@@ -17,10 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var (
-	defaultAgentContainerImage string
-	defaultFluentBitImage      = "quay.io/cybozu/fluent-bit:1.7.2.2"
-)
+var defaultAgentContainerImage string
 
 var config struct {
 	metricsAddr         string
@@ -55,7 +52,7 @@ var rootCmd = &cobra.Command{
 	Use:     "moco-controller",
 	Version: moco.Version,
 	Short:   "MOCO controller",
-	Long:    `MOCO controller manages MySQL cluster with binlog-based semi-sync replication.`,
+	Long:    `MOCO controller`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -90,9 +87,9 @@ func init() {
 	fs.StringVar(&config.probeAddr, "health-probe-addr", ":8081", "Listen address for health probes")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
-	fs.StringVar(&config.certDir, "cert-dir", "", "certificate directory")
+	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
 	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
-	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", defaultFluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
+	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)

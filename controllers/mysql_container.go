@@ -177,30 +177,6 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.Statefu
 	}
 }
 
-func (r *MySQLClusterReconciler) makeV1ErrorLogContainer(sts *appsv1.StatefulSet) corev1.Container {
-	for _, c := range sts.Spec.Template.Spec.Containers {
-		if c.Name == constants.ErrorLogAgentContainerName {
-			return c
-		}
-	}
-
-	return corev1.Container{
-		Name:  constants.ErrorLogAgentContainerName,
-		Image: r.FluentBitImage,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				MountPath: constants.FluentBitConfigPath,
-				Name:      constants.ErrorLogAgentConfigVolumeName,
-				ReadOnly:  true,
-			},
-			{
-				MountPath: constants.LogDirPath,
-				Name:      constants.VarLogVolumeName,
-			},
-		},
-	}
-}
-
 func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.MySQLCluster, current []corev1.Container) []corev1.Container {
 	var containers []corev1.Container
 	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
@@ -209,12 +185,6 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.M
 		case constants.AgentContainerName:
 		case constants.SlowQueryLogAgentContainerName:
 			if cluster.Spec.DisableSlowQueryLogContainer {
-				cp := c.DeepCopy()
-				updateContainerWithSupplements(cp, current)
-				containers = append(containers, *cp)
-			}
-		case constants.ErrorLogAgentContainerName:
-			if cluster.Spec.DisableErrorLogContainer {
 				cp := c.DeepCopy()
 				updateContainerWithSupplements(cp, current)
 				containers = append(containers, *cp)

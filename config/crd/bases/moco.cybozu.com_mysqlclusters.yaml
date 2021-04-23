@@ -48,15 +48,11 @@ spec:
           spec:
             description: MySQLClusterSpec defines the desired state of MySQLCluster
             properties:
-              disableErrorLogContainer:
-                description: DisableErrorLogContainer controls whether to add a log agent container name of the "err-log" to handle mysqld error logs. If set to true, no log agent container will be added. The default is false. If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "err-log", it will be merged with the default container definition using StrategicMergePatch.
-                type: boolean
               disableSlowQueryLogContainer:
-                description: DisableSlowQueryLogContainer controls whether to add a log agent container name of the "slow-log" to handle mysqld slow query logs. If set to true, no log agent container will be added. The default is false. If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "slow-log", it will be merged with the default container definition using StrategicMergePatch.
+                description: DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.
                 type: boolean
               logRotationSchedule:
-                description: LogRotationSchedule is a schedule in Cron format for MySQL log rotation. If not set, the default is to rotate logs every 5 minutes.
-                pattern: ^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$
+                description: LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
                 type: string
               maxDelaySeconds:
                 description: MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.

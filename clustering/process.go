@@ -37,7 +37,7 @@ type managerProcess struct {
 	reader   client.Reader
 	recorder record.EventRecorder
 	dbf      dbop.OperatorFactory
-	agentf   agentFactory
+	agentf   AgentFactory
 	name     types.NamespacedName
 	log      logr.Logger
 	cancel   func()
@@ -47,7 +47,7 @@ type managerProcess struct {
 	deleteMetrics func()
 }
 
-func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf agentFactory, name types.NamespacedName, log logr.Logger, cancel func()) *managerProcess {
+func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, log logr.Logger, cancel func()) *managerProcess {
 	return &managerProcess{
 		client:   c,
 		reader:   r,

@@ -14,6 +14,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [`kubectl moco`](#kubectl-moco)
   - [Connecting to the primary instance](#connecting-to-the-primary-instance)
   - [Connecting to read-only replicas](#connecting-to-read-only-replicas)
+- [Deleting the cluster](#deleting-the-cluster)
 - [Status, metrics, and logs](#status-metrics-and-logs)
   - [Cluster status](#cluster-status)
   - [Pod status](#pod-status)
@@ -54,16 +55,18 @@ Let's call the source mysqld instance _donor_.
 
 We use [the clone plugin][CLONE] to copy the whole data quickly.
 After the cloning, MOCO needs to create some user accounts and install plugins.
-For these things, you need to create two user accounts **on the donor** as follows:
+
+**On the donor**, you need to install the plugin and create two user accounts as follows:
 
 ```console
+mysql> INSTALL PLUGIN clone SONAME mysql_clone.so;
 mysql> CREATE USER 'clone-donor'@'%' IDENTIFIED BY 'xxxxxxxxxxx';
 mysql> GRANT BACKUP_ADMIN, REPLICATION SLAVE ON *.* TO 'clone-donor'@'%';
 mysql> CREATE USER 'clone-init'@'localhost' IDENTIFIED BY 'yyyyyyyyyyy';
 mysql> GRANT ALL ON *.* TO 'clone-init'@'localhost' WITH GRANT OPTION;
 ```
 
-You may change the user names and must change the passwords.
+You may change the user names and should change the passwords.
 
 Then create a Secret in the same namespace as MySQLCluster:
 
@@ -79,13 +82,57 @@ $ kubectl -n <namespace> create secret generic donor-secret \
 
 You may change the secret name.
 
-Finally, create MySQLCluster with `spec.replicationSourceSecretName: donor-secret`.
+Finally, create MySQLCluster with `spec.replicationSourceSecretName` set to the Secret name as follows.
+The mysql image must be the same version as the donor's.
 
-You can stop the replication from the donor by setting `spec.replicationSourceSecretName: null` afterwards.
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  replicationSourceSecretName: donor-secret
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24  # must be the same version as the donor
+```
+
+You can stop the replication from the donor by setting `spec.replicationSourceSecretName` to `null` afterwards.
 
 ### Configurations
 
-If `innodb_buffer_pool_size` is not given, MOCO sets it automatically to 70% of the value of `resources.requests.memory` (or `resources.limits.memory`).
+The configuration values for `mysqld` is available on [pkg.go.dev](https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-constants).  The settings in `ConstMycnf` cannot be changed while the settings in `DefaultMycnf` can be overridden.
+
+To change some of the default values or to set a new option value, create a ConfigMap in the same namespace as MySQLCluster like this.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: foo
+  name: mycnf
+data:
+  long_query_time: "10"
+  innodb_buffer_pool_size: 10G
+```
+
+and set the name of the ConfigMap in MySQLCluster as follows:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  mysqlConfigMapName: mycnf
+  ...
+```
+
+If `innodb_buffer_pool_size` is not given, MOCO sets it automatically to 70% of the value of `resources.requests.memory` (or `resources.limits.memory`) for `mysqld` container.
 
 ## Using the cluster
 
@@ -94,6 +141,12 @@ If `innodb_buffer_pool_size` is not given, MOCO sets it automatically to 70% of 
 ### Connecting to the primary instance
 
 ### Connecting to read-only replicas
+
+## Deleting the cluster
+
+By deleting MySQLCluster, all resources **including PersistentVolumeClaims** generated from the templates are automatically removed.
+
+If you want to keep the PersistentVolumeClaims, remove `metadata.ownerReferences` from them before you delete a MySQLCluster.
 
 ## Status, metrics, and logs
 

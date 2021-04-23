@@ -3,6 +3,8 @@ package dbop
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
@@ -60,52 +62,68 @@ type Operator interface {
 
 // OperatorFactory represents the factory for Operators.
 type OperatorFactory interface {
-	New(*mocov1beta1.MySQLCluster, *password.MySQLPassword, int) Operator
+	New(context.Context, *mocov1beta1.MySQLCluster, *password.MySQLPassword, int) (Operator, error)
 	Cleanup()
 }
 
-// DefaultOperatorFactory is the default operator factory.
-var DefaultOperatorFactory OperatorFactory = defaultFactory{}
+type Resolver interface {
+	Resolve(context.Context, *mocov1beta1.MySQLCluster, int) (string, error)
+}
 
-type defaultFactory struct{}
+type defaultFactory struct {
+	r Resolver
+}
 
-func (defaultFactory) New(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) Operator {
-	podName := cluster.PodName(index)
-	namespace := cluster.Namespace
+var _ OperatorFactory = defaultFactory{}
+
+func NewFactory(r Resolver) OperatorFactory {
+	return defaultFactory{r: r}
+}
+
+func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
+	addr, err := f.r.Resolve(ctx, cluster, index)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := mysql.NewConfig()
 	cfg.User = constants.AdminUser
 	cfg.Passwd = pwd.Admin()
 	cfg.Net = "tcp"
-	cfg.Addr = fmt.Sprintf("%s.%s.%s.svc:%d", podName, cluster.HeadlessServiceName(), namespace, constants.MySQLAdminPort)
+	cfg.Addr = net.JoinHostPort(addr, strconv.Itoa(constants.MySQLAdminPort))
 	cfg.InterpolateParams = true
 	cfg.ParseTime = true
 	cfg.Timeout = connTimeout
 	cfg.ReadTimeout = readTimeout
-	db := sqlx.MustOpen("mysql", cfg.FormatDSN())
+	db, err := sqlx.Connect("mysql", cfg.FormatDSN())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %w", cluster.PodName(index), err)
+	}
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)
 	return &operator{
-		cluster: cluster,
-		passwd:  pwd,
-		index:   index,
-		db:      db,
-	}
+		namespace: cluster.Namespace,
+		name:      cluster.PodName(index),
+		passwd:    pwd,
+		index:     index,
+		db:        db,
+	}, nil
 }
 
 func (defaultFactory) Cleanup() {}
 
 type operator struct {
-	cluster *mocov1beta1.MySQLCluster
-	passwd  *password.MySQLPassword
-	index   int
-	db      *sqlx.DB
+	namespace string
+	name      string
+	passwd    *password.MySQLPassword
+	index     int
+	db        *sqlx.DB
 }
 
 var _ Operator = &operator{}
 
 func (o *operator) Name() string {
-	return fmt.Sprintf("%s/%s-%d", o.cluster.Namespace, o.cluster.Name, o.index)
+	return fmt.Sprintf("%s/%s", o.namespace, o.name)
 }
 
 func (o *operator) Close() error {

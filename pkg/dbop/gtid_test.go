@@ -19,7 +19,8 @@ var _ = Describe("FindTopRunner", func() {
 		passwd, err := password.NewMySQLPassword()
 		Expect(err).NotTo(HaveOccurred())
 
-		op := factory.New(cluster, passwd, 0)
+		op, err := factory.New(context.Background(), cluster, passwd, 0)
+		Expect(err).NotTo(HaveOccurred())
 		defer op.Close()
 
 		statuses := make([]*MySQLInstanceStatus, 3)

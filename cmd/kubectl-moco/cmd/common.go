@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -15,28 +16,27 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	cluster := &mocov1beta1.MySQLCluster{}
 	cluster.Name = clusterName
 	cluster.Namespace = namespace
+	name := cluster.UserSecretName()
 	secret := &corev1.Secret{}
-	err := kubeClient.Get(ctx, types.NamespacedName{
-		Namespace: namespace,
-		Name:      cluster.UserSecretName(),
-	}, secret)
+	if err := kubeClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, secret); err != nil {
+		return "", err
+	}
+
+	passwd, err := password.NewMySQLPasswordFromSecret(secret)
 	if err != nil {
 		return "", err
 	}
 
-	userPassKeys := map[string]string{
-		constants.ReadOnlyUser: password.ReadOnlyPasswordKey,
-		constants.WritableUser: password.WritablePasswordKey,
+	switch user {
+	case constants.AdminUser:
+		return passwd.Admin(), nil
+	case constants.ReadOnlyUser:
+		return passwd.ReadOnly(), nil
+	case constants.WritableUser:
+		return passwd.Writable(), nil
 	}
-	key, ok := userPassKeys[user]
-	if !ok {
-		return "", errors.New("unknown user: " + user)
-	}
-	password, ok := secret.Data[key]
-	if !ok {
-		return "", errors.New("unknown user: " + user)
-	}
-	return string(password), nil
+
+	return "", fmt.Errorf("invalid user: %s", user)
 }
 
 func getPodName(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {

@@ -13,6 +13,13 @@ const (
 	WritableUser    = "moco-writable"
 )
 
+// my.cnf filenames for different kind of users.
+const (
+	ReadOnlyMyCnf = ReadOnlyUser + "-my.cnf"
+	WritableMyCnf = WritableUser + "-my.cnf"
+	AdminMyCnf    = AdminUser + "-my.cnf"
+)
+
 const (
 	// MySQLDataPath is the path of MySQL data dir.
 	MySQLDataPath = "/var/lib/mysql"
@@ -31,9 +38,6 @@ const (
 
 	// LogDirPath is the path of /var/log/mysql.
 	LogDirPath = "/var/log/mysql"
-
-	// MySQLErrorLogName is the filename of error log for MySQL.
-	MySQLErrorLogName = "mysql.err"
 
 	// MySQLSlowLogName is the filename of slow query log for MySQL.
 	MySQLSlowLogName = "mysql.slow"
@@ -58,14 +62,6 @@ const (
 	PodNameEnvKey      = "POD_NAME"
 	PodNamespaceEnvKey = "POD_NAMESPACE"
 	ClusterNameEnvKey  = "CLUSTER_NAME"
-)
-
-const (
-	// ReadOnlyMyCnfKey is the username and password of moco-readonly formated as my.cnf
-	ReadOnlyMyCnfKey = ReadOnlyUser + "-my.cnf"
-
-	// WritableMyCnfKey is the username and password or moco-writable formated as my.cnf
-	WritableMyCnfKey = WritableUser + "-my.cnf"
 )
 
 // Secret keys to clone data from an external mysqld

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -32,21 +31,21 @@ func fetchCredential(ctx context.Context, clusterName string) error {
 	switch credentialConfig.format {
 	case "plain":
 		fmt.Println(password)
-	case "myconf":
+	case "mycnf":
 		fmt.Printf(`[client]
 user=%s
 password="%s"
 `, credentialConfig.user, password)
 	default:
-		return errors.New("unknown format: " + credentialConfig.format)
+		return fmt.Errorf("unknown format: %s", credentialConfig.format)
 	}
 	return nil
 }
 
 func init() {
 	fs := credentialCmd.Flags()
-	fs.StringVarP(&credentialConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql [`moco-writable` or `moco-readonly`]")
-	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `myconf`]")
+	fs.StringVarP(&credentialConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql")
+	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `mycnf`]")
 
 	rootCmd.AddCommand(credentialCmd)
 }
