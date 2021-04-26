@@ -16,6 +16,11 @@ SHELL = /bin/bash
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS = "crd:crdVersions=v1"
 
+# for Go
+GOOS = $(shell go env GOOS)
+GOARCH = $(shell go env GOARCH)
+SUFFIX =
+
 .PHONY: all
 all: build
 
@@ -49,7 +54,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
 	echo $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) -f api/v1beta1/mysqlcluster_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
 
 .PHONY: check-generate
 check-generate:
@@ -96,6 +101,22 @@ test: test-tools
 build:
 	mkdir -p bin
 	GOBIN=$(shell pwd)/bin go install ./cmd/...
+
+.PHONY: release-build
+release-build: kustomize
+	mkdir -p build
+	$(MAKE) kubectl-moco GOOS=windows GOARCH=amd64 SUFFIX=.exe
+	$(MAKE) kubectl-moco GOOS=darwin GOARCH=amd64
+	$(MAKE) kubectl-moco GOOS=darwin GOARCH=arm64
+	$(MAKE) kubectl-moco GOOS=linux GOARCH=amd64
+	$(MAKE) kubectl-moco GOOS=linux GOARCH=arm64
+	$(KUSTOMIZE) build . > build/moco.yaml
+
+.PHONY: kubectl-moco
+kubectl-moco: build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX)
+
+build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX):
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ ./cmd/kubectl-moco
 
 ##@ Tools
 

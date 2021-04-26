@@ -31,6 +31,7 @@ innodb_flush_neighbors = 0
 innodb_lock_wait_timeout = 60
 innodb_log_file_size = 800M
 innodb_log_files_in_group = 2
+innodb_log_write_ahead_size = 512
 innodb_numa_interleave = OFF
 innodb_online_alter_log_max_size = 1073741824
 innodb_print_all_deadlocks = 1

@@ -24,6 +24,12 @@ All these metrics are prefixed with `moco_cluster_` and have `name` and `namespa
 
 TBD
 
+## MySQL instance
+
+For each `mysqld` instance, [moco-agent][] exposes a set of metrics.
+Read [github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md](https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md) for details.
+
 [standard]: https://povilasv.me/prometheus-go-metrics/
 [controller-runtime]: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics
 [errant]: https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/
+[moco-agent]: https://github.com/cybozu-go/moco-agent/

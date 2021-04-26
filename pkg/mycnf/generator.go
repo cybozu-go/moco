@@ -88,6 +88,7 @@ var DefaultMycnf = map[string]string{
 	"innodb_flush_neighbors":      "0",
 	"innodb_random_read_ahead":    "false",
 	"innodb_read_ahead_threshold": "0",
+	"innodb_log_write_ahead_size": "512",
 }
 
 // ConstMycnf is the mysqld configurations that MOCO applies forcibly.

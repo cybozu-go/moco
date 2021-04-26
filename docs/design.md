@@ -1,36 +1,31 @@
 Design notes
 ============
 
-Motivation
-----------
+## Motivation
 
-This Kubernetes operator automates operations for the binlog-based replication on MySQL.
+We are creating our own Kubernetes operator for clustering MySQL instances for the following reasons:
 
-InnoDB cluster can be used for the replication purpose, but we choose not to use InnoDB cluster because it does not allow large (>2GB) transactions.
+Firstly, our application requires strict-compatibility to the traditional MySQL.  Although recent MySQL provides an advanced clustering solution called [group replication](https://dev.mysql.com/doc/refman/8.0/en/group-replication.html) that is based on [Paxos](https://en.wikipedia.org/wiki/Paxos_(computer_science)), we cannot use it because of [various limitations from group replication](https://dev.mysql.com/doc/refman/8.0/en/group-replication-limitations.html).
 
-There are some existing operators which deploy a group of MySQL servers without InnoDB cluster but they does not support the Point-in-Time-Recovery(PiTR) feature.
+Secondly, we want to have a Kubernetes native and the simplest operator.  For example, we can use Kubernetes Service to load-balance read queries to multiple replicas.  Also, we do not want to support non-GTID based replications.
 
-- [oracle/mysql-operator](https://github.com/oracle/mysql-operator) takes backups only with `mysqldump`
-- [presslabs/mysql-operator](https://github.com/presslabs/mysql-operator) does not restore clusters to the state at the desired Point-in-Time
+Lastly, none of the existing operators could satisfy our requirements.
 
-This operator deploys a group of MySQL servers which replicates data semi-synchronously to the replicas and takes backups with both `mysqlpump` and `mysqlbinlog`.
+## Goals
 
-In this context, we call the group of MySQL servers as MySQL cluster.
-
-Goals
------
-
-- Have the primary replicate data semi-synchronously to the multiple replicas
+- Manage primary-replica cluster of MySQL instances.
+    - The primary instance is the only instance that allows writes.
+    - Replica instances replicate data from the primary.
+- Support replication from an external MySQL instance.
 - Support all the four transaction isolation levels.
-- Avoid split-brain.
+- No split-brain is allowed.
 - Accept large transactions.
-- Upgrade this operator without restarting MySQL `Pod`s.
+- Upgrade this operator without restarting MySQL Pods.
 - Support multiple MySQL versions and automatic upgrading.
 - Support automatic primary selection and switchover.
 - Support automatic failover.
-- Support backups at least once in a day.
-- Support a quick recovery by combining full backup and binary logs.
-- Support asynchronous replication between remote data centers.
+- Backup and restore features.
+- Support point-in-time-recovery (PiTR).
 - Tenant users can specify the following parameters:
   - The version of MySQL instances.
   - The number of processor cores for each MySQL instance.
@@ -41,32 +36,27 @@ Goals
 - Allow `CREATE / DROP TEMPORARY TABLE` during a transaction.
 - Use Custom Resource Definition(CRD) to automate construction of MySQL database using replication on Kubernetes.
 
-Non-goals
----------
+## Non-goals
 
-- Support for InnoDB cluster.
-- Zero downtime upgrade.
 - Node fencing.
-  - Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, the operator will restore the cluster appropriately.
 
-Components
-----------
+    Fencing should be done externally.  Once Pod and PVC/PV are removed as a consequence of node fencing, the operator will restore the cluster appropriately.
+
+## Components
 
 ### Workloads
 
 - Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
-  - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
-  - [ObjectStorage](crd_object_storage.md) represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
+    - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
+    - [ObjectStorage](crd_object_storage.md) represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
 - [cert-manager](https://cert-manager.io/): Provide client certifications and primary-replica certifications automatically.
 
 ### Tools
 
 - `kubectl-moco`: CLI to manipulate MySQL cluster. It provides functionalities such as:
-  - Change primary manually.
-  - Port-forward to MySQL servers.
-  - Execute SQL like `mysql -u -p` without a credential file on a local environment.
-  - Fetch a credential file to a local environment.
+    - Execute `mysql` client for a MySQL instance running on Kubernetes.
+    - Fetch a credential file to a local environment.
 
 ### Diagram
 
@@ -85,199 +75,5 @@ In this section, the name of `MySQLCluster` is assumed to be `mysql`.
   - `Service` for accessing replicas, both for MySQL protocol and X protocol.
   - `Secrets` to store credentials.
   - `ConfigMap` to store cluster configuration.
-  - `ServiceAccount`, `Role` and `RoleBinding` to allow Pods to access resources.
 
 Read [reconcile.md](reconcile.md) on how MOCO reconciles the StatefulSet.
-
-#### How to implement the initialization of MySQL pods with avoiding unnecessary restart at the operator update
-
-When initializing MySQL pods, the following procedures should be executed in their init containers.
-
-- Initialize data-dir.
-- Create mysql users.
-- Create `my.cnf`.
-- etc.
-
-When upgrading the operator, we want to avoid unnecessary restarts of MySQL pods.
-Creating mysql users and initializing data-dir are done in an init container of which image is the same with
-the `mysqld` container, so the MySQL pods are not restarted at the upgrade.
-
-`my.cnf` is created by merging the following three configurations.
-
-- Default: This is created by the operator and contains default value of `my.cnf`.
-- User: This is created by users and contains user-defined values of `my.cnf`. This overwrites Default values.
-- Constant: This is created by the operator. This overwrites User values.
-
-The operator contains the Default and Constant configurations for all MySQL clusters,
-and the User configuration for a certain MySQL cluster specified in the cluster's CR.
-The operator merges these three files and creates a ConfigMap that will be mounted on MySQL Pods.
-For instance-specific parameters such as `server-id`, an init container creates a supplementary config file.
-The main `my.cnf` contains a stanza to include this supplementary config file.
-
-If users want to change their MySQL cluster configurations without restarting Pods, they should use `SET GLOBAL ...`.
-
-So, in short we prepare an init container that does the following two things.
-
-1. Initialize the MySQL cluster, for example, creating necessary users.
-2. Create a supplementary config file for `my.cnf`.
-
-For this purpose, the `moco-agent` binary is provided by [cybozu-go/moco-agent](https://github.com/cybozu-go/moco-agent).
-
-Behaviors
----------
-
-### How to watch the status of instances
-
-Fetch the following information with mysql-client from each instance:
-
-- SHOW MASTER STATUS
-  - Executed_Gtid_Set
-- SHOW SLAVE STATUS
-  - Master_Host
-  - Executed_Gtid_Set
-  - Retrieved_Gtid_Set
-  - Slave_IO_Running
-  - Slave_SQL_Running
-  - Last_IO_Errno
-  - Last_IO_Error
-  - Last_SQL_Errno
-  - Last_SQL_Error
-- select @@global.read_only, @@global.super_read_only;
-  - read_only
-  - super_read_only
-- performance_schema.clone_status table
-  - STATE
-
-### How to bootstrap MySQL Cluster
-
-When all instances are the initial state, bootstrap the cluster as follows:
-
-1. Select the first instance as the primary.
-2. Set the replication source using `CHANGE MASTER TO` for a replica instances.
-3. Start replication using `START SLAVE` on each replicas.
-4. Create Service resources to access to primary and replicas.
-5. Update `MySQLCluster.status.currentPrimaryIndex` with the primary name.
-6. Turn off read-only mode on the primary.
-
-### How to execute failover when the primary fails
-
-When the primary fails, the cluster is recovered in the following process:
-
-1. Stop the `IO_THREAD` of all replicas.
-2. Select and configure new primary.
-3. Update `MySQLCluster.status.currentPrimaryIndex` with the new primary name.
-4. Turn off read-only mode on the new primary
-
-In the process, the operator configures the old primary as replica if the server is ready.
-
-### How to execute failover when a replica fails
-
-When a replica fails once and it restarts afterwards, the operator basically configures it to follow the primary.
-
-#### How to handle the case a replica continues to fail and restart
-
-If one of the replicas fails again after restarting, the `StatefulSet` controller restarts the replica again.
-This means that the replica may continue to fail and restart again and again.
-This loop can occur, for example, in the case that the data in the replica is corrupted.
-Users must handle this failure manually by deleting the `Pod` or/and `PersistentVolumeClaim`.
-Then, the replica `Pod` is scheduled again onto a different node and the operator configures it to follow the primary automatically.
-
-Users can keep the data with a [`VolumeSnapshot`](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) and
-create `PersistentVolumeClaim` from the snapshot even after this failure happens.
-This feature is available only if the underlying `StorageClass` supports it.
-
-### How to execute switchover
-
-Users can execute primary switchover by applying `SwitchoverJob` CR which contains the primary index to be switched to.
-
-Note that while any `SwitchoverJob` is running, another `SwitchoverJob` can be created but the operator waits for the completion of running jobs.
-
-### How to make a backup
-
-When you create `MySQLBackupSchedule` CR, it creates `CronJob` which stores dump and binlog to an object storage:
-
-If we want to make backups only once, set `MySQLBackupSchedule.spec.schedules` to run once.
-
-### How to perform PiTR
-
-When we create a `MySQLCluster` with `.spec.restore` specified, the operator performs PiTR with the following procedure.
-
-`.spec.restore` is unable to be updated, so PiTR can be executed only when the cluster is being creating.
-
-1. The operator sets the source cluster's `.status.ready` as `False` and make the MySQL cluster block incoming transactions.
-2. The operator makes the MySQL cluster flush binlogs from the source `MySQLCluster`. This binlog is used for recovery if the PiTR fails.
-3. The operator lists `MySQLBackup` candidates based on `MySQLCluster.spec.restore.sourceClusterName`.
-4. The operator selects the corresponding `MySQLBackup` CRs according to `MySQLCluster.spec.restore.pointInTime`.
-5. The operator downloads the dump file and the binlogs for `MySQLCluster.spec.restore.pointInTime` from the object storage.
-6. The operator restores the MySQL servers to the state at `MySQLCluster.spec.restore.pointInTime`.
-7. If the recovery succeeds, the operator sets the source cluster's `.status.ready` as `True`.
-
-### How to upgrade MySQL version of primary and replicas
-
-MySQL software upgrade is triggered by changing container image specified in `MySQLCluster.spec.podTemplate`.
-In this section, the name of `StatefulSet` is assumed to be `mysql`.
-
-1. Switch primary to the pod `mysql-0` if the current primary is not `mysql-0`.
-2. Update and apply the `StatefulSet` manifest for `mysql`, to trigger upgrading the replicas as follows:
-  - Set `.spec.updateStrategy.rollingUpdate.partition` as `1`.
-  - Set new image version in `.spec.template.spec.containers`.
-3. Wait for all the replicas to be upgraded.
-4. Switch primary to `mysql-1`.
-5. Update and apply the `StatefulSet` manifest to trigger upgrading `mysql-0` as follows:
-  - Remove `.spec.updateStrategy.rollingUpdate.partition`.
-6. Wait for `mysql-0` to be upgraded.
-
-### How to manage recovery from blackouts
-
-In the scenario of the recovery from data center blackouts, all members of the MySQL cluster perform cold boots.
-
-The operator waits for all members to boot up again.
-It automatically recovers the cluster only after all members come back, not just after the quorum come back.
-This is to prevent the data loss even in corner cases.
-
-If a part of the cluster never finishes boot-up, users must intervene the recovery process.
-The process is as follows.
-1. Users delete the problematic Pods and/or PVCs.  (or they might have been deleted already)
-   - Users need to delete PVCs before Pods if they want to delete both due to the [Storage Object in Use Protection](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#storage-object-in-use-protection).
-   - [The StatefulSet controller may recreate Pods improperly](https://github.com/kubernetes/kubernetes/issues/74374).
-     Users may need to delete the Nodes in this case.
-2. The StatefulSet controller creates new blank Pods and/or PVCs.
-3. The operator tries to select the primary of the cluster only after all members are up and running, and the quorum of the cluster has data.
-   - If the quorum of the cluster does not have data, users need to recover the cluster from a backup.
-4. The operator initializes the new blank Pods as new replicas.
-
-### How to collect metrics for Prometheus
-
-To avoid unnecessary restart when the operator is upgraded, we prepare external Pods which collect mysqld metrics over the network,
-and export them as Prometheus metrics.
-
-The detail is TBD.
-
-### How to manage log files
-
-The operator configures MySQL to output error logs and slow query logs into files.
-
-To avoid exhaustion of storage resources, the operator appends a sidecar container to the MySQL Pod.
-The sidecar container rotates and deletes the log files based on the cron spec in `MySQLCluster.spec.logRotationSchedule`.
-
-The operator does not care about gathering the contents of the log files.
-Tenant users can extract the contents by defining sidecar containers for `slow.log` and `error.log`.
-
-You can see an example with Fluent Bit in [Example Document](example_mysql_cluster.md).
-
-### How to delete resources (garbage collection)
-
-The operator sets an owner reference of MySQLCluster to the child resources.
-By the owner reference, when the parent MySQLCluster is deleted, child resources are automatically deleted.
-
-The data volumes (PVCs) are also deleted automatically.
-If you want to prevent the PVCs deletion, please edit the PVCs manifest and remove the owner reference manually.
-
-### TBD
-
-- Write merge strategy of `my.cnf`.
-- How to clean up zombie backup files on a object storage which does not exist in Kubernetes.
-
-### Candidates of additional features
-
-- Backup files verification.

@@ -1,0 +1,29 @@
+# This example shows how to change Service type to LoadBalancer
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  replicas: 3
+  # serviceTemplate allows you to specify annotations, labels, and spec
+  # of Services to be generated for this MySQLCluster.
+  serviceTemplate:
+    metadata:
+      annotations:
+        metallb.universe.tf/address-pool: production-public-ips
+    spec:
+      type: LoadBalancer
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

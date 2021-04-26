@@ -57,12 +57,16 @@ var _ = Context("lifecycle", func() {
 	})
 
 	It("should update the configmap and restart mysqld", func() {
-		cluster, err := getCluster("foo", "single")
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Spec.MySQLConfigMapName = nil
-		data, _ := json.Marshal(cluster)
-		kubectlSafe(data, "apply", "-f", "-")
+		Eventually(func() error {
+			cluster, err := getCluster("foo", "single")
+			if err != nil {
+				return err
+			}
+			cluster.Spec.MySQLConfigMapName = nil
+			data, _ := json.Marshal(cluster)
+			_, err = kubectl(data, "apply", "-f", "-")
+			return err
+		}).Should(Succeed())
 
 		Eventually(func() float64 {
 			out, err := kubectl(nil, "moco", "-n", "foo", "mysql", "single", "--", "-N", "-e", "SELECT @@long_query_time")
@@ -154,10 +158,15 @@ var _ = Context("lifecycle", func() {
 			if err != nil {
 				return err
 			}
-			if len(cms.Items) == 1 {
-				return nil
+
+			for _, cm := range cms.Items {
+				switch cm.Name {
+				case "kube-root-ca.crt", "mycnf":
+				default:
+					return fmt.Errorf("pending config map %+v", cm)
+				}
 			}
-			return fmt.Errorf("pending config maps: %+v", cms.Items)
+			return nil
 		}).Should(Succeed())
 		Eventually(func() error {
 			secrets := &corev1.SecretList{}

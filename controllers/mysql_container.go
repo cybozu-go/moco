@@ -204,7 +204,7 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta1.MySQLC
 		Image: image,
 		Command: []string{
 			constants.InitCommand,
-			"--base-dir=" + constants.MySQLDataPath,
+			"--data-dir=" + constants.MySQLDataPath,
 			"--conf-dir=" + constants.MySQLInitConfPath,
 			fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
 		},

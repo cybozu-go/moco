@@ -138,14 +138,16 @@ var _ = Context("replication", func() {
 	})
 
 	It("should be able to scale out the cluster", func() {
-		out := kubectlSafe(nil, "-n", "repl", "get", "mysqlcluster", "test", "-o", "json")
-		cluster := &mocov1beta1.MySQLCluster{}
-		err := json.Unmarshal(out, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Spec.Replicas = 5
-		data, _ := json.Marshal(cluster)
-		kubectlSafe(data, "-n", "repl", "apply", "-f", "-")
+		Eventually(func() error {
+			cluster, err := getCluster("repl", "test")
+			if err != nil {
+				return err
+			}
+			cluster.Spec.Replicas = 5
+			data, _ := json.Marshal(cluster)
+			_, err = kubectl(data, "apply", "-f", "-")
+			return err
+		}).Should(Succeed())
 
 		Eventually(func() error {
 			cluster, err := getCluster("repl", "test")
@@ -169,10 +171,16 @@ var _ = Context("replication", func() {
 	})
 
 	It("should detect errant transactions", func() {
-		kubectlSafe(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
-			"-e", "SET GLOBAL read_only=0")
-		kubectlSafe(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
-			"-e", "CREATE DATABASE errant")
+		Eventually(func() error {
+			_, err := kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
+				"-e", "SET GLOBAL read_only=0")
+			if err != nil {
+				return err
+			}
+			_, err = kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
+				"-e", "CREATE DATABASE errant")
+			return err
+		}).Should(Succeed())
 
 		Eventually(func() int {
 			cluster, err := getCluster("repl", "test")
@@ -296,12 +304,16 @@ var _ = Context("replication", func() {
 	})
 
 	It("should be able to stop replication from the donor", func() {
-		cluster, err := getCluster("repl", "test")
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Spec.ReplicationSourceSecretName = nil
-		data, _ := json.Marshal(cluster)
-		kubectlSafe(data, "apply", "-f", "-")
+		Eventually(func() error {
+			cluster, err := getCluster("repl", "test")
+			if err != nil {
+				return err
+			}
+			cluster.Spec.ReplicationSourceSecretName = nil
+			data, _ := json.Marshal(cluster)
+			_, err = kubectl(data, "apply", "-f", "-")
+			return err
+		}).Should(Succeed())
 
 		Eventually(func() error {
 			_, err := kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-writable", "test", "--",

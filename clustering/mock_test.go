@@ -93,22 +93,25 @@ func (a *mockAgentConn) Clone(ctx context.Context, in *agent.CloneRequest, opts 
 }
 
 func setPodReadiness(ctx context.Context, name string, ready bool) {
-	pod := &corev1.Pod{}
-	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: name}, pod)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	if ready {
-		pod.Status.Conditions = []corev1.PodCondition{
-			{
-				Type:   corev1.PodReady,
-				Status: corev1.ConditionTrue,
-			},
+	EventuallyWithOffset(1, func() error {
+		pod := &corev1.Pod{}
+		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: name}, pod)
+		if err != nil {
+			return err
 		}
-	} else {
-		pod.Status.Conditions = nil
-	}
-	err = k8sClient.Status().Update(ctx, pod)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+		if ready {
+			pod.Status.Conditions = []corev1.PodCondition{
+				{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionTrue,
+				},
+			}
+		} else {
+			pod.Status.Conditions = nil
+		}
+		return k8sClient.Status().Update(ctx, pod)
+	}).Should(Succeed())
 }
 
 type mockAgentFactory struct {

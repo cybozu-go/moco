@@ -19,6 +19,7 @@ jobs:
     - run: make test
     - run: make check-generate
     - run: make envtest
+    - run: make release-build
   test-dbop:
     name: Test pkg/dbop
     strategy:

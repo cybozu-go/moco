@@ -35,7 +35,7 @@ var mysqlPassword *password.MySQLPassword
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	SetDefaultEventuallyTimeout(10 * time.Second)
+	SetDefaultEventuallyTimeout(30 * time.Second)
 	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
 	SetDefaultConsistentlyDuration(3 * time.Second)
 	SetDefaultConsistentlyPollingInterval(100 * time.Millisecond)
