@@ -91,7 +91,9 @@ type StatusSet struct {
 // Close closes `ss.DBOps`.
 func (ss *StatusSet) Close() {
 	for _, op := range ss.DBOps {
-		op.Close()
+		if op != nil {
+			op.Close()
+		}
 	}
 }
 
@@ -163,6 +165,11 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	}
 
 	ss.DBOps = make([]dbop.Operator, cluster.Spec.Replicas)
+	defer func() {
+		if ss.State == StateUndecided {
+			ss.Close()
+		}
+	}()
 	for i := 0; i < int(cluster.Spec.Replicas); i++ {
 		op, err := p.dbf.New(ctx, cluster, passwd, i)
 		if err != nil {
@@ -170,11 +177,6 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		}
 		ss.DBOps[i] = op
 	}
-	defer func() {
-		if ss.State == StateUndecided {
-			ss.Close()
-		}
-	}()
 
 	ss.MySQLStatus = make([]*dbop.MySQLInstanceStatus, cluster.Spec.Replicas)
 	var wg sync.WaitGroup

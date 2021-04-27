@@ -198,5 +198,20 @@ var _ = Context("lifecycle", func() {
 			}
 			return fmt.Errorf("pending service accounts: %+v", sas.Items)
 		}).Should(Succeed())
+		Eventually(func() error {
+			services := &corev1.ServiceList{}
+			out, err := kubectl(nil, "-n", "foo", "get", "service", "-o", "json")
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(out, services)
+			if err != nil {
+				return err
+			}
+			if len(services.Items) == 0 {
+				return nil
+			}
+			return fmt.Errorf("pending services: %+v", services.Items)
+		}).Should(Succeed())
 	})
 })

@@ -32,11 +32,10 @@ type mockManager struct {
 
 var _ clustering.ClusterManager = &mockManager{}
 
-func (m *mockManager) Update(ctx context.Context, cluster *mocov1beta1.MySQLCluster) {
+func (m *mockManager) Update(ctx context.Context, key types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	key := client.ObjectKeyFromObject(cluster)
 	m.clusters[key.String()] = struct{}{}
 }
 
@@ -453,6 +452,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(headless.Spec.Selector).NotTo(HaveKey("moco.cybozu.com/role"))
 		Expect(primary.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "primary"))
 		Expect(replica.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "replica"))
+
+		Expect(headless.Spec.PublishNotReadyAddresses).To(BeTrue())
 
 		cluster = &mocov1beta1.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)

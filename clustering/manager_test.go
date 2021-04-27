@@ -153,7 +153,7 @@ var _ = Describe("manager", func() {
 
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		cm.Update(ctx, cluster)
+		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
 
 		Eventually(func() error {
 			cluster, err = testGetCluster(ctx)
@@ -273,7 +273,7 @@ var _ = Describe("manager", func() {
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		cm.Update(ctx, cluster)
+		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
 		defer func() {
 			cm.Stop(client.ObjectKeyFromObject(cluster))
 			time.Sleep(400 * time.Millisecond)
@@ -614,7 +614,7 @@ var _ = Describe("manager", func() {
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		cm.Update(ctx, cluster)
+		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
 		defer func() {
 			cm.Stop(client.ObjectKeyFromObject(cluster))
 			time.Sleep(400 * time.Millisecond)

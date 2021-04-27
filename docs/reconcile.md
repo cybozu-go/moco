@@ -26,7 +26,7 @@ It updates the StatefulSet only when the update is a must.
 
 The StatefulSet will be updated when:
 
-- The fields under `spec` of MySQLCluster are modified.
+- Some fields under `spec` of MySQLCluster are modified.
 - `my.cnf` for mysqld is updated.
 - the version of the reconciler used to reconcile the StatefulSet is obsoleted.
 - the image of moco-agent given to the controller is updated.
@@ -35,6 +35,9 @@ The StatefulSet will be updated when:
 
 - the image of fluent-bit given to the controller is changed.
     - because the controller does not depend on fluent-bit.
+
+The fluent-bit sidecar container is updated only when some fields under
+`spec` of MySQLCluster are modified.
 
 ## Service
 

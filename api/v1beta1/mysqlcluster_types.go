@@ -397,7 +397,7 @@ func (r *MySQLCluster) ReplicaServiceName() string {
 
 // PodHostname returns the hostname of a Pod with the given index.
 func (r *MySQLCluster) PodHostname(index int) string {
-	return fmt.Sprintf("%s.%s.%s.svc", r.PodName(index), r.PrefixedName(), r.Namespace)
+	return fmt.Sprintf("%s.%s.%s.svc", r.PodName(index), r.HeadlessServiceName(), r.Namespace)
 }
 
 // SlowQueryLogAgentConfigMapName returns the name of the slow query log agent config name.

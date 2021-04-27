@@ -191,7 +191,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	r.ClusterManager.Update(ctx, cluster)
+	r.ClusterManager.Update(ctx, client.ObjectKeyFromObject(cluster))
 	return ctrl.Result{}, nil
 }
 
@@ -476,6 +476,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		if headless {
 			saSpec.ClusterIP = corev1.ClusterIPNone
 			saSpec.Type = corev1.ServiceTypeClusterIP
+			saSpec.PublishNotReadyAddresses = true
 		} else {
 			saSpec.ClusterIP = svc.Spec.ClusterIP
 			if len(saSpec.Type) == 0 {
@@ -557,7 +558,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			MatchLabels: labelSet(cluster, false),
 		}
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.ServiceName = cluster.PrefixedName()
+		sts.Spec.ServiceName = cluster.HeadlessServiceName()
 
 		sts.Spec.VolumeClaimTemplates = make([]corev1.PersistentVolumeClaim, len(cluster.Spec.VolumeClaimTemplates))
 		for i, v := range cluster.Spec.VolumeClaimTemplates {
@@ -654,7 +655,8 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		containers = append(containers, mysqldContainer)
 		containers = append(containers, r.makeV1AgentContainer(cluster, sts.Spec.Template.Spec.Containers))
 		if !cluster.Spec.DisableSlowQueryLogContainer {
-			containers = append(containers, r.makeV1SlowQueryLogContainer(sts))
+			force := cluster.Status.ReconcileInfo.Generation != cluster.Generation
+			containers = append(containers, r.makeV1SlowQueryLogContainer(sts, force))
 		}
 		containers = append(containers, r.makeV1OptionalContainers(cluster, sts.Spec.Template.Spec.Containers)...)
 		podSpec.Containers = containers

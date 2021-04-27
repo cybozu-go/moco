@@ -20,8 +20,8 @@ const (
 	agentPasswordKey       = "AGENT_PASSWORD"
 	replicationPasswordKey = "REPLICATION_PASSWORD"
 	cloneDonorPasswordKey  = "CLONE_DONOR_PASSWORD"
-	ReadOnlyPasswordKey    = "READONLY_PASSWORD"
-	WritablePasswordKey    = "WRITABLE_PASSWORD"
+	readOnlyPasswordKey    = "READONLY_PASSWORD"
+	writablePasswordKey    = "WRITABLE_PASSWORD"
 )
 
 // MySQLPassword represents a set of passwords of MySQL users for MOCO
@@ -87,8 +87,8 @@ func NewMySQLPasswordFromSecret(secret *corev1.Secret) (*MySQLPassword, error) {
 		agent:      string(secret.Data[agentPasswordKey]),
 		replicator: string(secret.Data[replicationPasswordKey]),
 		donor:      string(secret.Data[cloneDonorPasswordKey]),
-		readOnly:   string(secret.Data[ReadOnlyPasswordKey]),
-		writable:   string(secret.Data[WritablePasswordKey]),
+		readOnly:   string(secret.Data[readOnlyPasswordKey]),
+		writable:   string(secret.Data[writablePasswordKey]),
 	}, nil
 }
 
@@ -106,8 +106,8 @@ func (p MySQLPassword) ToSecret() *corev1.Secret {
 			agentPasswordKey:       []byte(p.agent),
 			replicationPasswordKey: []byte(p.replicator),
 			cloneDonorPasswordKey:  []byte(p.donor),
-			ReadOnlyPasswordKey:    []byte(p.readOnly),
-			WritablePasswordKey:    []byte(p.writable),
+			readOnlyPasswordKey:    []byte(p.readOnly),
+			writablePasswordKey:    []byte(p.writable),
 		},
 	}
 }
@@ -129,9 +129,9 @@ password="%s"
 			},
 		},
 		Data: map[string][]byte{
+			constants.AdminMyCnf:    formatMyCnf(constants.AdminUser, p.admin),
 			constants.ReadOnlyMyCnf: formatMyCnf(constants.ReadOnlyUser, p.readOnly),
 			constants.WritableMyCnf: formatMyCnf(constants.WritableUser, p.writable),
-			constants.AdminMyCnf:    formatMyCnf(constants.AdminUser, p.admin),
 		},
 	}
 }

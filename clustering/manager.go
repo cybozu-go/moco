@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
@@ -24,7 +23,7 @@ import (
 //
 // This interface is meant to be used by MySQLClusterReconciler.
 type ClusterManager interface {
-	Update(context.Context, *mocov1beta1.MySQLCluster)
+	Update(context.Context, types.NamespacedName)
 	Stop(types.NamespacedName)
 }
 
@@ -56,11 +55,10 @@ type clusterManager struct {
 	processes map[string]*managerProcess
 }
 
-func (m *clusterManager) Update(ctx context.Context, cluster *mocov1beta1.MySQLCluster) {
+func (m *clusterManager) Update(ctx context.Context, name types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	name := client.ObjectKeyFromObject(cluster)
 	key := name.String()
 	p, ok := m.processes[key]
 	if ok {

@@ -95,9 +95,9 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLClust
 	cfg.ParseTime = true
 	cfg.Timeout = connTimeout
 	cfg.ReadTimeout = readTimeout
-	db, err := sqlx.Connect("mysql", cfg.FormatDSN())
+	db, err := sqlx.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to %s: %w", cluster.PodName(index), err)
+		return nil, fmt.Errorf("failed to open %s: %w", cluster.PodName(index), err)
 	}
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)

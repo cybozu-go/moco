@@ -153,10 +153,12 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta1.MySQL
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.StatefulSet) corev1.Container {
-	for _, c := range sts.Spec.Template.Spec.Containers {
-		if c.Name == constants.SlowQueryLogAgentContainerName {
-			return c
+func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.StatefulSet, force bool) corev1.Container {
+	if !force {
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == constants.SlowQueryLogAgentContainerName {
+				return c
+			}
 		}
 	}
 

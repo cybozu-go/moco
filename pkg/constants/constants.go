@@ -57,7 +57,7 @@ const (
 	FluentBitConfigPath = "/fluent-bit/etc"
 )
 
-// Environment variables for moco-agent
+// Environment variables
 const (
 	PodNameEnvKey      = "POD_NAME"
 	PodNamespaceEnvKey = "POD_NAMESPACE"
