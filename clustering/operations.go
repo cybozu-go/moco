@@ -310,7 +310,7 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 	if ss.Cluster.Spec.ReplicationSourceSecretName == nil {
 		pst := ss.MySQLStatus[ss.Primary]
 		op := ss.DBOps[ss.Primary]
-		if pst.GlobalVariables.ReadOnly || pst.ReplicaStatus != nil {
+		if pst.GlobalVariables.ReadOnly {
 			redo = true
 			p.log.Info("set read_only=0", "instance", ss.Primary)
 			if err := op.SetReadOnly(ctx, false); err != nil {

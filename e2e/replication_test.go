@@ -21,6 +21,10 @@ var donorYAML string
 var replYAML string
 
 var _ = Context("replication", func() {
+	if doUpgrade {
+		return
+	}
+
 	It("should prepare a donor instance", func() {
 		kubectlSafe(fillTemplate(donorYAML), "apply", "-f", "-")
 		Eventually(func() error {

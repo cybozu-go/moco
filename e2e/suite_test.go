@@ -2,7 +2,6 @@ package e2e
 
 import (
 	_ "embed"
-	"os"
 	"testing"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func TestE2e(t *testing.T) {
-	if os.Getenv("RUN_E2E") == "" {
+	if !runE2E {
 		t.Skip("no RUN_E2E environment variable")
 	}
 	RegisterFailHandler(Fail)

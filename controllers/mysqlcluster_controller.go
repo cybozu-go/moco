@@ -558,6 +558,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			MatchLabels: labelSet(cluster, false),
 		}
 		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+		sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+			Type: appsv1.RollingUpdateStatefulSetStrategyType,
+		}
 		sts.Spec.ServiceName = cluster.HeadlessServiceName()
 
 		sts.Spec.VolumeClaimTemplates = make([]corev1.PersistentVolumeClaim, len(cluster.Spec.VolumeClaimTemplates))
@@ -648,7 +651,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		}
 
 		containers := make([]corev1.Container, 0, 4)
-		mysqldContainer, err := r.makeV1MySQLDContainer(podSpec.Containers, sts.Spec.Template.Spec.Containers)
+		mysqldContainer, err := r.makeV1MySQLDContainer(cluster, podSpec.Containers, sts.Spec.Template.Spec.Containers)
 		if err != nil {
 			return err
 		}

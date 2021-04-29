@@ -417,7 +417,27 @@ After a failover, the old primary may become an errant replica [as described](#e
 
 ### Upgrading mysql version
 
-TBD
+You can upgrade the MySQL version of a MySQL cluster as follows:
+
+1. Check that the cluster is healthy.
+2. Check release notes of MySQL for any incompatibilities between the current and the new versions.
+3. Edit the Pod template of the MySQLCluster and update `mysqld` container image:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+      containers:
+      - name: mysqld
+        # Edit the next line
+        image: quay.io/cybozu/moco-mysql:8.0.24
+```
+
+You are advised to make backups and/or create a replica cluster before starting the upgrade process.
+Read [`upgrading.md`](upgrading.md) for further details.
 
 ### Re-initializing an errant replica
 

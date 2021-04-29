@@ -28,6 +28,7 @@ Therefore, we include the following tests in the e2e suite.
     ```console
     $ make start
     $ make test
+    $ make test-upgrade
     ```
 
 3. After the test, run the following command to stop `kind` cluster.
