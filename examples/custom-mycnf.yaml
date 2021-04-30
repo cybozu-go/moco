@@ -1,0 +1,35 @@
+# This example shows how to set MySQL server system variables.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: default
+  name: mycnf
+data:
+  # key-value in data field will become server system variable names and values.
+  # https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
+  # https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
+  long_query_time: "5"
+  innodb_buffer_pool_size: "70G"
+---
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  replicas: 3
+  # ConfigMap name in the same namespace.
+  mysqlConfigMapName: mycnf
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

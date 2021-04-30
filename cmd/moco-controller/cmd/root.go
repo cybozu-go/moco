@@ -3,41 +3,74 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
+	"runtime/debug"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cybozu-go/moco"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+var defaultAgentContainerImage string
+
 var config struct {
-	metricsAddr              string
-	leaderElectionID         string
-	binaryCopyContainerImage string
-	fluentBitImage           string
-	connMaxLifeTime          time.Duration
-	connectionTimeout        time.Duration
-	readTimeout              time.Duration
-	waitTime                 time.Duration
+	metricsAddr         string
+	probeAddr           string
+	leaderElectionID    string
+	webhookAddr         string
+	certDir             string
+	agentContainerImage string
+	fluentBitImage      string
+	interval            time.Duration
+	zapOpts             zap.Options
+}
+
+func init() {
+	info, _ := debug.ReadBuildInfo()
+	if info == nil {
+		return
+	}
+	for _, mod := range info.Deps {
+		if mod.Path != "github.com/cybozu-go/moco-agent" {
+			continue
+		}
+		if len(mod.Version) > 2 && strings.HasPrefix(mod.Version, "v") {
+			defaultAgentContainerImage = "ghcr.io/cybozu-go/moco-agent:" + mod.Version[1:]
+			return
+		}
+	}
+	panic("no module info for github.com/cybozu-go/moco-agent")
 }
 
 var rootCmd = &cobra.Command{
 	Use:     "moco-controller",
 	Version: moco.Version,
 	Short:   "MOCO controller",
-	Long:    `MOCO controller manages MySQL cluster with binlog-based semi-sync replication.`,
+	Long:    `MOCO controller`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		return subMain()
+		h, p, err := net.SplitHostPort(config.webhookAddr)
+		if err != nil {
+			return fmt.Errorf("invalid webhook address: %s, %v", config.webhookAddr, err)
+		}
+		numPort, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("invalid webhook address: %s, %v", config.webhookAddr, err)
+		}
+		ns := os.Getenv(constants.PodNamespaceEnvKey)
+		if ns == "" {
+			return fmt.Errorf("no environment variable %s", constants.PodNamespaceEnvKey)
+		}
+		return subMain(ns, h, numPort)
 	},
 }
-
-const (
-	defaultBinaryCopyContainerImage = "ghcr.io/cybozu-go/moco-agent:0.5.0"
-	defaultFluentBitImage           = "fluent/fluent-bit:1.7.2"
-)
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -51,15 +84,17 @@ func Execute() {
 func init() {
 	fs := rootCmd.Flags()
 	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
+	fs.StringVar(&config.probeAddr, "health-probe-addr", ":8081", "Listen address for health probes")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
-	fs.StringVar(&config.binaryCopyContainerImage, "binary-copy-container-image", defaultBinaryCopyContainerImage, "The container image name that includes moco's binaries")
-	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", defaultFluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
-	fs.DurationVar(&config.connMaxLifeTime, connMaxLifetimeFlag, 30*time.Minute, "The maximum amount of time a connection may be reused")
-	fs.DurationVar(&config.connectionTimeout, connectionTimeoutFlag, 3*time.Second, "Dial timeout")
-	fs.DurationVar(&config.readTimeout, readTimeoutFlag, 30*time.Second, "I/O read timeout")
-	fs.DurationVar(&config.waitTime, waitTimeFlag, 10*time.Second, "The waiting time which some tasks are under processing")
+	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
+	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
+	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
+	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
+	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)
+	config.zapOpts.BindFlags(goflags)
+
 	fs.AddGoFlagSet(goflags)
 }

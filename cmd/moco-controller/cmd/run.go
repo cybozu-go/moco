@@ -1,81 +1,110 @@
 package cmd
 
 import (
-	"math/rand"
-	"os"
-	"time"
+	"context"
+	"fmt"
 
-	"github.com/cybozu-go/moco"
-	"github.com/cybozu-go/moco/accessor"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/controllers"
-	"github.com/cybozu-go/moco/metrics"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/cybozu-go/moco/pkg/dbop"
+	"github.com/cybozu-go/moco/pkg/metrics"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-)
-
-const (
-	connMaxLifetimeFlag   = "conn-max-lifetime"
-	connectionTimeoutFlag = "connection-timeout"
-	readTimeoutFlag       = "read-timeout"
-	waitTimeFlag          = "wait-time"
+	scheme = runtime.NewScheme()
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	_ = mocov1alpha1.AddToScheme(scheme)
+	utilruntime.Must(mocov1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
-func subMain() error {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-	rand.Seed(time.Now().UnixNano())
+type resolver struct {
+	reader client.Reader
+}
+
+var _ dbop.Resolver = resolver{}
+
+func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
+	pod := &corev1.Pod{}
+	err := r.reader.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PodName(index)}, pod)
+	if err != nil {
+		return "", err
+	}
+	if pod.Status.PodIP == "" {
+		return "", fmt.Errorf("pod %s/%s has not been assigned an IP address", pod.Namespace, pod.Name)
+	}
+	return pod.Status.PodIP, nil
+}
+
+func subMain(ns, addr string, port int) error {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&config.zapOpts)))
+	setupLog := ctrl.Log.WithName("setup")
+	clusterLog := ctrl.Log.WithName("cluster-manager")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      config.metricsAddr,
+		HealthProbeBindAddress:  config.probeAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        config.leaderElectionID,
-		LeaderElectionNamespace: os.Getenv(moco.PodNamespaceEnvName),
+		LeaderElectionNamespace: ns,
+		Host:                    addr,
+		Port:                    port,
+		CertDir:                 config.certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
 
+	r := resolver{reader: mgr.GetClient()}
+	opf := dbop.NewFactory(r)
+	defer opf.Cleanup()
+	af := clustering.NewAgentFactory(r)
+	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
+
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:                   mgr.GetClient(),
-		Log:                      ctrl.Log.WithName("controller"),
-		Recorder:                 mgr.GetEventRecorderFor("moco-controller"),
-		Scheme:                   mgr.GetScheme(),
-		BinaryCopyContainerImage: config.binaryCopyContainerImage,
-		FluentBitImage:           config.fluentBitImage,
-		AgentAccessor:            accessor.NewAgentAccessor(),
-		MySQLAccessor: accessor.NewMySQLAccessor(&accessor.MySQLAccessorConfig{
-			ConnMaxLifeTime:   config.connMaxLifeTime,
-			ConnectionTimeout: config.connectionTimeout,
-			ReadTimeout:       config.readTimeout,
-		}),
-		WaitTime:        config.waitTime,
-		SystemNamespace: os.Getenv(moco.PodNamespaceEnvName),
-	}).SetupWithManager(mgr, 30*time.Second); err != nil {
+		Client:              mgr.GetClient(),
+		Scheme:              mgr.GetScheme(),
+		AgentContainerImage: config.agentContainerImage,
+		FluentBitImage:      config.fluentBitImage,
+		SystemNamespace:     ns,
+		ClusterManager:      clusterMgr,
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
+		return err
+	}
+
+	if err = (&mocov1beta1.MySQLCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
 		return err
 	}
 	// +kubebuilder:scaffold:builder
 
-	metrics.RegisterMetrics(k8smetrics.Registry.(*prometheus.Registry))
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		return err
+	}
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		return err
+	}
+
+	metrics.Register(k8smetrics.Registry)
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

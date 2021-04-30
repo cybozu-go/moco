@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,7 +55,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		err = mocov1alpha1.AddToScheme(scheme)
+		err = mocov1beta1.AddToScheme(scheme)
 		if err != nil {
 			return err
 		}

@@ -1,91 +1,76 @@
-include ../common.mk
+KIND_VERSION = 0.10.0
+KUBERNETES_VERSION = 1.19.7
+CERT_MANAGER_VERSION = 1.3.1
+MYSQL_VERSION = 8.0.24
 
-GOOS := $(shell go env GOOS)
-GOARCH := $(shell go env GOARCH)
+KIND := $(dir $(shell pwd))/bin/kind
+KUBECTL := $(dir $(shell pwd))/bin/kubectl
+KUSTOMIZE := $(dir $(shell pwd))/bin/kustomize
+KUBECTL_MOCO := $(dir $(shell pwd))/bin/kubectl-moco
+KUBECONFIG := $(shell pwd)/.kubeconfig
+export MYSQL_VERSION KUBECTL KUBECONFIG
 
-KUBECTL := $(PWD)/bin/kubectl
-KIND_VERSION=0.10.0
-KUSTOMIZE_VERSION=3.7.0
-KUSTOMIZE := $(PWD)/bin/kustomize
-KIND_CLUSTER_NAME=moco-e2e
-KUBECTL_MOCO := $(PWD)/bin/kubectl-moco
+## to test development version of moco-agent, run make with AGENT_DIR=<path>
+AGENT_DIR =
+AGENT_IMAGE := ghcr.io/cybozu-go/moco-agent:$(shell awk '/moco-agent/ {print substr($$2, 2)}' ../go.mod)
 
-GO_FILES := $(shell find .. -path ../e2e -prune -o -name '*.go' -print)
+## We need to switch the configuration of kind on GitHub Actions
+KIND_CONFIG = kind-config.yaml
 
-.PHONY: default
-default: test
+.PHONY: help
+help:
+	@echo "Choose one of the following target"
+	@echo
+	@echo "start      Start kind cluster and install MOCO"
+	@echo "test       Run e2e tests"
+	@echo "logs       Save logs as logs.tar.gz"
+	@echo "stop       Stop the kind cluster"
 
-.PHONY: launch-kind
-launch-kind: kind
-	if [ ! "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
-		kind create cluster --name=$(KIND_CLUSTER_NAME) --config kind-cluster$(KIND_CLUSTER_CONFIG_SUFFIX).yaml --image kindest/node:v$(KUBERNETES_VERSION); \
-	fi
-
-.PHONY: shutdown-kind
-shutdown-kind: kind
-	if [ "$(shell kind get clusters | grep $(KIND_CLUSTER_NAME))" ]; then \
-		kind delete cluster --name=$(KIND_CLUSTER_NAME) || true; \
-	fi
-
-.PHONY: setup
-setup: $(KUBECTL) $(KUSTOMIZE)
+.PHONY: start
+start: $(KIND) $(KUBECTL) $(KUSTOMIZE) $(KUBECTL_MOCO)
+	$(KIND) create cluster --name=moco --config=$(KIND_CONFIG) --image=kindest/node:v$(KUBERNETES_VERSION) --wait 1m
+	docker build --no-cache -t moco:dev ..
+	$(KIND) load docker-image moco:dev --name=moco
+ifdef AGENT_DIR
+	cd $(AGENT_DIR); docker build --no-cache -t $(AGENT_IMAGE) .
+	$(KIND) load docker-image $(AGENT_IMAGE) --name=moco
+endif
+	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
+	$(KUBECTL) -n cert-manager wait --for=condition=available --timeout=180s --all deployments
+	$(KUSTOMIZE) build . | $(KUBECTL) apply -f -
+	$(KUBECTL) -n moco-system wait --for=condition=available --timeout=180s --all deployments
 
 .PHONY: test
-test: launch-kind load-image $(KUBECTL_MOCO) setup
-	$(KUBECTL) config use-context kind-$(KIND_CLUSTER_NAME)
-	env E2ETEST=1 go test -count=1 -v -timeout 20m . -args -ginkgo.progress -ginkgo.v -ginkgo.failFast
+test:
+	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 \
+		go test -v -race . -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
-.PHONY: telepresence
-telepresence:
-	telepresence --namespace moco-system --swap-deployment moco-controller-manager --run go run ../cmd/moco-controller/main.go
+.PHONY: logs
+logs:
+	rm -rf logs.tar.gz logs
+	$(KIND) export logs --name=moco ./logs
+	tar czf logs.tar.gz logs
+	rm -rf logs
 
-.PHONY: load-image
-load-image: load-moco-image load-mysql-image
+.PHONY: stop
+stop:
+	$(KIND) delete cluster --name=moco
+	-docker image rm moco:dev
+	-docker image prune -f
 
-.PHONY: load-moco-image
-load-moco-image: build-moco-image
-	ID=$$(docker image inspect --format='{{.ID}}' controller:dev); \
-	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
-		kind load docker-image --name=$(KIND_CLUSTER_NAME) controller:dev; \
-	fi
-
-.PHONY: load-mysql-image
-load-mysql-image: prepare-mysql-image
-	ID=$$(docker image inspect --format='{{.ID}}' mysql:dev); \
-	if [ ! "$$(docker exec -it $(KIND_CLUSTER_NAME)-control-plane ctr --namespace=k8s.io images list | grep $$ID)" ]; then \
-		kind load docker-image --name=$(KIND_CLUSTER_NAME) mysql:dev; \
-	fi
-
-.PHONY: build-moco-image
-build-moco-image: $(GO_FILES) ../Dockerfile
-	docker build .. -f ../Dockerfile -t controller:dev
-
-.PHONY: prepare-mysql-image
-prepare-mysql-image: $(GO_FILES)
-	docker pull mysql:$(MYSQL_VERSION)
-	docker tag mysql:$(MYSQL_VERSION) mysql:dev
-
-$(KUBECTL_MOCO): $(GO_FILES)
-	mkdir -p bin
-	cd ../; make build/kubectl-moco
-	cp ../build/kubectl-moco $@
+$(KIND):
+	mkdir -p ../bin
+	curl -sfL -o $@ https://github.com/kubernetes-sigs/kind/releases/download/v$(KIND_VERSION)/kind-linux-amd64
+	chmod a+x $@
 
 $(KUBECTL):
-	mkdir -p bin
-	curl -sfL https://storage.googleapis.com/kubernetes-release/release/v$(KUBERNETES_VERSION)/bin/$(GOOS)/$(GOARCH)/kubectl -o $(KUBECTL)
-	chmod 755 $(KUBECTL)
+	mkdir -p ../bin
+	curl -sfL -o $@ https://dl.k8s.io/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl
+	chmod a+x $@
 
 $(KUSTOMIZE):
-	mkdir -p bin
-	curl -sSLf https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_$(GOOS)_$(GOARCH).tar.gz | tar xzf - > kustomize
-	mv kustomize $(KUSTOMIZE)
+	$(MAKE) -C .. kustomize
 
-.PHONY: kind
-kind:
-	if [ ! "$(shell kind version | grep $(KIND_VERSION))" ]; then \
-		env GOFLAGS= go install sigs.k8s.io/kind@v$(KIND_VERSION); \
-	fi
-
-.PHONY: clean
-clean:
-	rm -rf bin
+$(KUBECTL_MOCO):
+	mkdir -p ../bin
+	cd ..; GOBIN=$$(pwd)/bin go install ./cmd/kubectl-moco

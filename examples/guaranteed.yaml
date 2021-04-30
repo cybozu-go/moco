@@ -1,0 +1,30 @@
+# This example shows how to assign Guaranteed QoS class to Pods.
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  replicas: 3
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24
+        # By allocating the same CPU and memory for both requests and limits,
+        # the Pod gets assigned Guaranteed QoS class.
+        resources:
+          requests:
+            cpu: "10"
+            memory: "10Gi"
+          limits:
+            cpu: "10"
+            memory: "10Gi"
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

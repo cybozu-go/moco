@@ -1,0 +1,44 @@
+# This example shows how to schedule Pods on different Nodes.
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  replicas: 3
+  podTemplate:
+    spec:
+      affinity:
+        # The anti-affinity for Pods
+        # cf. https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - moco
+              - key: app.kubernetes.io/instance
+                operator: In
+                values:
+                - test
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24
+        resources:
+          requests:
+            cpu: "10"
+            memory: "10Gi"
+          limits:
+            cpu: "10"
+            memory: "10Gi"
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

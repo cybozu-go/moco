@@ -1,43 +1,28 @@
 Setup
 =====
 
-## Prerequisites
+## Quick setup
 
-* Installation components for this operator is in [config](../config) directory.
+1. Download and install the latest [cert-manager](https://cert-manager.io/).
 
-* The operator manifests are managed with [kustomize](https://kustomize.io/), so it is necessary to install it first.
+    ```console
+    $ curl -fsLO https://github.com/jetstack/cert-manager/releases/latest/download/cert-manager.yaml
+    $ kubectl apply -f cert-manager.yaml
+    ```
 
-## Setup procesure
+2. Download and install the latest MOCO.
 
-### Quick setup
+    ```console
+    $ curl -fsLO https://github.com/cybozu-go/moco/releases/latest/download/moco.yaml
+    $ kubectl apply -f moco.yaml
+    ```
 
-You can point at [config](../config) to build kustomized components, like so
+That's all!
 
-```shell
-# Assumption: you're in the project root
-$ cd config
-$ kubectl apply -k .
-or
-$ kustomize build | kubectl apply -f - 
-```
+## Customize manifests
 
-### Setup components in order
+If you want to edit the manifest, [`config/`](../config/) directory contains the source YAML for [kustomize](https://kustomize.io/).
 
-If you want to see what to be installed, you can also install components in order.
+## Next step
 
-```shell
-# Assumption: you're in the project root
-$ cd config
-# Create namespace
-$ kubectl apply -f namespace.yaml
-# Create CRD
-$ kubectl apply -k crd
-# Create RBAC
-$ kubectl apply -k rbac
-# Create manager deployment
-$ kubectl apply -k manager
-```
-
-### Next step
-
-If you want to create a MySQL Cluster, read [Example of MySQLCluster Custom Resource](./example_mysql_cluster.md) and [MySQLCluster](./crd_mysql_cluster.md).
+Read [`usage.md`](usage.md) and create your first MySQL cluster!

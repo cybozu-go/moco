@@ -1,7 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-bases:
-  - github.com/cybozu-go/moco/config?ref=v0.6.0
-images:
-  - name: ghcr.io/cybozu-go/moco
-    newTag: "0.6.0"

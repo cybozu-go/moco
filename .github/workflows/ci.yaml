@@ -3,124 +3,61 @@ on:
   pull_request:
   push:
     branches:
-      - 'main'
+    - 'main'
 env:
   go-version: 1.16
   cache-version: 1
 jobs:
-  validation:
-    name: Validation
+  test:
+    name: Small tests
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.go-version }}
-      - name: Cache Tools
-        id: cache-tools
-        uses: actions/cache@v2
-        with:
-          path: |
-            bin
-          key: cache-${{ env.cache-version }}-go-${{ env.go-version }}-${{ hashFiles('Makefile') }}
-      - run: make setup
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-      - run: make validate
-  test:
-    name: Small Tests
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: make test
+    - run: make check-generate
+    - run: make envtest
+    - run: make release-build
+  test-dbop:
+    name: Test pkg/dbop
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.20"]
+        mysql-version: ["8.0.18", "8.0.20", "8.0.24"]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: ${{ env.go-version }}
-      - run: make test MYSQL_VERSION=${{ matrix.mysql-version }}
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: make test-dbop MYSQL_VERSION=${{ matrix.mysql-version }}
   e2e:
     name: End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.20"]
-        k8s-version: ["1.19.4", "1.20.2"]
+        mysql-version: ["8.0.18", "8.0.20", "8.0.24"]
+        k8s-version: ["1.19.7", "1.20.2"]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - run: |
-          swapon > swapon.txt
-          sudo swapoff -a
-          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-      - run: sudo mkdir /mnt/local-path-provisioner
-      - run: cd e2e && make setup
-      - name: Prepare
-        run: |
-          VARIABLES=read_only,super_read_only,rpl_semi_sync_master_wait_for_slave_count,clone_valid_donor_list
-          ./e2e/script/watch_mysql.sh e2e-test          mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
-          ./e2e/script/watch_mysql.sh e2e-test-external mysqlcluster $VARIABLES > watch_mysql_e2e-external.txt &
-          ./e2e/script/watch_pod.sh e2e-test          > watch_pod_e2e.txt &
-          ./e2e/script/watch_pod.sh e2e-test-external > watch_pod_e2e-external.txt &
-      - run: cd e2e && make test KIND_CLUSTER_CONFIG_SUFFIX=-actions MYSQL_VERSION=${{ matrix.mysql-version }} KUBERNETES_VERSION=${{ matrix.k8s-version }}
-
-      # Print status and log of each component
-      - name: Watch MySQL status (e2e-test)
-        run: cat watch_mysql_e2e.txt
-        if: always()
-      - name: Watch MySQL status (e2e-test-external)
-        run: cat watch_mysql_e2e-external.txt
-        if: always()
-      - name: Watch pod (e2e-test)
-        run: cat watch_pod_e2e.txt
-        if: always()
-      - name: Watch pod (e2e-test-external)
-        run: cat watch_pod_e2e-external.txt
-        if: always()
-      - run: |
-          top -b -n 1
-          df -h
-        if: always()
-      - run: ./e2e/bin/kubectl -n moco-system get all
-        if: always()
-      - run: |
-          ./e2e/bin/kubectl -n e2e-test-external describe mysqlclusters.moco.cybozu.com
-          ./e2e/bin/kubectl -n e2e-test-external get all
-        if: always()
-      - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
-        if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs -lapp.kubernetes.io/name=moco-mysql -c agent --tail=-1 | grep -w -v "grpc.health.v1.Health"
-        if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-0 -c err-log
-        if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-1 -c err-log
-        if: always()
-      - run: ./e2e/bin/kubectl -n e2e-test-external logs moco-mysqlcluster-2 -c err-log
-        if: always()
-  e2e-upgrade:
-    name: End-to-End Upgrade Tests
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - run: |
-          swapon > swapon.txt
-          sudo swapoff -a
-          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-      - run: sudo mkdir /mnt/local-path-provisioner
-      - run: cd e2e && make setup
-      - name: Prepare
-        run: |
-          VARIABLES=read_only,super_read_only,rpl_semi_sync_master_wait_for_slave_count,clone_valid_donor_list
-          ./e2e/script/watch_mysql.sh e2e-test mysqlcluster $VARIABLES > watch_mysql_e2e.txt &
-          ./e2e/script/watch_pod.sh e2e-test > watch_pod_e2e.txt &
-      - run: cd e2e && UPGRADE=1 make test KIND_CLUSTER_CONFIG_SUFFIX=-actions
-
-      # Print status and log of each component
-      - name: Watch MySQL status (e2e-test)
-        run: cat watch_mysql_e2e.txt
-        if: always()
-      - name: Watch pod (e2e-test)
-        run: cat watch_pod_e2e.txt
-        if: always()
-      - run: ./e2e/bin/kubectl -n moco-system get all
-        if: always()
-      - run: ./e2e/bin/kubectl -n moco-system logs -lcontrol-plane=moco-controller-manager --tail=-1
-        if: always()
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: |
+        swapon > swapon.txt
+        sudo swapoff -a
+        cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+    - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
+    - run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
+      working-directory: e2e
+    - run: make test
+      working-directory: e2e
+    - run: make logs
+      working-directory: e2e
+      if: always()
+    - uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        name: logs.tar.gz
+        path: e2e/logs.tar.gz

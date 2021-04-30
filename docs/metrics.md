@@ -1,19 +1,35 @@
 Metrics
 =======
 
-## Controller
+[`moco-controller`](moco-controller.md) provides the following kind of metrics in Prometheus format.
+Aside from [the standard Go runtime and process metrics][standard], it exposes metrics related to [controller-runtime][], MySQL clusters, and backups.
 
-MOCO controller exposes the following metrics with the Prometheus format.  All these metrics are prefixed with `moco_controller_`
+## MySQL clusters
 
-| Name                     | Description                                        | Type    | Labels              |
-| ------------------------ | -------------------------------------------------- | ------- | ------------------- |
-| operation_phase          | The operation is in the labeled phase or not       | Gauge   | cluster_name, phase |
-| failover_count_total     | The failover count                                 | Counter | cluster_name        |
-| total_replicas           | The number of replicas                             | Gauge   | cluster_name        |
-| synced_replicas          | The number of replicas which are in "synced" state | Gauge   | cluster_name        |
-| cluster_violation_status | The cluster status about violation condition       | Gauge   | cluster_name        |
-| cluster_failure_status   | The cluster status about failure condition         | Gauge   | cluster_name        |
-| cluster_healthy_status   | The cluster status about healthy condition         | Gauge   | cluster_name        |
-| cluster_available_status | The cluster status about available condition       | Gauge   | cluster_name        |
+All these metrics are prefixed with `moco_cluster_` and have `name` and `namespace` labels.
 
-Note that MOCO controller also exposes the metrics provided by the Prometheus client library which located under `go` and `process` namespaces. [The metrics](https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics) exposed by `controller-runtime` is also available.
+| Name             | Description                                                            | Type    |
+| ---------------- | ---------------------------------------------------------------------- | ------- |
+| checks_total     | The number of times MOCO checked the cluster                           | Counter |
+| errors_total     | The number of times MOCO encountered errors when managing the cluster  | Counter |
+| available        | 1 if the cluster is available, 0 otherwise                             | Gauge   |
+| healthy          | 1 if the cluster is running without any problems, 0 otherwise          | Gauge   |
+| switchover_total | The number of times MOCO changed the live primary instance             | Counter |
+| failover_total   | The number of times MOCO changed the failed primary instance           | Counter |
+| replicas         | The number of mysqld instances in the cluster                          | Gauge   |
+| ready_replicas   | The number of ready mysqld Pods in the cluster                         | Gauge   |
+| errant_replicas  | The number of mysqld instances that have [errant transactions][errant] | Gauge   |
+
+## Backup
+
+TBD
+
+## MySQL instance
+
+For each `mysqld` instance, [moco-agent][] exposes a set of metrics.
+Read [github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md](https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md) for details.
+
+[standard]: https://povilasv.me/prometheus-go-metrics/
+[controller-runtime]: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics
+[errant]: https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/
+[moco-agent]: https://github.com/cybozu-go/moco-agent/

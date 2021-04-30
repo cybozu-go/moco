@@ -1,62 +1,44 @@
-# End-to-end test suites
+# End-to-end tests for MOCO
+
+This directory contains test suites that runs MOCO on a real Kubernetes using [kind][].
 
 ## Strategy
 
-The automated tests are divided into three categories:
+We adopt [Test Pyramid](https://martinfowler.com/bliki/TestPyramid.html) and [Test Sizes](https://testing.googleblog.com/2010/12/test-sizes.html).
 
-1. Unit Tests: that can be written with just Golang.
-1. Small Tests: that use **real** MySQL instances and envtest (kube-apiserver + etcd).
-1. End-to-end (e2e) Test: that use MOCO and MySQL instances as a container deployed on a Kubernetes cluster using the kind.
+The end-to-end (e2e) tests are positioned at the top of the pyramid and "Large" ones.
 
-We write tests according to the following policies:
+MOCO has small and medium tests in package directories, so all packages are ensured to work by themselves.
+Therefore, we include the following tests in the e2e suite.
 
-- Test early: We maximize Unit tests and Small tests coverage as much as possible.
-- Avoid using mocks: If you want to interact with kube-apiserver or MySQL, use the **real** components instead of using mock.
-- Fast test: Avoid slow tests.
+- Manifests.
+- MySQL cluster lifecycle (create, update, delete).
+- Access mysqld via Services.
+- Garbage collection after deleting MySQLCluster.
+- Slow logs from a sidecar container.
+- Metrics of `moco-controller`.
+- `kubectl-moco` plugin features.
+- Backup and restore features.
 
-For example, the following tests could be written in Small tests:
+## How to run e2e tests
 
-- Initialization of MySQL instance
-- Retrieval of MySQL instance
-- Cloning MySQL instance
-- Metrics collection
-- Log file management
+1. Prepare a Linux with Docker.
+2. Run the following commands in this directory.
 
-This directory contains just e2e tests.
-Unit tests and Small tests exist in each package directory.
+    ```console
+    $ make start
+    $ make test
+    ```
 
-## Analysis
+3. After the test, run the following command to stop `kind` cluster.
 
-As explained above, tests that cannot be covered by Unit tests and Small tests are conducted by e2e tests.
+    ```console
+    $ make stop
+    ```
 
-- `main` function
-- Complex scenarios
+## How to test with a development version of moco-agent
 
-### `main` functions
+1. Prepare the source directory of moco-agent.
+2. Run `make start AGENT_DIR=<dir>` with the directory path of moco-agent.
 
-#### `moco-controller`
-
-- Manager setup
-- Leader election
-- Admission Webhook
-- Metrics server
-- Event recording
-- Garbage collector
-
-### Scenarios
-
-The following feature functions should interact with MySQL on a Kubernetes cluster, so they need to be examined by e2e tests.
-
-- Failover
-- Switchover
-- Intermediate Primary
-- Backup/Restore
-- Point-in-Tme recovery
-- Upgrade MySQL version
-- Increase replicas
-- Recovery from blackout
-- Failure injection
-
-## How to test
-
-TBD
+[kind]: https://kind.sigs.k8s.io/

@@ -1,7 +1,7 @@
 package e2e
 
 import (
-	"math/rand"
+	_ "embed"
 	"os"
 	"testing"
 	"time"
@@ -10,43 +10,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const (
-	lineCount = 10000
-)
-
-var (
-	skipE2e     = os.Getenv("E2ETEST") == ""
-	doUpgrade   = os.Getenv("UPGRADE") != ""
-	doBootstrap = os.Getenv("BOOTSTRAP") != ""
-)
-
-func TestE2E(t *testing.T) {
-	if skipE2e {
-		t.Skip("Run under e2e/")
+func TestE2e(t *testing.T) {
+	if os.Getenv("RUN_E2E") == "" {
+		t.Skip("no RUN_E2E environment variable")
 	}
-
 	RegisterFailHandler(Fail)
-
-	SetDefaultEventuallyPollingInterval(time.Second)
-	SetDefaultEventuallyTimeout(20 * time.Second)
-
-	rand.Seed(time.Now().UnixNano())
-
-	RunSpecs(t, "kind test")
+	SetDefaultEventuallyTimeout(3 * time.Minute)
+	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
+	RunSpecs(t, "E2e Suite")
 }
 
-var _ = Describe("MOCO", func() {
-	Context("prepare bootstrap", prepareBooptstrap)
-	Context("bootstrap", testBootstrap)
-	if doBootstrap {
-		return
-	}
+//go:embed testdata/client.yaml
+var clientYAML string
 
-	Context("agent", testAgent)
-	Context("controller", testController)
-	Context("replicaFailover", testReplicaFailOver)
-	Context("primaryFailover", testPrimaryFailOver)
-	Context("intermediatePrimary", testIntermediatePrimary)
-	Context("kubectl-moco", testKubectlMoco)
-	Context("garbageCollector", testGarbageCollector)
+var _ = BeforeSuite(func() {
+	kubectlSafe(fillTemplate(clientYAML), "apply", "-f", "-")
 })

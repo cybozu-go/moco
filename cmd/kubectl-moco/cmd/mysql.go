@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cybozu-go/moco"
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -42,7 +42,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
-	cluster := &mocov1alpha1.MySQLCluster{}
+	cluster := &mocov1beta1.MySQLCluster{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      clusterName,
@@ -56,7 +56,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 		return err
 	}
 
-	myCnfPath := fmt.Sprintf("%s/%s-my.cnf", moco.MyCnfSecretPath, mysqlConfig.user)
+	myCnfPath := fmt.Sprintf("%s/%s-my.cnf", constants.MyCnfSecretPath, mysqlConfig.user)
 	commands := append([]string{podName, "--", "mysql", "--defaults-extra-file=" + myCnfPath}, args...)
 	argsLenAtDash := 2
 	options := &cmdexec.ExecOptions{
@@ -83,10 +83,10 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 
 func init() {
 	fs := mysqlCmd.Flags()
-	fs.StringVarP(&mysqlConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql [`moco-writable` or `moco-readonly`]")
-	fs.IntVar(&mysqlConfig.index, "index", -1, "Index of a target mysql instance")
+	fs.StringVarP(&mysqlConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql")
+	fs.IntVar(&mysqlConfig.index, "index", -1, "Index of the target mysql instance")
 	fs.BoolVarP(&mysqlConfig.stdin, "stdin", "i", false, "Pass stdin to the mysql container")
-	fs.BoolVarP(&mysqlConfig.tty, "tty", "t", false, "Stdin is a TTY")
+	fs.BoolVarP(&mysqlConfig.tty, "tty", "t", false, "Allocate a TTY to stdin")
 
 	rootCmd.AddCommand(mysqlCmd)
 }

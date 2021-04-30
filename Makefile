@@ -1,157 +1,159 @@
-include common.mk
+# Tool versions
+CTRL_TOOLS_VERSION=0.5.0
+CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
+KUSTOMIZE_VERSION = 4.1.2
+CRD_TO_MARKDOWN_VERSION = 0.0.3
 
-# For Go
-GOOS := $(shell go env GOOS)
-GOARCH := $(shell go env GOARCH)
-
-KUBEBUILDER_ASSETS := $(PWD)/bin
-export KUBEBUILDER_ASSETS
-
-CONTROLLER_GEN := $(PWD)/bin/controller-gen
-KUBEBUILDER := $(PWD)/bin/kubebuilder
-PROTOC := $(PWD)/bin/protoc
-# Produce CRDs with apiextensions.k8s.io/v1
-CRD_OPTIONS ?= "crd:crdVersions=v1"
-
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN := $(shell go env GOPATH)/bin
-else
-GOBIN := $(shell go env GOBIN)
-endif
-
-GO_FILES := $(shell find . -path ./e2e -prune -o -name '*.go' -print)
-
-KUBEBUILDER_VERSION := 2.3.1
-CTRLTOOLS_VERSION := 0.5.0
-CONTROLLER_RUNTIME_VERSION := $(shell awk '/sigs\.k8s\.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-MOCO_AGENT_VERSION := 0.4.0
-PROTOC_VERSION := 3.14.0
+# Test tools
+BIN_DIR := $(shell pwd)/bin
+STATICCHECK := $(BIN_DIR)/staticcheck
+NILERR := $(BIN_DIR)/nilerr
 
 # Set the shell used to bash for better error handling.
 SHELL = /bin/bash
 .SHELLFLAGS = -e -o pipefail -c
 
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS = "crd:crdVersions=v1"
+
+# for Go
+GOOS = $(shell go env GOOS)
+GOARCH = $(shell go env GOARCH)
+SUFFIX =
+
 .PHONY: all
 all: build
 
-.PHONY: validate
-validate: setup
-	test -z "$$(gofmt -s -l . | tee /dev/stderr)"
-	staticcheck ./...
-	test -z "$$(nilerr ./... 2>&1 | tee /dev/stderr)"
-	test -z "$$(custom-checker -restrictpkg.packages=html/template,log $$(go list -tags='$(GOTAGS)' ./... ) 2>&1 | tee /dev/stderr)"
-	go build ./...
-	go vet ./...
-	test -z "$$(go vet ./... | tee /dev/stderr)"
+##@ General
 
-# Run tests
-.PHONY: test
-test: $(KUBEBUILDER)
-	MYSQL_VERSION=$(MYSQL_VERSION) go test -race -v -coverprofile cover.out ./...
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
 
-# Build all binaries
-.PHONY: build
-build: build/moco-controller build/kubectl-moco
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-# Build moco-controller binary
-build/moco-controller: $(GO_FILES)
-	mkdir -p build
-	go build -o $@ ./cmd/moco-controller/main.go
+##@ Development
 
-# Build kubectl-moco binary
-build/kubectl-moco: $(GO_FILES)
-	mkdir -p build
-	go build -o $@ ./cmd/kubectl-moco
-
-.PHONY: release-build
-release-build: build/kubectl-moco-linux-amd64 build/kubectl-moco-windows-amd64.exe build/kubectl-moco-darwin-amd64
-
-# Build kubectl-moco binary for linux (release build)
-build/kubectl-moco-linux-amd64: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Build kubectl-moco binary for Windows (release build)
-build/kubectl-moco-windows-amd64.exe: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Build kubectl-moco binary for Mac OS (release build)
-build/kubectl-moco-darwin-amd64: $(GO_FILES)
-	mkdir -p build
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $@ ./cmd/kubectl-moco
-
-# Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
-manifests: $(CONTROLLER_GEN)
+manifests: controller-gen## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-# Generate code
 .PHONY: generate
-generate: $(CONTROLLER_GEN)
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: agentrpc
-agentrpc: $(PROTOC)
-	curl -sfL https://github.com/cybozu-go/moco-agent/releases/download/v$(MOCO_AGENT_VERSION)/agentrpc.proto -O
-	mv agentrpc.proto agentrpc/
-	$(PROTOC) --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative agentrpc/agentrpc.proto
+.PHONY: apidoc
+apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
+	echo $(wildcard api/*/*_types.go)
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
 
-.PHONY: mod
-mod:
-	go mod tidy
-	git add go.mod
+.PHONY: check-generate
+check-generate:
+	$(MAKE) manifests generate apidoc
+	git diff --exit-code --name-only
 
-ENVTEST_SCRIPT_URL := https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CONTROLLER_RUNTIME_VERSION)/hack/setup-envtest.sh
-$(KUBEBUILDER):
-	rm -rf tmp && mkdir -p tmp
+ENVTEST_ASSETS_DIR := $(shell pwd)/testbin
+.PHONY: envtest
+envtest:
+	mkdir -p ${ENVTEST_ASSETS_DIR}
+	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CTRL_RUNTIME_VERSION)/hack/setup-envtest.sh
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		export MOCO_CHECK_INTERVAL=100ms; \
+		export MOCO_WAIT_INTERVAL=100ms; \
+		go test -v -count 1 -race ./clustering -ginkgo.progress -ginkgo.v -ginkgo.failFast
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		export DEBUG_CONTROLLER=1; \
+		go test -v -count 1 -race ./controllers -ginkgo.progress -ginkgo.v -ginkgo.failFast
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		go test -v -count 1 -race ./api/... -ginkgo.progress
+
+.PHONY: test-dbop
+test-dbop:
+	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/dbop -ginkgo.v
+
+.PHONY: test
+test: test-tools
+	go test -v -count 1 -race ./pkg/...
+	go install ./...
+	go vet ./...
+	test -z $$(gofmt -s -l . | tee /dev/stderr)
+	$(STATICCHECK) ./...
+	$(NILERR) ./...
+
+##@ Build
+
+.PHONY: build
+build:
 	mkdir -p bin
-	curl -sfL https://go.kubebuilder.io/dl/$(KUBEBUILDER_VERSION)/$(GOOS)/$(GOARCH) | tar -xz -C tmp/
-	mv tmp/kubebuilder_$(KUBEBUILDER_VERSION)_$(GOOS)_$(GOARCH)/bin/* bin/
-	rm -f bin/kube-apisever bin/etcd bin/kubectl
-# Run tests, and set up envtest if not done already.
-ifeq (,$(wildcard bin/setup-envtest.sh))
-	curl -sSLo bin/setup-envtest.sh $(ENVTEST_SCRIPT_URL)
-endif
-	{ \
-	source bin/setup-envtest.sh && \
-	fetch_envtest_tools $(PWD) ; \
-	}
+	GOBIN=$(shell pwd)/bin go install ./cmd/...
 
-$(CONTROLLER_GEN):
+.PHONY: release-build
+release-build: kustomize
+	mkdir -p build
+	$(MAKE) kubectl-moco GOOS=windows GOARCH=amd64 SUFFIX=.exe
+	$(MAKE) kubectl-moco GOOS=darwin GOARCH=amd64
+	$(MAKE) kubectl-moco GOOS=darwin GOARCH=arm64
+	$(MAKE) kubectl-moco GOOS=linux GOARCH=amd64
+	$(MAKE) kubectl-moco GOOS=linux GOARCH=arm64
+	$(KUSTOMIZE) build . > build/moco.yaml
+
+.PHONY: kubectl-moco
+kubectl-moco: build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX)
+
+build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX):
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ ./cmd/kubectl-moco
+
+##@ Tools
+
+CONTROLLER_GEN := $(shell pwd)/bin/controller-gen
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRL_TOOLS_VERSION))
+
+KUSTOMIZE := $(shell pwd)/bin/kustomize
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+
+$(KUSTOMIZE):
 	mkdir -p bin
-	env GOBIN=$(PWD)/bin GOFLAGS= go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRLTOOLS_VERSION)
+	curl -fsL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/kustomize_v$(KUSTOMIZE_VERSION)_linux_amd64.tar.gz | \
+	tar -C bin -xzf -
 
-$(PROTOC):
-	mkdir -p bin
-	curl -sfL -O https://github.com/protocolbuffers/protobuf/releases/download/v$(PROTOC_VERSION)/protoc-$(PROTOC_VERSION)-linux-x86_64.zip
-	unzip -p protoc-$(PROTOC_VERSION)-linux-x86_64.zip bin/protoc > bin/protoc
-	chmod +x bin/protoc
-	rm protoc-$(PROTOC_VERSION)-linux-x86_64.zip
+CRD_TO_MARKDOWN := $(shell pwd)/bin/crd-to-markdown
+crd-to-markdown: ## Download crd-to-markdown locally if necessary.
+	$(call go-get-tool,$(CRD_TO_MARKDOWN),github.com/clamoriniere/crd-to-markdown@v$(CRD_TO_MARKDOWN_VERSION))
 
-.PHONY: setup
-setup: custom-checker staticcheck nilerr
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
+}
+endef
 
-.PHONY: custom-checker
-custom-checker:
-	if ! which custom-checker >/dev/null; then \
-		env GOFLAGS= go install github.com/cybozu/neco-containers/golang/analyzer/cmd/custom-checker@latest; \
-	fi
+.PHONY: test-tools
+test-tools: $(STATICCHECK) $(NILERR)
 
-.PHONY: staticcheck
-staticcheck:
-	if ! which staticcheck >/dev/null; then \
-		env GOFLAGS= go install honnef.co/go/tools/cmd/staticcheck@latest; \
-	fi
+$(STATICCHECK):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
 
-.PHONY: nilerr
-nilerr:
-	if ! which nilerr >/dev/null; then \
-		env GOFLAGS= go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest; \
-	fi
-
-.PHONY: clean
-clean:
-	rm -rf build
-	rm -rf bin
+$(NILERR):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest

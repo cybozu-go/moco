@@ -17,16 +17,22 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.ready
-      name: READY
+    - jsonPath: .status.conditions[?(@.type=='Available')].status
+      name: Available
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Healthy')].status
+      name: Healthy
       type: string
     - jsonPath: .status.currentPrimaryIndex
-      name: PRIMARY
+      name: Primary
       type: integer
     - jsonPath: .status.syncedReplicas
-      name: SYNCED
+      name: Synced replicas
       type: integer
-    name: v1alpha1
+    - jsonPath: .status.errantReplicas
+      name: Errant replicas
+      type: integer
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: MySQLCluster is the Schema for the mysqlclusters API
@@ -42,103 +48,16 @@ spec:
           spec:
             description: MySQLClusterSpec defines the desired state of MySQLCluster
             properties:
-              dataVolumeClaimTemplateSpec:
-                description: DataVolumeClaimTemplateSpec is a `PersistentVolumeClaimSpec` template for the MySQL data volume.
-                properties:
-                  accessModes:
-                    description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
-                    items:
-                      type: string
-                    type: array
-                  dataSource:
-                    description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
-                    properties:
-                      apiGroup:
-                        description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
-                        type: string
-                      kind:
-                        description: Kind is the type of resource being referenced
-                        type: string
-                      name:
-                        description: Name is the name of resource being referenced
-                        type: string
-                    required:
-                    - kind
-                    - name
-                    type: object
-                  resources:
-                    description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                    type: object
-                  selector:
-                    description: A label query over volumes to consider for binding.
-                    properties:
-                      matchExpressions:
-                        description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                        items:
-                          description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                          properties:
-                            key:
-                              description: key is the label key that the selector applies to.
-                              type: string
-                            operator:
-                              description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                              type: string
-                            values:
-                              description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                              items:
-                                type: string
-                              type: array
-                          required:
-                          - key
-                          - operator
-                          type: object
-                        type: array
-                      matchLabels:
-                        additionalProperties:
-                          type: string
-                        description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                        type: object
-                    type: object
-                  storageClassName:
-                    description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
-                    type: string
-                  volumeMode:
-                    description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
-                    type: string
-                  volumeName:
-                    description: VolumeName is the binding reference to the PersistentVolume backing this claim.
-                    type: string
-                type: object
-              disableErrorLogContainer:
-                description: DisableErrorLogContainer controls whether to add a log agent container name of the "err-log" to handle mysqld error logs. If set to true, no log agent container will be added. The default is false. If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "err-log", it will be merged with the default container definition using StrategicMergePatch.
-                type: boolean
               disableSlowQueryLogContainer:
-                description: DisableSlowQueryLogContainer controls whether to add a log agent container name of the "slow-log" to handle mysqld slow query logs. If set to true, no log agent container will be added. The default is false. If false and the user-defined ".spec.podTemplate.spec.containers" contained a container named "slow-log", it will be merged with the default container definition using StrategicMergePatch.
+                description: DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.
                 type: boolean
               logRotationSchedule:
-                default: '*/5 * * * *'
-                description: LogRotationSchedule is a schedule in Cron format for MySQL log rotation
-                pattern: ^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$
+                description: LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
                 type: string
+              maxDelaySeconds:
+                description: MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.
+                minimum: 0
+                type: integer
               mysqlConfigMapName:
                 description: MySQLConfigMapName is a `ConfigMap` name of MySQL config.
                 type: string
@@ -3908,22 +3827,15 @@ spec:
                 format: int32
                 type: integer
               replicationSourceSecretName:
-                description: ReplicationSourceSecretName is a `Secret` name which contains replication source info. Keys must appear in https://dev.mysql.com/doc/refman/8.0/en/change-master-to.html. If this field is given, the `MySQLCluster` works as an intermediate primary.
+                description: ReplicationSourceSecretName is a `Secret` name which contains replication source info. If this field is given, the `MySQLCluster` works as an intermediate primary.
                 type: string
               restore:
                 description: Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is filled, start restoring. This field is unable to be updated.
-                properties:
-                  pointInTime:
-                    description: PointInTime is the point-in-time of the state which the cluster is restored to.
-                    format: date-time
-                    type: string
-                  restore:
-                    description: SourceClusterName is the name of the source `MySQLCluster`.
-                    type: string
-                required:
-                - pointInTime
-                - restore
                 type: object
+              serverIDBase:
+                description: ServerIDBase, if set, will become the base number of server-id of each MySQL instance of this cluster.  For example, if this is 100, the server-ids will be 100, 101, 102, and so on. If the field is not given or zero, MOCO automatically sets a random positive integer.
+                format: int32
+                type: integer
               serviceTemplate:
                 description: ServiceTemplate is a `Service` template for both primary and replicas.
                 properties:
@@ -4063,7 +3975,7 @@ spec:
                     type: object
                 type: object
               volumeClaimTemplates:
-                description: VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container, except for the MySQL data volume.
+                description: VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container. A claim named "mysql-data" must be included in the list.
                 items:
                   description: PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.
                   properties:
@@ -4174,17 +4086,15 @@ spec:
                   - metadata
                   - spec
                   type: object
+                minItems: 1
                 type: array
             required:
-            - dataVolumeClaimTemplateSpec
             - podTemplate
+            - volumeClaimTemplates
             type: object
           status:
             description: MySQLClusterStatus defines the observed state of MySQLCluster
             properties:
-              agentToken:
-                description: AgentToken is the token to call API exposed by the agent sidecar
-                type: string
               conditions:
                 description: Conditions is an array of conditions.
                 items:
@@ -4207,11 +4117,8 @@ spec:
                       description: Type is the type of the condition.
                       enum:
                       - Initialized
-                      - Healthy
                       - Available
-                      - OutOfSync
-                      - Failure
-                      - Violation
+                      - Healthy
                       type: string
                   required:
                   - lastTransitionTime
@@ -4220,25 +4127,33 @@ spec:
                   type: object
                 type: array
               currentPrimaryIndex:
-                description: CurrentPrimaryIndex is the ordinal of the current primary in StatefulSet.
+                description: CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.
                 type: integer
-              ready:
-                description: Ready represents the status of readiness.
-                type: string
-              serverIDBase:
-                description: ServerIDBase is the number, which is used as server-id base number of each MySQL instance.
-                format: int32
+              errantReplicaList:
+                description: ErrantReplicaList is the list of indices of errant replicas.
+                items:
+                  type: integer
+                type: array
+              errantReplicas:
+                description: ErrantReplicas is the number of instances that have errant transactions.
                 type: integer
+              reconcileInfo:
+                description: ReconcileInfo represents version information for reconciler.
+                properties:
+                  generation:
+                    description: Generation is the `metadata.generation` value of the last reconciliation. See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
+                    format: int64
+                    type: integer
+                  reconcileVersion:
+                    description: ReconcileVersion is the version of the operator reconciler.
+                    type: integer
+                type: object
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances including the primary.
                 type: integer
             required:
-            - agentToken
-            - ready
-            - syncedReplicas
+            - currentPrimaryIndex
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true

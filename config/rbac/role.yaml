@@ -30,10 +30,8 @@ rules:
   - events
   verbs:
   - create
-  - get
-  - list
   - patch
-  - watch
+  - update
 - apiGroups:
   - ""
   resources:
@@ -41,14 +39,9 @@ rules:
   verbs:
   - get
   - list
+  - patch
   - update
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods/status
-  verbs:
-  - get
 - apiGroups:
   - ""
   resources:
@@ -126,13 +119,17 @@ rules:
   resources:
   - mysqlclusters
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
   - update
   - watch
+- apiGroups:
+  - moco.cybozu.com
+  resources:
+  - mysqlclusters/finalizers
+  verbs:
+  - update
 - apiGroups:
   - moco.cybozu.com
   resources:

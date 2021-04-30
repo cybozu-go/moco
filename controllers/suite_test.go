@@ -1,24 +1,25 @@
 package controllers
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
 
-	mocov1alpha1 "github.com/cybozu-go/moco/api/v1alpha1"
-	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	// +kubebuilder:scaffold:imports
+
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	//+kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -27,67 +28,59 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
-var reconciler *MySQLClusterReconciler
-
-type AccessorMock struct {
-}
-
-func (acc *AccessorMock) Get(addr, user, password string) (*sqlx.DB, error) {
-	return nil, nil
-}
-
-func (acc *AccessorMock) Remove(addr string) {
-}
+var scheme = runtime.NewScheme()
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	SetDefaultEventuallyTimeout(20 * time.Second)
+	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
+	SetDefaultConsistentlyDuration(3 * time.Second)
+	SetDefaultConsistentlyPollingInterval(100 * time.Millisecond)
+
+	RunSpecs(t, "Controller Suite")
 }
 
-var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+var _ = BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.StacktraceLevel(zapcore.DPanicLevel)))
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+		ErrorIfCRDPathMissing: true,
 	}
 
 	var err error
 	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	Expect(err).NotTo(HaveOccurred())
+	Expect(cfg).NotTo(BeNil())
 
-	sch := runtime.NewScheme()
-	err = clientgoscheme.AddToScheme(sch)
+	err = clientgoscheme.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = mocov1beta1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = mocov1alpha1.AddToScheme(sch)
+	//+kubebuilder:scaffold:scheme
+
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
+	Expect(err).NotTo(HaveOccurred())
+	Expect(k8sClient).NotTo(BeNil())
+
+	// prepare resources
+	ns := &corev1.Namespace{}
+	ns.Name = testMocoSystemNamespace
+	err = k8sClient.Create(context.Background(), ns)
 	Expect(err).NotTo(HaveOccurred())
 
-	// +kubebuilder:scaffold:scheme
+	ns = &corev1.Namespace{}
+	ns.Name = "test"
+	err = k8sClient.Create(context.Background(), ns)
+	Expect(err).NotTo(HaveOccurred())
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: sch})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(k8sClient).ToNot(BeNil())
-
-	reconciler = &MySQLClusterReconciler{
-		Client:          k8sClient,
-		Log:             ctrl.Log.WithName("controllers").WithName("MySQLCluster"),
-		Scheme:          sch,
-		MySQLAccessor:   &AccessorMock{},
-		WaitTime:        10 * time.Second,
-		SystemNamespace: systemNamespace,
-	}
-	Expect(err).ToNot(HaveOccurred())
-
-	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 })

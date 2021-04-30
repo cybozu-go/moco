@@ -1,0 +1,10 @@
+resources:
+- ../config/default
+
+patchesStrategicMerge:
+- manager_patch.yaml
+
+images:
+- name: ghcr.io/cybozu-go/moco
+  newName: moco
+  newTag: dev
