@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"text/template"
 
@@ -12,9 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
 )
-
-var kubectlCmd = os.Getenv("KUBECTL")
-var mysqlVersion = os.Getenv("MYSQL_VERSION")
 
 func kubectl(input []byte, args ...string) ([]byte, error) {
 	stdout := new(bytes.Buffer)
@@ -57,9 +53,13 @@ func getCluster(ns, name string) (*mocov1beta1.MySQLCluster, error) {
 }
 
 func fillTemplate(tmpl string) []byte {
+	return fillTemplateWithVersion(tmpl, mysqlVersion)
+}
+
+func fillTemplateWithVersion(tmpl, version string) []byte {
 	t := template.Must(template.New("").Parse(tmpl))
 	buf := new(bytes.Buffer)
-	err := t.Execute(buf, mysqlVersion)
+	err := t.Execute(buf, version)
 	if err != nil {
 		panic(err)
 	}

@@ -65,3 +65,7 @@ Fetch the credential information of a specified user
 | ------------------ | --------------- | ------------------------------------------ |
 | `-u, --mysql-user` | `moco-readonly` | Fetch the credential of the specified user |
 | `--format`         | `plain`         | Output format: `plain` or `mycnf`          |
+
+## `kubectl moco switchover CLUSTER_NAME`
+
+Switch the primary instance to one of the replicas.

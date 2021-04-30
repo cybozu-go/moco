@@ -455,17 +455,20 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(headless.Spec.PublishNotReadyAddresses).To(BeTrue())
 
-		cluster = &mocov1beta1.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
-			ObjectMeta: mocov1beta1.ObjectMeta{
-				Annotations: map[string]string{"foo": "bar"},
-				Labels:      map[string]string{"foo": "baz"},
-			},
-		}
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() error {
+			cluster = &mocov1beta1.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+			if err != nil {
+				return err
+			}
+			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+				ObjectMeta: mocov1beta1.ObjectMeta{
+					Annotations: map[string]string{"foo": "bar"},
+					Labels:      map[string]string{"foo": "baz"},
+				},
+			}
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
 
 		Eventually(func() error {
 			headless = &corev1.Service{}
@@ -486,16 +489,19 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newPrimary.Spec.ClusterIP).To(Equal(primary.Spec.ClusterIP))
 
-		cluster = &mocov1beta1.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
-			Spec: &corev1.ServiceSpec{
-				Type: corev1.ServiceTypeLoadBalancer,
-			},
-		}
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() error {
+			cluster = &mocov1beta1.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+			if err != nil {
+				return err
+			}
+			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+				Spec: &corev1.ServiceSpec{
+					Type: corev1.ServiceTypeLoadBalancer,
+				},
+			}
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
 
 		Eventually(func() error {
 			primary = &corev1.Service{}
@@ -541,6 +547,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.MysqldContainerName:
 				foundMysqld = true
 				Expect(c.Image).To(Equal("moco-mysql:latest"))
+				Expect(c.StartupProbe).NotTo(BeNil())
+				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(360)))
 			case constants.AgentContainerName:
 				foundAgent = true
 				Expect(c.Image).To(Equal(testAgentImage))
@@ -620,6 +628,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
 		cluster.Spec.MaxDelaySeconds = 20
+		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
 		cluster.Spec.PodTemplate.Spec.TerminationGracePeriodSeconds = pointer.Int64(512)
@@ -660,6 +669,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
 			switch c.Name {
+			case constants.MysqldContainerName:
+				Expect(c.StartupProbe).NotTo(BeNil())
+				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))

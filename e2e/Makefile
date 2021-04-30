@@ -45,6 +45,11 @@ test:
 	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 \
 		go test -v -race . -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
+.PHONY: test-upgrade
+test-upgrade:
+	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 UPGRADE=1 \
+		go test -v -race . -ginkgo.progress -ginkgo.v -ginkgo.failFast
+
 .PHONY: logs
 logs:
 	rm -rf logs.tar.gz logs

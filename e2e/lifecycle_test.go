@@ -21,6 +21,10 @@ import (
 var singleYAML string
 
 var _ = Context("lifecycle", func() {
+	if doUpgrade {
+		return
+	}
+
 	It("should construct a single-instance cluster", func() {
 		kubectlSafe(fillTemplate(singleYAML), "apply", "-f", "-")
 		Eventually(func() error {

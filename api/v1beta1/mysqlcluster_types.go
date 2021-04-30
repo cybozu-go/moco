@@ -60,6 +60,13 @@ type MySQLClusterSpec struct {
 	// +optional
 	MaxDelaySeconds int `json:"maxDelaySeconds,omitempty"`
 
+	// StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working.
+	// The default is 3600 seconds.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default=3600
+	// +optional
+	StartupWaitSeconds int32 `json:"startupDelaySeconds,omitempty"`
+
 	// LogRotationSchedule specifies the schedule to rotate MySQL logs.
 	// If not set, the default is to rotate logs every 5 minutes.
 	// See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.

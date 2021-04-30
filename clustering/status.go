@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -75,7 +76,6 @@ func (s ClusterState) String() string {
 // and later operations.
 type StatusSet struct {
 	Primary      int
-	Candidate    int
 	Cluster      *mocov1beta1.MySQLCluster
 	Password     *password.MySQLPassword
 	Pods         []*corev1.Pod
@@ -83,8 +83,10 @@ type StatusSet struct {
 	MySQLStatus  []*dbop.MySQLInstanceStatus
 	ExecutedGTID string
 	Errants      []int
+	Candidates   []int
 
 	NeedSwitch bool
+	Candidate  int
 	State      ClusterState
 }
 
@@ -100,7 +102,6 @@ func (ss *StatusSet) Close() {
 // DecideState decides the ClusterState and set it to `ss.State`.
 // It may also set `ss.NeedSwitch` and `ss.Candidate` for switchover.
 func (ss *StatusSet) DecideState() {
-	ss.NeedSwitch = needSwitch(ss.Pods[ss.Primary])
 	switch {
 	case isHealthy(ss):
 		ss.State = StateHealthy
@@ -114,6 +115,12 @@ func (ss *StatusSet) DecideState() {
 		ss.State = StateLost
 	default:
 		ss.State = StateIncomplete
+	}
+	if len(ss.Candidates) > 0 {
+		ss.NeedSwitch = needSwitch(ss.Pods[ss.Primary])
+		// Choose the lowest ordinal for a switchover target.
+		sort.Ints(ss.Candidates)
+		ss.Candidate = ss.Candidates[0]
 	}
 }
 
@@ -309,7 +316,7 @@ func isHealthy(ss *StatusSet) bool {
 		if ist.ReplicaStatus.MasterHost != primaryHostname {
 			return false
 		}
-		ss.Candidate = i
+		ss.Candidates = append(ss.Candidates, i)
 	}
 
 	pst := ss.MySQLStatus[ss.Primary]
@@ -403,7 +410,7 @@ func isDegraded(ss *StatusSet) bool {
 			continue
 		}
 		okReplicas++
-		ss.Candidate = i
+		ss.Candidates = append(ss.Candidates, i)
 	}
 
 	return okReplicas >= (int(ss.Cluster.Spec.Replicas)/2) && okReplicas != int(ss.Cluster.Spec.Replicas-1)

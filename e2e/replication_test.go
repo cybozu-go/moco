@@ -21,6 +21,10 @@ var donorYAML string
 var replYAML string
 
 var _ = Context("replication", func() {
+	if doUpgrade {
+		return
+	}
+
 	It("should prepare a donor instance", func() {
 		kubectlSafe(fillTemplate(donorYAML), "apply", "-f", "-")
 		Eventually(func() error {
@@ -110,7 +114,7 @@ var _ = Context("replication", func() {
 	})
 
 	It("should switch the primary if requested", func() {
-		kubectlSafe(nil, "-n", "repl", "annotate", "pod", "moco-test-0", "moco.cybozu.com/demote=true")
+		kubectlSafe(nil, "moco", "-n", "repl", "switchover", "test")
 		Eventually(func() int {
 			cluster, err := getCluster("repl", "test")
 			if err != nil {

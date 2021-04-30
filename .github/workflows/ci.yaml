@@ -61,3 +61,28 @@ jobs:
       with:
         name: logs.tar.gz
         path: e2e/logs.tar.gz
+  upgrade:
+    name: Upgrade Test
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: |
+        swapon > swapon.txt
+        sudo swapoff -a
+        cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+    - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
+    - run: make start KIND_CONFIG=kind-config_actions.yaml
+      working-directory: e2e
+    - run: make test-upgrade
+      working-directory: e2e
+    - run: make logs
+      working-directory: e2e
+      if: always()
+    - uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        name: logs.tar.gz
+        path: e2e/logs.tar.gz

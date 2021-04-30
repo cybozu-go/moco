@@ -37,7 +37,7 @@ Other versions may work, though not tested.
 - Different MySQL versions for each cluster
 - Upgrading MySQL version of a cluster
 - Monitor for replication delays
-- Service for the primary and replicas, respectively
+- Services for the primary and replicas, respectively
 - Custom `my.cnf` configurations
 - Custom Pod, Service, and PersistentVolumeClaim templates
 - Redirect slow query logs to a sidecar container

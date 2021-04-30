@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (r *MySQLClusterReconciler) makeV1MySQLDContainer(desired, current []corev1.Container) (corev1.Container, error) {
+func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQLCluster, desired, current []corev1.Container) (corev1.Container, error) {
 	var source *corev1.Container
 	for i, c := range desired {
 		if c.Name == constants.MysqldContainerName {
@@ -36,6 +36,10 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(desired, current []corev1
 		corev1.ContainerPort{ContainerPort: constants.MySQLAdminPort, Name: constants.MySQLAdminPortName, Protocol: corev1.ProtocolTCP},
 		corev1.ContainerPort{ContainerPort: constants.MySQLHealthPort, Name: constants.MySQLHealthPortName, Protocol: corev1.ProtocolTCP},
 	)
+	failureThreshold := cluster.Spec.StartupWaitSeconds / 10
+	if failureThreshold < 1 {
+		failureThreshold = 1
+	}
 	c.StartupProbe = &corev1.Probe{
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
@@ -45,7 +49,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(desired, current []corev1
 			},
 		},
 		PeriodSeconds:    10,
-		FailureThreshold: 360, // tolerate up to 1 hour of startup time
+		FailureThreshold: failureThreshold,
 	}
 	c.LivenessProbe = &corev1.Probe{
 		Handler: corev1.Handler{

@@ -3974,6 +3974,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              startupDelaySeconds:
+                default: 3600
+                description: StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working. The default is 3600 seconds.
+                format: int32
+                minimum: 0
+                type: integer
               volumeClaimTemplates:
                 description: VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container. A claim named "mysql-data" must be included in the list.
                 items:
