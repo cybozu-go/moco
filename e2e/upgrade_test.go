@@ -70,7 +70,7 @@ var _ = Context("upgrade", func() {
 		fmt.Printf("The current primary = %d\n", primary)
 
 		By("doing a switchover")
-		kubectlSafe(nil, "annotate", "-n", "upgrade", "pod", cluster.PodName(primary), "moco.cybozu.com/demote=true")
+		kubectlSafe(nil, "moco", "-n", "upgrade", "switchover", "test")
 		Eventually(func() error {
 			var err error
 			cluster, err = getCluster("upgrade", "test")

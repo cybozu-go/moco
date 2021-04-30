@@ -29,7 +29,7 @@ var mysqlConfig struct {
 
 // mysqlCmd represents the mysql command
 var mysqlCmd = &cobra.Command{
-	Use:   "mysql <CLUSTER_NAME> [COMMANDS]",
+	Use:   "mysql CLUSTER_NAME -- [COMMANDS]",
 	Short: "Run mysql command in a specified MySQL instance",
 	Long:  "Run mysql command in a specified MySQL instance.",
 	Args:  cobra.MinimumNArgs(1),

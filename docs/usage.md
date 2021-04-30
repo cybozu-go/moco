@@ -399,11 +399,8 @@ Switchver is an operation to change the live primary to one of the replicas.
 
 MOCO automatically switch the primary when the Pod of the primary instance is to be deleted.
 
-Users can manually trigger a switchover by annotating the Pod of the primary instance with `moco.cybozu.com/demote: true`.  You can use `kubectl` to do this:
-
-```console
-$ kubectl annotate mysqlcluster <name> moco.cybozu.com/demote=true
-```
+Users can manually trigger a switchover with `kubectl moco switchover CLUSTER_NAME`.
+Read [`kubectl-moco.md`](kubectl-moco.md) for details.
 
 ### Failover
 
