@@ -39,7 +39,6 @@ innodb_read_ahead_threshold = 0
 innodb_tmpdir = /tmp
 join_buffer_size = 2M
 lock_wait_timeout = 60
-log_bin = ON
 log_error_verbosity = 3
 log_slave_updates = ON
 log_slow_extra = ON
