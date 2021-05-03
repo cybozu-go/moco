@@ -20,3 +20,6 @@ const (
 	AnnDemote        = "moco.cybozu.com/demote"
 	AnnSecretVersion = "moco.cybozu.com/secret-version"
 )
+
+// MySQLClusterFinalizer is the finalizer specifier for MySQLCluster.
+const MySQLClusterFinalizer = "moco.cybozu.com/mysqlcluster"

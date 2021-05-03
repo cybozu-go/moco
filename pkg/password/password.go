@@ -1,9 +1,12 @@
 package password
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
+	"text/template"
 
 	"github.com/cybozu-go/moco/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +23,8 @@ const (
 	agentPasswordKey       = "AGENT_PASSWORD"
 	replicationPasswordKey = "REPLICATION_PASSWORD"
 	cloneDonorPasswordKey  = "CLONE_DONOR_PASSWORD"
+	ExporterPasswordKey    = "EXPORTER_PASSWORD"
+	BackupPasswordKey      = "BACKUP_PASSWORD"
 	readOnlyPasswordKey    = "READONLY_PASSWORD"
 	writablePasswordKey    = "WRITABLE_PASSWORD"
 )
@@ -30,6 +35,8 @@ type MySQLPassword struct {
 	agent      string
 	replicator string
 	donor      string
+	exporter   string
+	backup     string
 	readOnly   string
 	writable   string
 }
@@ -56,6 +63,16 @@ func NewMySQLPassword() (*MySQLPassword, error) {
 		return nil, err
 	}
 
+	exporter, err := generateRandomPassword()
+	if err != nil {
+		return nil, err
+	}
+
+	backup, err := generateRandomPassword()
+	if err != nil {
+		return nil, err
+	}
+
 	readOnly, err := generateRandomPassword()
 	if err != nil {
 		return nil, err
@@ -71,6 +88,8 @@ func NewMySQLPassword() (*MySQLPassword, error) {
 		agent:      agent,
 		replicator: replicator,
 		donor:      donor,
+		exporter:   exporter,
+		backup:     backup,
 		readOnly:   readOnly,
 		writable:   writable,
 	}, nil
@@ -87,6 +106,8 @@ func NewMySQLPasswordFromSecret(secret *corev1.Secret) (*MySQLPassword, error) {
 		agent:      string(secret.Data[agentPasswordKey]),
 		replicator: string(secret.Data[replicationPasswordKey]),
 		donor:      string(secret.Data[cloneDonorPasswordKey]),
+		exporter:   string(secret.Data[ExporterPasswordKey]),
+		backup:     string(secret.Data[BackupPasswordKey]),
 		readOnly:   string(secret.Data[readOnlyPasswordKey]),
 		writable:   string(secret.Data[writablePasswordKey]),
 	}, nil
@@ -106,22 +127,41 @@ func (p MySQLPassword) ToSecret() *corev1.Secret {
 			agentPasswordKey:       []byte(p.agent),
 			replicationPasswordKey: []byte(p.replicator),
 			cloneDonorPasswordKey:  []byte(p.donor),
+			ExporterPasswordKey:    []byte(p.exporter),
+			BackupPasswordKey:      []byte(p.backup),
 			readOnlyPasswordKey:    []byte(p.readOnly),
 			writablePasswordKey:    []byte(p.writable),
 		},
 	}
 }
 
+var mycnfTmpl = template.Must(template.New("my.cnf").Parse(`[client]
+user={{printf "%q" .User}}
+password={{printf "%q" .Password}}
+{{if .Socket -}}
+socket={{printf "%q" .Socket}}
+{{end}}`))
+
+func formatMyCnf(user, pwd, socket string) []byte {
+	buf := new(bytes.Buffer)
+	err := mycnfTmpl.Execute(buf, struct {
+		User     string
+		Password string
+		Socket   string
+	}{
+		user,
+		pwd,
+		socket,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
 // ToMyCnfSecret converts MySQLPassword to Secret in my.cnf format.
 // The caller have to fill Name and Namespace of the returned Secret.
 func (p MySQLPassword) ToMyCnfSecret() *corev1.Secret {
-	formatMyCnf := func(user, pwd string) []byte {
-		return []byte(fmt.Sprintf(`[client]
-user="%s"
-password="%s"
-`, user, pwd))
-	}
-
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -129,9 +169,11 @@ password="%s"
 			},
 		},
 		Data: map[string][]byte{
-			constants.AdminMyCnf:    formatMyCnf(constants.AdminUser, p.admin),
-			constants.ReadOnlyMyCnf: formatMyCnf(constants.ReadOnlyUser, p.readOnly),
-			constants.WritableMyCnf: formatMyCnf(constants.WritableUser, p.writable),
+			constants.AdminMyCnf:    formatMyCnf(constants.AdminUser, p.admin, ""),
+			constants.ExporterMyCnf: formatMyCnf(constants.ExporterUser, p.exporter, filepath.Join(constants.RunPath, "mysqld.sock")),
+			constants.BackupMyCnf:   formatMyCnf(constants.BackupUser, p.backup, ""),
+			constants.ReadOnlyMyCnf: formatMyCnf(constants.ReadOnlyUser, p.readOnly, ""),
+			constants.WritableMyCnf: formatMyCnf(constants.WritableUser, p.writable, ""),
 		},
 	}
 }
@@ -154,6 +196,16 @@ func (p MySQLPassword) Replicator() string {
 // Donor returns the password for moco-clone-donor.
 func (p MySQLPassword) Donor() string {
 	return p.donor
+}
+
+// Exporter returns the password for mysqld_exporter.
+func (p MySQLPassword) Exporter() string {
+	return p.exporter
+}
+
+// Backup returns the password for backup jobs.
+func (p MySQLPassword) Backup() string {
+	return p.backup
 }
 
 // ReadOnly returns the password for moco-readonly.
