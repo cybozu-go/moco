@@ -6,6 +6,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/robfig/cron"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -45,6 +46,16 @@ type MySQLClusterSpec struct {
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
+	// Collectors is the list of collector flag names of mysqld_exporter.
+	// If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect
+	// and export mysqld metrics in Prometheus format.
+	//
+	// See https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.
+	//
+	// Example: ["engine_innodb_status", "info_schema.innodb_metrics"]
+	// +optional
+	Collectors []string `json:"collectors,omitempty"`
+
 	// ServerIDBase, if set, will become the base number of server-id of each MySQL
 	// instance of this cluster.  For example, if this is 100, the server-ids will be
 	// 100, 101, 102, and so on.
@@ -74,7 +85,8 @@ type MySQLClusterSpec struct {
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
 	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
-	// If this field is filled, start restoring. This field is unable to be updated.
+	// If this field is not null, MOCO restores the data as specified and create a new
+	// cluster with the data.  This field is not editable.
 	// +optional
 	Restore *RestoreSpec `json:"restore,omitempty"`
 
@@ -122,9 +134,12 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 			mysqldIndex = i
 		}
 		if container.Name == constants.AgentContainerName {
-			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved container name"))
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
 		}
 		if container.Name == constants.SlowQueryLogAgentContainerName && !s.DisableSlowQueryLogContainer {
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
+		}
+		if container.Name == constants.ExporterContainerName && len(s.Collectors) > 0 {
 			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
 		}
 	}
@@ -182,6 +197,10 @@ func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
 		} else if *s.ReplicationSourceSecretName != *old.ReplicationSourceSecretName {
 			allErrs = append(allErrs, field.Forbidden(p, "replication source secret name cannot be modified"))
 		}
+	}
+	if !equality.Semantic.DeepEqual(s.Restore, old.Restore) {
+		p := p.Child("restore")
+		allErrs = append(allErrs, field.Forbidden(p, "not editable"))
 	}
 
 	return append(allErrs, s.validateCreate()...)

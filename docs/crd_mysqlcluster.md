@@ -64,11 +64,12 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | serviceTemplate | ServiceTemplate is a `Service` template for both primary and replicas. | *[ServiceTemplate](#servicetemplate) | false |
 | mysqlConfigMapName | MySQLConfigMapName is a `ConfigMap` name of MySQL config. | *string | false |
 | replicationSourceSecretName | ReplicationSourceSecretName is a `Secret` name which contains replication source info. If this field is given, the `MySQLCluster` works as an intermediate primary. | *string | false |
+| collectors | Collectors is the list of collector flag names of mysqld_exporter. If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect and export mysqld metrics in Prometheus format.\n\nSee https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.\n\nExample: [\"engine_innodb_status\", \"info_schema.innodb_metrics\"] | []string | false |
 | serverIDBase | ServerIDBase, if set, will become the base number of server-id of each MySQL instance of this cluster.  For example, if this is 100, the server-ids will be 100, 101, 102, and so on. If the field is not given or zero, MOCO automatically sets a random positive integer. | int32 | false |
 | maxDelaySeconds | MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds. | int | false |
 | startupDelaySeconds | StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working. The default is 3600 seconds. | int32 | false |
 | logRotationSchedule | LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format. | string | false |
-| restore | Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is filled, start restoring. This field is unable to be updated. | *[RestoreSpec](#restorespec) | false |
+| restore | Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable. | *[RestoreSpec](#restorespec) | false |
 | disableSlowQueryLogContainer | DisableSlowQueryLogContainer controls whether to add a sidecar container named \"slow-log\" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false. | bool | false |
 
 [Back to Custom Resources](#custom-resources)
