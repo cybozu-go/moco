@@ -14,9 +14,9 @@ Flags:
       --add_dir_header                   If true, adds the file directory to the header
       --agent-container-image string     The container image name that includes moco-agent
       --alsologtostderr                  log to standard error as well as files
-      --cert-dir string                  certificate directory
+      --cert-dir string                  webhook certificate directory
       --check-interval duration          Interval of cluster maintenance (default 1m0s)
-      --fluent-bit-image string          Specifies the default image of fluent-bit to be used as a log agent
+      --fluent-bit-image string          The image of fluent-bit sidecar container
       --health-probe-addr string         Listen address for health probes (default ":8081")
   -h, --help                             help for moco-controller
       --leader-election-id string        ID for leader election by controller-runtime (default "moco")
@@ -26,6 +26,7 @@ Flags:
       --log_file_max_size uint           Defines the maximum size a log file can grow to. Unit is megabytes. If the value is 0, the maximum file size is unlimited. (default 1800)
       --logtostderr                      log to standard error instead of files (default true)
       --metrics-addr string              The address the metric endpoint binds to (default ":8080")
+      --mysqld-exporter-image string     The image of mysqld_exporter sidecar container
       --skip_headers                     If true, avoid header prefixes in the log messages
       --skip_log_headers                 If true, avoid headers when opening log files
       --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)

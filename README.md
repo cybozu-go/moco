@@ -37,6 +37,7 @@ Other versions may work, though not tested.
 - Different MySQL versions for each cluster
 - Upgrading MySQL version of a cluster
 - Monitor for replication delays
+- Built-in [mysqld_exporter][] for `mysqld` metrics
 - Services for the primary and replicas, respectively
 - Custom `my.cnf` configurations
 - Custom Pod, Service, and PersistentVolumeClaim templates
@@ -115,3 +116,4 @@ Docker images are available on [ghcr.io/cybozu-go/moco](https://github.com/orgs/
 
 [releases]: https://github.com/cybozu-go/moco/releases
 [MySQL]: https://www.mysql.com/
+[mysqld_exporter]: https://github.com/prometheus/mysqld_exporter

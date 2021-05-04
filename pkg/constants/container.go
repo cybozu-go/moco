@@ -6,7 +6,7 @@ const (
 	InitContainerName              = "moco-init"
 	MysqldContainerName            = "mysqld"
 	SlowQueryLogAgentContainerName = "slow-log"
-	ExporterContainerName          = "mysqld_exporter"
+	ExporterContainerName          = "mysqld-exporter"
 )
 
 // volume names

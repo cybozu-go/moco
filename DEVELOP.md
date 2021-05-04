@@ -40,6 +40,10 @@ Run `go get github.com/cybozu-go/moco-agent@latest`.
 
 ## Updating fluent-bit
 
-Edit `FluentBitImage` in [`version.go`](versoin.go).
+Edit `FluentBitImage` in [`version.go`](version.go).
+
+## Updating mysqld_exporter
+
+Edit `ExporterImage` in [`version.go`](version.go).
 
 [moco-agent]: https://github.com/cybozu-go/moco-agent

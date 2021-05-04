@@ -82,6 +82,7 @@ func subMain(ns, addr string, port int) error {
 		Scheme:              mgr.GetScheme(),
 		AgentContainerImage: config.agentContainerImage,
 		FluentBitImage:      config.fluentBitImage,
+		ExporterImage:       config.exporterImage,
 		SystemNamespace:     ns,
 		ClusterManager:      clusterMgr,
 	}).SetupWithManager(mgr); err != nil {

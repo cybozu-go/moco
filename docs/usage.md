@@ -357,7 +357,26 @@ Unready replica Pods are automatically excluded from the load-balancing targets 
 
 ### Metrics
 
-See [`metrics.md`](metrics.md) for available metrics in Prometheus format.
+MOCO provides a built-in support to collect and expose `mysqld` metrics using [mysqld_exporter][].
+
+This is an example YAML to enable `mysqld_exporter`.
+`spec.collectors` is a list of `mysqld_exporter` flag names without `collect.` prefix.
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  collectors:
+  - engine_innodb_status
+  - info_schema.innodb_metrics
+  podTemplate:
+    ...
+```
+
+See [`metrics.md`](metrics.md) for all available metrics and how to collect them using Prometheus.
 
 ### Logs
 
@@ -452,3 +471,4 @@ Delete such pending Pods until PVC is actually removed.
 [GTID]: https://dev.mysql.com/doc/refman/8.0/en/replication-gtids.html
 [CLONE]: https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html
 [MetalLB]: https://metallb.universe.tf/
+[mysqld_exporter]: https://github.com/prometheus/mysqld_exporter/
