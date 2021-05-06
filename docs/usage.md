@@ -414,7 +414,7 @@ Decreasing the number of instances is not allowed.
 
 ### Switchover
 
-Switchver is an operation to change the live primary to one of the replicas.
+Switchover is an operation to change the live primary to one of the replicas.
 
 MOCO automatically switch the primary when the Pod of the primary instance is to be deleted.
 
