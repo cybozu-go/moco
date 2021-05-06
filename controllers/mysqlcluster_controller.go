@@ -66,6 +66,7 @@ type MySQLClusterReconciler struct {
 	Scheme              *runtime.Scheme
 	AgentContainerImage string
 	FluentBitImage      string
+	ExporterImage       string
 	SystemNamespace     string
 	ClusterManager      clustering.ClusterManager
 }
@@ -660,6 +661,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		if !cluster.Spec.DisableSlowQueryLogContainer {
 			force := cluster.Status.ReconcileInfo.Generation != cluster.Generation
 			containers = append(containers, r.makeV1SlowQueryLogContainer(sts, force))
+		}
+		if len(cluster.Spec.Collectors) > 0 {
+			containers = append(containers, r.makeV1ExporterContainer(cluster.Spec.Collectors, sts.Spec.Template.Spec.Containers))
 		}
 		containers = append(containers, r.makeV1OptionalContainers(cluster, sts.Spec.Template.Spec.Containers)...)
 		podSpec.Containers = containers

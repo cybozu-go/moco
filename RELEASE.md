@@ -52,7 +52,7 @@ It should look like:
     ```console
     $ git checkout main
     $ git pull
-    $ git tag -a v$VERSION
+    $ git tag -a -m "Release v$VERSION" v$VERSION
     $ git push origin v$VERSION
     ```
 

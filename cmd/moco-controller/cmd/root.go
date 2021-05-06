@@ -27,6 +27,7 @@ var config struct {
 	certDir             string
 	agentContainerImage string
 	fluentBitImage      string
+	exporterImage       string
 	interval            time.Duration
 	zapOpts             zap.Options
 }
@@ -89,7 +90,8 @@ func init() {
 	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
 	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
 	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
-	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "Specifies the default image of fluent-bit to be used as a log agent")
+	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "The image of fluent-bit sidecar container")
+	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)

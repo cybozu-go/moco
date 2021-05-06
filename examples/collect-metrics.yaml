@@ -1,0 +1,25 @@
+# This example shows how to collect and export mysqld metrics using mysqld_exporter.
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  # collectors is a list of collector flag names.
+  # See https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for all available collectors.
+  collectors:
+  - engine_innodb_status
+  - info_schema.innodb_metrics
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.24
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

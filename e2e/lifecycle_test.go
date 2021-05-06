@@ -67,6 +67,7 @@ var _ = Context("lifecycle", func() {
 				return err
 			}
 			cluster.Spec.MySQLConfigMapName = nil
+			cluster.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
 			data, _ := json.Marshal(cluster)
 			_, err = kubectl(data, "apply", "-f", "-")
 			return err
@@ -101,7 +102,7 @@ var _ = Context("lifecycle", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should expose metrics", func() {
+	It("should expose cluster metrics", func() {
 		out := kubectlSafe(nil, "-n", "moco-system", "get", "pods", "-l", "app.kubernetes.io/component=moco-controller", "-o", "json")
 		pods := &corev1.PodList{}
 		err := json.Unmarshal(out, pods)
@@ -118,6 +119,24 @@ var _ = Context("lifecycle", func() {
 		m := findMetric(mf, map[string]string{"namespace": "foo", "name": "single"})
 		Expect(m).NotTo(BeNil())
 		Expect(m.GetGauge().GetValue()).To(BeNumerically("==", 1))
+	})
+
+	It("should expose instance metrics", func() {
+		out, err := runInPod("curl", "-sf", "http://moco-single-0.moco-single.foo.svc:8080/metrics")
+		Expect(err).NotTo(HaveOccurred())
+
+		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		Expect(err).NotTo(HaveOccurred())
+		mf := mfs["moco_instance_clone_count"]
+		Expect(mf).NotTo(BeNil())
+
+		out, err = runInPod("curl", "-sf", "http://moco-single-0.moco-single.foo.svc:9104/metrics")
+		Expect(err).NotTo(HaveOccurred())
+
+		mfs, err = (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		Expect(err).NotTo(HaveOccurred())
+		mf = mfs["mysql_global_variables_read_only"]
+		Expect(mf).NotTo(BeNil())
 	})
 
 	It("should collect generated resources after deleting MySQLCluster", func() {

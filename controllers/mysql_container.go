@@ -183,6 +183,33 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.Statefu
 	}
 }
 
+func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, current []corev1.Container) corev1.Container {
+	c := corev1.Container{
+		Name:  constants.ExporterContainerName,
+		Image: r.ExporterImage,
+		Ports: []corev1.ContainerPort{
+			{ContainerPort: constants.ExporterPort, Name: constants.ExporterPortName, Protocol: corev1.ProtocolTCP},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: constants.RunPath,
+				Name:      constants.RunVolumeName,
+			},
+			{
+				MountPath: constants.MyCnfSecretPath,
+				Name:      constants.MySQLConfSecretVolumeName,
+			},
+		},
+	}
+	c.Args = []string{"--config.my-cnf=" + filepath.Join(constants.MyCnfSecretPath, constants.ExporterMyCnf)}
+	for _, cl := range collectors {
+		c.Args = append(c.Args, "--collect."+cl)
+	}
+
+	updateContainerWithSupplements(&c, current)
+	return c
+}
+
 func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.MySQLCluster, current []corev1.Container) []corev1.Container {
 	var containers []corev1.Container
 	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
@@ -191,6 +218,12 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.M
 		case constants.AgentContainerName:
 		case constants.SlowQueryLogAgentContainerName:
 			if cluster.Spec.DisableSlowQueryLogContainer {
+				cp := c.DeepCopy()
+				updateContainerWithSupplements(cp, current)
+				containers = append(containers, *cp)
+			}
+		case constants.ExporterContainerName:
+			if len(cluster.Spec.Collectors) == 0 {
 				cp := c.DeepCopy()
 				updateContainerWithSupplements(cp, current)
 				containers = append(containers, *cp)

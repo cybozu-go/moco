@@ -61,6 +61,7 @@ const (
 	testMocoSystemNamespace = "moco-system"
 	testAgentImage          = "foobar:123"
 	testFluentBitImage      = "fluent-hoge:134"
+	testExporterImage       = "mysqld_exporter:111"
 )
 
 func testNewMySQLCluster(ns string) *mocov1beta1.MySQLCluster {
@@ -147,6 +148,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			ClusterManager:      mockMgr,
 			AgentContainerImage: testAgentImage,
 			FluentBitImage:      testFluentBitImage,
+			ExporterImage:       testExporterImage,
 		}
 		err = mysqlr.SetupWithManager(mgr)
 		Expect(err).ToNot(HaveOccurred())
@@ -542,6 +544,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		foundMysqld := false
 		foundAgent := false
 		foundSlowLogAgent := false
+		foundExporter := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			switch c.Name {
 			case constants.MysqldContainerName:
@@ -555,11 +558,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.SlowQueryLogAgentContainerName:
 				foundSlowLogAgent = true
 				Expect(c.Image).To(Equal(testFluentBitImage))
+			case constants.ExporterContainerName:
+				foundExporter = true
 			}
 		}
 		Expect(foundMysqld).To(BeTrue())
 		Expect(foundAgent).To(BeTrue())
 		Expect(foundSlowLogAgent).To(BeTrue())
+		Expect(foundExporter).To(BeFalse())
 
 		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 		initContainer := &sts.Spec.Template.Spec.InitContainers[0]
@@ -627,6 +633,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
+		cluster.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
 		cluster.Spec.MaxDelaySeconds = 20
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
@@ -675,10 +682,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
+			case constants.ExporterContainerName:
+				foundExporter = true
+				Expect(c.Image).To(Equal(testExporterImage))
+				Expect(c.Args).To(HaveLen(3))
 			case "dummy":
 				foundDummyContainer = true
 			}
 		}
+		Expect(foundExporter).To(BeTrue())
 		Expect(foundDummyContainer).To(BeTrue())
 
 		foundInitDummyContainer := false

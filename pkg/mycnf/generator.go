@@ -105,7 +105,6 @@ var ConstMycnf = map[string]map[string]string{
 
 		"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
 		"gtid_mode":                "ON",
-		"log_bin":                  "ON",
 		"binlog_format":            "ROW",
 		"log_slave_updates":        "ON",
 		"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
@@ -124,8 +123,10 @@ var ConstMycnf = map[string]map[string]string{
 		"loose_replication_optimize_for_static_plugin_config": "ON",
 	},
 	"client": {
-		"port":                        strconv.Itoa(constants.MySQLPort),
-		"socket":                      filepath.Join(constants.RunPath, "mysqld.sock"),
+		"port":   strconv.Itoa(constants.MySQLPort),
+		"socket": filepath.Join(constants.RunPath, "mysqld.sock"),
+
+		// mysqlbinlog does not recognize default_character_set, so make it loose.
 		"loose_default_character_set": "utf8mb4",
 	},
 	"mysql": {
@@ -153,6 +154,8 @@ func Generate(userConf map[string]string, memTotal int64) string {
 		mysqldConf["innodb_buffer_pool_size"] = fmt.Sprint(calcBufferSize(memTotal))
 	}
 
+	// to always enable binary logs
+	delete(mysqldConf, "log_bin")
 	// to put error logs to stderr
 	delete(mysqldConf, "log_error")
 

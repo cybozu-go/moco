@@ -30,6 +30,7 @@ The StatefulSet will be updated when:
 - `my.cnf` for mysqld is updated.
 - the version of the reconciler used to reconcile the StatefulSet is obsoleted.
 - the image of moco-agent given to the controller is updated.
+- the image of mysqld_exporter given to the controller is updated.
 
 ### When the StatefulSet is _not_ updated
 

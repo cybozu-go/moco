@@ -106,8 +106,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsr
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
 github.com/cybozu-go/log v1.5.0/go.mod h1:zpfovuCgUx+a/ErvQrThoT+/z1RVQoLDOf95wkBeRiw=
 github.com/cybozu-go/log v1.6.0/go.mod h1:2iAEvn2cL5dy/1uP5Jfb0Ao9+DUnDr//V0Bk3WDJX1U=
-github.com/cybozu-go/moco-agent v0.6.1 h1:Cn9//cBSsZoXNzTfeoaNyyWVKmp+m1LJdV2hNvKdGrA=
-github.com/cybozu-go/moco-agent v0.6.1/go.mod h1:emhcINL6P81LZ4o355DETRXs8S63HUAXJN7SK01e7MY=
+github.com/cybozu-go/moco-agent v0.6.2 h1:PqTF7GPMIRt2dTQUEJXHD8b5MFp8MALMLVRk/+/frI4=
+github.com/cybozu-go/moco-agent v0.6.2/go.mod h1:emhcINL6P81LZ4o355DETRXs8S63HUAXJN7SK01e7MY=
 github.com/cybozu-go/netutil v1.2.0/go.mod h1:Wx92iF1dPrtuSzLUMEidtrKTFiDWpLcsYvbQ1lHSmxY=
 github.com/cybozu-go/well v1.10.0/go.mod h1:OQdjEXQpbG+kSgEF3t3IYUx5y1R4qeBGvzL4gmi61qE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

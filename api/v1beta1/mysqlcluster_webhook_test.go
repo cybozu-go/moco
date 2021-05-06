@@ -168,6 +168,25 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	It("should deny mysqld_exporter container if enabled", func() {
+		r := makeMySQLCluster()
+		r.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
+		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
+			Name: constants.ExporterContainerName,
+		})
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should allow mysqld_exporter container if not enabled", func() {
+		r := makeMySQLCluster()
+		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
+			Name: constants.ExporterContainerName,
+		})
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("should allow non-reserved init containers", func() {
 		r := makeMySQLCluster()
 		r.Spec.PodTemplate.Spec.InitContainers = []corev1.Container{
@@ -218,6 +237,17 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		r.Spec.ReplicationSourceSecretName = pointer.String("bar")
+		err = k8sClient.Update(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should deny editing restore spec", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+
+		r.Spec.Restore = nil
 		err = k8sClient.Update(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})

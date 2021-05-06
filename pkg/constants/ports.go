@@ -24,4 +24,8 @@ const (
 	// AgentMetricsPort is the port number for agent container
 	AgentMetricsPort     = 8080
 	AgentMetricsPortName = "agent-metrics"
+
+	// ExporterPort is the port number for mysqld_exporter
+	ExporterPort     = 9104
+	ExporterPortName = "mysqld-metrics"
 )
