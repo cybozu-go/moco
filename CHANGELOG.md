@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2021-05-06
+
+### Added
+- built-in `mysqld_exporter` to expose `mysqld` metrics (#237)
+
+### Changed
+- binlog filename now has a proper prefix `binlog.` (#237)
+
 ## [0.8.0] - 2021-04-27
 
 ### Changed
@@ -137,8 +145,9 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.8.0...HEAD
-[0.8.0]: https://github.com/cybozu-go/moco/compare/v0.8.0...v0.8.0
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/cybozu-go/moco/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/cybozu-go/moco/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/cybozu-go/moco/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/cybozu-go/moco/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/cybozu-go/moco/compare/v0.5.0...v0.5.1
