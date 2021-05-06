@@ -12,9 +12,9 @@ import (
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
-	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -92,8 +92,8 @@ func (a *mockAgentConn) Clone(ctx context.Context, in *agent.CloneRequest, opts 
 	return &agent.CloneResponse{}, nil
 }
 
-func setPodReadiness(ctx context.Context, name string, ready bool) {
-	EventuallyWithOffset(1, func() error {
+func setPodReadiness(ctx context.Context, name string, ready bool) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		pod := &corev1.Pod{}
 		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: name}, pod)
 		if err != nil {
@@ -111,7 +111,7 @@ func setPodReadiness(ctx context.Context, name string, ready bool) {
 			pod.Status.Conditions = nil
 		}
 		return k8sClient.Status().Update(ctx, pod)
-	}).Should(Succeed())
+	})
 }
 
 type mockAgentFactory struct {
@@ -330,9 +330,7 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 		SlaveSQLRunning:  "Yes",
 	}
 	o.mysql.status.GlobalVariables.SemiSyncSlaveEnabled = semisync
-	setPodReadiness(ctx, o.cluster.PodName(o.index), true)
-
-	return nil
+	return setPodReadiness(ctx, o.cluster.PodName(o.index), true)
 }
 
 // ConfigurePrimary configures server-side semi-synchronous replication.
@@ -361,8 +359,7 @@ func (o *mockOperator) StopReplicaIOThread(ctx context.Context) error {
 		return nil
 	}
 	o.mysql.status.ReplicaStatus.SlaveIORunning = "No"
-	setPodReadiness(ctx, o.cluster.PodName(o.index), false)
-	return nil
+	return setPodReadiness(ctx, o.cluster.PodName(o.index), false)
 }
 
 // WaitForGTID waits for `mysqld` to execute all GTIDs in `gtidSet`.
@@ -437,8 +434,7 @@ func (o *mockOperator) SetReadOnly(ctx context.Context, readonly bool) error {
 	}
 	o.mysql.status.GlobalVariables.ReadOnly = false
 	o.mysql.status.GlobalVariables.SuperReadOnly = false
-	setPodReadiness(ctx, o.cluster.PodName(o.index), true)
-	return nil
+	return setPodReadiness(ctx, o.cluster.PodName(o.index), true)
 }
 
 type mockMySQL struct {
