@@ -194,9 +194,10 @@ The switchover is done as follows.
 It takes at least several seconds for a new primary to become writable.
 
 1. Make the primary instance `super_read_only=1`.
-2. Wait for a replica to catch up the executed GTID set of the primary instance.
-3. Set `status.currentPrimaryIndex` to the replica's index.
-4. If the old primary is Demoting, remove `moco.cybozu.com/demote` annotation from the Pod.
+2. Kill all existing connections except ones from `localhost` and ones for MOCO.
+3. Wait for a replica to catch up the executed GTID set of the primary instance.
+4. Set `status.currentPrimaryIndex` to the replica's index.
+5. If the old primary is Demoting, remove `moco.cybozu.com/demote` annotation from the Pod.
 
 #### Cloning
 

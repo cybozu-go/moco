@@ -437,6 +437,10 @@ func (o *mockOperator) SetReadOnly(ctx context.Context, readonly bool) error {
 	return setPodReadiness(ctx, o.cluster.PodName(o.index), true)
 }
 
+func (o *mockOperator) KillConnections(ctx context.Context) error {
+	return nil
+}
+
 type mockMySQL struct {
 	mu     sync.Mutex
 	status dbop.MySQLInstanceStatus
