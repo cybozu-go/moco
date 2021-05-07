@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 // AgentConn represents a gRPC connection to a moco-agent
@@ -52,7 +53,10 @@ func (f defaultAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQL
 		return nil, err
 	}
 	addr := net.JoinHostPort(ip, strconv.Itoa(constants.AgentPort))
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure())
+	kp := keepalive.ClientParameters{
+		Time: 1 * time.Minute,
+	}
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure(), grpc.WithKeepaliveParams(kp))
 	if err != nil {
 		return agentConn{}, err
 	}
