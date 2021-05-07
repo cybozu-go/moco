@@ -12,6 +12,16 @@ const (
 	WritableUser    = "moco-writable"
 )
 
+// MocoSystemUsers is a map to hold system users.
+var MocoSystemUsers = map[string]bool{
+	AdminUser:       true,
+	AgentUser:       true,
+	ReplicationUser: true,
+	CloneDonorUser:  true,
+	ExporterUser:    true,
+	BackupUser:      true,
+}
+
 // my.cnf filenames for different kind of users.
 const (
 	AdminMyCnf    = AdminUser + "-my.cnf"

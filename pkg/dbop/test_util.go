@@ -186,6 +186,31 @@ func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassw
 	}, nil
 }
 
+func (f *testFactory) newConn(ctx context.Context, cluster *mocov1beta1.MySQLCluster, user, passwd string, index int) (*sqlx.DB, error) {
+	mapKey := fmt.Sprintf("%s_%s", cluster.Namespace, cluster.Name)
+	instances, ok := f.instanceMap[mapKey]
+	if !ok {
+		panic("bug")
+	}
+	port := instances[index]
+	cfg := mysql.NewConfig()
+	cfg.User = user
+	cfg.Passwd = passwd
+	cfg.Net = "tcp"
+	cfg.Addr = fmt.Sprintf("localhost:%d", port)
+	cfg.InterpolateParams = true
+	cfg.ParseTime = true
+	cfg.Timeout = connTimeout
+	cfg.ReadTimeout = readTimeout
+	udb, err := sqlx.Connect("mysql", cfg.FormatDSN())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %w", cfg.FormatDSN(), err)
+	}
+	udb.SetMaxIdleConns(1)
+	udb.SetConnMaxIdleTime(30 * time.Second)
+	return udb, nil
+}
+
 func (f *testFactory) Cleanup() {
 	out, err := exec.Command("docker", "ps", "--format", "{{.Names}}").Output()
 	if err != nil {

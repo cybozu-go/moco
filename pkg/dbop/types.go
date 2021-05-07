@@ -129,3 +129,10 @@ func (rs *ReplicaStatus) IsRunning() bool {
 type CloneStatus struct {
 	State sql.NullString `db:"state"`
 }
+
+// Process represents a process in `information_schema.PROCESSLIST` table.
+type Process struct {
+	ID   uint64 `db:"ID"`
+	User string `db:"USER"`
+	Host string `db:"HOST"`
+}

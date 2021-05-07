@@ -58,6 +58,10 @@ type Operator interface {
 	// SetReadOnly makes the instance super_read_only if `true` is passed.
 	// Otherwise, this stops the replication and makes the instance writable.
 	SetReadOnly(context.Context, bool) error
+
+	// KillConnections kills all connections except for ones from `localhost`
+	// and ones for MOCO.
+	KillConnections(context.Context) error
 }
 
 // OperatorFactory represents the factory for Operators.
