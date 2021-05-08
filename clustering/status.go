@@ -148,7 +148,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 
 	pods := &corev1.PodList{}
 	if err := p.client.List(ctx, pods, client.InNamespace(p.name.Namespace), client.MatchingLabels{
-		constants.LabelAppName:     constants.AppName,
+		constants.LabelAppName:     constants.AppNameMySQL,
 		constants.LabelAppInstance: p.name.Name,
 	}); err != nil {
 		return nil, fmt.Errorf("failed to list Pods: %w", err)

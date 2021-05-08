@@ -37,8 +37,9 @@ var debugController = os.Getenv("DEBUG_CONTROLLER") == "1"
 // `controller` should be true only if the resource is created in the same namespace as moco-controller.
 func labelSet(cluster *mocov1beta1.MySQLCluster, controller bool) map[string]string {
 	labels := map[string]string{
-		constants.LabelAppName:     constants.AppName,
-		constants.LabelAppInstance: cluster.Name,
+		constants.LabelAppName:      constants.AppNameMySQL,
+		constants.LabelAppInstance:  cluster.Name,
+		constants.LabelAppCreatedBy: constants.AppCreator,
 	}
 	if controller {
 		labels[constants.LabelAppNamespace] = cluster.Namespace

@@ -56,7 +56,7 @@ Applications that use MOCO MySQL need to be aware of this.
 
 An empty cluster always has a writable instance called _the primary_.  All other instances are called _replicas_.  Replicas are read-only and replicate data from the primary.
 
-The following YAML is to create a three-instance cluster.  It has an anti-affinity for Pods so that all instances will be scheduled to different Nodes.  It also has the same values for memory and CPU requests and limits making the Pod to have [Guaranteed](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/) QoS.
+The following YAML is to create a three-instance cluster.  It has an anti-affinity for Pods so that all instances will be scheduled to different Nodes.  It also sets the limits for memory and CPU to make the Pod [Guaranteed](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/).
 
 ```yaml
 apiVersion: moco.cybozu.com/v1beta1
@@ -77,7 +77,7 @@ spec:
               - key: app.kubernetes.io/name
                 operator: In
                 values:
-                - moco
+                - mysql
               - key: app.kubernetes.io/instance
                 operator: In
                 values:
@@ -87,10 +87,9 @@ spec:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
         image: quay.io/cybozu/moco-mysql:8.0.24
+        # By limiting CPU and memory, Pods will have Guaranteed QoS class.
+        # requests can be omitted; it will be set to the same value as limits.
         resources:
-          requests:
-            cpu: "10"
-            memory: "10Gi"
           limits:
             cpu: "10"
             memory: "10Gi"

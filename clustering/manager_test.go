@@ -50,7 +50,7 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 		pod.Namespace = "test"
 		pod.Name = cluster.PodName(i)
 		pod.Labels = map[string]string{
-			constants.LabelAppName:     constants.AppName,
+			constants.LabelAppName:     constants.AppNameMySQL,
 			constants.LabelAppInstance: cluster.Name,
 		}
 		pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
@@ -408,7 +408,7 @@ var _ = Describe("manager", func() {
 			pod.Namespace = "test"
 			pod.Name = cluster.PodName(i)
 			pod.Labels = map[string]string{
-				constants.LabelAppName:     constants.AppName,
+				constants.LabelAppName:     constants.AppNameMySQL,
 				constants.LabelAppInstance: cluster.Name,
 			}
 			pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
