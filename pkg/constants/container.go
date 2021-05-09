@@ -15,6 +15,7 @@ const (
 	MySQLConfVolumeName               = "mysql-conf"
 	MySQLInitConfVolumeName           = "mysql-conf-d"
 	MySQLConfSecretVolumeName         = "my-cnf-secret"
+	GRPCSecretVolumeName              = "grpc-cert"
 	RunVolumeName                     = "run"
 	VarLogVolumeName                  = "var-log"
 	TmpVolumeName                     = "tmp"

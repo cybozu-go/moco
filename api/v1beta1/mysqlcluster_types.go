@@ -431,6 +431,20 @@ func (r *MySQLCluster) SlowQueryLogAgentConfigMapName() string {
 	return fmt.Sprintf("moco-slow-log-agent-config-%s", r.Name)
 }
 
+// CertificateName returns the name of Certificate issued for moco-agent gRPC server.
+// The Certificate will be created in the namespace of the controller.
+//
+// This is also the Secret name created from the Certificate.
+func (r *MySQLCluster) CertificateName() string {
+	return fmt.Sprintf("moco-agent-%s.%s", r.Namespace, r.Name)
+}
+
+// GRPCSecretName returns the name of Secret of TLS server certificate for moco-agent.
+// The Secret will be created in the MySQLCluster namespace.
+func (r *MySQLCluster) GRPCSecretName() string {
+	return fmt.Sprintf("%s-grpc", r.PrefixedName())
+}
+
 //+kubebuilder:object:root=true
 
 // MySQLClusterList contains a list of MySQLCluster

@@ -16,6 +16,7 @@ import (
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -266,6 +267,66 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 			return nil
 		})
+	})
+
+	It("should create certificate and copy secret", func() {
+		By("creating a cluster")
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var cert *unstructured.Unstructured
+		Eventually(func() error {
+			cert = certificateObj.DeepCopy()
+			key := client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "moco-agent-test.test"}
+			return k8sClient.Get(ctx, key, cert)
+		}).Should(Succeed())
+
+		By("creating a TLS secret in the controller namespace")
+		cs := &corev1.Secret{}
+		cs.Namespace = testMocoSystemNamespace
+		cs.Name = "moco-agent-test.test"
+		cs.Data = map[string][]byte{"foo": []byte("bar")}
+		err = k8sClient.Create(ctx, cs)
+		Expect(err).NotTo(HaveOccurred())
+
+		cert.SetAnnotations(map[string]string{"test": "foo"})
+		err = k8sClient.Update(ctx, cert)
+		Expect(err).NotTo(HaveOccurred())
+
+		var us *corev1.Secret
+		Eventually(func() error {
+			us = &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-grpc"}, us)
+		}).Should(Succeed())
+
+		Expect(us.OwnerReferences).NotTo(BeEmpty())
+		Expect(us.Labels).NotTo(BeEmpty())
+		Expect(us.Data).To(HaveKeyWithValue("foo", []byte("bar")))
+
+		By("updating the TLS secret in the controller namespace")
+		cs.Data["foo"] = []byte("baz")
+		err = k8sClient.Update(ctx, cs)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cert := certificateObj.DeepCopy()
+			key := client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "moco-agent-test.test"}
+			if err := k8sClient.Get(ctx, key, cert); err != nil {
+				return err
+			}
+			cert.SetAnnotations(map[string]string{"test": "bar"})
+			return k8sClient.Update(ctx, cert)
+		}).Should(Succeed())
+
+		Eventually(func() []byte {
+			us = &corev1.Secret{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-grpc"}, us)
+			if err != nil {
+				return nil
+			}
+			return us.Data["foo"]
+		}).Should(Equal([]byte("baz")))
 	})
 
 	It("should create config maps for fluent-bit", func() {
@@ -869,6 +930,17 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if !apierrors.IsNotFound(err) {
 				return err
 			}
+
+			cert := certificateObj.DeepCopy()
+			key = client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "moco-agent-test.test"}
+			err = k8sClient.Get(ctx, key, cert)
+			if err == nil {
+				return fmt.Errorf("the certificate in controller namespace still exists")
+			}
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+
 			return nil
 		}).Should(Succeed())
 	})

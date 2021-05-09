@@ -93,6 +93,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQ
 		corev1.VolumeMount{
 			MountPath: constants.MyCnfSecretPath,
 			Name:      constants.MySQLConfSecretVolumeName,
+			ReadOnly:  true,
 		},
 		corev1.VolumeMount{
 			MountPath: constants.MySQLDataPath,
@@ -122,6 +123,11 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta1.MySQL
 		{
 			MountPath: constants.LogDirPath,
 			Name:      constants.VarLogVolumeName,
+		},
+		{
+			MountPath: "/grpc-cert",
+			Name:      constants.GRPCSecretVolumeName,
+			ReadOnly:  true,
 		},
 	}
 	c.Env = []corev1.EnvVar{
@@ -166,7 +172,7 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.Statefu
 		}
 	}
 
-	return corev1.Container{
+	c := corev1.Container{
 		Name:  constants.SlowQueryLogAgentContainerName,
 		Image: r.FluentBitImage,
 		VolumeMounts: []corev1.VolumeMount{
@@ -181,6 +187,8 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1.Statefu
 			},
 		},
 	}
+	updateContainerWithSupplements(&c, sts.Spec.Template.Spec.Containers)
+	return c
 }
 
 func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, current []corev1.Container) corev1.Container {
@@ -198,6 +206,7 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, cu
 			{
 				MountPath: constants.MyCnfSecretPath,
 				Name:      constants.MySQLConfSecretVolumeName,
+				ReadOnly:  true,
 			},
 		},
 	}

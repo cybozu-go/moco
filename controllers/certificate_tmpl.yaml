@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: "{{ .Name }}"
+  namespace: "{{ .Namespace }}"
+spec:
+  dnsNames:
+  - "*.{{ .ServiceName }}.{{ .TargetNamespace }}.svc"
+  secretName: "{{ .Name }}"
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+  issuerRef:
+    kind: Issuer
+    name: moco-grpc-issuer

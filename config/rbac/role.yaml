@@ -115,6 +115,16 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
   - moco.cybozu.com
   resources:
   - mysqlclusters
