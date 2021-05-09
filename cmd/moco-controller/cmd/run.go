@@ -3,10 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/controllers"
+	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
@@ -74,7 +76,12 @@ func subMain(ns, addr string, port int) error {
 	r := resolver{reader: mgr.GetClient()}
 	opf := dbop.NewFactory(r)
 	defer opf.Cleanup()
-	af := clustering.NewAgentFactory(r)
+	reloader, err := cert.NewReloader(config.grpcCertDir, ctrl.Log.WithName("agent-client"))
+	if err != nil {
+		setupLog.Error(err, "failed to initialize gRPC certificate loader")
+		return err
+	}
+	af := clustering.NewAgentFactory(r, reloader)
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
 
 	if err = (&controllers.MySQLClusterReconciler{
@@ -108,7 +115,9 @@ func subMain(ns, addr string, port int) error {
 	metrics.Register(k8smetrics.Registry)
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	ctx := ctrl.SetupSignalHandler()
+	go reloader.Run(ctx, 1*time.Hour)
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}

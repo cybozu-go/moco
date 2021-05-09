@@ -1,0 +1,41 @@
+# This file contains resources to create a CA for mTLS gRPC communication
+# and a certificate for moco-controller.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grpc-ca
+  namespace: system
+spec:
+  commonName: MOCO gRPC CA
+  isCA: true
+  duration: 87600h # 10 years
+  renewBefore: 720h # 30 days
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: moco-grpc-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: grpc-issuer
+  namespace: system
+spec:
+  ca:
+    secretName: moco-grpc-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: controller-grpc
+  namespace: system
+spec:
+  commonName: moco-controller
+  usages:
+  - digital signature
+  - key encipherment
+  - client auth
+  issuerRef:
+    kind: Issuer
+    name: grpc-issuer
+  secretName: moco-controller-grpc

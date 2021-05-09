@@ -25,6 +25,7 @@ var config struct {
 	leaderElectionID    string
 	webhookAddr         string
 	certDir             string
+	grpcCertDir         string
 	agentContainerImage string
 	fluentBitImage      string
 	exporterImage       string
@@ -89,6 +90,7 @@ func init() {
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
 	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
+	fs.StringVar(&config.grpcCertDir, "grpc-cert-dir", "/grpc-cert", "gRPC certificate directory")
 	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
 	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "The image of fluent-bit sidecar container")
 	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")

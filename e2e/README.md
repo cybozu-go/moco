@@ -13,6 +13,7 @@ Therefore, we include the following tests in the e2e suite.
 
 - Manifests.
 - MySQL cluster lifecycle (create, update, delete).
+- Access moco-agent over mTLS connections.
 - Access mysqld via Services.
 - Garbage collection after deleting MySQLCluster.
 - Slow logs from a sidecar container.
