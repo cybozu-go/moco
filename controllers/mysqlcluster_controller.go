@@ -21,13 +21,17 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const defaultTerminationGracePeriodSeconds = 300
@@ -37,8 +41,9 @@ var debugController = os.Getenv("DEBUG_CONTROLLER") == "1"
 // `controller` should be true only if the resource is created in the same namespace as moco-controller.
 func labelSet(cluster *mocov1beta1.MySQLCluster, controller bool) map[string]string {
 	labels := map[string]string{
-		constants.LabelAppName:     constants.AppName,
-		constants.LabelAppInstance: cluster.Name,
+		constants.LabelAppName:      constants.AppNameMySQL,
+		constants.LabelAppInstance:  cluster.Name,
+		constants.LabelAppCreatedBy: constants.AppCreator,
 	}
 	if controller {
 		labels[constants.LabelAppNamespace] = cluster.Namespace
@@ -86,6 +91,7 @@ type MySQLClusterReconciler struct {
 //+kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 //+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;create;delete
 
 // Reconcile implements Reconciler interface.
 // See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile#Reconciler
@@ -152,6 +158,16 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 	if err := r.reconcileV1Secret(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile secret")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileV1Certificate(ctx, req, cluster); err != nil {
+		log.Error(err, "failed to reconcile certificate")
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileV1GRPCSecret(ctx, req, cluster); err != nil {
+		log.Error(err, "failed to reconcile gRPC secret")
 		return ctrl.Result{}, err
 	}
 
@@ -636,6 +652,13 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 						DefaultMode: pointer.Int32(0644),
 					},
 				}},
+			corev1.Volume{
+				Name: constants.GRPCSecretVolumeName, VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName:  cluster.GRPCSecretName(),
+						DefaultMode: pointer.Int32(0644),
+					},
+				}},
 		)
 		if !cluster.Spec.DisableSlowQueryLogContainer {
 			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
@@ -728,11 +751,42 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, req ctrl.Reques
 	secret := &corev1.Secret{}
 	secret.SetNamespace(r.SystemNamespace)
 	secret.SetName(secretName)
-	return r.Delete(ctx, secret)
+	if err := r.Delete(ctx, secret); err != nil {
+		return fmt.Errorf("failed to delete controller secret %s: %w", secretName, err)
+	}
+
+	certName := cluster.CertificateName()
+	cert := certificateObj.DeepCopy()
+	cert.SetNamespace(r.SystemNamespace)
+	cert.SetName(certName)
+	if err := r.Delete(ctx, cert); err != nil {
+		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	certHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+		// the certificate name is formatted as "moco-agent-<cluster.Namespace>.<cluster.Name>"
+		if a.GetNamespace() != r.SystemNamespace {
+			return nil
+		}
+
+		name := a.GetName()
+		if !strings.HasPrefix(name, "moco-agent-") {
+			return nil
+		}
+		fields := strings.SplitN(name[len("moco-agent-"):], ".", 2)
+		if len(fields) != 2 {
+			return nil
+		}
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{Namespace: fields[0], Name: fields[1]}},
+		}
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta1.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -741,6 +795,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		Watches(&source.Kind{Type: certificateObj}, certHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: 8},
 		).

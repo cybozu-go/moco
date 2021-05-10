@@ -32,6 +32,7 @@ spec:
               fieldPath: metadata.namespace
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
         ports:
         - name: health
           containerPort: 8081
@@ -55,4 +56,13 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+        volumeMounts:
+        - mountPath: /grpc-cert
+          name: grpc-cert
+          readOnly: true
+      volumes:
+      - name: grpc-cert
+        secret:
+          defaultMode: 420
+          secretName: moco-controller-grpc
       terminationGracePeriodSeconds: 10

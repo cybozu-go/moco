@@ -9,9 +9,11 @@ import (
 
 	agent "github.com/cybozu-go/moco-agent/proto"
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -34,12 +36,13 @@ type AgentFactory interface {
 }
 
 // NewAgentFactory returns a new AgentFactory.
-func NewAgentFactory(r dbop.Resolver) AgentFactory {
-	return defaultAgentFactory{resolver: r}
+func NewAgentFactory(r dbop.Resolver, reloader *cert.Reloader) AgentFactory {
+	return defaultAgentFactory{resolver: r, reloader: reloader}
 }
 
 type defaultAgentFactory struct {
 	resolver dbop.Resolver
+	reloader *cert.Reloader
 }
 
 var _ AgentFactory = defaultAgentFactory{}
@@ -56,7 +59,12 @@ func (f defaultAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQL
 	kp := keepalive.ClientParameters{
 		Time: 1 * time.Minute,
 	}
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(), grpc.WithInsecure(), grpc.WithKeepaliveParams(kp))
+	cred := credentials.NewTLS(f.reloader.TLSClientConfig())
+	cred.OverrideServerName(cluster.PodHostname(index))
+	conn, err := grpc.DialContext(ctx, addr,
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(cred),
+		grpc.WithKeepaliveParams(kp))
 	if err != nil {
 		return agentConn{}, err
 	}

@@ -42,7 +42,8 @@ Other versions may work, though not tested.
 - Custom `my.cnf` configurations
 - Custom Pod, Service, and PersistentVolumeClaim templates
 - Redirect slow query logs to a sidecar container
-- (planning) Backup and [Point-in-Time Recovery](https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery-positions.html)
+- Auto-generate [PodDisruptionBudget](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets)
+- Backup and [Point-in-Time Recovery](https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery-positions.html)
 
 ## Quick start
 

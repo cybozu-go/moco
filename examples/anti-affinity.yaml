@@ -18,7 +18,7 @@ spec:
               - key: app.kubernetes.io/name
                 operator: In
                 values:
-                - moco
+                - mysql
               - key: app.kubernetes.io/instance
                 operator: In
                 values:

@@ -50,7 +50,7 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 		pod.Namespace = "test"
 		pod.Name = cluster.PodName(i)
 		pod.Labels = map[string]string{
-			constants.LabelAppName:     constants.AppName,
+			constants.LabelAppName:     constants.AppNameMySQL,
 			constants.LabelAppInstance: cluster.Name,
 		}
 		pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
@@ -408,7 +408,7 @@ var _ = Describe("manager", func() {
 			pod.Namespace = "test"
 			pod.Name = cluster.PodName(i)
 			pod.Labels = map[string]string{
-				constants.LabelAppName:     constants.AppName,
+				constants.LabelAppName:     constants.AppNameMySQL,
 				constants.LabelAppInstance: cluster.Name,
 			}
 			pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
@@ -678,10 +678,15 @@ var _ = Describe("manager", func() {
 		Expect(ms.healthy).To(MetricsIs("==", 0))
 		Expect(ms.errantReplicas).To(MetricsIs("==", 1))
 
-		pod1 := &corev1.Pod{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(1)}, pod1)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(pod1.Labels).NotTo(HaveKey(constants.LabelMocoRole))
+		Eventually(func() bool {
+			pod := &corev1.Pod{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(1)}, pod)
+			if err != nil {
+				return true
+			}
+			_, ok := pod.Labels[constants.LabelMocoRole]
+			return ok
+		}).Should(BeFalse())
 
 		st1 := of.getInstanceStatus(cluster.PodHostname(1))
 		Expect(st1).NotTo(BeNil())

@@ -34,6 +34,10 @@ The dependency is therefore managed in `go.mod` file.
 To run e2e tests with an unreleased moco-agent, follow the instructions in
 [`e2e/README.md`](e2e/README.md).
 
+In case you need to use the new API set of unreleased moco-agent, use
+[`replace`](https://golang.org/ref/mod#go-mod-file-replace) directive in `go.mod`
+to reference the local source code.
+
 ## Updating moco-agent
 
 Run `go get github.com/cybozu-go/moco-agent@latest`.

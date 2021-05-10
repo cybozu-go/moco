@@ -11,12 +11,9 @@ spec:
       containers:
       - name: mysqld
         image: quay.io/cybozu/moco-mysql:8.0.24
-        # By allocating the same CPU and memory for both requests and limits,
-        # the Pod gets assigned Guaranteed QoS class.
+        # By limiting CPU and memory, Pods will have Guaranteed QoS class.
+        # requests can be omitted; it will be set to the same value as limits.
         resources:
-          requests:
-            cpu: "10"
-            memory: "10Gi"
           limits:
             cpu: "10"
             memory: "10Gi"

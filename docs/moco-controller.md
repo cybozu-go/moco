@@ -17,6 +17,7 @@ Flags:
       --cert-dir string                  webhook certificate directory
       --check-interval duration          Interval of cluster maintenance (default 1m0s)
       --fluent-bit-image string          The image of fluent-bit sidecar container
+      --grpc-cert-dir string             gRPC certificate directory (default "/grpc-cert")
       --health-probe-addr string         Listen address for health probes (default ":8081")
   -h, --help                             help for moco-controller
       --leader-election-id string        ID for leader election by controller-runtime (default "moco")
