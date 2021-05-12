@@ -3,4 +3,4 @@ resources:
 
 images:
 - name: ghcr.io/cybozu-go/moco
-  newTag: 0.8.2
+  newTag: 0.8.3
