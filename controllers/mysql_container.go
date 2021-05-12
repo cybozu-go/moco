@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 )
 
 func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQLCluster, desired, current []corev1.Container) (corev1.Container, error) {
@@ -291,6 +292,12 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta1.MySQLC
 }
 
 func updateContainerWithSupplements(container *corev1.Container, currentContainers []corev1.Container) {
+	if container.SecurityContext == nil {
+		container.SecurityContext = &corev1.SecurityContext{}
+	}
+	container.SecurityContext.RunAsUser = pointer.Int64(constants.ContainerUID)
+	container.SecurityContext.RunAsGroup = pointer.Int64(constants.ContainerGID)
+
 	var current *corev1.Container
 	for i, c := range currentContainers {
 		if c.Name == container.Name {

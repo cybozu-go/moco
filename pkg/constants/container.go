@@ -23,6 +23,12 @@ const (
 	MOCOBinVolumeName                 = "moco-bin"
 )
 
+// UID/GID
+const (
+	ContainerUID = 10000
+	ContainerGID = 10000
+)
+
 // command names
 const (
 	InitCommand = "moco-init"

@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.3] - 2021-05-12
+
+### Changed
+- Set UID/GID of containers to 10000:10000 (#243)
+
 ## [0.8.2] - 2021-05-10
 
 ### Changed
@@ -150,7 +155,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/cybozu-go/moco/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/cybozu-go/moco/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/cybozu-go/moco/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/cybozu-go/moco/compare/v0.7.0...v0.8.0
