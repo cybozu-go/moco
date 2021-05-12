@@ -607,6 +607,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		foundSlowLogAgent := false
 		foundExporter := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
+			Expect(c.SecurityContext).NotTo(BeNil())
+			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.MysqldContainerName:
 				foundMysqld = true
@@ -633,6 +638,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(initContainer.Name).To(Equal(constants.InitContainerName))
 		Expect(initContainer.Image).To(Equal("moco-mysql:latest"))
 		Expect(initContainer.Command).To(ContainElement(fmt.Sprintf("%d", cluster.Spec.ServerIDBase)))
+		Expect(initContainer.SecurityContext).NotTo(BeNil())
+		Expect(initContainer.SecurityContext.RunAsUser).NotTo(BeNil())
+		Expect(*initContainer.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+		Expect(initContainer.SecurityContext.RunAsGroup).NotTo(BeNil())
+		Expect(*initContainer.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 
 		Expect(sts.Spec.VolumeClaimTemplates).To(HaveLen(1))
 		Expect(sts.Spec.VolumeClaimTemplates[0].Name).To(Equal(constants.MySQLDataVolumeName))
