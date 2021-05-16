@@ -38,6 +38,25 @@ In case you need to use the new API set of unreleased moco-agent, use
 [`replace`](https://golang.org/ref/mod#go-mod-file-replace) directive in `go.mod`
 to reference the local source code.
 
+## Updating MySQL binaries in moco-backup
+
+Edit the following lines in `Dockerfile`:
+
+```
+# The tag should be the latest one
+FROM quay.io/cybozu/moco-mysql:8.0.25.1 as mysql
+
+# See the below description for how to get the version string.
+ARG MYSQLSH_VERSION=8.0.25-1
+```
+
+The MySQL shell debian package can be found in https://dev.mysql.com/downloads/shell/ .
+
+1. Choose "Ubuntu Linux"
+2. Choose `mysql-shell_*ubuntu*_amd64.deb` (not a `dbgsym` image) and click "Download" button.
+3. Copy the URL from the link whose text reads `No thanks, just start my download.`.
+4. Update `MYSQLSH_VERSION` in `Dockerfile`.
+
 ## Updating moco-agent
 
 Run `go get github.com/cybozu-go/moco-agent@latest`.

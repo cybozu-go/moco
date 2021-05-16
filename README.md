@@ -22,7 +22,7 @@ MOCO is designed to have the following properties.
 
 ## Supported software
 
-- MySQL: 8.0.18, 8.0.20, and 8.0.24
+- MySQL: 8.0.18 and 8.0.25
 - Kubernetes: 1.19 and 1.20
 
 Other versions may work, though not tested.
@@ -30,9 +30,11 @@ Other versions may work, though not tested.
 ## Features
 
 - Cluster of 1, 3, or 5 MySQL instances
+- [`kubectl` plugin](docs/kubectl-moco.md)
 - Replication from an external MySQL instance
 - Manual and automatic switchover of the primary instance
 - Automatic failover of the primary instance
+- Backup and [Point-in-Time Recovery](https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery-positions.html)
 - Errant transaction detection
 - Different MySQL versions for each cluster
 - Upgrading MySQL version of a cluster
@@ -43,7 +45,6 @@ Other versions may work, though not tested.
 - Custom Pod, Service, and PersistentVolumeClaim templates
 - Redirect slow query logs to a sidecar container
 - Auto-generate [PodDisruptionBudget](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets)
-- Backup and [Point-in-Time Recovery](https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery-positions.html)
 
 ## Quick start
 

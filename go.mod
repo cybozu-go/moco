@@ -3,7 +3,7 @@ module github.com/cybozu-go/moco
 go 1.16
 
 require (
-	github.com/cybozu-go/moco-agent v0.6.3
+	github.com/cybozu-go/moco-agent v0.6.5
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/stdr v0.4.0
 	github.com/go-sql-driver/mysql v1.6.0

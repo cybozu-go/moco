@@ -29,8 +29,10 @@ help:
 .PHONY: start
 start: $(KIND) $(KUBECTL) $(KUSTOMIZE) $(KUBECTL_MOCO)
 	$(KIND) create cluster --name=moco --config=$(KIND_CONFIG) --image=kindest/node:v$(KUBERNETES_VERSION) --wait 1m
-	docker build --no-cache -t moco:dev ..
+	cd ..; docker build --no-cache --target controller -t moco:dev .
 	$(KIND) load docker-image moco:dev --name=moco
+	cd ..; docker build -t moco-backup:dev .
+	$(KIND) load docker-image moco-backup:dev --name=moco
 ifdef AGENT_DIR
 	cd $(AGENT_DIR); docker build --no-cache -t $(AGENT_IMAGE) .
 	$(KIND) load docker-image $(AGENT_IMAGE) --name=moco
@@ -39,6 +41,9 @@ endif
 	$(KUBECTL) -n cert-manager wait --for=condition=available --timeout=180s --all deployments
 	$(KUSTOMIZE) build . | $(KUBECTL) apply -f -
 	$(KUBECTL) -n moco-system wait --for=condition=available --timeout=180s --all deployments
+	$(KUBECTL) apply -f minio.yaml
+	$(KUBECTL) wait --for=condition=Ready --all pods
+	$(KUBECTL) exec mc -- mc mb moco
 
 .PHONY: test
 test:
@@ -61,6 +66,7 @@ logs:
 stop:
 	$(KIND) delete cluster --name=moco
 	-docker image rm moco:dev
+	-docker image rm moco-backup:dev
 	-docker image prune -f
 
 $(KIND):

@@ -87,7 +87,7 @@ func subMain(ns, addr string, port int) error {
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:              mgr.GetClient(),
 		Scheme:              mgr.GetScheme(),
-		AgentContainerImage: config.agentContainerImage,
+		AgentContainerImage: config.agentImage,
 		FluentBitImage:      config.fluentBitImage,
 		ExporterImage:       config.exporterImage,
 		SystemNamespace:     ns,

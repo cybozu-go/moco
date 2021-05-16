@@ -11,11 +11,19 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - run: docker build -t moco:dev .
+    - name: Build images
+      run: |
+        docker build -t moco:dev --target controller .
+        docker build -t moco-backup:dev .
     - name: Login to ghcr.io
       run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-    - run: docker tag moco:dev ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
-    - run: docker push ghcr.io/cybozu-go/moco:${GITHUB_REF#refs/tags/v}
+    - name: Push images
+      run: |
+        TAG=${GITHUB_REF#refs/tags/v}
+        docker tag moco:dev ghcr.io/cybozu-go/moco:$TAG
+        docker push ghcr.io/cybozu-go/moco:$TAG
+        docker tag moco-backup:dev ghcr.io/cybozu-go/moco-backup:$TAG
+        docker push ghcr.io/cybozu-go/moco-backup:$TAG
   release:
     name: Release on GitHub
     needs: image
