@@ -79,6 +79,7 @@ type MySQLClusterReconciler struct {
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=moco.cybozu.com,resources=backuppolicies,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
@@ -92,6 +93,7 @@ type MySQLClusterReconciler struct {
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 //+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;create;delete
+//+kubebuilder:rbac:groups="batch",resources=cronjobs;jobs,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile implements Reconciler interface.
 // See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile#Reconciler

@@ -241,9 +241,123 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should deny invalid restore spec", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r = makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:   "test",
+			RestorePoint: metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r = makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r = makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				BucketConfig: BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r = makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+			},
+		}
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r = makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName:  "mybucket",
+					EndpointURL: "hoge",
+				},
+			},
+		}
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should allow valid restore spec", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName:  "mybucket",
+					EndpointURL: "https://foo.bar.svc:9000",
+				},
+			},
+		}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("should deny editing restore spec", func() {
 		r := makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{}
+		r.Spec.Restore = &RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 

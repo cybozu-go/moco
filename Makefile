@@ -46,6 +46,8 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@echo "Shrinking CRD size..."
+	sed -i -E 's/^(                        +description: ).*$$/\1""/' config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -53,8 +55,8 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
-	echo $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
 
 .PHONY: check-generate
 check-generate:
@@ -80,7 +82,7 @@ envtest:
 	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
 		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
 		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
-		go test -v -count 1 -race ./api/... -ginkgo.progress
+		go test -v -count 1 -race ./api/... -ginkgo.progress -ginkgo.v
 
 .PHONY: test-dbop
 test-dbop:

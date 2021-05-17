@@ -38,11 +38,13 @@ type MySQLClusterSpec struct {
 	ServiceTemplate *ServiceTemplate `json:"serviceTemplate,omitempty"`
 
 	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
+	// +nullable
 	// +optional
 	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
 	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
 	// If this field is given, the `MySQLCluster` works as an intermediate primary.
+	// +nullable
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
@@ -83,6 +85,12 @@ type MySQLClusterSpec struct {
 	// See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
+
+	// The name of BackupPolicy custom resource in the same namespace.
+	// If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.
+	// +nullable
+	// +optional
+	BackupPolicyName *string `json:"backupPolicyName"`
 
 	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is not null, MOCO restores the data as specified and create a new
@@ -172,8 +180,7 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		switch vol.Name {
 		case constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
 			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
-			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName,
-			constants.MOCOBinVolumeName:
+			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName:
 
 			allErrs = append(allErrs, field.Invalid(pp.Index(i), vol.Name, "reserved volume name"))
 		}
@@ -279,14 +286,22 @@ type ServiceTemplate struct {
 	Spec *corev1.ServiceSpec `json:"spec,omitempty"`
 }
 
-// RestoreSpec defines the desired spec of Point-in-Time-Recovery
-// TBD
+// RestoreSpec represents a set of parameters for Point-in-Time Recovery.
 type RestoreSpec struct {
-	// // SourceClusterName is the name of the source `MySQLCluster`.
-	// SourceClusterName string `json:"restore"`
+	// SourceName is the name of the source `MySQLCluster`.
+	// +kubebuilder:validation:MinLength=1
+	SourceName string `json:"sourceName"`
 
-	// // PointInTime is the point-in-time of the state which the cluster is restored to.
-	// PointInTime metav1.Time `json:"pointInTime"`
+	// SourceNamespace is the namespace of the source `MySQLCluster`.
+	// +kubebuilder:validation:MinLength=1
+	SourceNamespace string `json:"sourceNamespace"`
+
+	// RestorePoint is the target date and time to restore data.
+	// The format is RFC3339.  e.g. "2006-01-02T15:04:05Z"
+	RestorePoint metav1.Time `json:"restorePoint"`
+
+	// Specifies parameters for restore Pod.
+	JobConfig JobConfig `json:"jobConfig"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
@@ -313,6 +328,14 @@ type MySQLClusterStatus struct {
 	// ErrantReplicaList is the list of indices of errant replicas.
 	// +optional
 	ErrantReplicaList []int `json:"errantReplicaList,omitempty"`
+
+	// Backup is the status of the last successful backup.
+	// +optional
+	Backup BackupStatus `json:"backup"`
+
+	// RestoredTime is the time when the cluster data is restored.
+	// +optional
+	RestoredTime *metav1.Time `json:"restoredTime,omitempty"`
 
 	// ReconcileInfo represents version information for reconciler.
 	// +optional
@@ -350,6 +373,43 @@ const (
 	ConditionHealthy     MySQLClusterConditionType = "Healthy"
 )
 
+// BackupStatus represents the status of the last successful backup.
+type BackupStatus struct {
+	// The time of the backup.  This is used to generate object keys of backup files in a bucket.
+	// +nullable
+	Time metav1.Time `json:"time"`
+
+	// Elapsed is the time spent on the backup.
+	Elapsed metav1.Duration `json:"elapsed"`
+
+	// SourceIndex is the ordinal of the backup source instance.
+	SourceIndex int `json:"sourceIndex"`
+
+	// SourceUUID is the `server_uuid` of the backup source instance.
+	SourceUUID string `json:"sourceUUID"`
+
+	// BinlogFilename is the binlog filename that the backup source instance was writing to
+	// at the backup.
+	BinlogFilename string `json:"binlogFilename"`
+
+	// GTIDSet is the GTID set of the full dump of database.
+	GTIDSet string `json:"gtidSet"`
+
+	// DumpSize is the size in bytes of a full dump of database stored in an object storage bucket.
+	DumpSize int64 `json:"dumpSize"`
+
+	// BinlogSize is the size in bytes of a tarball of binlog files stored in an object storage bucket.
+	BinlogSize int64 `json:"binlogSize"`
+
+	// WorkDirUsage is the max usage in bytes of the woking directory.
+	WorkDirUsage int64 `json:"workDirUsage"`
+
+	// Warnings are list of warnings from the last backup, if any.
+	// +nullable
+	Warnings []string `json:"warnings"`
+}
+
+// ReconcileInfo is the type to record the last reconciliation information.
 type ReconcileInfo struct {
 	// Generation is the `metadata.generation` value of the last reconciliation.
 	// See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
@@ -368,6 +428,7 @@ type ReconcileInfo struct {
 // +kubebuilder:printcolumn:name="Primary",type="integer",JSONPath=".status.currentPrimaryIndex"
 // +kubebuilder:printcolumn:name="Synced replicas",type="integer",JSONPath=".status.syncedReplicas"
 // +kubebuilder:printcolumn:name="Errant replicas",type="integer",JSONPath=".status.errantReplicas"
+// +kubebuilder:printcolumn:name="Last backup",type="string",JSONPath=".status.backup.time"
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {
@@ -443,6 +504,26 @@ func (r *MySQLCluster) CertificateName() string {
 // The Secret will be created in the MySQLCluster namespace.
 func (r *MySQLCluster) GRPCSecretName() string {
 	return fmt.Sprintf("%s-grpc", r.PrefixedName())
+}
+
+// BackupCronJobName returns the name of CronJob for backup.
+func (r *MySQLCluster) BackupCronJobName() string {
+	return fmt.Sprintf("moco-backup-%s", r.Name)
+}
+
+// BackupRoleName returns the name of Role/RoleBinding for backup.
+func (r *MySQLCluster) BackupRoleName() string {
+	return fmt.Sprintf("moco-backup-%s", r.Name)
+}
+
+// RestoreJobName returns the name of Job for restoration.
+func (r *MySQLCluster) RestoreJobName() string {
+	return fmt.Sprintf("moco-restore-%s", r.Name)
+}
+
+// RestoreRoleName returns the name of Role/RoleBinding for restoration.
+func (r *MySQLCluster) RestoreRoleName() string {
+	return fmt.Sprintf("moco-restore-%s", r.Name)
 }
 
 //+kubebuilder:object:root=true

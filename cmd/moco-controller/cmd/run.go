@@ -101,7 +101,11 @@ func subMain(ns, addr string, port int) error {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
 		return err
 	}
-	// +kubebuilder:scaffold:builder
+
+	if err = (&mocov1beta1.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
+		return err
+	}
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
