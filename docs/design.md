@@ -46,9 +46,8 @@ Lastly, none of the existing operators could satisfy our requirements.
 
 ### Workloads
 
-- Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resources:
-    - [MySQLCluster](crd_mysql_cluster.md) represents a MySQL cluster.
-    - [ObjectStorage](crd_object_storage.md) represents a connection setting to an object storage which has Amazon S3 compatible API (e.g. Ceph RGW).
+- Operator: Custom controller which automates MySQL cluster management with the following namespaced custom resource:
+    - [MySQLCluster](crd_mysqlcluster.md) represents a MySQL cluster.
 - Admission Webhook: Webhook for validating custom resources (e.g. validate the object storage for backup exists).
 - [cert-manager](https://cert-manager.io/): Provide client certifications and primary-replica certifications automatically.
 
