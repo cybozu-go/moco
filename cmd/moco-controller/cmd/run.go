@@ -85,13 +85,15 @@ func subMain(ns, addr string, port int) error {
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:              mgr.GetClient(),
-		Scheme:              mgr.GetScheme(),
-		AgentContainerImage: config.agentImage,
-		FluentBitImage:      config.fluentBitImage,
-		ExporterImage:       config.exporterImage,
-		SystemNamespace:     ns,
-		ClusterManager:      clusterMgr,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Recorder:        mgr.GetEventRecorderFor("moco-controller"),
+		AgentImage:      config.agentImage,
+		BackupImage:     config.backupImage,
+		FluentBitImage:  config.fluentBitImage,
+		ExporterImage:   config.exporterImage,
+		SystemNamespace: ns,
+		ClusterManager:  clusterMgr,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err

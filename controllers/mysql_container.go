@@ -109,7 +109,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQ
 func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta1.MySQLCluster, current []corev1.Container) corev1.Container {
 	c := corev1.Container{}
 	c.Name = constants.AgentContainerName
-	c.Image = r.AgentContainerImage
+	c.Image = r.AgentImage
 	if cluster.Spec.MaxDelaySeconds > 0 {
 		c.Args = append(c.Args, "--max-delay", fmt.Sprintf("%ds", cluster.Spec.MaxDelaySeconds))
 	}

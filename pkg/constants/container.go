@@ -20,7 +20,6 @@ const (
 	VarLogVolumeName                  = "var-log"
 	TmpVolumeName                     = "tmp"
 	SlowQueryLogAgentConfigVolumeName = "slow-fluent-bit-config"
-	MOCOBinVolumeName                 = "moco-bin"
 )
 
 // UID/GID

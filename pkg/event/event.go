@@ -62,4 +62,19 @@ var (
 		Reason:  "Writable",
 		Message: "The primary became writable",
 	}
+	BackupCreated = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "BackupCreated",
+		Message: "Backup created",
+	}
+	BackupNoBinlog = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "BackupNoBinlog",
+		Message: "Backup created w/o binlog files",
+	}
+	Restored = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "Restored",
+		Message: "Successfully restored data from backup",
+	}
 )

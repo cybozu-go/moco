@@ -131,7 +131,6 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
 			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
 			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName,
-			constants.MOCOBinVolumeName,
 		} {
 			r := makeMySQLCluster()
 			r.Spec.PodTemplate.Spec.Volumes = []corev1.Volume{{Name: volname}}
