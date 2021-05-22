@@ -13,6 +13,7 @@ const (
 )
 
 // MocoSystemUsers is a map to hold system users.
+// This does not include moco-readonly and moco-writable as they are for end users.
 var MocoSystemUsers = map[string]bool{
 	AdminUser:       true,
 	AgentUser:       true,
@@ -20,6 +21,18 @@ var MocoSystemUsers = map[string]bool{
 	CloneDonorUser:  true,
 	ExporterUser:    true,
 	BackupUser:      true,
+}
+
+// MocoUsers is a list of all users created for MOCO.
+var MocoUsers = []string{
+	AdminUser,
+	AgentUser,
+	ReplicationUser,
+	CloneDonorUser,
+	ExporterUser,
+	BackupUser,
+	ReadOnlyUser,
+	WritableUser,
 }
 
 // my.cnf filenames for different kind of users.

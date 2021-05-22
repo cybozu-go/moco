@@ -41,13 +41,69 @@ var dynamicMycnf = map[string]string{
 	"super_read_only": "ON",
 }
 
-func NewTestFactory() OperatorFactory {
-	if err := exec.Command("docker", "network", "inspect", testMocoNetwork).Run(); err != nil {
-		err := exec.Command("docker", "network", "create", testMocoNetwork).Run()
-		if err != nil {
-			panic(err)
-		}
+func RunMySQLOnDocker(name string, port, xport int) error {
+	args := []string{"run", "-d", "--rm", "--name=" + name, "--network=" + testMocoNetwork,
+		"-e", "MYSQL_ALLOW_EMPTY_PASSWORD=yes",
+		"-p", fmt.Sprintf("%d:3306", port),
+		"-p", fmt.Sprintf("%d:33060", xport),
+		testMySQLImage,
+		"--server_id=" + fmt.Sprint(port)}
+	for k, v := range startupMycnf {
+		args = append(args, fmt.Sprintf("--%s=%s", k, v))
 	}
+	out, err := exec.Command("docker", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run MySQL container: %w: %s", err, out)
+	}
+	return nil
+}
+
+func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
+	st := time.Now()
+	var db *sqlx.DB
+	for {
+		var err error
+		db, err = waitTestMySQL(port)
+		if err == nil {
+			break
+		}
+		if time.Since(st) > 1*time.Minute {
+			return fmt.Errorf("failed to connect to mysqld %d", port)
+		}
+		time.Sleep(1 * time.Second)
+	}
+	defer db.Close()
+
+	// imperfectly emulate moco-agent initialization
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AdminUser, pwd.Admin())
+	db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.AdminUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AgentUser, pwd.Agent())
+	db.MustExec(`GRANT ALL ON *.* TO ?@'%'`, constants.AgentUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReplicationUser, pwd.Replicator())
+	db.MustExec(`GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ?@'%'`, constants.ReplicationUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.CloneDonorUser, pwd.Donor())
+	db.MustExec(`GRANT BACKUP_ADMIN, SERVICE_CONNECTION_ADMIN ON *.* TO ?@'%'`, constants.CloneDonorUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.BackupUser, pwd.Backup())
+	db.MustExec(`GRANT BACKUP_ADMIN, EVENT, RELOAD, SELECT, SHOW VIEW, TRIGGER, REPLICATION CLIENT, REPLICATION SLAVE, SERVICE_CONNECTION_ADMIN ON *.* TO ?@'%'`, constants.BackupUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReadOnlyUser, pwd.ReadOnly())
+	db.MustExec(`GRANT PROCESS, REPLICATION CLIENT, REPLICATION SLAVE, SELECT, SHOW DATABASES, SHOW VIEW ON *.* TO ?@'%'`, constants.ReadOnlyUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.WritableUser, pwd.Writable())
+	db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.WritableUser)
+	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'`)
+	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'`)
+	db.MustExec(`INSTALL PLUGIN clone SONAME 'mysql_clone.so'`)
+
+	for k, v := range dynamicMycnf {
+		db.MustExec("SET GLOBAL "+k+"=?", v)
+	}
+
+	// clear executed_gtid_set
+	db.MustExec(`RESET MASTER`)
+	db.Close()
+	return nil
+}
+
+func NewTestFactory() OperatorFactory {
 	return &testFactory{
 		portBase:    35000,
 		instanceMap: make(map[string][]int),
@@ -98,62 +154,19 @@ func (f *testFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster
 		instances = make([]int, cluster.Spec.Replicas)
 		for i := 0; i < int(cluster.Spec.Replicas); i++ {
 			port := f.portBase
-			f.portBase++
+			f.portBase += 2
 			name := testContainerName(cluster, i)
-			args := []string{"run", "-d", "--rm", "--name=" + name, "--network=" + testMocoNetwork,
-				"-e", "MYSQL_ALLOW_EMPTY_PASSWORD=yes", "-p", fmt.Sprintf("%d:3306", port), testMySQLImage,
-				"--server_id=" + fmt.Sprint(i+1)}
-			for k, v := range startupMycnf {
-				args = append(args, fmt.Sprintf("--%s=%s", k, v))
-			}
-			out, err := exec.Command("docker", args...).CombinedOutput()
-			if err != nil {
-				return nil, fmt.Errorf("failed to run docker %v: %s: %w", args, out, err)
+			if err := RunMySQLOnDocker(name, port, port+1); err != nil {
+				return nil, err
 			}
 			instances[i] = port
 		}
 		f.instanceMap[mapKey] = instances
 
 		for _, port := range instances {
-			st := time.Now()
-			var db *sqlx.DB
-			for {
-				var err error
-				db, err = waitTestMySQL(port)
-				if err == nil {
-					break
-				}
-				if time.Since(st) > 1*time.Minute {
-					return nil, fmt.Errorf("failed to connect to mysqld %d", port)
-				}
-				time.Sleep(1 * time.Second)
+			if err := ConfigureMySQLOnDocker(pwd, port); err != nil {
+				return nil, err
 			}
-			defer db.Close()
-
-			// imperfectly emulate moco-agent initialization
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AdminUser, pwd.Admin())
-			db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.AdminUser)
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AgentUser, pwd.Agent())
-			db.MustExec(`GRANT ALL ON *.* TO ?@'%'`, constants.AgentUser)
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReplicationUser, pwd.Replicator())
-			db.MustExec(`GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ?@'%'`, constants.ReplicationUser)
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.CloneDonorUser, pwd.Donor())
-			db.MustExec(`GRANT BACKUP_ADMIN, SERVICE_CONNECTION_ADMIN ON *.* TO ?@'%'`, constants.CloneDonorUser)
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReadOnlyUser, pwd.ReadOnly())
-			db.MustExec(`GRANT PROCESS, REPLICATION CLIENT, REPLICATION SLAVE, SELECT, SHOW DATABASES, SHOW VIEW ON *.* TO ?@'%'`, constants.ReadOnlyUser)
-			db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.WritableUser, pwd.Writable())
-			db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.WritableUser)
-			db.MustExec(`INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'`)
-			db.MustExec(`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'`)
-			db.MustExec(`INSTALL PLUGIN clone SONAME 'mysql_clone.so'`)
-
-			for k, v := range dynamicMycnf {
-				db.MustExec("SET GLOBAL "+k+"=?", v)
-			}
-
-			// clear executed_gtid_set
-			db.MustExec(`RESET MASTER`)
-			db.Close()
 		}
 	}
 
@@ -222,5 +235,4 @@ func (f *testFactory) Cleanup() {
 		}
 	}
 	time.Sleep(100 * time.Millisecond)
-	exec.Command("docker", "network", "rm", testMocoNetwork).Run()
 }

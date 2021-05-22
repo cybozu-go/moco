@@ -18,7 +18,7 @@ var upgradeYAML string
 
 const (
 	mysqlVersionOld = "8.0.18"
-	mysqlVersionNew = "8.0.24"
+	mysqlVersionNew = "8.0.25"
 )
 
 var _ = Context("upgrade", func() {

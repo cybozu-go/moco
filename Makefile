@@ -3,11 +3,14 @@ CTRL_TOOLS_VERSION=0.5.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.1.2
 CRD_TO_MARKDOWN_VERSION = 0.0.3
+MYSQLSH_VERSION = 8.0.25-1
+OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
 BIN_DIR := $(shell pwd)/bin
 STATICCHECK := $(BIN_DIR)/staticcheck
 NILERR := $(BIN_DIR)/nilerr
+SUDO = sudo
 
 # Set the shell used to bash for better error handling.
 SHELL = /bin/bash
@@ -86,7 +89,14 @@ envtest:
 
 .PHONY: test-dbop
 test-dbop:
+	-docker network create test-moco
 	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/dbop -ginkgo.v
+
+.PHONY: test-bkop
+test-bkop:
+	@if which mysqlsh; then : ; else echo 'Run "make setup" to prepare test tools.'; exit 1; fi
+	-docker network create test-moco
+	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.progress
 
 .PHONY: test
 test: test-tools
@@ -159,3 +169,11 @@ $(STATICCHECK):
 $(NILERR):
 	mkdir -p $(BIN_DIR)
 	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
+
+.PHONY: setup
+setup:
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install -y --no-install-recommends mysql-client zstd python3 libpython3.8 mysql-server-core-8.0
+	curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_$(MYSQLSH_VERSION)ubuntu$(OS_VERSION)_amd64.deb
+	$(SUDO) dpkg -i /tmp/mysqlsh.deb
+	rm -f /tmp/mysqlsh.deb
