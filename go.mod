@@ -3,6 +3,11 @@ module github.com/cybozu-go/moco
 go 1.16
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.6.0
+	github.com/aws/aws-sdk-go-v2/config v1.3.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.2.1
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.2.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.9.0
 	github.com/cybozu-go/moco-agent v0.6.5
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/stdr v0.4.0
