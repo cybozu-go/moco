@@ -1,7 +1,10 @@
 package event
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 )
@@ -14,6 +17,28 @@ type MOCOEvent struct {
 
 func (e MOCOEvent) Emit(obj runtime.Object, r record.EventRecorder, args ...interface{}) {
 	r.Eventf(obj, e.Type, e.Reason, e.Message, args...)
+}
+
+func (e MOCOEvent) ToEvent(ref *corev1.ObjectReference, args ...interface{}) *corev1.Event {
+	msg := fmt.Sprintf(e.Message, args...)
+	t := metav1.Now()
+	namespace := ref.Namespace
+	if namespace == "" {
+		namespace = metav1.NamespaceDefault
+	}
+	return &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
+			Namespace: namespace,
+		},
+		InvolvedObject: *ref,
+		Reason:         e.Reason,
+		Message:        msg,
+		FirstTimestamp: t,
+		LastTimestamp:  t,
+		Count:          1,
+		Type:           e.Type,
+	}
 }
 
 var (

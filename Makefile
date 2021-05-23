@@ -86,6 +86,10 @@ envtest:
 		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
 		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
 		go test -v -count 1 -race ./api/... -ginkgo.progress -ginkgo.v
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		go test -v -count 1 -race ./backup -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: test-dbop
 test-dbop:
