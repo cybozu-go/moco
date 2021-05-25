@@ -7,6 +7,7 @@ import (
 const (
 	metricsNamespace    = "moco"
 	clusteringSubsystem = "cluster"
+	backupSubsystem     = "backup"
 )
 
 // Clustering related metrics
@@ -20,6 +21,16 @@ var (
 	TotalReplicasVec   *prometheus.GaugeVec
 	ReadyReplicasVec   *prometheus.GaugeVec
 	ErrantReplicasVec  *prometheus.GaugeVec
+)
+
+// Backup related metrics
+var (
+	BackupTimestamp    *prometheus.GaugeVec
+	BackupElapsed      *prometheus.GaugeVec
+	BackupDumpSize     *prometheus.GaugeVec
+	BackupBinlogSize   *prometheus.GaugeVec
+	BackupWorkDirUsage *prometheus.GaugeVec
+	BackupWarnings     *prometheus.GaugeVec
 )
 
 // Register registers Prometheus metrics vectors to the registry.
@@ -95,4 +106,52 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of instances that have errant transactions",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(ErrantReplicasVec)
+
+	BackupTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "timestamp",
+		Help:      "The timestamp of the last successful backup",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupTimestamp)
+
+	BackupElapsed = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "elapsed_seconds",
+		Help:      "The time taken for the backup",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupElapsed)
+
+	BackupDumpSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "dump_bytes",
+		Help:      "The size of compressed full backup data",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupDumpSize)
+
+	BackupBinlogSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "binlog_bytes",
+		Help:      "The size of compressed binlog files",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupBinlogSize)
+
+	BackupWorkDirUsage = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "workdir_usage_bytes",
+		Help:      "The maximum usage of the working directory",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupWorkDirUsage)
+
+	BackupWarnings = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: backupSubsystem,
+		Name:      "warnings",
+		Help:      "The number of warnings in the last successful backup",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(BackupWarnings)
 }

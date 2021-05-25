@@ -25,6 +25,7 @@ import (
 type ClusterManager interface {
 	Update(context.Context, types.NamespacedName)
 	Stop(types.NamespacedName)
+	StopAll()
 }
 
 func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, af AgentFactory, log logr.Logger) ClusterManager {
@@ -53,6 +54,8 @@ type clusterManager struct {
 
 	mu        sync.Mutex
 	processes map[string]*managerProcess
+
+	wg sync.WaitGroup
 }
 
 func (m *clusterManager) Update(ctx context.Context, name types.NamespacedName) {
@@ -69,7 +72,11 @@ func (m *clusterManager) Update(ctx context.Context, name types.NamespacedName) 
 	ctx, cancel := context.WithCancel(ctx)
 
 	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, m.log.WithName(key), cancel)
-	go p.Start(ctx, m.interval)
+	m.wg.Add(1)
+	go func() {
+		p.Start(ctx, m.interval)
+		m.wg.Done()
+	}()
 	m.processes[key] = p
 	p.Update()
 }
@@ -84,4 +91,16 @@ func (m *clusterManager) Stop(name types.NamespacedName) {
 		p.Cancel()
 		delete(m.processes, key)
 	}
+}
+
+func (m *clusterManager) StopAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, p := range m.processes {
+		p.Cancel()
+	}
+	m.processes = nil
+
+	m.wg.Wait()
 }

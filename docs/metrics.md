@@ -16,21 +16,30 @@ Aside from [the standard Go runtime and process metrics][standard], it exposes m
 
 All these metrics are prefixed with `moco_cluster_` and have `name` and `namespace` labels.
 
-| Name             | Description                                                            | Type    |
-| ---------------- | ---------------------------------------------------------------------- | ------- |
-| checks_total     | The number of times MOCO checked the cluster                           | Counter |
-| errors_total     | The number of times MOCO encountered errors when managing the cluster  | Counter |
-| available        | 1 if the cluster is available, 0 otherwise                             | Gauge   |
-| healthy          | 1 if the cluster is running without any problems, 0 otherwise          | Gauge   |
-| switchover_total | The number of times MOCO changed the live primary instance             | Counter |
-| failover_total   | The number of times MOCO changed the failed primary instance           | Counter |
-| replicas         | The number of mysqld instances in the cluster                          | Gauge   |
-| ready_replicas   | The number of ready mysqld Pods in the cluster                         | Gauge   |
-| errant_replicas  | The number of mysqld instances that have [errant transactions][errant] | Gauge   |
+| Name               | Description                                                            | Type    |
+| ------------------ | ---------------------------------------------------------------------- | ------- |
+| `checks_total`     | The number of times MOCO checked the cluster                           | Counter |
+| `errors_total`     | The number of times MOCO encountered errors when managing the cluster  | Counter |
+| `available`        | 1 if the cluster is available, 0 otherwise                             | Gauge   |
+| `healthy`          | 1 if the cluster is running without any problems, 0 otherwise          | Gauge   |
+| `switchover_total` | The number of times MOCO changed the live primary instance             | Counter |
+| `failover_total`   | The number of times MOCO changed the failed primary instance           | Counter |
+| `replicas`         | The number of mysqld instances in the cluster                          | Gauge   |
+| `ready_replicas`   | The number of ready mysqld Pods in the cluster                         | Gauge   |
+| `errant_replicas`  | The number of mysqld instances that have [errant transactions][errant] | Gauge   |
 
 ### Backup
 
-TBD
+All these metrics are prefixed with `moco_backup_` and have `name` and `namespace` labels.
+
+| Name                  | Description                                                                   | Type  |
+| --------------------- | ----------------------------------------------------------------------------- | ----- |
+| `timestamp`           | The number of seconds since January 1, 1970 UTC of the last successful backup | Gauge |
+| `elapsed_seconds`     | The number of seconds taken for the last backup                               | Gauge |
+| `dump_bytes`          | The size of compressed full backup data                                       | Gauge |
+| `binlog_bytes`        | The size of compressed binlog files                                           | Gauge |
+| `workdir_usage_bytes` | The maximum usage of the working directory                                    | Gauge |
+| `warnings`            | The number of warnings in the last successful backup                          | Gauge |
 
 ## MySQL instance
 

@@ -83,6 +83,7 @@ func subMain(ns, addr string, port int) error {
 	}
 	af := clustering.NewAgentFactory(r, reloader)
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
+	defer clusterMgr.StopAll()
 
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:          mgr.GetClient(),
