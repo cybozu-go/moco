@@ -543,23 +543,18 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 
 		Eventually(func() error {
-			headless = &corev1.Service{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless); err != nil {
+			primary = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
 				return err
 			}
-			if headless.Annotations["foo"] != "bar" {
+			if primary.Annotations["foo"] != "bar" {
 				return errors.New("no annotation")
 			}
-			if headless.Labels["foo"] != "baz" {
+			if primary.Labels["foo"] != "baz" {
 				return errors.New("no label")
 			}
 			return nil
 		}).Should(Succeed())
-
-		newPrimary := &corev1.Service{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, newPrimary)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(newPrimary.Spec.ClusterIP).To(Equal(primary.Spec.ClusterIP))
 
 		Eventually(func() error {
 			cluster = &mocov1beta1.MySQLCluster{}
@@ -569,7 +564,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
 				Spec: &corev1.ServiceSpec{
-					Type: corev1.ServiceTypeLoadBalancer,
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 				},
 			}
 			return k8sClient.Update(ctx, cluster)
@@ -585,6 +581,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 			return nil
 		}).Should(Succeed())
+
+		headless = &corev1.Service{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(headless.Spec.ExternalTrafficPolicy).NotTo(Equal(corev1.ServiceExternalTrafficPolicyTypeLocal))
 	})
 
 	It("should reconcile statefulset", func() {
