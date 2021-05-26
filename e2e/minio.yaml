@@ -36,14 +36,3 @@ spec:
   volumes:
   - name: data
     emptyDir: {}
----
-apiVersion: v1
-kind: Pod
-metadata:
-  namespace: default
-  name: mc
-spec:
-  containers:
-  - name: mc
-    image: minio/mc
-    command: ["sh", "-c", "mc alias set minio http://minio.default.svc:9000 minioadmin minioadmin; sleep infinity"]

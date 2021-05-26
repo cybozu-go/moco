@@ -43,7 +43,6 @@ endif
 	$(KUBECTL) -n moco-system wait --for=condition=available --timeout=180s --all deployments
 	$(KUBECTL) apply -f minio.yaml
 	$(KUBECTL) wait --for=condition=Ready --all pods
-	$(KUBECTL) exec mc -- mc mb moco
 
 .PHONY: test
 test:

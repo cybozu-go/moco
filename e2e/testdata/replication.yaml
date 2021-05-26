@@ -3,12 +3,21 @@ kind: Namespace
 metadata:
   name: repl
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: repl
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
 apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
 metadata:
   namespace: repl
   name: test
 spec:
+  mysqlConfigMapName: mycnf
   replicas: 3
   replicationSourceSecretName: donor
   podTemplate:

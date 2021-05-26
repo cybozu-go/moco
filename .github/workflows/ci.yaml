@@ -69,7 +69,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: always()
       with:
-        name: logs.tar.gz
+        name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
         path: e2e/logs.tar.gz
   upgrade:
     name: Upgrade Test
@@ -94,5 +94,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: always()
       with:
-        name: logs.tar.gz
+        name: logs-upgrade.tar.gz
         path: e2e/logs.tar.gz

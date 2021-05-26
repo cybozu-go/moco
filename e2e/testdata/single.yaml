@@ -10,6 +10,7 @@ metadata:
   name: mycnf
 data:
   long_query_time: "0"
+  innodb_log_file_size: "10M"
 ---
 apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster

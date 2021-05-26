@@ -1154,6 +1154,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return k8sClient.Status().Update(ctx, cluster)
 		}).Should(Succeed())
 
+		time.Sleep(5 * time.Second)
+
 		err = k8sClient.Delete(ctx, role)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Delete(ctx, roleBinding)
