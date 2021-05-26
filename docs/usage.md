@@ -15,6 +15,13 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [`kubectl moco`](#kubectl-moco)
   - [MySQL users](#mysql-users)
   - [Connecting to `mysqld` over network](#connecting-to-mysqld-over-network)
+- [Backup and restore](#backup-and-restore)
+  - [Object storage bucket](#object-storage-bucket)
+  - [BackupPolicy](#backuppolicy)
+  - [Credentials to access S3 bucket](#credentials-to-access-s3-bucket)
+  - [Taking an emergency backup](#taking-an-emergency-backup)
+  - [Restore](#restore)
+  - [Further details](#further-details)
 - [Deleting the cluster](#deleting-the-cluster)
 - [Status, metrics, and logs](#status-metrics-and-logs)
   - [Cluster status](#cluster-status)
@@ -308,6 +315,140 @@ spec:
 ...
 ```
 
+## Backup and restore
+
+MOCO can take full and incremental backups regularly.
+The backup data are stored in [Amazon S3][S3] compatible object storages.
+
+You can restore data from a backup to a new MySQL cluster.
+
+### Object storage bucket
+
+Bucket is a management unit of objects in S3.  MOCO stores backups in a specified bucket.
+
+MOCO does not remove backups.
+To remove old backups automatically, you can set a lifecycle configuration to the bucket.
+
+ref: [Setting lifecycle configuration on a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/how-to-set-lifecycle-configuration-intro.html)
+
+### BackupPolicy
+
+[BackupPolicy](crd_backuppolicy.md) is a custom resource to define a policy for taking backups.
+
+The following is an example BackupPolicy to take a backup every day and store data in [MinIO][]:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  # Backup schedule.  Any CRON format is allowed.
+  schedule: "@daily"
+
+  jobConfig:
+    # An existing ServiceAccount name is required.
+    serviceAccountName: backup-owner
+    env:
+    - name: AWS_ACCESS_KEY_ID
+      value: minioadmin
+    - name: AWS_SECRET_ACCESS_KEY
+      value: minioadmin
+
+    # bucketName is required.  Other fields are optional.
+    bucketConfig:
+      bucketName: moco
+      endpointURL: http://minio.default.svc:9000
+      usePathStyle: true
+
+    # MOCO uses a filesystem volume to store data temporarily.
+    workVolume:
+      # Using emptyDir as a working directory is NOT recommended.
+      # The recommended way is to use generic ephemeral volume with a provisioner
+      # that can provide enough capacity.
+      # https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
+      emptyDir: {}
+```
+
+To enable backup for a MySQLCluster, reference the BackupPolicy name like this:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: foo
+spec:
+  backupPolicyName: daily  # The policy name
+...
+```
+
+MOCO creates a [CronJob][] for each MySQLCluster that has `spec.backupPolicyName`.
+
+The CronJob's name is `moco-backup-` + the name of MySQLCluster.
+For the above example, a CronJob named `moco-backup-foo` is created in `default` namespace.
+
+### Credentials to access S3 bucket
+
+Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.
+
+For Amazon's [Elastic Kubernetes Service (EKS)][EKS] and S3 users, the easiest way is probably to use [IAM Roles for Service Accounts (IRSA)](https://aws.github.io/aws-eks-best-practices/security/docs/iam/#iam-roles-for-service-accounts-irsa).
+
+ref: [IAM ROLES FOR SERVICE ACCOUNTS](https://www.eksworkshop.com/beginner/110_irsa/)
+
+Another popular way is to set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables as shown in the above example.
+
+### Taking an emergency backup
+
+You can take an emergency backup by creating a Job from the CronJob for backup.
+
+```console
+$ kubectl create job --from=cronjob/moco-backup-foo emergency-backup
+```
+
+### Restore
+
+To restore data from a backup, create a new MyQLCluster with `spec.restore` field as follows:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: backup
+  name: target
+spec:
+  # restore field is not editable.
+  # to modify parameters, delete and re-create MySQLCluster.
+  restore:
+    # The source MySQLCluster's name and namespace
+    sourceName: source
+    sourceNamespace: backup
+
+    # The restore point-in-time in RFC3339 format.
+    restorePoint: "2021-05-26T12:34:56Z"
+
+    # jobConfig is the same in BackupPolicy
+    jobConfig:
+      serviceAccountName: backup-owner
+      env:
+      - name: AWS_ACCESS_KEY_ID
+        value: minioadmin
+      - name: AWS_SECRET_ACCESS_KEY
+        value: minioadmin
+      bucketConfig:
+        bucketName: moco
+        endpointURL: http://minio.default.svc:9000
+        usePathStyle: true
+      workVolume:
+        emptyDir: {}
+...
+```
+
+### Further details
+
+Read [backup.md](backup.md) for further details.
+
 ## Deleting the cluster
 
 By deleting MySQLCluster, all resources **including PersistentVolumeClaims** generated from the templates are automatically removed.
@@ -471,3 +612,6 @@ Delete such pending Pods until PVC is actually removed.
 [CLONE]: https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html
 [MetalLB]: https://metallb.universe.tf/
 [mysqld_exporter]: https://github.com/prometheus/mysqld_exporter/
+[S3]: https://aws.amazon.com/s3/
+[MinIO]: https://min.io/
+[EKS]: https://aws.amazon.com/eks/
