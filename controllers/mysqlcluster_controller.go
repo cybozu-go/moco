@@ -509,7 +509,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 		saSpec := &corev1.ServiceSpec{}
 		tmpl := cluster.Spec.ServiceTemplate
-		if tmpl != nil {
+		if !headless && tmpl != nil {
 			svc.Annotations = mergeMap(svc.Annotations, tmpl.Annotations)
 			svc.Labels = mergeMap(svc.Labels, tmpl.Labels)
 			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
@@ -523,10 +523,12 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 		if headless {
 			saSpec.ClusterIP = corev1.ClusterIPNone
+			saSpec.ClusterIPs = svc.Spec.ClusterIPs
 			saSpec.Type = corev1.ServiceTypeClusterIP
 			saSpec.PublishNotReadyAddresses = true
 		} else {
 			saSpec.ClusterIP = svc.Spec.ClusterIP
+			saSpec.ClusterIPs = svc.Spec.ClusterIPs
 			if len(saSpec.Type) == 0 {
 				saSpec.Type = svc.Spec.Type
 			}
@@ -536,6 +538,12 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		}
 		if len(saSpec.ExternalTrafficPolicy) == 0 {
 			saSpec.ExternalTrafficPolicy = svc.Spec.ExternalTrafficPolicy
+		}
+		if saSpec.IPFamilies == nil {
+			saSpec.IPFamilies = svc.Spec.IPFamilies
+		}
+		if saSpec.IPFamilyPolicy == nil {
+			saSpec.IPFamilyPolicy = svc.Spec.IPFamilyPolicy
 		}
 		saSpec.Selector = selector
 
@@ -577,7 +585,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		return fmt.Errorf("failed to reconcile %s service: %w", name, err)
 	}
 	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled service", "headless", headless, "operation", string(result))
+		log.Info("reconciled service", "name", name, "operation", string(result))
 	}
 	if result == controllerutil.OperationResultUpdated && debugController {
 		fmt.Println(cmp.Diff(orig, updated))
