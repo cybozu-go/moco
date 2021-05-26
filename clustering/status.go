@@ -45,6 +45,7 @@ const (
 	StateIncomplete
 	StateHealthy
 	StateCloning
+	StateRestoring
 	StateDegraded
 	StateFailed
 	StateLost
@@ -61,6 +62,8 @@ func (s ClusterState) String() string {
 		return "Healthy"
 	case StateCloning:
 		return "Cloning"
+	case StateRestoring:
+		return "Restoring"
 	case StateDegraded:
 		return "Degraded"
 	case StateFailed:
@@ -103,10 +106,12 @@ func (ss *StatusSet) Close() {
 // It may also set `ss.NeedSwitch` and `ss.Candidate` for switchover.
 func (ss *StatusSet) DecideState() {
 	switch {
-	case isHealthy(ss):
-		ss.State = StateHealthy
 	case isCloning(ss):
 		ss.State = StateCloning
+	case isRestoring(ss):
+		ss.State = StateRestoring
+	case isHealthy(ss):
+		ss.State = StateHealthy
 	case isDegraded(ss):
 		ss.State = StateDegraded
 	case isFailed(ss):
@@ -357,6 +362,16 @@ func isCloning(ss *StatusSet) bool {
 	}
 
 	return false
+}
+
+func isRestoring(ss *StatusSet) bool {
+	if ss.Cluster.Spec.Restore == nil {
+		return false
+	}
+	if ss.Cluster.Status.RestoredTime != nil {
+		return false
+	}
+	return true
 }
 
 func isDegraded(ss *StatusSet) bool {

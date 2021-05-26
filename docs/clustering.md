@@ -67,7 +67,7 @@ Users need to delete the volume data (PersistentVolumeClaim) and the pod of the 
 
 MySQLCluster can be one of the following states.
 
-The initial state is _Cloning_ if `spec.replicationSourceSecretName` is set.
+The initial state is _Cloning_ if `spec.replicationSourceSecretName` is set, or _Restoring_ if `spec.restore` is set.
 Otherwise, the initial state is _Incomplete_.
 
 Note that, if the primary Pod is **ready**, the `mysqld` is assured writable.
@@ -82,18 +82,21 @@ Likewise, if a replica Pod is ready, the `mysqld` is assured read-only and runni
     - `spec.replicationSourceSecretName` is set.
     - The cloning result exists and is not "Completed" _or_ there is no cloning result and the instance has no data.
     - (note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)
-3. Degraded
+3. Restoring
+    - `spec.restore` is set.
+    - `status.restoredTime` is not set.
+4. Degraded
     - The primary Pod is ready and does not lose data.
     - For intermediate primary instance, the primary works as a replica for an external `mysqld` and is read-only.
     - Half or more replicas are ready, read-only, connected to the primary, and have no errant transactions.  For example, if `spec.replicas` is 5, two or more such replicas are needed.
     - At least one replica has some problems.
-4. Failed
+5. Failed
     - The primary instance is not running or lost data.
     - More than half of replicas are running and have data without errant transactions.  For example, if `spec.replicas` is 5, three or more such replicas are needed.
-5. Lost
+6. Lost
     - The primary instance is not running or lost data.
     - Half or more replicas are not running or lost data or have errant transactions.
-6. Incomplete
+7. Incomplete
     - None of the above states applies.
 
 MOCO can recover the cluster to Healthy from **Degraded**, **Failed**, or **Incomplete** if all Pods are running and there are no [errant transactions][errant].  
@@ -204,6 +207,10 @@ It takes at least several seconds for a new primary to become writable.
 Execute [`CLONE INSTANCE`](https://dev.mysql.com/doc/refman/8.0/en/clone-plugin-remote.html) on the intermediate primary instance to clone data from an external MySQL instance.
 
 If the cloning goes successful, do the same as Intermediate case.
+
+#### Restoring
+
+Do nothing.
 
 #### Degraded
 

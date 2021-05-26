@@ -147,6 +147,9 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		event.InitCloneSucceeded.Emit(ss.Cluster, p.recorder)
 		return redo, nil
 
+	case StateRestoring:
+		return false, nil
+
 	case StateHealthy, StateDegraded:
 		if ss.NeedSwitch {
 			if err := p.switchover(ctx, ss); err != nil {
@@ -217,7 +220,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		available := corev1.ConditionFalse
 		healthy := corev1.ConditionFalse
 		switch ss.State {
-		case StateCloning:
+		case StateCloning, StateRestoring:
 			initialized = corev1.ConditionFalse
 		case StateHealthy:
 			available = corev1.ConditionTrue
