@@ -64,7 +64,7 @@ spec:
                 description: DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.
                 type: boolean
               logRotationSchedule:
-                description: LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
+                description: LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format.
                 type: string
               maxDelaySeconds:
                 description: MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.

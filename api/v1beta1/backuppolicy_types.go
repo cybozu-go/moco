@@ -1,7 +1,7 @@
 package v1beta1
 
 import (
-	"github.com/robfig/cron"
+	cron "github.com/robfig/cron/v3"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -70,7 +70,7 @@ func (s *BackupPolicySpec) validate() field.ErrorList {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 
-	if _, err := cron.Parse(s.Schedule); err != nil {
+	if _, err := cron.ParseStandard(s.Schedule); err != nil {
 		allErrs = append(allErrs, field.Invalid(p.Child("schedule"), s.Schedule, err.Error()))
 	}
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cybozu-go/moco/pkg/constants"
-	"github.com/robfig/cron"
+	cron "github.com/robfig/cron/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,7 +82,7 @@ type MySQLClusterSpec struct {
 
 	// LogRotationSchedule specifies the schedule to rotate MySQL logs.
 	// If not set, the default is to rotate logs every 5 minutes.
-	// See https://pkg.go.dev/github.com/robfig/cron?#hdr-CRON_Expression_Format for the field format.
+	// See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format.
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
@@ -127,7 +127,7 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 
 	pp = p.Child("logRotationSchedule")
 	if s.LogRotationSchedule != "" {
-		_, err := cron.Parse(s.LogRotationSchedule)
+		_, err := cron.ParseStandard(s.LogRotationSchedule)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSchedule, err.Error()))
 		}
