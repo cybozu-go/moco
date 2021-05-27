@@ -4,7 +4,8 @@ package bkop
 // These information will be used in the next backup to retrieve binary logs
 // since the last backup.
 type ServerStatus struct {
-	UUID          string
+	SuperReadOnly bool   `db:"@@super_read_only"`
+	UUID          string `db:"@@server_uuid"`
 	CurrentBinlog string
 }
 

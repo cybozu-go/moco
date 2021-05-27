@@ -110,6 +110,7 @@ var _ = Describe("Operator", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st1.CurrentBinlog).NotTo(BeEmpty())
 		Expect(st1.UUID).NotTo(BeEmpty())
+		Expect(st1.SuperReadOnly).To(BeFalse())
 
 		dumpDir := filepath.Join(baseDir, "dump")
 		err = os.MkdirAll(dumpDir, 0755)
@@ -150,6 +151,13 @@ var _ = Describe("Operator", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = opBk.DumpBinlog(ctx, binlogDir2, st1.CurrentBinlog, dumpGTID)
 		Expect(err).To(HaveOccurred())
+
+		st2 := &ServerStatus{}
+		err = opRe.GetServerStatus(ctx, st2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(st2.CurrentBinlog).NotTo(BeEmpty())
+		Expect(st2.UUID).NotTo(BeEmpty())
+		Expect(st2.SuperReadOnly).To(BeTrue())
 
 		err = opRe.PrepareRestore(ctx)
 		Expect(err).NotTo(HaveOccurred())

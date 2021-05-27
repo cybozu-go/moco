@@ -10,22 +10,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 )
 
-func (o operator) GetServerStatus(ctx context.Context, st *ServerStatus) error {
-	ms := &showMasterStatus{}
-	if err := o.db.GetContext(ctx, ms, `SHOW MASTER STATUS`); err != nil {
-		return fmt.Errorf("failed to show master status: %w", err)
-	}
-
-	var uuid string
-	if err := o.db.GetContext(ctx, &uuid, `SELECT @@server_uuid`); err != nil {
-		return fmt.Errorf("failed to get server_uuid: %w", err)
-	}
-
-	st.CurrentBinlog = ms.File
-	st.UUID = uuid
-	return nil
-}
-
 func (o operator) DumpFull(ctx context.Context, dir string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s:%d", o.user, o.host, o.port),
