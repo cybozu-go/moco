@@ -109,6 +109,8 @@ var _ = Describe("Backup/Restore", func() {
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
 				gtid:    "gtid1",
+
+				writable: true,
 			}
 			ops = append(ops, op)
 			return op, nil
@@ -145,6 +147,20 @@ var _ = Describe("Backup/Restore", func() {
 		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bs.Time.Time)
 		Expect(err).NotTo(HaveOccurred())
 
+		ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		err = rm.Restore(ctx2)
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			op := &mockOperator{
+				binlogs: []string{"binlog.000001"},
+				uuid:    "123",
+				gtid:    "gtid1",
+			}
+			ops = append(ops, op)
+			return op, nil
+		}
 		err = rm.Restore(ctx)
 		Expect(err).NotTo(HaveOccurred())
 

@@ -25,6 +25,7 @@ type mockOperator struct {
 	// status
 	alive    bool
 	closed   bool
+	writable bool
 	prepared bool
 	pitr     bool
 	finished bool
@@ -47,6 +48,7 @@ func (o *mockOperator) Close() {
 func (o *mockOperator) GetServerStatus(_ context.Context, st *bkop.ServerStatus) error {
 	st.CurrentBinlog = o.binlogs[len(o.binlogs)-1]
 	st.UUID = o.uuid
+	st.SuperReadOnly = !o.writable
 	return nil
 }
 
@@ -91,6 +93,7 @@ func (o *mockOperator) PrepareRestore(_ context.Context) error {
 		return errors.New("not alive")
 	}
 	o.prepared = true
+	o.writable = true
 	return nil
 }
 
@@ -122,6 +125,7 @@ func (o *mockOperator) FinishRestore(_ context.Context) error {
 	if o.expectPiTR && !o.pitr {
 		return errors.New("no pitr has performed")
 	}
+	o.writable = false
 	o.finished = true
 	return nil
 }

@@ -106,6 +106,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 	defer op.Close()
 
 	// ping the database until it becomes ready
+	rm.log.Info("waiting for the mysqld to become ready", "name", podName)
 	for i := 0; i < 600; i++ {
 		select {
 		case <-time.After(1 * time.Second):
@@ -118,6 +119,9 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 		}
 		st := &bkop.ServerStatus{}
 		if err := op.GetServerStatus(ctx, st); err != nil {
+			continue
+		}
+		if !st.SuperReadOnly {
 			continue
 		}
 		break
