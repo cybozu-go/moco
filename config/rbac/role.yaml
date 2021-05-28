@@ -115,12 +115,33 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - cert-manager.io
   resources:
   - certificates
   verbs:
   - create
   - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - moco.cybozu.com
+  resources:
+  - backuppolicies
+  verbs:
   - get
   - list
   - watch
@@ -152,6 +173,19 @@ rules:
   - policy
   resources:
   - poddisruptionbudgets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
   verbs:
   - create
   - delete

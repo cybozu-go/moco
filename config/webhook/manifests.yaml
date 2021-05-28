@@ -41,6 +41,28 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-moco-cybozu-com-v1beta1-backuppolicy
+  failurePolicy: Fail
+  name: vbackuppolicy.kb.io
+  rules:
+  - apiGroups:
+    - moco.cybozu.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - backuppolicies
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-moco-cybozu-com-v1beta1-mysqlcluster
   failurePolicy: Fail
   name: vmysqlcluster.kb.io

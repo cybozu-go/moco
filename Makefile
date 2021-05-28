@@ -3,11 +3,14 @@ CTRL_TOOLS_VERSION=0.5.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.1.2
 CRD_TO_MARKDOWN_VERSION = 0.0.3
+MYSQLSH_VERSION = 8.0.25-1
+OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
 BIN_DIR := $(shell pwd)/bin
 STATICCHECK := $(BIN_DIR)/staticcheck
 NILERR := $(BIN_DIR)/nilerr
+SUDO = sudo
 
 # Set the shell used to bash for better error handling.
 SHELL = /bin/bash
@@ -46,6 +49,8 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@echo "Shrinking CRD size..."
+	sed -i -E 's/^(                        +description: ).*$$/\1""/' config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -53,8 +58,8 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
-	echo $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
 
 .PHONY: check-generate
 check-generate:
@@ -80,11 +85,22 @@ envtest:
 	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
 		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
 		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
-		go test -v -count 1 -race ./api/... -ginkgo.progress
+		go test -v -count 1 -race ./api/... -ginkgo.progress -ginkgo.v
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
+		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
+		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+		go test -v -count 1 -race ./backup -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: test-dbop
 test-dbop:
+	-docker network create test-moco
 	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/dbop -ginkgo.v
+
+.PHONY: test-bkop
+test-bkop:
+	@if which mysqlsh; then : ; else echo 'Run "make setup" to prepare test tools.'; exit 1; fi
+	-docker network create test-moco
+	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.progress
 
 .PHONY: test
 test: test-tools
@@ -157,3 +173,11 @@ $(STATICCHECK):
 $(NILERR):
 	mkdir -p $(BIN_DIR)
 	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
+
+.PHONY: setup
+setup:
+	$(SUDO) apt-get update
+	$(SUDO) apt-get install -y --no-install-recommends mysql-client zstd python3 libpython3.8 mysql-server-core-8.0
+	curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_$(MYSQLSH_VERSION)ubuntu$(OS_VERSION)_amd64.deb
+	$(SUDO) dpkg -i /tmp/mysqlsh.deb
+	rm -f /tmp/mysqlsh.deb

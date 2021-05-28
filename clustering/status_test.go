@@ -19,6 +19,8 @@ type ssBuilder struct {
 	replicas       int32
 	primaryIndex   int
 	isIntermediate bool
+	toRestore      bool
+	isRestored     bool
 	pods           []*corev1.Pod
 	mysqlStatus    []*dbop.MySQLInstanceStatus
 }
@@ -39,6 +41,14 @@ func (b *ssBuilder) build() *StatusSet {
 	cluster.Status.CurrentPrimaryIndex = b.primaryIndex
 	if b.isIntermediate {
 		cluster.Spec.ReplicationSourceSecretName = pointer.String("hoge")
+	}
+	if b.toRestore {
+		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{}
+	}
+	if b.isRestored {
+		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{}
+		t := metav1.Now()
+		cluster.Status.RestoredTime = &t
 	}
 	var errants []int
 	for i, ist := range b.mysqlStatus {
@@ -66,11 +76,13 @@ func (b *ssBuilder) build() *StatusSet {
 	}
 }
 
-func newSS(replicas int32, primary int, intermediate bool) *ssBuilder {
+func newSS(replicas int32, primary int, intermediate, toRestore, isRestored bool) *ssBuilder {
 	return &ssBuilder{
 		replicas:       replicas,
 		primaryIndex:   primary,
 		isIntermediate: intermediate,
+		toRestore:      toRestore,
+		isRestored:     isRestored,
 	}
 }
 
@@ -183,7 +195,7 @@ func TestStatusSet(t *testing.T) {
 	}{
 		{
 			name: "healthy1",
-			statusSet: newSS(1, 0, false).
+			statusSet: newSS(1, 0, false, false, false).
 				withPod(true, false, false).
 				withMySQL(newMySQL("123", false, false, false).build()).
 				build(),
@@ -191,7 +203,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "lost1",
-			statusSet: newSS(1, 0, false).
+			statusSet: newSS(1, 0, false, false, false).
 				withPod(true, false, false).
 				withMySQL(nil).
 				build(),
@@ -199,7 +211,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "incomplete-pod-not-ready",
-			statusSet: newSS(1, 0, false).
+			statusSet: newSS(1, 0, false, false, false).
 				withPod(false, false, false).
 				withMySQL(newMySQL("123", false, false, false).build()).
 				build(),
@@ -207,7 +219,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "incomplete-primary-read-only",
-			statusSet: newSS(1, 0, false).
+			statusSet: newSS(1, 0, false, false, false).
 				withPod(true, false, false).
 				withMySQL(newMySQL("123", true, false, false).build()).
 				build(),
@@ -215,7 +227,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "incomplete3-initializing",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
@@ -227,7 +239,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -242,7 +254,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3-extra-replica",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -258,7 +270,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3-primary-deleting",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, true, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -275,7 +287,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3-primary-demoting",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, true).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -292,7 +304,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3-replica-deleting",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, true, false).
 				withPod(true, false, false).
@@ -307,7 +319,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "healthy3-replica-demoting",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, true).
@@ -322,7 +334,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "cloning-not-started",
-			statusSet: newSS(3, 0, true).
+			statusSet: newSS(3, 0, true, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
@@ -334,7 +346,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "cloning-in-progress",
-			statusSet: newSS(3, 0, true).
+			statusSet: newSS(3, 0, true, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
 				withPod(false, false, false).
@@ -345,8 +357,24 @@ func TestStatusSet(t *testing.T) {
 			expectedState: StateCloning,
 		},
 		{
+			name: "restoring",
+			statusSet: newSS(1, 0, false, true, false).
+				withPod(true, false, false).
+				withMySQL(newMySQL("123", false, false, false).build()).
+				build(),
+			expectedState: StateRestoring,
+		},
+		{
+			name: "restored",
+			statusSet: newSS(1, 0, false, false, true).
+				withPod(true, false, false).
+				withMySQL(newMySQL("123", false, false, false).build()).
+				build(),
+			expectedState: StateHealthy,
+		},
+		{
 			name: "health3-intermediate",
-			statusSet: newSS(3, 0, true).
+			statusSet: newSS(3, 0, true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -361,7 +389,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-not-ready",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(false, false, false).
 				withPod(true, false, false).
@@ -376,7 +404,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-stopping",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -390,7 +418,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-not-started",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -404,7 +432,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-writable",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -419,7 +447,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-errant",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -434,7 +462,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded3-replica-lost-data",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(false, false, false).
@@ -448,7 +476,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "degraded5-two-replicas-are-bad",
-			statusSet: newSS(5, 0, false).
+			statusSet: newSS(5, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -468,7 +496,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "failed3-primary-stopping",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -480,7 +508,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "failed3-primary-lost-data",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -492,7 +520,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "failed5-1-replica-errant",
-			statusSet: newSS(5, 0, false).
+			statusSet: newSS(5, 0, false, false, false).
 				withPod(false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).
@@ -508,7 +536,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "lost3-too-few-replicas",
-			statusSet: newSS(3, 0, false).
+			statusSet: newSS(3, 0, false, false, false).
 				withPod(false, false, false).
 				withPod(true, false, false).
 				withPod(false, false, false).
@@ -520,7 +548,7 @@ func TestStatusSet(t *testing.T) {
 		},
 		{
 			name: "lost5-too-few-replicas",
-			statusSet: newSS(5, 0, false).
+			statusSet: newSS(5, 0, false, false, false).
 				withPod(false, false, false).
 				withPod(true, false, false).
 				withPod(true, false, false).

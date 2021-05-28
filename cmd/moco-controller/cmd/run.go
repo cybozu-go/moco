@@ -83,15 +83,18 @@ func subMain(ns, addr string, port int) error {
 	}
 	af := clustering.NewAgentFactory(r, reloader)
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
+	defer clusterMgr.StopAll()
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:              mgr.GetClient(),
-		Scheme:              mgr.GetScheme(),
-		AgentContainerImage: config.agentContainerImage,
-		FluentBitImage:      config.fluentBitImage,
-		ExporterImage:       config.exporterImage,
-		SystemNamespace:     ns,
-		ClusterManager:      clusterMgr,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Recorder:        mgr.GetEventRecorderFor("moco-controller"),
+		AgentImage:      config.agentImage,
+		BackupImage:     config.backupImage,
+		FluentBitImage:  config.fluentBitImage,
+		ExporterImage:   config.exporterImage,
+		SystemNamespace: ns,
+		ClusterManager:  clusterMgr,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
@@ -101,7 +104,11 @@ func subMain(ns, addr string, port int) error {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
 		return err
 	}
-	// +kubebuilder:scaffold:builder
+
+	if err = (&mocov1beta1.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
+		return err
+	}
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

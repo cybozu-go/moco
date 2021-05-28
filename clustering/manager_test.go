@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -103,6 +104,12 @@ var _ = Describe("manager", func() {
 		ms.replicas = metrics.TotalReplicasVec.WithLabelValues("test", "test")
 		ms.readyReplicas = metrics.ReadyReplicasVec.WithLabelValues("test", "test")
 		ms.errantReplicas = metrics.ErrantReplicasVec.WithLabelValues("test", "test")
+		ms.backupTimestamp = metrics.BackupTimestamp.WithLabelValues("test", "test")
+		ms.backupElapsed = metrics.BackupElapsed.WithLabelValues("test", "test")
+		ms.backupDumpSize = metrics.BackupDumpSize.WithLabelValues("test", "test")
+		ms.backupBinlogSize = metrics.BackupBinlogSize.WithLabelValues("test", "test")
+		ms.backupWorkDirUsage = metrics.BackupWorkDirUsage.WithLabelValues("test", "test")
+		ms.backupWarnings = metrics.BackupWarnings.WithLabelValues("test", "test")
 
 		var err error
 		mgr, err = ctrl.NewManager(cfg, ctrl.Options{
@@ -150,6 +157,7 @@ var _ = Describe("manager", func() {
 		testSetupResources(ctx, 1, "")
 
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
@@ -271,6 +279,8 @@ var _ = Describe("manager", func() {
 		testSetupResources(ctx, 1, "source")
 
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
+
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
@@ -612,6 +622,8 @@ var _ = Describe("manager", func() {
 		testSetupResources(ctx, 5, "")
 
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
+
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
@@ -796,5 +808,40 @@ var _ = Describe("manager", func() {
 			}
 			return false
 		}).Should(BeTrue())
+	})
+
+	It("should export backup related metrics", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
+
+		var cluster *mocov1beta1.MySQLCluster
+		Eventually(func() error {
+			var err error
+			cluster, err = testGetCluster(ctx)
+			if err != nil {
+				return err
+			}
+			cluster.Status.Backup.Time = metav1.Now()
+			cluster.Status.Backup.Elapsed = metav1.Duration{Duration: time.Minute}
+			cluster.Status.Backup.DumpSize = 10
+			cluster.Status.Backup.BinlogSize = 20
+			cluster.Status.Backup.WorkDirUsage = 30
+			cluster.Status.Backup.Warnings = []string{"aaa", "bbb"}
+			return k8sClient.Status().Update(ctx, cluster)
+		}).Should(Succeed())
+
+		cm.Update(ctx, client.ObjectKeyFromObject(cluster))
+
+		Eventually(func() interface{} {
+			return ms.backupTimestamp
+		}).ShouldNot(MetricsIs("==", 0))
+		time.Sleep(10 * time.Millisecond)
+		Expect(ms.backupElapsed).To(MetricsIs("==", 60))
+		Expect(ms.backupDumpSize).To(MetricsIs("==", 10))
+		Expect(ms.backupBinlogSize).To(MetricsIs("==", 20))
+		Expect(ms.backupWorkDirUsage).To(MetricsIs("==", 30))
+		Expect(ms.backupWarnings).To(MetricsIs("==", 2))
 	})
 })

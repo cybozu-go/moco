@@ -3,12 +3,21 @@ kind: Namespace
 metadata:
   name: donor
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: donor
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
 apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
 metadata:
   namespace: donor
   name: single
 spec:
+  mysqlConfigMapName: mycnf
   podTemplate:
     spec:
       containers:

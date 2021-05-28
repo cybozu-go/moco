@@ -19,11 +19,11 @@ const passwordVersion = "1"
 const (
 	passwordBytes = 16
 
-	adminPasswordKey       = "ADMIN_PASSWORD"
+	AdminPasswordKey       = "ADMIN_PASSWORD"
 	agentPasswordKey       = "AGENT_PASSWORD"
 	replicationPasswordKey = "REPLICATION_PASSWORD"
 	cloneDonorPasswordKey  = "CLONE_DONOR_PASSWORD"
-	ExporterPasswordKey    = "EXPORTER_PASSWORD"
+	exporterPasswordKey    = "EXPORTER_PASSWORD"
 	BackupPasswordKey      = "BACKUP_PASSWORD"
 	readOnlyPasswordKey    = "READONLY_PASSWORD"
 	writablePasswordKey    = "WRITABLE_PASSWORD"
@@ -102,11 +102,11 @@ func NewMySQLPasswordFromSecret(secret *corev1.Secret) (*MySQLPassword, error) {
 	}
 
 	return &MySQLPassword{
-		admin:      string(secret.Data[adminPasswordKey]),
+		admin:      string(secret.Data[AdminPasswordKey]),
 		agent:      string(secret.Data[agentPasswordKey]),
 		replicator: string(secret.Data[replicationPasswordKey]),
 		donor:      string(secret.Data[cloneDonorPasswordKey]),
-		exporter:   string(secret.Data[ExporterPasswordKey]),
+		exporter:   string(secret.Data[exporterPasswordKey]),
 		backup:     string(secret.Data[BackupPasswordKey]),
 		readOnly:   string(secret.Data[readOnlyPasswordKey]),
 		writable:   string(secret.Data[writablePasswordKey]),
@@ -123,11 +123,11 @@ func (p MySQLPassword) ToSecret() *corev1.Secret {
 			},
 		},
 		Data: map[string][]byte{
-			adminPasswordKey:       []byte(p.admin),
+			AdminPasswordKey:       []byte(p.admin),
 			agentPasswordKey:       []byte(p.agent),
 			replicationPasswordKey: []byte(p.replicator),
 			cloneDonorPasswordKey:  []byte(p.donor),
-			ExporterPasswordKey:    []byte(p.exporter),
+			exporterPasswordKey:    []byte(p.exporter),
 			BackupPasswordKey:      []byte(p.backup),
 			readOnlyPasswordKey:    []byte(p.readOnly),
 			writablePasswordKey:    []byte(p.writable),

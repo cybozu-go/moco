@@ -30,6 +30,13 @@ type metricsSet struct {
 	replicas        prometheus.Gauge
 	readyReplicas   prometheus.Gauge
 	errantReplicas  prometheus.Gauge
+
+	backupTimestamp    prometheus.Gauge
+	backupElapsed      prometheus.Gauge
+	backupDumpSize     prometheus.Gauge
+	backupBinlogSize   prometheus.Gauge
+	backupWorkDirUsage prometheus.Gauge
+	backupWarnings     prometheus.Gauge
 }
 
 type managerProcess struct {
@@ -59,15 +66,21 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 		cancel:   cancel,
 		ch:       make(chan struct{}, 1),
 		metrics: metricsSet{
-			checkCount:      metrics.CheckCountVec.WithLabelValues(name.Name, name.Namespace),
-			errorCount:      metrics.ErrorCountVec.WithLabelValues(name.Name, name.Namespace),
-			available:       metrics.AvailableVec.WithLabelValues(name.Name, name.Namespace),
-			healthy:         metrics.HealthyVec.WithLabelValues(name.Name, name.Namespace),
-			switchoverCount: metrics.SwitchoverCountVec.WithLabelValues(name.Name, name.Namespace),
-			failoverCount:   metrics.FailoverCountVec.WithLabelValues(name.Name, name.Namespace),
-			replicas:        metrics.TotalReplicasVec.WithLabelValues(name.Name, name.Namespace),
-			readyReplicas:   metrics.ReadyReplicasVec.WithLabelValues(name.Name, name.Namespace),
-			errantReplicas:  metrics.ErrantReplicasVec.WithLabelValues(name.Name, name.Namespace),
+			checkCount:         metrics.CheckCountVec.WithLabelValues(name.Name, name.Namespace),
+			errorCount:         metrics.ErrorCountVec.WithLabelValues(name.Name, name.Namespace),
+			available:          metrics.AvailableVec.WithLabelValues(name.Name, name.Namespace),
+			healthy:            metrics.HealthyVec.WithLabelValues(name.Name, name.Namespace),
+			switchoverCount:    metrics.SwitchoverCountVec.WithLabelValues(name.Name, name.Namespace),
+			failoverCount:      metrics.FailoverCountVec.WithLabelValues(name.Name, name.Namespace),
+			replicas:           metrics.TotalReplicasVec.WithLabelValues(name.Name, name.Namespace),
+			readyReplicas:      metrics.ReadyReplicasVec.WithLabelValues(name.Name, name.Namespace),
+			errantReplicas:     metrics.ErrantReplicasVec.WithLabelValues(name.Name, name.Namespace),
+			backupTimestamp:    metrics.BackupTimestamp.WithLabelValues(name.Name, name.Namespace),
+			backupElapsed:      metrics.BackupElapsed.WithLabelValues(name.Name, name.Namespace),
+			backupDumpSize:     metrics.BackupDumpSize.WithLabelValues(name.Name, name.Namespace),
+			backupBinlogSize:   metrics.BackupBinlogSize.WithLabelValues(name.Name, name.Namespace),
+			backupWorkDirUsage: metrics.BackupWorkDirUsage.WithLabelValues(name.Name, name.Namespace),
+			backupWarnings:     metrics.BackupWarnings.WithLabelValues(name.Name, name.Namespace),
 		},
 		deleteMetrics: func() {
 			metrics.CheckCountVec.DeleteLabelValues(name.Name, name.Namespace)
@@ -79,6 +92,12 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			metrics.TotalReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.ReadyReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.ErrantReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupTimestamp.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupElapsed.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupDumpSize.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupBinlogSize.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupWorkDirUsage.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.BackupWarnings.DeleteLabelValues(name.Name, name.Namespace)
 		},
 	}
 }
@@ -147,6 +166,9 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		event.InitCloneSucceeded.Emit(ss.Cluster, p.recorder)
 		return redo, nil
 
+	case StateRestoring:
+		return false, nil
+
 	case StateHealthy, StateDegraded:
 		if ss.NeedSwitch {
 			if err := p.switchover(ctx, ss); err != nil {
@@ -183,6 +205,16 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 }
 
 func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error {
+	bs := &ss.Cluster.Status.Backup
+	if !bs.Time.IsZero() {
+		p.metrics.backupTimestamp.Set(float64(bs.Time.Unix()))
+		p.metrics.backupElapsed.Set(bs.Elapsed.Seconds())
+		p.metrics.backupDumpSize.Set(float64(bs.DumpSize))
+		p.metrics.backupBinlogSize.Set(float64(bs.BinlogSize))
+		p.metrics.backupWorkDirUsage.Set(float64(bs.WorkDirUsage))
+		p.metrics.backupWarnings.Set(float64(len(bs.Warnings)))
+	}
+
 	now := metav1.Now()
 	ststr := ss.State.String()
 	updateCond := func(typ mocov1beta1.MySQLClusterConditionType, val corev1.ConditionStatus, current []mocov1beta1.MySQLClusterCondition) mocov1beta1.MySQLClusterCondition {
@@ -217,7 +249,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		available := corev1.ConditionFalse
 		healthy := corev1.ConditionFalse
 		switch ss.State {
-		case StateCloning:
+		case StateCloning, StateRestoring:
 			initialized = corev1.ConditionFalse
 		case StateHealthy:
 			available = corev1.ConditionTrue

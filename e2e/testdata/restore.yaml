@@ -1,0 +1,38 @@
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: backup
+  name: target
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 1
+  restore:
+    sourceName: source
+    sourceNamespace: backup
+    restorePoint: "{{ .RestorePoint }}"
+    jobConfig:
+      serviceAccountName: backup-owner
+      env:
+      - name: AWS_ACCESS_KEY_ID
+        value: minioadmin
+      - name: AWS_SECRET_ACCESS_KEY
+        value: minioadmin
+      bucketConfig:
+        bucketName: moco
+        endpointURL: http://minio.default.svc:9000
+        usePathStyle: true
+      workVolume:
+        emptyDir: {}
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:{{ .MySQLVersion }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

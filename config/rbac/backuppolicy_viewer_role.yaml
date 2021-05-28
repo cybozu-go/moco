@@ -1,0 +1,22 @@
+# permissions for end users to view backuppolicies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backuppolicy-viewer-role
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+- apiGroups:
+  - moco.cybozu.com
+  resources:
+  - backuppolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - moco.cybozu.com
+  resources:
+  - backuppolicies/status
+  verbs:
+  - get

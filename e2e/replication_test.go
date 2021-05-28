@@ -342,4 +342,9 @@ var _ = Context("replication", func() {
 			return count
 		}).Should(Equal(5))
 	})
+
+	It("should delete clusters", func() {
+		kubectlSafe(nil, "delete", "-n", "donor", "mysqlclusters", "--all")
+		kubectlSafe(nil, "delete", "-n", "repl", "mysqlclusters", "--all")
+	})
 })

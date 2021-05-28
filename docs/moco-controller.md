@@ -12,8 +12,9 @@
 ```
 Flags:
       --add_dir_header                   If true, adds the file directory to the header
-      --agent-container-image string     The container image name that includes moco-agent
+      --agent-image string               The image of moco-agent sidecar container
       --alsologtostderr                  log to standard error as well as files
+      --backup-image string              The image of moco-backup container
       --cert-dir string                  webhook certificate directory
       --check-interval duration          Interval of cluster maintenance (default 1m0s)
       --fluent-bit-image string          The image of fluent-bit sidecar container

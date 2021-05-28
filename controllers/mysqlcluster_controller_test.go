@@ -12,10 +12,14 @@ import (
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -47,6 +51,8 @@ func (m *mockManager) Stop(key types.NamespacedName) {
 	delete(m.clusters, key.String())
 }
 
+func (m *mockManager) StopAll() {}
+
 func (m *mockManager) getKeys() map[string]bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -61,6 +67,7 @@ func (m *mockManager) getKeys() map[string]bool {
 const (
 	testMocoSystemNamespace = "moco-system"
 	testAgentImage          = "foobar:123"
+	testBackupImage         = "backup:123"
 	testFluentBitImage      = "fluent-hoge:134"
 	testExporterImage       = "mysqld_exporter:111"
 )
@@ -143,13 +150,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			clusters: make(map[string]struct{}),
 		}
 		mysqlr := &MySQLClusterReconciler{
-			Client:              mgr.GetClient(),
-			Scheme:              scheme,
-			SystemNamespace:     testMocoSystemNamespace,
-			ClusterManager:      mockMgr,
-			AgentContainerImage: testAgentImage,
-			FluentBitImage:      testFluentBitImage,
-			ExporterImage:       testExporterImage,
+			Client:          mgr.GetClient(),
+			Scheme:          scheme,
+			Recorder:        mgr.GetEventRecorderFor("moco-controller"),
+			SystemNamespace: testMocoSystemNamespace,
+			ClusterManager:  mockMgr,
+			AgentImage:      testAgentImage,
+			BackupImage:     testBackupImage,
+			FluentBitImage:  testFluentBitImage,
+			ExporterImage:   testExporterImage,
 		}
 		err = mysqlr.SetupWithManager(mgr)
 		Expect(err).ToNot(HaveOccurred())
@@ -589,7 +598,18 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		var sts *appsv1.StatefulSet
 		Eventually(func() error {
 			sts = &appsv1.StatefulSet{}
-			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+
+			cluster = &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
+				return fmt.Errorf("status is not updated")
+			}
+			return nil
 		}).Should(Succeed())
 
 		By("checking new statefulset")
@@ -827,6 +847,343 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
+	})
+
+	It("should reconcile backup related resources", func() {
+		cluster := testNewMySQLCluster("test")
+		cluster.Spec.BackupPolicyName = pointer.String("test-policy")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("creating a backup policy")
+		bp := &mocov1beta1.BackupPolicy{}
+		bp.Namespace = "test"
+		bp.Name = "test-policy"
+		bp.Spec.ActiveDeadlineSeconds = pointer.Int64(100)
+		bp.Spec.BackoffLimit = pointer.Int32(1)
+		bp.Spec.ConcurrencyPolicy = batchv1beta1.ForbidConcurrent
+		bp.Spec.StartingDeadlineSeconds = pointer.Int64(10)
+		bp.Spec.Schedule = "*/5 * * * *"
+		jc := &bp.Spec.JobConfig
+		jc.Threads = 3
+		jc.ServiceAccountName = "foo"
+		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
+		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
+		jc.Env = []corev1.EnvVar{{Name: "TEST", Value: "123"}}
+		jc.EnvFrom = []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "bucket-config",
+			},
+		}}}
+		jc.WorkVolume = corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}
+		jc.BucketConfig.BucketName = "mybucket"
+		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
+		jc.BucketConfig.Region = "us-east-1"
+		jc.BucketConfig.UsePathStyle = true
+		err = k8sClient.Create(ctx, bp)
+		Expect(err).NotTo(HaveOccurred())
+
+		var cj *batchv1beta1.CronJob
+		var role *rbacv1.Role
+		var roleBinding *rbacv1.RoleBinding
+		Eventually(func() error {
+			cj = &batchv1beta1.CronJob{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
+				return err
+			}
+			role = &rbacv1.Role{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, role); err != nil {
+				return err
+			}
+			roleBinding = &rbacv1.RoleBinding{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, roleBinding); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(cj.Labels).NotTo(BeEmpty())
+		Expect(cj.OwnerReferences).NotTo(BeEmpty())
+		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
+		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(pointer.Int64(10)))
+		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.ForbidConcurrent))
+		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
+		js := &cj.Spec.JobTemplate.Spec
+		Expect(js.ActiveDeadlineSeconds).To(Equal(pointer.Int64(100)))
+		Expect(js.BackoffLimit).To(Equal(pointer.Int32(1)))
+		Expect(js.Template.Labels).NotTo(BeEmpty())
+		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
+		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
+		Expect(js.Template.Spec.Containers).To(HaveLen(1))
+		c := &js.Template.Spec.Containers[0]
+		Expect(c.Name).To(Equal("backup"))
+		Expect(c.Image).To(Equal(testBackupImage))
+		Expect(c.Args).To(Equal([]string{
+			"backup",
+			"--threads=3",
+			"--region=us-east-1",
+			"--endpoint=https://foo.bar.baz",
+			"--use-path-style",
+			"mybucket",
+			"test",
+			"test",
+		}))
+		Expect(c.EnvFrom).To(HaveLen(1))
+		Expect(c.Env).To(HaveLen(2))
+		Expect(c.VolumeMounts).To(HaveLen(1))
+		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
+		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
+		memReq := c.Resources.Requests[corev1.ResourceMemory]
+		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
+		memLim := c.Resources.Limits[corev1.ResourceMemory]
+		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
+
+		Expect(role.Labels).NotTo(BeEmpty())
+		Expect(role.OwnerReferences).NotTo(BeEmpty())
+		Expect(role.Rules).NotTo(BeEmpty())
+		Expect(roleBinding.Labels).NotTo(BeEmpty())
+		Expect(roleBinding.OwnerReferences).NotTo(BeEmpty())
+		Expect(roleBinding.RoleRef.Name).To(Equal(role.Name))
+		Expect(roleBinding.Subjects).To(HaveLen(1))
+		Expect(roleBinding.Subjects[0].Name).To(Equal("foo"))
+
+		By("updating a backup policy")
+		bp = &mocov1beta1.BackupPolicy{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, bp)
+		Expect(err).NotTo(HaveOccurred())
+		bp.Spec.ActiveDeadlineSeconds = nil
+		bp.Spec.BackoffLimit = nil
+		bp.Spec.ConcurrencyPolicy = batchv1beta1.AllowConcurrent
+		bp.Spec.StartingDeadlineSeconds = nil
+		bp.Spec.Schedule = "*/5 1 * * *"
+		jc = &bp.Spec.JobConfig
+		jc.Threads = 1
+		jc.ServiceAccountName = "oof"
+		jc.Memory = nil
+		jc.MaxMemory = nil
+		jc.Env = nil
+		jc.EnvFrom = nil
+		jc.WorkVolume = corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/host"}}
+		jc.BucketConfig.BucketName = "mybucket2"
+		jc.BucketConfig.EndpointURL = ""
+		jc.BucketConfig.Region = ""
+		jc.BucketConfig.UsePathStyle = false
+		err = k8sClient.Update(ctx, bp)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cj = &batchv1beta1.CronJob{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
+				return err
+			}
+			if cj.Spec.Schedule != "*/5 1 * * *" {
+				return errors.New("CronJob is not updated")
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
+		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.AllowConcurrent))
+		js = &cj.Spec.JobTemplate.Spec
+		Expect(js.ActiveDeadlineSeconds).To(BeNil())
+		Expect(js.BackoffLimit).To(BeNil())
+		Expect(js.Template.Spec.ServiceAccountName).To(Equal("oof"))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes[0].EmptyDir).To(BeNil())
+		Expect(js.Template.Spec.Volumes[0].HostPath).NotTo(BeNil())
+		Expect(js.Template.Spec.Containers).To(HaveLen(1))
+		c = &js.Template.Spec.Containers[0]
+		Expect(c.Args).To(Equal([]string{
+			"backup",
+			"--threads=1",
+			"mybucket2",
+			"test",
+			"test",
+		}))
+		Expect(c.EnvFrom).To(BeEmpty())
+		Expect(c.Env).To(HaveLen(1))
+		cpuReq = c.Resources.Requests[corev1.ResourceCPU]
+		Expect(cpuReq.Value()).To(BeNumerically("==", 1))
+		memReq = c.Resources.Requests[corev1.ResourceMemory]
+		Expect(memReq.Value()).To(BeNumerically("==", 4<<30))
+		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceMemory))
+
+		Eventually(func() error {
+			roleBinding = &rbacv1.RoleBinding{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, roleBinding); err != nil {
+				return err
+			}
+			if len(roleBinding.Subjects) != 1 {
+				return errors.New("empty subject")
+			}
+			if roleBinding.Subjects[0].Name != "oof" {
+				return errors.New("RoleBinding is not updated")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("disabling backup")
+		cluster = &mocov1beta1.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.BackupPolicyName = nil
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			cj = &batchv1beta1.CronJob{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, cj)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+
+		Eventually(func() bool {
+			role = &rbacv1.Role{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, role)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+
+		Eventually(func() bool {
+			roleBinding = &rbacv1.RoleBinding{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, roleBinding)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+	})
+
+	It("should reconcile restore related resources", func() {
+		By("creating a MySQLCluster with restore spec")
+		now := metav1.Now()
+		cluster := testNewMySQLCluster("test")
+		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{
+			SourceName:      "single",
+			SourceNamespace: "ns",
+			RestorePoint:    now,
+		}
+		jc := &cluster.Spec.Restore.JobConfig
+		jc.Threads = 3
+		jc.ServiceAccountName = "foo"
+		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
+		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
+		jc.Env = []corev1.EnvVar{{Name: "TEST", Value: "123"}}
+		jc.EnvFrom = []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: "bucket-config",
+			},
+		}}}
+		jc.WorkVolume = corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}
+		jc.BucketConfig.BucketName = "mybucket"
+		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
+		jc.BucketConfig.Region = "us-east-1"
+		jc.BucketConfig.UsePathStyle = true
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var job *batchv1.Job
+		var role *rbacv1.Role
+		var roleBinding *rbacv1.RoleBinding
+		Eventually(func() error {
+			job = &batchv1.Job{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreJobName()}, job); err != nil {
+				return err
+			}
+			role = &rbacv1.Role{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, role); err != nil {
+				return err
+			}
+			roleBinding = &rbacv1.RoleBinding{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, roleBinding); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(job.Labels).NotTo(BeEmpty())
+		Expect(job.OwnerReferences).NotTo(BeEmpty())
+		js := &job.Spec
+		Expect(js.BackoffLimit).To(Equal(pointer.Int32(0)))
+		Expect(js.Template.Labels).NotTo(BeEmpty())
+		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
+		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
+		Expect(js.Template.Spec.Containers).To(HaveLen(1))
+		c := &js.Template.Spec.Containers[0]
+		Expect(c.Name).To(Equal("restore"))
+		Expect(c.Image).To(Equal(testBackupImage))
+		Expect(c.Args).To(Equal([]string{
+			"restore",
+			"--threads=3",
+			"--region=us-east-1",
+			"--endpoint=https://foo.bar.baz",
+			"--use-path-style",
+			"mybucket",
+			"ns",
+			"single",
+			"test",
+			"test",
+			now.Format(constants.BackupTimeFormat),
+		}))
+		Expect(c.EnvFrom).To(HaveLen(1))
+		Expect(c.Env).To(HaveLen(2))
+		Expect(c.VolumeMounts).To(HaveLen(1))
+		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
+		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
+		memReq := c.Resources.Requests[corev1.ResourceMemory]
+		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
+		memLim := c.Resources.Limits[corev1.ResourceMemory]
+		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
+
+		Expect(role.Labels).NotTo(BeEmpty())
+		Expect(role.OwnerReferences).NotTo(BeEmpty())
+		Expect(role.Rules).NotTo(BeEmpty())
+		Expect(roleBinding.Labels).NotTo(BeEmpty())
+		Expect(roleBinding.OwnerReferences).NotTo(BeEmpty())
+		Expect(roleBinding.RoleRef.Name).To(Equal(role.Name))
+		Expect(roleBinding.Subjects).To(HaveLen(1))
+		Expect(roleBinding.Subjects[0].Name).To(Equal("foo"))
+
+		By("changing cluster status")
+		Eventually(func() error {
+			cluster := &mocov1beta1.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			t := metav1.Now()
+			cluster.Status.RestoredTime = &t
+			return k8sClient.Status().Update(ctx, cluster)
+		}).Should(Succeed())
+
+		time.Sleep(5 * time.Second)
+
+		err = k8sClient.Delete(ctx, role)
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.Delete(ctx, roleBinding)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() bool {
+			role = &rbacv1.Role{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, role); err == nil {
+				return false
+			}
+			roleBinding = &rbacv1.RoleBinding{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, roleBinding); err == nil {
+				return false
+			}
+			return true
+		}).Should(BeTrue())
+
+		Consistently(func() bool {
+			role = &rbacv1.Role{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, role); err == nil {
+				return false
+			}
+			roleBinding = &rbacv1.RoleBinding{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.RestoreRoleName()}, roleBinding); err == nil {
+				return false
+			}
+			return true
+		}, 5).Should(BeTrue())
 	})
 
 	It("should have a correct status.reconcileInfo value", func() {

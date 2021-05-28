@@ -17,20 +17,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var defaultAgentContainerImage string
+var (
+	defaultAgentImage  string
+	defaultBackupImage = "ghcr.io/cybozu-go/moco-backup:" + moco.Version
+)
 
 var config struct {
-	metricsAddr         string
-	probeAddr           string
-	leaderElectionID    string
-	webhookAddr         string
-	certDir             string
-	grpcCertDir         string
-	agentContainerImage string
-	fluentBitImage      string
-	exporterImage       string
-	interval            time.Duration
-	zapOpts             zap.Options
+	metricsAddr      string
+	probeAddr        string
+	leaderElectionID string
+	webhookAddr      string
+	certDir          string
+	grpcCertDir      string
+	agentImage       string
+	backupImage      string
+	fluentBitImage   string
+	exporterImage    string
+	interval         time.Duration
+	zapOpts          zap.Options
 }
 
 func init() {
@@ -43,7 +47,7 @@ func init() {
 			continue
 		}
 		if len(mod.Version) > 2 && strings.HasPrefix(mod.Version, "v") {
-			defaultAgentContainerImage = "ghcr.io/cybozu-go/moco-agent:" + mod.Version[1:]
+			defaultAgentImage = "ghcr.io/cybozu-go/moco-agent:" + mod.Version[1:]
 			return
 		}
 	}
@@ -91,7 +95,8 @@ func init() {
 	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
 	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
 	fs.StringVar(&config.grpcCertDir, "grpc-cert-dir", "/grpc-cert", "gRPC certificate directory")
-	fs.StringVar(&config.agentContainerImage, "agent-container-image", defaultAgentContainerImage, "The container image name that includes moco-agent")
+	fs.StringVar(&config.agentImage, "agent-image", defaultAgentImage, "The image of moco-agent sidecar container")
+	fs.StringVar(&config.backupImage, "backup-image", defaultBackupImage, "The image of moco-backup container")
 	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "The image of fluent-bit sidecar container")
 	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")

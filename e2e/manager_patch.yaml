@@ -12,3 +12,7 @@ spec:
         image: ghcr.io/cybozu-go/moco:latest
         args:
         - --check-interval=5s
+        - --backup-image=moco-backup:dev
+        env:
+        - name: TEST_NO_JOB_RESOURCE
+          value: "1"

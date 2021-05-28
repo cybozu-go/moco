@@ -8,6 +8,15 @@ env:
   go-version: 1.16
   cache-version: 1
 jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.go-version }}
+    - run: make release-build
   test:
     name: Small tests
     runs-on: ubuntu-20.04
@@ -19,24 +28,25 @@ jobs:
     - run: make test
     - run: make check-generate
     - run: make envtest
-    - run: make release-build
-  test-dbop:
-    name: Test pkg/dbop
+  dbtest:
+    name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.20", "8.0.24"]
+        mysql-version: ["8.0.18", "8.0.25"]
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go-version }}
+    - run: make setup
+    - run: make test-bkop MYSQL_VERSION=${{ matrix.mysql-version }}
     - run: make test-dbop MYSQL_VERSION=${{ matrix.mysql-version }}
   e2e:
     name: End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.20", "8.0.24"]
+        mysql-version: ["8.0.18", "8.0.25"]
         k8s-version: ["1.19.7", "1.20.2"]
     runs-on: ubuntu-20.04
     steps:
@@ -59,7 +69,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: always()
       with:
-        name: logs.tar.gz
+        name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
         path: e2e/logs.tar.gz
   upgrade:
     name: Upgrade Test
@@ -84,5 +94,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: always()
       with:
-        name: logs.tar.gz
+        name: logs-upgrade.tar.gz
         path: e2e/logs.tar.gz
