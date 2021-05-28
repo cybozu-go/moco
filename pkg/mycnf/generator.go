@@ -14,6 +14,8 @@ import (
 // Note that the pool size can't be lower than 128MiB, which is the default value of `innodb_buffer_pool_size`.
 const InnoDBBufferPoolRatioPercent = 70
 
+const opaqueKey = "_include"
+
 // DefaultMycnf is the default options of mysqld.
 // These can be overridden by users.
 var DefaultMycnf = map[string]string{
@@ -149,14 +151,14 @@ func calcBufferSize(total int64) int64 {
 // If `userConf` does not specify `innodb_buffer_pool_size`, this
 // will automatically set it to 70% of `memTotal`.
 func Generate(userConf map[string]string, memTotal int64) string {
+	opaque := userConf[opaqueKey]
 	mysqldConf := mergeSection(DefaultMycnf, userConf)
 	if _, ok := mysqldConf["innodb_buffer_pool_size"]; !ok {
 		mysqldConf["innodb_buffer_pool_size"] = fmt.Sprint(calcBufferSize(memTotal))
 	}
 
-	// to always enable binary logs
+	delete(mysqldConf, opaqueKey)
 	delete(mysqldConf, "log_bin")
-	// to put error logs to stderr
 	delete(mysqldConf, "log_error")
 
 	conf := make(map[string]map[string]string)
@@ -178,6 +180,10 @@ func Generate(userConf map[string]string, memTotal int64) string {
 		_, err := fmt.Fprintf(b, "[%s]\n", sec)
 		if err != nil {
 			panic(err)
+		}
+
+		if sec == "mysqld" && opaque != "" {
+			fmt.Fprintln(b, opaque)
 		}
 
 		confSec := conf[sec]

@@ -10,7 +10,9 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [Creating an empty cluster](#creating-an-empty-cluster)
   - [Creating a cluster that replicates data from an external mysqld](#creating-a-cluster-that-replicates-data-from-an-external-mysqld)
   - [Bring your own image](#bring-your-own-image)
-  - [Configurations](#configurations)
+- [Configurations](#configurations)
+  - [InnoDB buffer pool size](#innodb-buffer-pool-size)
+  - [Opaque configuration](#opaque-configuration)
 - [Using the cluster](#using-the-cluster)
   - [`kubectl moco`](#kubectl-moco)
   - [MySQL users](#mysql-users)
@@ -181,11 +183,12 @@ To stop the replication from the donor, update MySQLCluster with `spec.replicati
 We provide a pre-built MySQL container image at [quay.io/cybozu/moco-mysql](http://quay.io/cybozu/moco-mysql).
 If you want to build and use your own image, read [`custom-mysqld.md`](custom-mysqld.md).
 
-### Configurations
+## Configurations
 
-The configuration values for `mysqld` is available on [pkg.go.dev](https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-constants).  The settings in `ConstMycnf` cannot be changed while the settings in `DefaultMycnf` can be overridden.
+The default and constant configuration values for `mysqld` are available on [pkg.go.dev](https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-variables).
+The settings in `ConstMycnf` cannot be changed while the settings in `DefaultMycnf` can be overridden.
 
-To change some of the default values or to set a new option value, create a ConfigMap in the same namespace as MySQLCluster like this.
+You can change the default values or set undefined values by creating a ConfigMap in the same namespace as MySQLCluster, and setting `spec.mysqlConfigMapName` in MySQLCluster to the name of the ConfigMap as follows:
 
 ```yaml
 apiVersion: v1
@@ -196,22 +199,47 @@ metadata:
 data:
   long_query_time: "5"
   innodb_buffer_pool_size: "10G"
-```
-
-and set the name of the ConfigMap in MySQLCluster as follows:
-
-```yaml
+---
 apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
 metadata:
   namespace: foo
   name: test
 spec:
+  # set this to the name of ConfigMap
   mysqlConfigMapName: mycnf
   ...
 ```
 
-If `innodb_buffer_pool_size` is not given, MOCO sets it automatically to 70% of the value of `resources.requests.memory` (or `resources.limits.memory`) for `mysqld` container.
+### InnoDB buffer pool size
+
+If `innodb_buffer_pool_size` is not specified, MOCO sets it automatically to 70% of the value of `resources.requests.memory` (or `resources.limits.memory`) for `mysqld` container.
+
+If both `resources.request.memory` and `resources.limits.memory` are not set, `innodb_buffer_pool_size` will be set to `128M`.
+
+### Opaque configuration
+
+Some configuration variables cannot be fully configured with ConfigMap values.
+For example, [`--performance-schema-instrument`](https://dev.mysql.com/doc/refman/8.0/en/performance-schema-startup-configuration.html) needs to be specified multiple times.
+
+You may set them through a special config key `_include`.
+The value of `_include` will be included in `my.cnf` as opaque.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: foo
+  name: mycnf
+data:
+  _include: |
+    performance-schema-instrument='memory/%=ON'
+    performance-schema-instrument='wait/synch/%/innodb/%=ON'
+    performance-schema-instrument='wait/lock/table/sql/handler=OFF'
+    performance-schema-instrument='wait/lock/metadata/sql/mdl=OFF'
+```
+
+Care must be taken not to overwrite critical configurations such as `log_bin` since MOCO does not check the contents from `_include`.
 
 ## Using the cluster
 
