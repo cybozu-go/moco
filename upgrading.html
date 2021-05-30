@@ -1,0 +1,343 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Upgrading mysqld - MOCO Documentation</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">MOCO</a></li><li class="chapter-item expanded affix "><li class="part-title">User manual</li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">1.</strong> Getting started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">1.1.</strong> Deploying MOCO</a></li><li class="chapter-item expanded "><a href="install-plugin.html"><strong aria-hidden="true">1.2.</strong> Installing kubectl-moco</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="advanced.html"><strong aria-hidden="true">3.</strong> Advanced topics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="custom-mysqld.html"><strong aria-hidden="true">3.1.</strong> Building your own imge</a></li></ol></li><li class="chapter-item expanded "><a href="troubles.html"><strong aria-hidden="true">4.</strong> Troubleshooting</a></li><li class="chapter-item expanded affix "><li class="part-title">References</li><li class="chapter-item expanded "><a href="crd.html"><strong aria-hidden="true">5.</strong> Custom resources</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="crd_mysqlcluster.html"><strong aria-hidden="true">5.1.</strong> MySQLCluster</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy.html"><strong aria-hidden="true">5.2.</strong> BackupPolicy</a></li></ol></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">6.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="kubectl-moco.html"><strong aria-hidden="true">6.1.</strong> kubectl-moco</a></li><li class="chapter-item expanded "><a href="moco-controller.html"><strong aria-hidden="true">6.2.</strong> moco-controller</a></li><li class="chapter-item expanded "><a href="moco-backup.html"><strong aria-hidden="true">6.3.</strong> moco-backup</a></li></ol></li><li class="chapter-item expanded "><a href="metrics.html"><strong aria-hidden="true">7.</strong> Metrics</a></li><li class="chapter-item expanded affix "><li class="part-title">Developer documents</li><li class="chapter-item expanded "><a href="notes.html"><strong aria-hidden="true">8.</strong> Design notes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="design.html"><strong aria-hidden="true">8.1.</strong> Goals</a></li><li class="chapter-item expanded "><a href="reconcile.html"><strong aria-hidden="true">8.2.</strong> Reconciliation</a></li><li class="chapter-item expanded "><a href="clustering.html"><strong aria-hidden="true">8.3.</strong> Clustering</a></li><li class="chapter-item expanded "><a href="backup.html"><strong aria-hidden="true">8.4.</strong> Backup and restore</a></li><li class="chapter-item expanded "><a href="upgrading.html" class="active"><strong aria-hidden="true">8.5.</strong> Upgrading mysqld</a></li><li class="chapter-item expanded "><a href="security.html"><strong aria-hidden="true">8.6.</strong> Security</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">MOCO Documentation</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco/edit/main/docs/src/upgrading.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="upgrading-mysqld"><a class="header" href="#upgrading-mysqld">Upgrading mysqld</a></h1>
+<p>This document describes how mysqld upgrades its data and what MOCO has to do about it.</p>
+<ul>
+<li><a href="#preconditions">Preconditions</a>
+<ul>
+<li><a href="#mysql-data">MySQL data</a></li>
+<li><a href="#downgrading">Downgrading</a></li>
+<li><a href="#upgrading-a-replication-setup">Upgrading a replication setup</a></li>
+<li><a href="#statefulset-behavior">StatefulSet behavior</a></li>
+<li><a href="#automatic-switchover">Automatic switchover</a></li>
+</ul>
+</li>
+<li><a href="#moco-implementation">MOCO implementation</a>
+<ul>
+<li><a href="#example">Example</a></li>
+<li><a href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li><a href="#users-responsibility">User's responsibility</a></li>
+</ul>
+<h2 id="preconditions"><a class="header" href="#preconditions">Preconditions</a></h2>
+<h3 id="mysql-data"><a class="header" href="#mysql-data">MySQL data</a></h3>
+<p>Beginning with 8.0.16, <code>mysqld</code> can update all data that need to be updated when it starts running.
+This means that MOCO needs nothing to do with MySQL data.</p>
+<p>One thing that we should care about is that the update process may take a long time.
+The startup probe of <code>mysqld</code> container should be configured to wait for <code>mysqld</code> to
+complete updating data.</p>
+<p>ref: https://dev.mysql.com/doc/refman/8.0/en/upgrading-what-is-upgraded.html</p>
+<h3 id="downgrading"><a class="header" href="#downgrading">Downgrading</a></h3>
+<p>MySQL 8.0 does not support any kind of downgrading.</p>
+<p>ref: https://dev.mysql.com/doc/refman/8.0/en/downgrading.html</p>
+<p>Internally, MySQL has a version called &quot;data dictionary (DD) version&quot;.
+If two MySQL versions have the same DD version, they are considered to have data compatibility.</p>
+<p>ref: https://github.com/mysql/mysql-server/blob/mysql-8.0.24/sql/dd/dd_version.h#L209</p>
+<p>Nevertheless, DD versions do change from time to time between revisions of MySQL 8.0.
+Therefore, the simplest way to avoid DD version mismatch is to not downgrade MySQL.</p>
+<h3 id="upgrading-a-replication-setup"><a class="header" href="#upgrading-a-replication-setup">Upgrading a replication setup</a></h3>
+<p>In a nutshell, replica MySQL instances should be the same or newer than the source MySQL instance.</p>
+<p>refs:</p>
+<ul>
+<li>https://dev.mysql.com/doc/refman/8.0/en/replication-compatibility.html</li>
+<li>https://dev.mysql.com/doc/refman/8.0/en/replication-upgrade.html</li>
+</ul>
+<h3 id="statefulset-behavior"><a class="header" href="#statefulset-behavior">StatefulSet behavior</a></h3>
+<p>When the Pod template of a StatefulSet is updated, Kubernetes updates the Pods.
+With the default update strategy <code>RollingUpdate</code>, the Pods are updated one by one
+from the largest ordinal to the smallest.</p>
+<p>StatefulSet controller keeps the old Pod template until it completes the rolling update.
+If a Pod that is not being updated are deleted, StatefulSet controller restores the Pod
+from the old template.</p>
+<p>This means that, if the cluster is Healthy, MySQL is assured to be updated one by one
+from the instance of the largest ordinal to the smallest.</p>
+<p>refs: </p>
+<ul>
+<li>https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#rolling-updates</li>
+<li>https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#rolling-update</li>
+</ul>
+<h3 id="automatic-switchover"><a class="header" href="#automatic-switchover">Automatic switchover</a></h3>
+<p>MOCO switches the primary instance when the Pod of the instance is being deleted.
+Read <a href="clustering.html"><code>clustering.md</code></a> for details.</p>
+<h2 id="moco-implementation"><a class="header" href="#moco-implementation">MOCO implementation</a></h2>
+<p>With the preconditions listed above, MOCO can upgrade <code>mysqld</code> in MySQLCluster safely
+as follows.</p>
+<ol>
+<li>Set <code>.spec.updateStrategy</code> field in StatefulSet to <code>RollingUpdate</code>.</li>
+<li>Choose the lowest ordinal Pod as the next primary upon a switchover.</li>
+<li>Configure the startup probe of <code>mysqld</code> container to wait long enough.
+<ul>
+<li>By default, MOCO configures the probe to wait up to one hour.</li>
+<li>Users can adjust the duration for each MySQLCluster.</li>
+</ul>
+</li>
+</ol>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p>Suppose that we are updating a three-instance cluster.
+The <code>mysqld</code> instances in the cluster have ordinals 0, 1, and 2, and the
+current primary instance is instance 1.</p>
+<p>After MOCO updates the Pod template of the StatefulSet created for the cluster,
+Kubernetes start re-creating Pods starting from instance 2.</p>
+<p>Instance 2 is a replica and therefore is safe for an update.</p>
+<p>Next to instance 2, the instance 1 Pod is deleted.  The deletion triggers
+an automatic switchover so that MOCO changes the primary to the instance 0
+because it has the lowest ordinal.  Because instance 0 is running an old
+<code>mysqld</code>, the preconditions are kept.</p>
+<p>Finally, instance 0 is re-created in the same way.  This time, MOCO switches
+the primary to instance 1.  Since both instance 1 and 2 has been updated and
+instance 0 is being deleted, the preconditions are kept.</p>
+<h3 id="limitations"><a class="header" href="#limitations">Limitations</a></h3>
+<p>If an instance is down during an upgrade, MOCO may choose an already updated
+instance as the new primary even though some instances are still running an
+old version.</p>
+<p>If this happens, users may need to manually delete the old replica data and
+re-initialize the replica to restore the cluster health.</p>
+<h2 id="users-responsibility"><a class="header" href="#users-responsibility">User's responsibility</a></h2>
+<ul>
+<li>Make sure that the cluster is healthy before upgrading</li>
+<li>Check and <a href="https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html">prepare your installation for upgrade</a></li>
+<li>Do not attempt to downgrade MySQL</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="backup.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="security.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="backup.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="security.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

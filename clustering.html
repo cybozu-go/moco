@@ -1,0 +1,488 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Clustering - MOCO Documentation</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">MOCO</a></li><li class="chapter-item expanded affix "><li class="part-title">User manual</li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">1.</strong> Getting started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">1.1.</strong> Deploying MOCO</a></li><li class="chapter-item expanded "><a href="install-plugin.html"><strong aria-hidden="true">1.2.</strong> Installing kubectl-moco</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="advanced.html"><strong aria-hidden="true">3.</strong> Advanced topics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="custom-mysqld.html"><strong aria-hidden="true">3.1.</strong> Building your own imge</a></li></ol></li><li class="chapter-item expanded "><a href="troubles.html"><strong aria-hidden="true">4.</strong> Troubleshooting</a></li><li class="chapter-item expanded affix "><li class="part-title">References</li><li class="chapter-item expanded "><a href="crd.html"><strong aria-hidden="true">5.</strong> Custom resources</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="crd_mysqlcluster.html"><strong aria-hidden="true">5.1.</strong> MySQLCluster</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy.html"><strong aria-hidden="true">5.2.</strong> BackupPolicy</a></li></ol></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">6.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="kubectl-moco.html"><strong aria-hidden="true">6.1.</strong> kubectl-moco</a></li><li class="chapter-item expanded "><a href="moco-controller.html"><strong aria-hidden="true">6.2.</strong> moco-controller</a></li><li class="chapter-item expanded "><a href="moco-backup.html"><strong aria-hidden="true">6.3.</strong> moco-backup</a></li></ol></li><li class="chapter-item expanded "><a href="metrics.html"><strong aria-hidden="true">7.</strong> Metrics</a></li><li class="chapter-item expanded affix "><li class="part-title">Developer documents</li><li class="chapter-item expanded "><a href="notes.html"><strong aria-hidden="true">8.</strong> Design notes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="design.html"><strong aria-hidden="true">8.1.</strong> Goals</a></li><li class="chapter-item expanded "><a href="reconcile.html"><strong aria-hidden="true">8.2.</strong> Reconciliation</a></li><li class="chapter-item expanded "><a href="clustering.html" class="active"><strong aria-hidden="true">8.3.</strong> Clustering</a></li><li class="chapter-item expanded "><a href="backup.html"><strong aria-hidden="true">8.4.</strong> Backup and restore</a></li><li class="chapter-item expanded "><a href="upgrading.html"><strong aria-hidden="true">8.5.</strong> Upgrading mysqld</a></li><li class="chapter-item expanded "><a href="security.html"><strong aria-hidden="true">8.6.</strong> Security</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">MOCO Documentation</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco/edit/main/docs/src/clustering.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="how-moco-maintains-mysql-clusters"><a class="header" href="#how-moco-maintains-mysql-clusters">How MOCO maintains MySQL clusters</a></h1>
+<p>For each <a href="crd_mysqlcluster.html">MySQLCluster</a>, MOCO creates and maintains a set of <code>mysqld</code> instances.
+The set contains one <em>primary</em> instance and may contain <em>multiple</em> replica instances depending on the <code>spec.replicas</code> value of MySQLCluster.</p>
+<p>This document describes how MOCO does this job safely.</p>
+<ul>
+<li><a href="#terminology">Terminology</a></li>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#limitations">Limitations</a></li>
+<li><a href="#possible-states">Possible states</a>
+<ul>
+<li><a href="#mysqlcluster">MySQLCluster</a></li>
+<li><a href="#pod">Pod</a></li>
+<li><a href="#mysql-data">MySQL data</a></li>
+</ul>
+</li>
+<li><a href="#invariants">Invariants</a></li>
+<li><a href="#the-maintenance-flow">The maintenance flow</a>
+<ul>
+<li><a href="#gather-the-current-status">Gather the current status</a></li>
+<li><a href="#update-status-of-mysqlcluster">Update <code>status</code> of MySQLCluster</a></li>
+<li><a href="#determine-what-moco-should-do-for-the-cluster">Determine what MOCO should do for the cluster</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="terminology"><a class="header" href="#terminology">Terminology</a></h2>
+<ul>
+<li>Replication: <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html">GTID-based replication</a> between <code>mysqld</code> instances.</li>
+<li>Cluster: a group of <code>mysqld</code> instances that replicate data between them.</li>
+<li>Primary (instance): a single source instance of <code>mysqld</code> in a cluster.</li>
+<li>Replica (instance): a read-only instance of <code>mysqld</code> that synchronizes data with the primary instance.</li>
+<li>Intermediate primary: a special primary instance that replicates data from an external <code>mysqld</code>.</li>
+<li><a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">Errant transaction</a>: a transaction that exists only on a replica instance.</li>
+<li>Errant replica: a replica instance that has errant transactions.</li>
+<li>Switchover: operation to change a live primary to a replica and promote a replica to the new primary.</li>
+<li>Failover: operation to replace a dead primary with a replica.</li>
+</ul>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>MySQLCluster allows 1, 3, or 5 for <code>spec.replicas</code> value.  If 1, MOCO runs a single <code>mysqld</code> instance without configuring replication.  If 3 or 5, MOCO chooses a <code>mysqld</code> instance as a primary, writable instance and makes all other instances as replicas of the primary instance.</p>
+<p><code>status.currentPrimaryIndex</code> in MySQLCluster is used to record the current chosen primary instance.
+Initially, <code>status.currentPrimaryIndex</code> is zero and therefore the index of the primary instance is zero.</p>
+<p>As a special case, if <code>spec.replicationSourceSecretName</code> is set for MySQLCluster, the primary instance is configured as a replica of an external MySQL server.  In this case, the primary instance will not be writable.  We call this type of primary instance <em>intermediate primary</em>.</p>
+<p>If <code>spec.replicationSourceSecretName</code> is <em>not</em> set, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html">semisynchronous replication</a> between the primary and replicas.  Otherwise, the replication is asynchronous.</p>
+<p>For semi-synchronous replication, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout"><code>rpl_semi_sync_master_timeout</code></a> long enough so that there should be at least one (in case of <code>spec.replicas</code> == 3) or two (in case of <code>spec.replicas</code> == 5) replica instances that have the same commit as the primary.</p>
+<p>MOCO also disables <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery"><code>relay_log_recovery</code></a> because enabling it would drop the relay logs on replicas.</p>
+<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_slave_start</code> to prevent misconfigured replication.</p>
+<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
+<p><code>moco-agent</code> also provides a readiness probe for <code>mysqld</code> container.  If a replica instance does not start replication threads or is too delayed to execute transactions, the container and the Pod will be determined as unready.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p>Currently, MOCO does not re-initialize data after the primary instance fails.</p>
+<p>After failover to a replica instance, the old primary may have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a> because it may recover unacknowledged transactions in its binary log.  This is an inevitable limitation in MySQL semi-synchronous replication.</p>
+<p>If this happens, MOCO detects the errant transaction and will not allow the old primary to rejoin the cluster as a replica.</p>
+<p>Users need to delete the volume data (PersistentVolumeClaim) and the pod of the old primary to re-initialize it.</p>
+<h2 id="possible-states"><a class="header" href="#possible-states">Possible states</a></h2>
+<h3 id="mysqlcluster"><a class="header" href="#mysqlcluster">MySQLCluster</a></h3>
+<p>MySQLCluster can be one of the following states.</p>
+<p>The initial state is <em>Cloning</em> if <code>spec.replicationSourceSecretName</code> is set, or <em>Restoring</em> if <code>spec.restore</code> is set.
+Otherwise, the initial state is <em>Incomplete</em>.</p>
+<p>Note that, if the primary Pod is <strong>ready</strong>, the <code>mysqld</code> is assured writable.
+Likewise, if a replica Pod is ready, the <code>mysqld</code> is assured read-only and running replication threads w/o too much delay.</p>
+<ol>
+<li>Healthy
+<ul>
+<li>All Pods are ready.</li>
+<li>All replicas have no errant transactions.</li>
+<li>All replicas are read-only and connected to the primary.</li>
+<li>For intermediate primary instance, the primary works as a replica for an external <code>mysqld</code> and is read-only.</li>
+</ul>
+</li>
+<li>Cloning
+<ul>
+<li><code>spec.replicationSourceSecretName</code> is set.</li>
+<li>The cloning result exists and is not &quot;Completed&quot; <em>or</em> there is no cloning result and the instance has no data.</li>
+<li>(note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)</li>
+</ul>
+</li>
+<li>Restoring
+<ul>
+<li><code>spec.restore</code> is set.</li>
+<li><code>status.restoredTime</code> is not set.</li>
+</ul>
+</li>
+<li>Degraded
+<ul>
+<li>The primary Pod is ready and does not lose data.</li>
+<li>For intermediate primary instance, the primary works as a replica for an external <code>mysqld</code> and is read-only.</li>
+<li>Half or more replicas are ready, read-only, connected to the primary, and have no errant transactions.  For example, if <code>spec.replicas</code> is 5, two or more such replicas are needed.</li>
+<li>At least one replica has some problems.</li>
+</ul>
+</li>
+<li>Failed
+<ul>
+<li>The primary instance is not running or lost data.</li>
+<li>More than half of replicas are running and have data without errant transactions.  For example, if <code>spec.replicas</code> is 5, three or more such replicas are needed.</li>
+</ul>
+</li>
+<li>Lost
+<ul>
+<li>The primary instance is not running or lost data.</li>
+<li>Half or more replicas are not running or lost data or have errant transactions.</li>
+</ul>
+</li>
+<li>Incomplete
+<ul>
+<li>None of the above states applies.</li>
+</ul>
+</li>
+</ol>
+<p>MOCO can recover the cluster to Healthy from <strong>Degraded</strong>, <strong>Failed</strong>, or <strong>Incomplete</strong> if all Pods are running and there are no <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a>.</p>
+<p>MOCO can recover the cluster to Degraded from <strong>Failed</strong> when not all Pods are running.  Recovering from Failed is called <em>failover</em>.</p>
+<p>MOCO cannot recover the cluster from <strong>Lost</strong>.  Users need to restore data from backups.</p>
+<h3 id="pod"><a class="header" href="#pod">Pod</a></h3>
+<p><code>mysqld</code> is run as a container in a Pod.
+Therefore, MOCO needs to be aware of the following conditions.</p>
+<ol>
+<li>Missing: the Pod does not exist.</li>
+<li>Exist: the Pod exists and not <em>Terminating</em> or <em>Demoting</em>.</li>
+<li>Terminating: The Pod exists and <code>metadata.deletionTimestamp</code> is <em>not</em> null.</li>
+<li>Demoting: The Pod exists and has <code>moco.cybozu.com/demote: true</code> annotation.</li>
+</ol>
+<p>If there are missing Pods, MOCO does nothing for the MySQLCluster.</p>
+<p>If a primary instance Pod is <em>Terminating</em> or <em>Demoting</em>, MOCO controller changes the primary to one of the replica instances.  This operation is called <em>switchover</em>.</p>
+<h3 id="mysql-data"><a class="header" href="#mysql-data">MySQL data</a></h3>
+<p>MOCO checks replica instances whether they have errant transactions compared to the primary instance.
+If it detects such an instance, MOCO records the instance with MySQLCluster and excludes it from the cluster.</p>
+<p>The user needs to delete the Pod and the volume manually and let the StatefulSet controller to re-create them.
+After a newly initialized instance gets created, MOCO will allow it to rejoin the cluster.</p>
+<h2 id="invariants"><a class="header" href="#invariants">Invariants</a></h2>
+<ul>
+<li>By definition, the primary instance recorded in MySQLCluster has no errant transactions.  It is always the single source of truth.</li>
+<li>Errant replicas are not treated as ready even if their Pod status is ready.</li>
+</ul>
+<h2 id="the-maintenance-flow"><a class="header" href="#the-maintenance-flow">The maintenance flow</a></h2>
+<p>MOCO runs the following infinite loop for each MySQLCluster.
+It stops when MySQLCluster resource is deleted.</p>
+<ol>
+<li>Gather the current status</li>
+<li>Update <code>status</code> of MySQLCluster</li>
+<li>Determine what MOCO should do for the cluster</li>
+<li>If there is nothing to do, wait a while and go to 1</li>
+<li>Do the determined operation then go to 1</li>
+</ol>
+<p>Read the following sub-sections about 1 to 3.</p>
+<h3 id="gather-the-current-status"><a class="header" href="#gather-the-current-status">Gather the current status</a></h3>
+<p>MOCO gathers the information from <code>kube-apiserver</code> and <code>mysqld</code> as follows:</p>
+<ul>
+<li>MySQLCluster resource</li>
+<li>Pod resources
+<ul>
+<li>If some of the Pods are missing, MOCO does nothing.</li>
+</ul>
+</li>
+<li><code>mysqld</code>
+<ul>
+<li><code>SHOW SLAVE HOSTS</code> (on the primary)</li>
+<li><code>SHOW SLAVE STATUS</code> (on the replicas)</li>
+<li>Global variables such as <code>gtid_executed</code> or <code>super_read_only</code></li>
+<li>Result of CLONE from <code>performance_schema.clone_status</code> table</li>
+</ul>
+</li>
+</ul>
+<p>If MOCO cannot connect to an instance for a certain period, that instance is determined as failed.</p>
+<h3 id="update-status-of-mysqlcluster"><a class="header" href="#update-status-of-mysqlcluster">Update <code>status</code> of MySQLCluster</a></h3>
+<p>In this phase, MOCO updates <code>status</code> field of MySQLCluster as follows:</p>
+<ol>
+<li>Determine the current MySQLCluster state.</li>
+<li>Add or update type=<code>Initialized</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is not Cloning.</li>
+<li>otherwise, <code>False</code>.</li>
+</ul>
+</li>
+<li>Add or update type=<code>Available</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is Healthy or Degraded.</li>
+<li>otherwise, <code>False</code>.</li>
+</ul>
+</li>
+<li>Add or update type=<code>Healthy</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is Healthy.</li>
+<li>otherwise, <code>False</code>.</li>
+<li>The <code>Reason</code> field is set to the cluster state such as &quot;Failed&quot; or &quot;Incomplete&quot;.</li>
+</ul>
+</li>
+<li>Set the number of ready replica Pods to <code>status.syncedReplicas</code>.</li>
+<li>Add newly found errant replicas to <code>status.errantReplicaList</code>.</li>
+<li>Remove re-initialized and/or no-longer errant replicas from <code>status.errantReplicaList</code></li>
+<li>Set <code>status.errantReplicas</code> to the length of <code>status.errantReplicaList</code>.</li>
+</ol>
+<h3 id="determine-what-moco-should-do-for-the-cluster"><a class="header" href="#determine-what-moco-should-do-for-the-cluster">Determine what MOCO should do for the cluster</a></h3>
+<p>The operation depends on the current cluster state.</p>
+<p>The operation and its result are recorded as Events of MySQLCluster resource.</p>
+<p>cf. <a href="https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application-introspection/">Application Introspection and Debugging</a></p>
+<h4 id="healthy"><a class="header" href="#healthy">Healthy</a></h4>
+<p>If the primary instance Pod is Terminating or Demoting, switch the primary instance to another replica.
+Otherwise, just wait a while.</p>
+<p>The switchover is done as follows.
+It takes at least several seconds for a new primary to become writable.</p>
+<ol>
+<li>Make the primary instance <code>super_read_only=1</code>.</li>
+<li>Kill all existing connections except ones from <code>localhost</code> and ones for MOCO.</li>
+<li>Wait for a replica to catch up the executed GTID set of the primary instance.</li>
+<li>Set <code>status.currentPrimaryIndex</code> to the replica's index.</li>
+<li>If the old primary is Demoting, remove <code>moco.cybozu.com/demote</code> annotation from the Pod.</li>
+</ol>
+<h4 id="cloning"><a class="header" href="#cloning">Cloning</a></h4>
+<p>Execute <a href="https://dev.mysql.com/doc/refman/8.0/en/clone-plugin-remote.html"><code>CLONE INSTANCE</code></a> on the intermediate primary instance to clone data from an external MySQL instance.</p>
+<p>If the cloning goes successful, do the same as Intermediate case.</p>
+<h4 id="restoring"><a class="header" href="#restoring">Restoring</a></h4>
+<p>Do nothing.</p>
+<h4 id="degraded"><a class="header" href="#degraded">Degraded</a></h4>
+<p>First, check if the primary instance Pod is Terminating or Demoting, and if it is, do the switchover just like Healthy case.</p>
+<p>Then, do the same as Intermediate case to try to fix the problems.
+It is not possible to recover the cluster to Healthy if there are errant or stopped replicas, though.</p>
+<h4 id="failed"><a class="header" href="#failed">Failed</a></h4>
+<p>MOCO chooses the most advanced instance as the new primary instance.
+The most advanced means that its retrieved GTID set is the superset of all other replicas except for those have errant transactions.</p>
+<p>To prevent accidental writes to the old primary instance (so-called split-brain), MOCO stops replication IO_THREAD for all replicas.  This way, the old primary cannot get necessary acks from replicas to write further transactions.</p>
+<p>The failover is done as follows:</p>
+<ol>
+<li>Stop IO_THREAD on all replicas.</li>
+<li>Choose the most advanced replica as the new primary.  Errant replicas recorded in MySQLCluster are excluded from the candidates.</li>
+<li>Wait for the replica to execute all retrieved GTID set.</li>
+<li>Update <code>status.currentPrimaryIndex</code> to the new primary's index.</li>
+</ol>
+<h4 id="lost"><a class="header" href="#lost">Lost</a></h4>
+<p>There is nothing can be done.</p>
+<h4 id="intermediate"><a class="header" href="#intermediate">Intermediate</a></h4>
+<ul>
+<li>On the primary that was an intermediate primary, wait for all the retrieved GTID set to be executed.</li>
+<li>Start replication between the primary and non-errant replicas.
+<ul>
+<li>If a replication has no data, MOCO clones the primary data to the replica first.</li>
+</ul>
+</li>
+<li>Stop replication of errant replicas.</li>
+<li>Set <code>super_read_only=1</code> for replica instances that are writable.</li>
+<li>Adjust <code>moco.cybozu.com/role</code> label to Pods according to their roles.
+<ul>
+<li>For errant replicas, the label is removed to prevent users from reading inconsistent data.</li>
+</ul>
+</li>
+<li>Finally, make the primary <code>mysqld</code> writable if the primary is not an intermediate primary.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="reconcile.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="backup.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="reconcile.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="backup.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

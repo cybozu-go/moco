@@ -1,0 +1,1993 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>MOCO Documentation</title>
+        
+        <meta name="robots" content="noindex" />
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">MOCO</a></li><li class="chapter-item expanded affix "><li class="part-title">User manual</li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">1.</strong> Getting started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">1.1.</strong> Deploying MOCO</a></li><li class="chapter-item expanded "><a href="install-plugin.html"><strong aria-hidden="true">1.2.</strong> Installing kubectl-moco</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="advanced.html"><strong aria-hidden="true">3.</strong> Advanced topics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="custom-mysqld.html"><strong aria-hidden="true">3.1.</strong> Building your own imge</a></li></ol></li><li class="chapter-item expanded "><a href="troubles.html"><strong aria-hidden="true">4.</strong> Troubleshooting</a></li><li class="chapter-item expanded affix "><li class="part-title">References</li><li class="chapter-item expanded "><a href="crd.html"><strong aria-hidden="true">5.</strong> Custom resources</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="crd_mysqlcluster.html"><strong aria-hidden="true">5.1.</strong> MySQLCluster</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy.html"><strong aria-hidden="true">5.2.</strong> BackupPolicy</a></li></ol></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">6.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="kubectl-moco.html"><strong aria-hidden="true">6.1.</strong> kubectl-moco</a></li><li class="chapter-item expanded "><a href="moco-controller.html"><strong aria-hidden="true">6.2.</strong> moco-controller</a></li><li class="chapter-item expanded "><a href="moco-backup.html"><strong aria-hidden="true">6.3.</strong> moco-backup</a></li></ol></li><li class="chapter-item expanded "><a href="metrics.html"><strong aria-hidden="true">7.</strong> Metrics</a></li><li class="chapter-item expanded affix "><li class="part-title">Developer documents</li><li class="chapter-item expanded "><a href="notes.html"><strong aria-hidden="true">8.</strong> Design notes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="design.html"><strong aria-hidden="true">8.1.</strong> Goals</a></li><li class="chapter-item expanded "><a href="reconcile.html"><strong aria-hidden="true">8.2.</strong> Reconciliation</a></li><li class="chapter-item expanded "><a href="clustering.html"><strong aria-hidden="true">8.3.</strong> Clustering</a></li><li class="chapter-item expanded "><a href="backup.html"><strong aria-hidden="true">8.4.</strong> Backup and restore</a></li><li class="chapter-item expanded "><a href="upgrading.html"><strong aria-hidden="true">8.5.</strong> Upgrading mysqld</a></li><li class="chapter-item expanded "><a href="security.html"><strong aria-hidden="true">8.6.</strong> Security</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">MOCO Documentation</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="moco-documentation"><a class="header" href="#moco-documentation">MOCO documentation</a></h1>
+<p>This is the documentation site for <a href="https://github.com/cybozu-go/moco">MOCO</a>.
+MOCO is a Kubernetes operator for MySQL created and maintained by Cybozu.</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="setup"><a class="header" href="#setup">Setup</a></h1>
+<h2 id="quick-setup"><a class="header" href="#quick-setup">Quick setup</a></h2>
+<ol>
+<li>
+<p>Download and install the latest <a href="https://cert-manager.io/">cert-manager</a>.</p>
+<pre><code class="language-console">$ curl -fsLO https://github.com/jetstack/cert-manager/releases/latest/download/cert-manager.yaml
+$ kubectl apply -f cert-manager.yaml
+</code></pre>
+</li>
+<li>
+<p>Download and install the latest MOCO.</p>
+<pre><code class="language-console">$ curl -fsLO https://github.com/cybozu-go/moco/releases/latest/download/moco.yaml
+$ kubectl apply -f moco.yaml
+</code></pre>
+</li>
+</ol>
+<p>That's all!</p>
+<h2 id="customize-manifests"><a class="header" href="#customize-manifests">Customize manifests</a></h2>
+<p>If you want to edit the manifest, <a href="../config/"><code>config/</code></a> directory contains the source YAML for <a href="https://kustomize.io/">kustomize</a>.</p>
+<h2 id="next-step"><a class="header" href="#next-step">Next step</a></h2>
+<p>Read <a href="usage.html"><code>usage.md</code></a> and create your first MySQL cluster!</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="installing-kubectl-moco"><a class="header" href="#installing-kubectl-moco">Installing kubectl-moco</a></h1>
+<p><a href="kubectl-moco.html">kubectl-moco</a> is a plugin for <code>kubectl</code> to control MySQL clusters of MOCO.</p>
+<p>Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/releases">GitHub releases</a> for Windows, Linux, and MacOS.</p>
+<p>Download one of the binaries for your OS and place it in a directory of <code>PATH</code>.</p>
+<pre><code class="language-console">$ curl -fsL -o /path/to/bin/kubectl-moco https://github.com/cybozu-go/moco/releases/latest/download/kubectl-moco-linux-amd64
+$ chmod a+x /path/to/bin/kubectl-moco
+</code></pre>
+<p>Check the installation by running <code>kubectl moco -h</code>.</p>
+<pre><code class="language-console">$ kubectl moco -h
+the utility command for MOCO.
+
+Usage:
+  kubectl-moco [command]
+
+Available Commands:
+  credential  Fetch the credential of a specified user
+  help        Help about any command
+  mysql       Run mysql command in a specified MySQL instance
+  switchover  Switch the primary instance
+
+...
+</code></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-to-use-moco"><a class="header" href="#how-to-use-moco">How to use MOCO</a></h1>
+<p>After <a href="setup.html">setting up MOCO</a>, you can create MySQL clusters with a custom resource called <a href="crd_mysqlcluster.html">MySQLCluster</a>.</p>
+<ul>
+<li><a href="usage.html#basics">Basics</a></li>
+<li><a href="usage.html#limitations">Limitations</a>
+<ul>
+<li><a href="usage.html#errant-replicas">Errant replicas</a></li>
+<li><a href="usage.html#read-only-primary">Read-only primary</a></li>
+</ul>
+</li>
+<li><a href="usage.html#creating-clusters">Creating clusters</a>
+<ul>
+<li><a href="usage.html#creating-an-empty-cluster">Creating an empty cluster</a></li>
+<li><a href="usage.html#creating-a-cluster-that-replicates-data-from-an-external-mysqld">Creating a cluster that replicates data from an external mysqld</a></li>
+<li><a href="usage.html#bring-your-own-image">Bring your own image</a></li>
+</ul>
+</li>
+<li><a href="usage.html#configurations">Configurations</a>
+<ul>
+<li><a href="usage.html#innodb-buffer-pool-size">InnoDB buffer pool size</a></li>
+<li><a href="usage.html#opaque-configuration">Opaque configuration</a></li>
+</ul>
+</li>
+<li><a href="usage.html#using-the-cluster">Using the cluster</a>
+<ul>
+<li><a href="usage.html#kubectl-moco"><code>kubectl moco</code></a></li>
+<li><a href="usage.html#mysql-users">MySQL users</a></li>
+<li><a href="usage.html#connecting-to-mysqld-over-network">Connecting to <code>mysqld</code> over network</a></li>
+</ul>
+</li>
+<li><a href="usage.html#backup-and-restore">Backup and restore</a>
+<ul>
+<li><a href="usage.html#object-storage-bucket">Object storage bucket</a></li>
+<li><a href="usage.html#backuppolicy">BackupPolicy</a></li>
+<li><a href="usage.html#credentials-to-access-s3-bucket">Credentials to access S3 bucket</a></li>
+<li><a href="usage.html#taking-an-emergency-backup">Taking an emergency backup</a></li>
+<li><a href="usage.html#restore">Restore</a></li>
+<li><a href="usage.html#further-details">Further details</a></li>
+</ul>
+</li>
+<li><a href="usage.html#deleting-the-cluster">Deleting the cluster</a></li>
+<li><a href="usage.html#status-metrics-and-logs">Status, metrics, and logs</a>
+<ul>
+<li><a href="usage.html#cluster-status">Cluster status</a></li>
+<li><a href="usage.html#pod-status">Pod status</a></li>
+<li><a href="usage.html#metrics">Metrics</a></li>
+<li><a href="usage.html#logs">Logs</a></li>
+</ul>
+</li>
+<li><a href="usage.html#maintenance">Maintenance</a>
+<ul>
+<li><a href="usage.html#increasing-the-number-of-instances-in-the-cluster">Increasing the number of instances in the cluster</a></li>
+<li><a href="usage.html#switchover">Switchover</a></li>
+<li><a href="usage.html#failover">Failover</a></li>
+<li><a href="usage.html#upgrading-mysql-version">Upgrading mysql version</a></li>
+<li><a href="usage.html#re-initializing-an-errant-replica">Re-initializing an errant replica</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="basics"><a class="header" href="#basics">Basics</a></h2>
+<p>MOCO creates a cluster of mysqld instances for each MySQLCluster.
+A cluster can consists of 1, 3, or 5 mysqld instances.</p>
+<p>MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html">semi-synchronous</a> <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-gtids.html">GTID</a>-based replication between mysqld instances in a cluster if the cluster size is 3 or 5.  A 3-instance cluster can tolerate up to 1 replica failure, and a 5-instance cluster can tolerate up to 2 replica failures.</p>
+<p>In a cluster, there is only one instance called <em>primary</em>.  The primary instance is the source of truth.  It is the only writable instance in the cluster, and the source of the replication.  All other instances are called <em>replica</em>.  A replica is a read-only instance and replicates data from the primary.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<h3 id="errant-replicas"><a class="header" href="#errant-replicas">Errant replicas</a></h3>
+<p>An inherent limitation of GTID-based semi-synchronous replication is that a failed instance would have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a>.  If this happens, the instance needs to be re-created by removing all data.</p>
+<p>MOCO does not re-create such an instance.  It only detects instances having errant transactions and excludes them from the cluster.  Users need to monitor them and re-create the instances.</p>
+<h3 id="read-only-primary"><a class="header" href="#read-only-primary">Read-only primary</a></h3>
+<p>MOCO from time to time sets the primary mysqld instance read-only for a switchover or other reasons.
+Applications that use MOCO MySQL need to be aware of this.</p>
+<h2 id="creating-clusters"><a class="header" href="#creating-clusters">Creating clusters</a></h2>
+<h3 id="creating-an-empty-cluster"><a class="header" href="#creating-an-empty-cluster">Creating an empty cluster</a></h3>
+<p>An empty cluster always has a writable instance called <em>the primary</em>.  All other instances are called <em>replicas</em>.  Replicas are read-only and replicate data from the primary.</p>
+<p>The following YAML is to create a three-instance cluster.  It has an anti-affinity for Pods so that all instances will be scheduled to different Nodes.  It also sets the limits for memory and CPU to make the Pod <a href="https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/">Guaranteed</a>.</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  # replicas is the number of mysqld Pods.  The default is 1.
+  replicas: 3
+  podTemplate:
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - mysql
+              - key: app.kubernetes.io/instance
+                operator: In
+                values:
+                - test
+            topologyKey: &quot;kubernetes.io/hostname&quot;
+      containers:
+      # At least a container named &quot;mysqld&quot; must be defined.
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.25
+        # By limiting CPU and memory, Pods will have Guaranteed QoS class.
+        # requests can be omitted; it will be set to the same value as limits.
+        resources:
+          limits:
+            cpu: &quot;10&quot;
+            memory: &quot;10Gi&quot;
+  volumeClaimTemplates:
+  # At least a PVC named &quot;mysql-data&quot; must be defined.
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      resources:
+        requests:
+          storage: 1Gi
+</code></pre>
+<p>There are other example manifests in <a href="../examples/"><code>examples</code></a> directory.</p>
+<p>The complete reference of MySQLCluster is <a href="crd_mysqlcluster.html"><code>crd_mysqlcluster.md</code></a>.</p>
+<h3 id="creating-a-cluster-that-replicates-data-from-an-external-mysqld"><a class="header" href="#creating-a-cluster-that-replicates-data-from-an-external-mysqld">Creating a cluster that replicates data from an external mysqld</a></h3>
+<p>Let's call the source mysqld instance <em>donor</em>.</p>
+<p>We use <a href="https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html">the clone plugin</a> to copy the whole data quickly.
+After the cloning, MOCO needs to create some user accounts and install plugins.</p>
+<p><strong>On the donor</strong>, you need to install the plugin and create two user accounts as follows:</p>
+<pre><code class="language-console">mysql&gt; INSTALL PLUGIN clone SONAME mysql_clone.so;
+mysql&gt; CREATE USER 'clone-donor'@'%' IDENTIFIED BY 'xxxxxxxxxxx';
+mysql&gt; GRANT BACKUP_ADMIN, REPLICATION SLAVE ON *.* TO 'clone-donor'@'%';
+mysql&gt; CREATE USER 'clone-init'@'localhost' IDENTIFIED BY 'yyyyyyyyyyy';
+mysql&gt; GRANT ALL ON *.* TO 'clone-init'@'localhost' WITH GRANT OPTION;
+</code></pre>
+<p>You may change the user names and should change their passwords.</p>
+<p>Then create a Secret in the same namespace as MySQLCluster:</p>
+<pre><code class="language-console">$ kubectl -n &lt;namespace&gt; create secret generic donor-secret \
+    --from-literal=HOST=&lt;donor-host&gt; \
+    --from-literal=PORT=&lt;donor-port&gt; \
+    --from-literal=USER=clone-donor \
+    --from-literal=PASSWORD=xxxxxxxxxxx \
+    --from-literal=INIT_USER=clone-init \
+    --from-literal=INIT_PASSWORD=yyyyyyyyyyy
+</code></pre>
+<p>You may change the secret name.</p>
+<p>Finally, create MySQLCluster with <code>spec.replicationSourceSecretName</code> set to the Secret name as follows.
+The mysql image must be the same version as the donor's.</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  replicationSourceSecretName: donor-secret
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.25  # must be the same version as the donor
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      resources:
+        requests:
+          storage: 1Gi
+</code></pre>
+<p>To stop the replication from the donor, update MySQLCluster with <code>spec.replicationSourceSecretName: null</code>.</p>
+<h3 id="bring-your-own-image"><a class="header" href="#bring-your-own-image">Bring your own image</a></h3>
+<p>We provide a pre-built MySQL container image at <a href="http://quay.io/cybozu/moco-mysql">quay.io/cybozu/moco-mysql</a>.
+If you want to build and use your own image, read <a href="custom-mysqld.html"><code>custom-mysqld.md</code></a>.</p>
+<h2 id="configurations"><a class="header" href="#configurations">Configurations</a></h2>
+<p>The default and constant configuration values for <code>mysqld</code> are available on <a href="https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-variables">pkg.go.dev</a>.
+The settings in <code>ConstMycnf</code> cannot be changed while the settings in <code>DefaultMycnf</code> can be overridden.</p>
+<p>You can change the default values or set undefined values by creating a ConfigMap in the same namespace as MySQLCluster, and setting <code>spec.mysqlConfigMapName</code> in MySQLCluster to the name of the ConfigMap as follows:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: foo
+  name: mycnf
+data:
+  long_query_time: &quot;5&quot;
+  innodb_buffer_pool_size: &quot;10G&quot;
+---
+apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  # set this to the name of ConfigMap
+  mysqlConfigMapName: mycnf
+  ...
+</code></pre>
+<h3 id="innodb-buffer-pool-size"><a class="header" href="#innodb-buffer-pool-size">InnoDB buffer pool size</a></h3>
+<p>If <code>innodb_buffer_pool_size</code> is not specified, MOCO sets it automatically to 70% of the value of <code>resources.requests.memory</code> (or <code>resources.limits.memory</code>) for <code>mysqld</code> container.</p>
+<p>If both <code>resources.request.memory</code> and <code>resources.limits.memory</code> are not set, <code>innodb_buffer_pool_size</code> will be set to <code>128M</code>.</p>
+<h3 id="opaque-configuration"><a class="header" href="#opaque-configuration">Opaque configuration</a></h3>
+<p>Some configuration variables cannot be fully configured with ConfigMap values.
+For example, <a href="https://dev.mysql.com/doc/refman/8.0/en/performance-schema-startup-configuration.html"><code>--performance-schema-instrument</code></a> needs to be specified multiple times.</p>
+<p>You may set them through a special config key <code>_include</code>.
+The value of <code>_include</code> will be included in <code>my.cnf</code> as opaque.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: foo
+  name: mycnf
+data:
+  _include: |
+    performance-schema-instrument='memory/%=ON'
+    performance-schema-instrument='wait/synch/%/innodb/%=ON'
+    performance-schema-instrument='wait/lock/table/sql/handler=OFF'
+    performance-schema-instrument='wait/lock/metadata/sql/mdl=OFF'
+</code></pre>
+<p>Care must be taken not to overwrite critical configurations such as <code>log_bin</code> since MOCO does not check the contents from <code>_include</code>.</p>
+<h2 id="using-the-cluster"><a class="header" href="#using-the-cluster">Using the cluster</a></h2>
+<h3 id="kubectl-moco"><a class="header" href="#kubectl-moco"><code>kubectl moco</code></a></h3>
+<p>From outside of your Kubernetes cluster, you can access MOCO MySQL instances using <code>kubectl-moco</code>.
+<code>kubectl-moco</code> is <a href="https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/">a plugin for <code>kubectl</code></a>.
+Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/releases/latest">GitHub releases</a>.</p>
+<p>The following is an example to run <code>mysql</code> command interactively to access the primary instance of <code>test</code> MySQLCluster in <code>foo</code> namespace.</p>
+<pre><code class="language-console">$ kubectl moco -n foo mysql -it test
+</code></pre>
+<p>Read <a href="kubectl-moco.html">the reference manual of <code>kubectl-moco</code></a> for further details and examples.</p>
+<h3 id="mysql-users"><a class="header" href="#mysql-users">MySQL users</a></h3>
+<p>MOCO prepares a set of users.</p>
+<ul>
+<li><code>moco-readonly</code> can read all tables of all databases.</li>
+<li><code>moco-writable</code> can create users, databases, or tables.</li>
+<li><code>moco-admin</code> is the super user.</li>
+</ul>
+<p>The exact privileges that <code>moco-readonly</code> has are:</p>
+<ul>
+<li>PROCESS</li>
+<li>REPLICATION CLIENT</li>
+<li>REPLICATION SLAVE</li>
+<li>SELECT</li>
+<li>SHOW DATABASES</li>
+<li>SHOW VIEW</li>
+</ul>
+<p>The exact privileges that <code>moco-writable</code> has are:</p>
+<ul>
+<li>ALTER</li>
+<li>ALTER ROUTINE</li>
+<li>CREATE</li>
+<li>CREATE ROLE</li>
+<li>CREATE ROUTINE</li>
+<li>CREATE TEMPORARY TABLES</li>
+<li>CREATE USER</li>
+<li>CREATE VIEW</li>
+<li>DELETE</li>
+<li>DROP</li>
+<li>DROP ROLE</li>
+<li>EVENT</li>
+<li>EXECUTE</li>
+<li>INDEX</li>
+<li>INSERT</li>
+<li>LOCK TABLES</li>
+<li>PROCESS</li>
+<li>REFERENCES</li>
+<li>REPLICATION CLIENT</li>
+<li>REPLICATION SLAVE</li>
+<li>SELECT</li>
+<li>SHOW DATABASES</li>
+<li>SHOW VIEW</li>
+<li>TRIGGER</li>
+<li>UPDATE</li>
+</ul>
+<p><code>moco-writable</code> cannot edit tables in <code>mysql</code> database, though.</p>
+<p>You can create other users and grant them certain privileges as either <code>moco-writable</code> or <code>moco-admin</code>.</p>
+<pre><code class="language-console">$ kubectl moco mysql -u moco-writable test -- -e &quot;CREATE USER 'foo'@'%' IDENTIFIED BY 'bar'&quot;
+$ kubectl moco mysql -u moco-writable test -- -e &quot;CREATE DATABASE db1&quot;
+$ kubectl moco mysql -u moco-writable test -- -e &quot;GRANT ALL ON db1.* TO 'foo'@'%'&quot;
+</code></pre>
+<h3 id="connecting-to-mysqld-over-network"><a class="header" href="#connecting-to-mysqld-over-network">Connecting to <code>mysqld</code> over network</a></h3>
+<p>MOCO prepares two Services for each MySQLCluster.
+For example, a MySQLCluster named <code>test</code> in <code>foo</code> Namespace has the following Services.</p>
+<table><thead><tr><th>Service Name</th><th>DNS Name</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>moco-test-primary</code></td><td><code>moco-test-primary.foo.svc</code></td><td>Connect to the primary instance.</td></tr>
+<tr><td><code>moco-test-replica</code></td><td><code>moco-test-replica.foo.svc</code></td><td>Connect to replica instances.</td></tr>
+</tbody></table>
+<p><code>moco-test-replica</code> can be used only for read access.</p>
+<p>The type of these Services is usually ClusterIP.
+The following is an example to change Service type to LoadBalancer and add an annotation for <a href="https://metallb.universe.tf/">MetalLB</a>.</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  serviceTemplate:
+    metadata:
+      annotations:
+        metallb.universe.tf/address-pool: production-public-ips
+    spec:
+      type: LoadBalancer
+...
+</code></pre>
+<h2 id="backup-and-restore"><a class="header" href="#backup-and-restore">Backup and restore</a></h2>
+<p>MOCO can take full and incremental backups regularly.
+The backup data are stored in <a href="https://aws.amazon.com/s3/">Amazon S3</a> compatible object storages.</p>
+<p>You can restore data from a backup to a new MySQL cluster.</p>
+<h3 id="object-storage-bucket"><a class="header" href="#object-storage-bucket">Object storage bucket</a></h3>
+<p>Bucket is a management unit of objects in S3.  MOCO stores backups in a specified bucket.</p>
+<p>MOCO does not remove backups.
+To remove old backups automatically, you can set a lifecycle configuration to the bucket.</p>
+<p>ref: <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/how-to-set-lifecycle-configuration-intro.html">Setting lifecycle configuration on a bucket</a></p>
+<p>A bucket can be shared safely across multiple MySQLClusters.
+Object keys are prefixed with <code>moco/</code>.</p>
+<h3 id="backuppolicy"><a class="header" href="#backuppolicy">BackupPolicy</a></h3>
+<p><a href="crd_backuppolicy.html">BackupPolicy</a> is a custom resource to define a policy for taking backups.</p>
+<p>The following is an example BackupPolicy to take a backup every day and store data in <a href="https://min.io/">MinIO</a>:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  # Backup schedule.  Any CRON format is allowed.
+  schedule: &quot;@daily&quot;
+
+  jobConfig:
+    # An existing ServiceAccount name is required.
+    serviceAccountName: backup-owner
+    env:
+    - name: AWS_ACCESS_KEY_ID
+      value: minioadmin
+    - name: AWS_SECRET_ACCESS_KEY
+      value: minioadmin
+
+    # bucketName is required.  Other fields are optional.
+    bucketConfig:
+      bucketName: moco
+      endpointURL: http://minio.default.svc:9000
+      usePathStyle: true
+
+    # MOCO uses a filesystem volume to store data temporarily.
+    workVolume:
+      # Using emptyDir as a working directory is NOT recommended.
+      # The recommended way is to use generic ephemeral volume with a provisioner
+      # that can provide enough capacity.
+      # https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
+      emptyDir: {}
+</code></pre>
+<p>To enable backup for a MySQLCluster, reference the BackupPolicy name like this:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: foo
+spec:
+  backupPolicyName: daily  # The policy name
+...
+</code></pre>
+<p>MOCO creates a [CronJob][] for each MySQLCluster that has <code>spec.backupPolicyName</code>.</p>
+<p>The CronJob's name is <code>moco-backup-</code> + the name of MySQLCluster.
+For the above example, a CronJob named <code>moco-backup-foo</code> is created in <code>default</code> namespace.</p>
+<h3 id="credentials-to-access-s3-bucket"><a class="header" href="#credentials-to-access-s3-bucket">Credentials to access S3 bucket</a></h3>
+<p>Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.</p>
+<p>For Amazon's <a href="https://aws.amazon.com/eks/">Elastic Kubernetes Service (EKS)</a> and S3 users, the easiest way is probably to use <a href="https://aws.github.io/aws-eks-best-practices/security/docs/iam/#iam-roles-for-service-accounts-irsa">IAM Roles for Service Accounts (IRSA)</a>.</p>
+<p>ref: <a href="https://www.eksworkshop.com/beginner/110_irsa/">IAM ROLES FOR SERVICE ACCOUNTS</a></p>
+<p>Another popular way is to set <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code> environment variables as shown in the above example.</p>
+<h3 id="taking-an-emergency-backup"><a class="header" href="#taking-an-emergency-backup">Taking an emergency backup</a></h3>
+<p>You can take an emergency backup by creating a Job from the CronJob for backup.</p>
+<pre><code class="language-console">$ kubectl create job --from=cronjob/moco-backup-foo emergency-backup
+</code></pre>
+<h3 id="restore"><a class="header" href="#restore">Restore</a></h3>
+<p>To restore data from a backup, create a new MyQLCluster with <code>spec.restore</code> field as follows:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: backup
+  name: target
+spec:
+  # restore field is not editable.
+  # to modify parameters, delete and re-create MySQLCluster.
+  restore:
+    # The source MySQLCluster's name and namespace
+    sourceName: source
+    sourceNamespace: backup
+
+    # The restore point-in-time in RFC3339 format.
+    restorePoint: &quot;2021-05-26T12:34:56Z&quot;
+
+    # jobConfig is the same in BackupPolicy
+    jobConfig:
+      serviceAccountName: backup-owner
+      env:
+      - name: AWS_ACCESS_KEY_ID
+        value: minioadmin
+      - name: AWS_SECRET_ACCESS_KEY
+        value: minioadmin
+      bucketConfig:
+        bucketName: moco
+        endpointURL: http://minio.default.svc:9000
+        usePathStyle: true
+      workVolume:
+        emptyDir: {}
+...
+</code></pre>
+<h3 id="further-details"><a class="header" href="#further-details">Further details</a></h3>
+<p>Read <a href="backup.html">backup.md</a> for further details.</p>
+<h2 id="deleting-the-cluster"><a class="header" href="#deleting-the-cluster">Deleting the cluster</a></h2>
+<p>By deleting MySQLCluster, all resources <strong>including PersistentVolumeClaims</strong> generated from the templates are automatically removed.</p>
+<p>If you want to keep the PersistentVolumeClaims, remove <code>metadata.ownerReferences</code> from them before you delete a MySQLCluster.</p>
+<h2 id="status-metrics-and-logs"><a class="header" href="#status-metrics-and-logs">Status, metrics, and logs</a></h2>
+<h3 id="cluster-status"><a class="header" href="#cluster-status">Cluster status</a></h3>
+<p>You can see the health and availability status of MySQLCluster as follows:</p>
+<pre><code class="language-console">$ kubectl get mysqlcluster
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS
+test   True        True      0         3
+</code></pre>
+<ul>
+<li>The cluster is available when the primary Pod is running and ready.</li>
+<li>The cluster is healthy when there is no problems.</li>
+<li><code>PRIMARY</code> is the index of the current primary instance Pod.</li>
+<li><code>SYNCED REPLICAS</code> is the number of ready Pods.</li>
+<li><code>ERRANT REPLICAS</code> is the number of instances having errant transactions.</li>
+</ul>
+<p>You can also use <code>kubectl describe mysqlcluster</code> to see the recent events on the cluster.</p>
+<h3 id="pod-status"><a class="header" href="#pod-status">Pod status</a></h3>
+<p>MOCO adds mysqld containers a liveness probe and a readiness probe to check the replication status in addition to the process status.</p>
+<p>A replica Pod is <em>ready</em> only when it is replicating data from the primary without a significant delay.
+The default threshold of the delay is 60 seconds.  The threshold can be configured as follows.</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  maxDelaySeconds: 180
+  ...
+</code></pre>
+<p>Unready replica Pods are automatically excluded from the load-balancing targets so that users will not see too old  data.</p>
+<h3 id="metrics"><a class="header" href="#metrics">Metrics</a></h3>
+<p>MOCO provides a built-in support to collect and expose <code>mysqld</code> metrics using <a href="https://github.com/prometheus/mysqld_exporter/">mysqld_exporter</a>.</p>
+<p>This is an example YAML to enable <code>mysqld_exporter</code>.
+<code>spec.collectors</code> is a list of <code>mysqld_exporter</code> flag names without <code>collect.</code> prefix.</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  collectors:
+  - engine_innodb_status
+  - info_schema.innodb_metrics
+  podTemplate:
+    ...
+</code></pre>
+<p>See <a href="metrics.html"><code>metrics.md</code></a> for all available metrics and how to collect them using Prometheus.</p>
+<h3 id="logs"><a class="header" href="#logs">Logs</a></h3>
+<p>Error logs from <code>mysqld</code> can be viewed as follows:</p>
+<pre><code class="language-console">$ kubectl logs moco-test-0 mysqld
+</code></pre>
+<p>Slow logs from <code>mysqld</code> can be viewed as follows:</p>
+<pre><code class="language-console">$ kubectl logs moco-test-0 slow-log
+</code></pre>
+<h2 id="maintenance"><a class="header" href="#maintenance">Maintenance</a></h2>
+<h3 id="increasing-the-number-of-instances-in-the-cluster"><a class="header" href="#increasing-the-number-of-instances-in-the-cluster">Increasing the number of instances in the cluster</a></h3>
+<p>Edit <code>spec.replicas</code> field of MySQLCluster:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  replicas: 5
+  ...
+</code></pre>
+<p>You can only increase the number of instances in a MySQLCluster from 1 to 3 or 5, or from 3 to 5.
+Decreasing the number of instances is not allowed.</p>
+<h3 id="switchover"><a class="header" href="#switchover">Switchover</a></h3>
+<p>Switchover is an operation to change the live primary to one of the replicas.</p>
+<p>MOCO automatically switch the primary when the Pod of the primary instance is to be deleted.</p>
+<p>Users can manually trigger a switchover with <code>kubectl moco switchover CLUSTER_NAME</code>.
+Read <a href="kubectl-moco.html"><code>kubectl-moco.md</code></a> for details.</p>
+<h3 id="failover"><a class="header" href="#failover">Failover</a></h3>
+<p>Failover is an operation to replace the dead primary with the most advanced replica.
+MOCO automatically does this as soon as it detects that the primary is down.</p>
+<p>The most advanced replica is a replica who has retrieved the most up-to-date transaction from the dead primary.
+Since MOCO configures loss-less semi-synchronous replication, the failover is guaranteed not to lose any user data.</p>
+<p>After a failover, the old primary may become an errant replica <a href="usage.html#errant-replicas">as described</a>.</p>
+<h3 id="upgrading-mysql-version"><a class="header" href="#upgrading-mysql-version">Upgrading mysql version</a></h3>
+<p>You can upgrade the MySQL version of a MySQL cluster as follows:</p>
+<ol>
+<li>Check that the cluster is healthy.</li>
+<li>Check release notes of MySQL for any incompatibilities between the current and the new versions.</li>
+<li>Edit the Pod template of the MySQLCluster and update <code>mysqld</code> container image:</li>
+</ol>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+      containers:
+      - name: mysqld
+        # Edit the next line
+        image: quay.io/cybozu/moco-mysql:8.0.25
+</code></pre>
+<p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
+Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
+<h3 id="re-initializing-an-errant-replica"><a class="header" href="#re-initializing-an-errant-replica">Re-initializing an errant replica</a></h3>
+<p>Delete the PVC and Pod of the errant replica, like this:</p>
+<pre><code class="language-console">$ kubectl delete --wait=false pvc mysql-data-moco-test-0
+$ kubectl delete --grace-period=1 pods moco-test-0
+</code></pre>
+<p>Depending on your Kubernetes version, StatefulSet controller may create a pending Pod before PVC gets deleted.
+Delete such pending Pods until PVC is actually removed.</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
+<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/moco-mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/moco-mysql</code></a>.
+Users can use one of these images to supply <code>mysqld</code> container in <a href="crd_mysqlcluster.html">MySQLCluster</a> like:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+spec:
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/moco-mysql:8.0.25
+</code></pre>
+<p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
+<h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
+<p>The easiest way to build a custom <code>mysqld</code> for MOCO is to copy and edit our Dockerfile.
+You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql"><code>moco-mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
+<p>You should keep the following points:</p>
+<ul>
+<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql/moco-init"><code>moco-init</code></a></li>
+<li>Add directories for <code>mysqld</code> and <code>moco-init</code> to <code>PATH</code></li>
+<li><code>ENTRYPOINT</code> should be <code>[&quot;mysqld&quot;]</code></li>
+<li><code>USER</code> should be <code>10000:10000</code></li>
+<li><code>sleep</code> command must exist in one of the <code>PATH</code> directories.</li>
+</ul>
+<h2 id="how-to-build-mysqld"><a class="header" href="#how-to-build-mysqld">How to build <code>mysqld</code></a></h2>
+<p>On Ubuntu 20.04, you can build the source code as follows:</p>
+<pre><code class="language-console">$ sudo apt-get update
+$ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
+    cmake libncurses5-dev libjemalloc-dev libnuma-dev pkg-config
+$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
+$ tar -x -z -f mysql-boost-8.0.20.tar.gz
+$ cd mysql-8.0.20
+$ mkdir bld
+$ cd bld
+$ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
+    -DWITH_BOOST=$(ls -d ../boost/boost_*) -DWITH_NUMA=1 -DWITH_JEMALLOC=1
+$ make -j $(nproc)
+$ make install
+</code></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="trouble-shooting"><a class="header" href="#trouble-shooting">Trouble shooting</a></h1>
+<h2 id="failed-to-initialize-data-directory-for-mysqld"><a class="header" href="#failed-to-initialize-data-directory-for-mysqld">Failed to initialize data directory for <code>mysqld</code></a></h2>
+<p>If you see the following error message from an init container of <code>mysqld</code> Pod,</p>
+<pre><code>mysqld: Can't create directory '/var/lib/mysql/data/' (OS errno 13 - Permission denied)
+2021-05-24T19:44:33.022939Z 0 [System] [MY-013169] [Server] /usr/local/mysql/bin/mysqld (mysqld 8.0.24) initializing of server in progress as process 12
+2021-05-24T19:44:33.024090Z 0 [ERROR] [MY-013236] [Server] The designated data directory /var/lib/mysql/data/ is unusable. You can remove all files that the server added to it.
+2021-05-24T19:44:33.024138Z 0 [ERROR] [MY-010119] [Server] Aborting
+2021-05-24T19:44:33.024316Z 0 [System] [MY-010910] [Server] /usr/local/mysql/bin/mysqld: Shutdown complete (mysqld 8.0.24)  Source distribution.
+</code></pre>
+<p>the data directory is probably only writable for the <code>root</code> user.</p>
+<p>To resolve the problem, add <code>fsGroup: 10000</code> to MySQLCluster as follows:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  podTemplate:
+    spec:
+      securityContext:
+        fsGroup: 10000    # to make the data directory writable for `mysqld` container.
+        fsGroupChangePolicy: &quot;OnRootMismatch&quot;  # available since k8s 1.20
+...
+</code></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="custom-resources"><a class="header" href="#custom-resources">Custom resources</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-1"><a class="header" href="#custom-resources-1">Custom Resources</a></h3>
+<ul>
+<li><a href="crd_mysqlcluster.html#mysqlcluster">MySQLCluster</a></li>
+</ul>
+<h3 id="sub-resources"><a class="header" href="#sub-resources">Sub Resources</a></h3>
+<ul>
+<li><a href="crd_mysqlcluster.html#backupstatus">BackupStatus</a></li>
+<li><a href="crd_mysqlcluster.html#mysqlclustercondition">MySQLClusterCondition</a></li>
+<li><a href="crd_mysqlcluster.html#mysqlclusterlist">MySQLClusterList</a></li>
+<li><a href="crd_mysqlcluster.html#mysqlclusterspec">MySQLClusterSpec</a></li>
+<li><a href="crd_mysqlcluster.html#mysqlclusterstatus">MySQLClusterStatus</a></li>
+<li><a href="crd_mysqlcluster.html#objectmeta">ObjectMeta</a></li>
+<li><a href="crd_mysqlcluster.html#persistentvolumeclaim">PersistentVolumeClaim</a></li>
+<li><a href="crd_mysqlcluster.html#podtemplatespec">PodTemplateSpec</a></li>
+<li><a href="crd_mysqlcluster.html#reconcileinfo">ReconcileInfo</a></li>
+<li><a href="crd_mysqlcluster.html#restorespec">RestoreSpec</a></li>
+<li><a href="crd_mysqlcluster.html#servicetemplate">ServiceTemplate</a></li>
+<li><a href="crd_mysqlcluster.html#bucketconfig">BucketConfig</a></li>
+<li><a href="crd_mysqlcluster.html#jobconfig">JobConfig</a></li>
+</ul>
+<h4 id="backupstatus"><a class="header" href="#backupstatus">BackupStatus</a></h4>
+<p>BackupStatus represents the status of the last successful backup.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>time</td><td>The time of the backup.  This is used to generate object keys of backup files in a bucket.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+<tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td>metav1.Duration</td><td>true</td></tr>
+<tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
+<tr><td>sourceUUID</td><td>SourceUUID is the <code>server_uuid</code> of the backup source instance.</td><td>string</td><td>true</td></tr>
+<tr><td>binlogFilename</td><td>BinlogFilename is the binlog filename that the backup source instance was writing to at the backup.</td><td>string</td><td>true</td></tr>
+<tr><td>gtidSet</td><td>GTIDSet is the GTID set of the full dump of database.</td><td>string</td><td>true</td></tr>
+<tr><td>dumpSize</td><td>DumpSize is the size in bytes of a full dump of database stored in an object storage bucket.</td><td>int64</td><td>true</td></tr>
+<tr><td>binlogSize</td><td>BinlogSize is the size in bytes of a tarball of binlog files stored in an object storage bucket.</td><td>int64</td><td>true</td></tr>
+<tr><td>workDirUsage</td><td>WorkDirUsage is the max usage in bytes of the woking directory.</td><td>int64</td><td>true</td></tr>
+<tr><td>warnings</td><td>Warnings are list of warnings from the last backup, if any.</td><td>[]string</td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlcluster"><a class="header" href="#mysqlcluster">MySQLCluster</a></h4>
+<p>MySQLCluster is the Schema for the mysqlclusters API</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td></td><td><a href="crd_mysqlcluster.html#mysqlclusterspec">MySQLClusterSpec</a></td><td>false</td></tr>
+<tr><td>status</td><td></td><td><a href="crd_mysqlcluster.html#mysqlclusterstatus">MySQLClusterStatus</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclustercondition"><a class="header" href="#mysqlclustercondition">MySQLClusterCondition</a></h4>
+<p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
+<tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
+<tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
+<tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
+<tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterlist"><a class="header" href="#mysqlclusterlist">MySQLClusterList</a></h4>
+<p>MySQLClusterList contains a list of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
+<tr><td>items</td><td></td><td>[]<a href="crd_mysqlcluster.html#mysqlcluster">MySQLCluster</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterspec"><a class="header" href="#mysqlclusterspec">MySQLClusterSpec</a></h4>
+<p>MySQLClusterSpec defines the desired state of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>replicas</td><td>Replicas is the number of instances. Available values are 1, 3, and 5.</td><td>int32</td><td>false</td></tr>
+<tr><td>podTemplate</td><td>PodTemplate is a <code>Pod</code> template for MySQL server container.</td><td><a href="crd_mysqlcluster.html#podtemplatespec">PodTemplateSpec</a></td><td>true</td></tr>
+<tr><td>volumeClaimTemplates</td><td>VolumeClaimTemplates is a list of <code>PersistentVolumeClaim</code> templates for MySQL server container. A claim named &quot;mysql-data&quot; must be included in the list.</td><td>[]<a href="crd_mysqlcluster.html#persistentvolumeclaim">PersistentVolumeClaim</a></td><td>true</td></tr>
+<tr><td>serviceTemplate</td><td>ServiceTemplate is a <code>Service</code> template for both primary and replicas.</td><td>*<a href="crd_mysqlcluster.html#servicetemplate">ServiceTemplate</a></td><td>false</td></tr>
+<tr><td>mysqlConfigMapName</td><td>MySQLConfigMapName is a <code>ConfigMap</code> name of MySQL config.</td><td>*string</td><td>false</td></tr>
+<tr><td>replicationSourceSecretName</td><td>ReplicationSourceSecretName is a <code>Secret</code> name which contains replication source info. If this field is given, the <code>MySQLCluster</code> works as an intermediate primary.</td><td>*string</td><td>false</td></tr>
+<tr><td>collectors</td><td>Collectors is the list of collector flag names of mysqld_exporter. If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect and export mysqld metrics in Prometheus format.\n\nSee https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.\n\nExample: [&quot;engine_innodb_status&quot;, &quot;info_schema.innodb_metrics&quot;]</td><td>[]string</td><td>false</td></tr>
+<tr><td>serverIDBase</td><td>ServerIDBase, if set, will become the base number of server-id of each MySQL instance of this cluster.  For example, if this is 100, the server-ids will be 100, 101, 102, and so on. If the field is not given or zero, MOCO automatically sets a random positive integer.</td><td>int32</td><td>false</td></tr>
+<tr><td>maxDelaySeconds</td><td>MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.</td><td>int</td><td>false</td></tr>
+<tr><td>startupDelaySeconds</td><td>StartupWaitSeconds is the maximum duration to wait for <code>mysqld</code> container to start working. The default is 3600 seconds.</td><td>int32</td><td>false</td></tr>
+<tr><td>logRotationSchedule</td><td>LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format.</td><td>string</td><td>false</td></tr>
+<tr><td>backupPolicyName</td><td>The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.</td><td>*string</td><td>true</td></tr>
+<tr><td>restore</td><td>Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable.</td><td>*<a href="crd_mysqlcluster.html#restorespec">RestoreSpec</a></td><td>false</td></tr>
+<tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named &quot;slow-log&quot; to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.</td><td>bool</td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterstatus"><a class="header" href="#mysqlclusterstatus">MySQLClusterStatus</a></h4>
+<p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="crd_mysqlcluster.html#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
+<tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
+<tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
+<tr><td>errantReplicas</td><td>ErrantReplicas is the number of instances that have errant transactions.</td><td>int</td><td>false</td></tr>
+<tr><td>errantReplicaList</td><td>ErrantReplicaList is the list of indices of errant replicas.</td><td>[]int</td><td>false</td></tr>
+<tr><td>backup</td><td>Backup is the status of the last successful backup.</td><td><a href="crd_mysqlcluster.html#backupstatus">BackupStatus</a></td><td>true</td></tr>
+<tr><td>restoredTime</td><td>RestoredTime is the time when the cluster data is restored.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>false</td></tr>
+<tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="crd_mysqlcluster.html#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="objectmeta"><a class="header" href="#objectmeta">ObjectMeta</a></h4>
+<p>ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMeta.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>name</td><td>Name is the name of the object.</td><td>string</td><td>false</td></tr>
+<tr><td>labels</td><td>Labels is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
+<tr><td>annotations</td><td>Annotations is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="persistentvolumeclaim"><a class="header" href="#persistentvolumeclaim">PersistentVolumeClaim</a></h4>
+<p>PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.</td><td><a href="crd_mysqlcluster.html#objectmeta">ObjectMeta</a></td><td>true</td></tr>
+<tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PersistentVolumeClaimSpec">corev1.PersistentVolumeClaimSpec</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="podtemplatespec"><a class="header" href="#podtemplatespec">PodTemplateSpec</a></h4>
+<p>PodTemplateSpec describes the data a pod should have when created from a template. This is slightly modified from corev1.PodTemplateSpec.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.  The name in this metadata is ignored.</td><td><a href="crd_mysqlcluster.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PodSpec">corev1.PodSpec</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="reconcileinfo"><a class="header" href="#reconcileinfo">ReconcileInfo</a></h4>
+<p>ReconcileInfo is the type to record the last reconciliation information.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>generation</td><td>Generation is the <code>metadata.generation</code> value of the last reconciliation. See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource</td><td>int64</td><td>false</td></tr>
+<tr><td>reconcileVersion</td><td>ReconcileVersion is the version of the operator reconciler.</td><td>int</td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="restorespec"><a class="header" href="#restorespec">RestoreSpec</a></h4>
+<p>RestoreSpec represents a set of parameters for Point-in-Time Recovery.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>sourceName</td><td>SourceName is the name of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
+<tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
+<tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. &quot;2006-01-02T15:04:05Z&quot;</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+<tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="crd_mysqlcluster.html#jobconfig">JobConfig</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="servicetemplate"><a class="header" href="#servicetemplate">ServiceTemplate</a></h4>
+<p>ServiceTemplate defines the desired spec and annotations of Service</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.  Only <code>annotations</code> and <code>labels</code> are valid.</td><td><a href="crd_mysqlcluster.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec">corev1.ServiceSpec</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
+<p>BucketConfig is a set of parameter to access an object storage bucket.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
+<tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
+<tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
+<tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="jobconfig"><a class="header" href="#jobconfig">JobConfig</a></h4>
+<p>JobConfig is a set of parameters for backup and restore job Pods.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
+<tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_mysqlcluster.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
+<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td>corev1.VolumeSource</td><td>true</td></tr>
+<tr><td>threads</td><td>Threads is the number of threads used for backup or restoration.</td><td>int</td><td>false</td></tr>
+<tr><td>memory</td><td>Memory is the amount of memory requested for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvFromSource">corev1.EnvFromSource</a></td><td>false</td></tr>
+<tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">corev1.EnvVar</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-2"><a class="header" href="#custom-resources-2">Custom Resources</a></h3>
+<ul>
+<li><a href="crd_backuppolicy.html#backuppolicy">BackupPolicy</a></li>
+</ul>
+<h3 id="sub-resources-1"><a class="header" href="#sub-resources-1">Sub Resources</a></h3>
+<ul>
+<li><a href="crd_backuppolicy.html#backuppolicylist">BackupPolicyList</a></li>
+<li><a href="crd_backuppolicy.html#backuppolicyspec">BackupPolicySpec</a></li>
+<li><a href="crd_backuppolicy.html#bucketconfig">BucketConfig</a></li>
+<li><a href="crd_backuppolicy.html#jobconfig">JobConfig</a></li>
+</ul>
+<h4 id="backuppolicy-1"><a class="header" href="#backuppolicy-1">BackupPolicy</a></h4>
+<p>BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td></td><td><a href="crd_backuppolicy.html#backuppolicyspec">BackupPolicySpec</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="backuppolicylist"><a class="header" href="#backuppolicylist">BackupPolicyList</a></h4>
+<p>BackupPolicyList contains a list of BackupPolicy</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
+<tr><td>items</td><td></td><td>[]<a href="crd_backuppolicy.html#backuppolicy">BackupPolicy</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="backuppolicyspec"><a class="header" href="#backuppolicyspec">BackupPolicySpec</a></h4>
+<p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>schedule</td><td>The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron</td><td>string</td><td>true</td></tr>
+<tr><td>jobConfig</td><td>Specifies parameters for backup Pod.</td><td><a href="crd_backuppolicy.html#jobconfig">JobConfig</a></td><td>true</td></tr>
+<tr><td>startingDeadlineSeconds</td><td>Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.</td><td>*int64</td><td>false</td></tr>
+<tr><td>concurrencyPolicy</td><td>Specifies how to treat concurrent executions of a Job. Valid values are: - &quot;Allow&quot; (default): allows CronJobs to run concurrently; - &quot;Forbid&quot;: forbids concurrent runs, skipping next run if previous run hasn't finished yet; - &quot;Replace&quot;: cancels currently running job and replaces it with a new one</td><td><a href="https://pkg.go.dev/k8s.io/api/batch/v1beta1#ConcurrencyPolicy">batchv1beta1.ConcurrencyPolicy</a></td><td>false</td></tr>
+<tr><td>activeDeadlineSeconds</td><td>Specifies the duration in seconds relative to the startTime that the job may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again.</td><td>*int64</td><td>false</td></tr>
+<tr><td>backoffLimit</td><td>Specifies the number of retries before marking this job failed. Defaults to 6</td><td>*int32</td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="bucketconfig-1"><a class="header" href="#bucketconfig-1">BucketConfig</a></h4>
+<p>BucketConfig is a set of parameter to access an object storage bucket.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
+<tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
+<tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
+<tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
+<h4 id="jobconfig-1"><a class="header" href="#jobconfig-1">JobConfig</a></h4>
+<p>JobConfig is a set of parameters for backup and restore job Pods.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
+<tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_backuppolicy.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
+<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td>corev1.VolumeSource</td><td>true</td></tr>
+<tr><td>threads</td><td>Threads is the number of threads used for backup or restoration.</td><td>int</td><td>false</td></tr>
+<tr><td>memory</td><td>Memory is the amount of memory requested for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvFromSource">corev1.EnvFromSource</a></td><td>false</td></tr>
+<tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">corev1.EnvVar</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="kubectl-moco-plugin"><a class="header" href="#kubectl-moco-plugin">kubectl moco plugin</a></h1>
+<p><code>kubectl-moco</code> is a kubectl plugin for MOCO.</p>
+<pre><code>kubectl moco [global options] &lt;subcommand&gt; [sub options] args...
+</code></pre>
+<h2 id="global-options"><a class="header" href="#global-options">Global options</a></h2>
+<p>Global options are compatible with kubectl.
+For example, the following options are available.</p>
+<table><thead><tr><th>Global options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>--kubeconfig</code></td><td><code>$HOME/.kube/config</code></td><td>Path to the kubeconfig file to use for CLI requests.</td></tr>
+<tr><td><code>-n, --namespace</code></td><td><code>default</code></td><td>If present, the namespace scope for this CLI request.</td></tr>
+</tbody></table>
+<h2 id="mysql-users-1"><a class="header" href="#mysql-users-1">MySQL users</a></h2>
+<p>You can choose one of the following user for <code>--mysql-user</code> option value.</p>
+<table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>moco-readable</code></td><td>A read-only user.</td></tr>
+<tr><td><code>moco-writable</code></td><td>A user that can edit users, databases, and tables.</td></tr>
+<tr><td><code>moco-admin</code></td><td>The super-user.</td></tr>
+</tbody></table>
+<h2 id="kubectl-moco-mysql-options-cluster_name----mysql-args"><a class="header" href="#kubectl-moco-mysql-options-cluster_name----mysql-args"><code>kubectl moco mysql [options] CLUSTER_NAME [-- mysql args...]</code></a></h2>
+<p>Run <code>mysql</code> command in a specified MySQL instance.</p>
+<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Login as the specified user</td></tr>
+<tr><td><code>--index</code></td><td>index of the primary</td><td>Index of the target mysql instance</td></tr>
+<tr><td><code>-i, --stdin</code></td><td><code>false</code></td><td>Pass stdin to the mysql container</td></tr>
+<tr><td><code>-t, --tty</code></td><td><code>false</code></td><td>Stdin is a TTY</td></tr>
+</tbody></table>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<p>This executes <code>SELECT VERSION()</code> on the primary instance in <code>mycluster</code> in <code>foo</code> namespace:</p>
+<pre><code class="language-console">$ kubectl moco -n foo mysql mycluster -- -N -e 'SELECT VERSION()'
+</code></pre>
+<p>To execute SQL from a file:</p>
+<pre><code class="language-console">$ cat sample.sql | kubectl moco -n foo mysql -u moco-writable -i mycluster
+</code></pre>
+<p>To run <code>mysql</code> interactively for the instance 2 in <code>mycluster</code> in the default namespace:</p>
+<pre><code class="language-console">$ kubectl moco mysql --index 2 -it mycluster
+</code></pre>
+<h2 id="kubectl-moco-credential-options-cluster_name"><a class="header" href="#kubectl-moco-credential-options-cluster_name"><code>kubectl moco credential [options] CLUSTER_NAME</code></a></h2>
+<p>Fetch the credential information of a specified user</p>
+<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Fetch the credential of the specified user</td></tr>
+<tr><td><code>--format</code></td><td><code>plain</code></td><td>Output format: <code>plain</code> or <code>mycnf</code></td></tr>
+</tbody></table>
+<h2 id="kubectl-moco-switchover-cluster_name"><a class="header" href="#kubectl-moco-switchover-cluster_name"><code>kubectl moco switchover CLUSTER_NAME</code></a></h2>
+<p>Switch the primary instance to one of the replicas.</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-controller"><a class="header" href="#moco-controller"><code>moco-controller</code></a></h1>
+<h2 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h2>
+<table><thead><tr><th>Name</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>POD_NAMESPACE</code></td><td>Yes</td><td>The namespace name where <code>moco-controller</code> runs.</td></tr>
+</tbody></table>
+<h2 id="command-line-flags"><a class="header" href="#command-line-flags">Command line flags</a></h2>
+<pre><code>Flags:
+      --add_dir_header                   If true, adds the file directory to the header
+      --agent-image string               The image of moco-agent sidecar container
+      --alsologtostderr                  log to standard error as well as files
+      --backup-image string              The image of moco-backup container
+      --cert-dir string                  webhook certificate directory
+      --check-interval duration          Interval of cluster maintenance (default 1m0s)
+      --fluent-bit-image string          The image of fluent-bit sidecar container
+      --grpc-cert-dir string             gRPC certificate directory (default &quot;/grpc-cert&quot;)
+      --health-probe-addr string         Listen address for health probes (default &quot;:8081&quot;)
+  -h, --help                             help for moco-controller
+      --leader-election-id string        ID for leader election by controller-runtime (default &quot;moco&quot;)
+      --log_backtrace_at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
+      --log_dir string                   If non-empty, write log files in this directory
+      --log_file string                  If non-empty, use this log file
+      --log_file_max_size uint           Defines the maximum size a log file can grow to. Unit is megabytes. If the value is 0, the maximum file size is unlimited. (default 1800)
+      --logtostderr                      log to standard error instead of files (default true)
+      --metrics-addr string              The address the metric endpoint binds to (default &quot;:8080&quot;)
+      --mysqld-exporter-image string     The image of mysqld_exporter sidecar container
+      --skip_headers                     If true, avoid header prefixes in the log messages
+      --skip_log_headers                 If true, avoid headers when opening log files
+      --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)
+  -v, --v Level                          number for the log level verbosity
+      --version                          version for moco-controller
+      --vmodule moduleSpec               comma-separated list of pattern=N settings for file-filtered logging
+      --webhook-addr string              Listen address for the webhook endpoint (default &quot;:9443&quot;)
+      --zap-devel                        Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)
+      --zap-encoder encoder              Zap log encoding (one of 'json' or 'console')
+      --zap-log-level level              Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value &gt; 0 which corresponds to custom debug levels of increasing verbosity
+      --zap-stacktrace-level level       Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+</code></pre>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-backup"><a class="header" href="#moco-backup"><code>moco-backup</code></a></h1>
+<p><code>moco-backup</code> command is used in <code>github.com/cybozu-go/moco-backup</code> container.
+Normally, users need not take care of this command.</p>
+<h2 id="environment-variables-1"><a class="header" href="#environment-variables-1">Environment variables</a></h2>
+<p><code>moco-backup</code> takes configurations of S3 API from environment variables.
+For details, read documentation of <a href="https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig"><code>EnvConfig</code> in github.com/aws/aws-sdk-go-v2/config</a>.</p>
+<p>It also requires <code>MYSQL_PASSWORD</code> environment variable to be set.</p>
+<h2 id="global-command-line-flags"><a class="header" href="#global-command-line-flags">Global command-line flags</a></h2>
+<pre><code>Global Flags:
+      --endpoint string   S3 API endpoint URL
+      --region string     AWS region
+      --threads int       The number of threads to be used (default 4)
+      --use-path-style    Use path-style S3 API
+      --work-dir string   The writable working directory (default &quot;/work&quot;)
+</code></pre>
+<h2 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h2>
+<h3 id="backup-subcommand"><a class="header" href="#backup-subcommand"><code>backup</code> subcommand</a></h3>
+<p>Usage: <code>moco-backup backup BUCKET NAMESPACE NAME</code></p>
+<ul>
+<li><code>BUCKET</code>: The bucket name.</li>
+<li><code>NAMESPACE</code>: The namespace of the MySQLCluster.</li>
+<li><code>NAME</code>: The name of the MySQLCluster.</li>
+</ul>
+<h3 id="restore-subcommand"><a class="header" href="#restore-subcommand">`restore subcommand</a></h3>
+<p>Usage: <code>moco-backup restore BUCKET SOURCE_NAMESPACE SOURCE_NAME NAMESPACE NAME YYYYMMDD-hhmmss</code></p>
+<ul>
+<li><code>BUCKET</code>: The bucket name.</li>
+<li><code>SOURCE_NAMESPACE</code>: The source MySQLCluster's namespace.</li>
+<li><code>SOURCE_NAME</code>: The source MySQLCluster's name.</li>
+<li><code>NAMESPACE</code>: The target MySQLCluster's namespace.</li>
+<li><code>NAME</code>: The target MySQLCluster's name.</li>
+<li><code>YYYYMMDD-hhmmss</code>: The point-in-time to restore data.  e.g. <code>20210523-150423</code></li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="metrics-1"><a class="header" href="#metrics-1">Metrics</a></h1>
+<ul>
+<li><a href="metrics.html#moco-controller">moco-controller</a>
+<ul>
+<li><a href="metrics.html#mysql-clusters">MySQL clusters</a></li>
+<li><a href="metrics.html#backup">Backup</a></li>
+</ul>
+</li>
+<li><a href="metrics.html#mysql-instance">MySQL instance</a></li>
+<li><a href="metrics.html#scrape-rules">Scrape rules</a></li>
+</ul>
+<h2 id="moco-controller-1"><a class="header" href="#moco-controller-1">moco-controller</a></h2>
+<p><a href="moco-controller.html"><code>moco-controller</code></a> provides the following kind of metrics in Prometheus format.
+Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go runtime and process metrics</a>, it exposes metrics related to <a href="https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics">controller-runtime</a>, MySQL clusters, and backups.</p>
+<h3 id="mysql-clusters"><a class="header" href="#mysql-clusters">MySQL clusters</a></h3>
+<p>All these metrics are prefixed with <code>moco_cluster_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
+<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<tr><td><code>checks_total</code></td><td>The number of times MOCO checked the cluster</td><td>Counter</td></tr>
+<tr><td><code>errors_total</code></td><td>The number of times MOCO encountered errors when managing the cluster</td><td>Counter</td></tr>
+<tr><td><code>available</code></td><td>1 if the cluster is available, 0 otherwise</td><td>Gauge</td></tr>
+<tr><td><code>healthy</code></td><td>1 if the cluster is running without any problems, 0 otherwise</td><td>Gauge</td></tr>
+<tr><td><code>switchover_total</code></td><td>The number of times MOCO changed the live primary instance</td><td>Counter</td></tr>
+<tr><td><code>failover_total</code></td><td>The number of times MOCO changed the failed primary instance</td><td>Counter</td></tr>
+<tr><td><code>replicas</code></td><td>The number of mysqld instances in the cluster</td><td>Gauge</td></tr>
+<tr><td><code>ready_replicas</code></td><td>The number of ready mysqld Pods in the cluster</td><td>Gauge</td></tr>
+<tr><td><code>errant_replicas</code></td><td>The number of mysqld instances that have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a></td><td>Gauge</td></tr>
+</tbody></table>
+<h3 id="backup"><a class="header" href="#backup">Backup</a></h3>
+<p>All these metrics are prefixed with <code>moco_backup_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
+<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<tr><td><code>timestamp</code></td><td>The number of seconds since January 1, 1970 UTC of the last successful backup</td><td>Gauge</td></tr>
+<tr><td><code>elapsed_seconds</code></td><td>The number of seconds taken for the last backup</td><td>Gauge</td></tr>
+<tr><td><code>dump_bytes</code></td><td>The size of compressed full backup data</td><td>Gauge</td></tr>
+<tr><td><code>binlog_bytes</code></td><td>The size of compressed binlog files</td><td>Gauge</td></tr>
+<tr><td><code>workdir_usage_bytes</code></td><td>The maximum usage of the working directory</td><td>Gauge</td></tr>
+<tr><td><code>warnings</code></td><td>The number of warnings in the last successful backup</td><td>Gauge</td></tr>
+</tbody></table>
+<h2 id="mysql-instance"><a class="header" href="#mysql-instance">MySQL instance</a></h2>
+<p>For each <code>mysqld</code> instance, <a href="https://github.com/cybozu-go/moco-agent/">moco-agent</a> exposes a set of metrics.
+Read <a href="https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md">github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md</a> for details.</p>
+<p>Also, if you give a set of collector flag names to <code>spec.collectors</code> of MySQLCluster, a sidecar container running <a href="https://github.com/prometheus/mysqld_exporter/">mysqld_exporter</a> exposes the collected metrics for each <code>mysqld</code> instance.</p>
+<h2 id="scrape-rules"><a class="header" href="#scrape-rules">Scrape rules</a></h2>
+<p>This is an example <code>kubernetes_sd_config</code> for Prometheus to collect all MOCO &amp; MySQL metrics.</p>
+<pre><code class="language-yaml">scrape_configs:
+- job_name: 'moco-controller'
+  kubernetes_sd_configs:
+  - role: pod
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_namespace,__meta_kubernetes_pod_label_app_kubernetes_io_component,__meta_kubernetes_pod_container_port_name]
+    action: keep
+    regex: moco-system;moco-controller;metrics
+
+- job_name: 'moco-agent'
+  kubernetes_sd_configs:
+  - role: pod
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name,__meta_kubernetes_pod_container_port_name,__meta_kubernetes_pod_label_statefulset_kubernetes_io_pod_name]
+    action: keep
+    regex: mysql;agent-metrics;moco-.*
+  - source_labels: [__meta_kubernetes_namespace]
+    action: replace
+    target_label: namespace
+
+- job_name: 'moco-mysql'
+  kubernetes_sd_configs:
+  - role: pod
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name,__meta_kubernetes_pod_container_port_name,__meta_kubernetes_pod_label_statefulset_kubernetes_io_pod_name]
+    action: keep
+    regex: mysql;mysqld-metrics;moco-.*
+  - source_labels: [__meta_kubernetes_namespace]
+    action: replace
+    target_label: namespace
+  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+    action: replace
+    target_label: name
+  - source_labels: [__meta_kubernetes_pod_label_statefulset_kubernetes_io_pod_name]
+    action: replace
+    target_label: index
+    regex: .*-([0-9])
+  - source_labels: [__meta_kubernetes_pod_label_moco_cybozu_com_role]
+    action: replace
+    target_label: role
+</code></pre>
+<p>The collected metrics should have these labels:</p>
+<ul>
+<li><code>namespace</code>: MySQLCluster's <code>metadata.namespace</code></li>
+<li><code>name</code>: MySQLCluster's <code>metadata.name</code></li>
+<li><code>index</code>: The ordinal of MySQL instance Pod</li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="design-notes"><a class="header" href="#design-notes">Design notes</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="design-notes-1"><a class="header" href="#design-notes-1">Design notes</a></h1>
+<p>The purpose of this document is to describe the backgrounds and the goals of MOCO.
+Implementation details are described in other documents.</p>
+<h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
+<p>We are creating our own Kubernetes operator for clustering MySQL instances for the following reasons:</p>
+<p>Firstly, our application requires strict-compatibility to the traditional MySQL.  Although recent MySQL provides an advanced clustering solution called <a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication.html">group replication</a> that is based on <a href="https://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a>, we cannot use it because of <a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication-limitations.html">various limitations from group replication</a>.</p>
+<p>Secondly, we want to have a Kubernetes native and the simplest operator.  For example, we can use Kubernetes Service to load-balance read queries to multiple replicas.  Also, we do not want to support non-GTID based replications.</p>
+<p>Lastly, none of the existing operators could satisfy our requirements.</p>
+<h2 id="goals"><a class="header" href="#goals">Goals</a></h2>
+<ul>
+<li>Manage primary-replica style clustering of MySQL instances.
+<ul>
+<li>The primary instance is the only instance that allows writes.</li>
+<li>Replica instances replicate data from the primary and are read-only.</li>
+</ul>
+</li>
+<li>Support replication from an external MySQL instance.</li>
+<li>Support all the four transaction isolation levels.</li>
+<li>No split-brain.</li>
+<li>Allow large transactions.</li>
+<li>Upgrade the operator without restarting MySQL Pods.</li>
+<li>Safe and automatic upgrading of MySQL version.</li>
+<li>Support automatic primary selection and switchover.</li>
+<li>Support automatic failover.</li>
+<li>Backup and restore features.
+<ul>
+<li>Support point-in-time recovery (PiTR).</li>
+</ul>
+</li>
+<li>Tenant users can specify the following parameters:
+<ul>
+<li>The version of MySQL instances.</li>
+<li>The number of processor cores for each MySQL instance.</li>
+<li>The amount of memory for each MySQL instance.</li>
+<li>The amount of backing storage for each MySQL instance.</li>
+<li>The number of replicas in the MySQL cluster.</li>
+<li>Custom configuration parameters.</li>
+</ul>
+</li>
+<li>Allow <code>CREATE / DROP TEMPORARY TABLE</code> during a transaction.</li>
+</ul>
+<h2 id="non-goals"><a class="header" href="#non-goals">Non-goals</a></h2>
+<ul>
+<li>
+<p>Support for older MySQL versions (5.6, 5.7)</p>
+<p>As a late comer, we focus our development effort on the latest MySQL.
+This simplifies things and allows us to use advanced mechanisms such as <code>CLONE INSTANCE</code>.</p>
+</li>
+<li>
+<p>Node fencing</p>
+<p>Fencing is a technique to safely isolated a failed Node.
+MOCO does not rely on Node fencing as it should be done externally.</p>
+<p>We can still implement failover in a safe way by configuring semi-sync parameters appropriately.</p>
+</li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-reconciles-mysqlcluster"><a class="header" href="#how-moco-reconciles-mysqlcluster">How MOCO reconciles MySQLCluster</a></h1>
+<p>MOCO creates and updates a StatefulSet and related resources for each MySQLCluster custom resource.
+This document describes how and when MOCO updates them.</p>
+<ul>
+<li><a href="reconcile.html#reconciler-versions">Reconciler versions</a></li>
+<li><a href="reconcile.html#the-update-policy-of-moco-agent-container">The update policy of moco-agent container</a></li>
+<li><a href="reconcile.html#clustering-related-resources">Clustering related resources</a>
+<ul>
+<li><a href="reconcile.html#statefulset">StatefulSet</a></li>
+<li><a href="reconcile.html#when-the-statefulset-is-not-updated">When the StatefulSet is <em>not</em> updated</a></li>
+<li><a href="reconcile.html#secrets">Secrets</a></li>
+<li><a href="reconcile.html#certificate">Certificate</a></li>
+<li><a href="reconcile.html#service">Service</a></li>
+<li><a href="reconcile.html#configmap">ConfigMap</a></li>
+<li><a href="reconcile.html#poddisruptionbudget">PodDisruptionBudget</a></li>
+<li><a href="reconcile.html#serviceaccount">ServiceAccount</a></li>
+</ul>
+</li>
+<li><a href="reconcile.html#backup-and-restore-related-resources">Backup and restore related resources</a>
+<ul>
+<li><a href="reconcile.html#cronjob">CronJob</a></li>
+<li><a href="reconcile.html#job">Job</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="reconciler-versions"><a class="header" href="#reconciler-versions">Reconciler versions</a></h2>
+<p>MOCO's reconciliation routine should be consistent to avoid frequent updates.</p>
+<p>That said, we may need to modify the reconciliation process in the future.
+To avoid updating the StatefulSet, MOCO has multiple versions of reconcilers.</p>
+<p>For example, if a MySQLCluster is reconciled with version 1 of the reconciler,
+MOCO will keep using the version 1 reconciler to reconcile the MySQLCluster.</p>
+<p>If the user edits MySQLCluster's <code>spec</code> field, MOCO can reconcile the MySQLCluster with the latest reconciler, for example version 2, because the user shall be ready for mysqld restarts.</p>
+<h2 id="the-update-policy-of-moco-agent-container"><a class="header" href="#the-update-policy-of-moco-agent-container">The update policy of moco-agent container</a></h2>
+<p>We shall try to avoid updating moco-agent as much as possible.</p>
+<h2 id="clustering-related-resources"><a class="header" href="#clustering-related-resources">Clustering related resources</a></h2>
+<p>The figure below illustrates the overview of resources related to clustering MySQL instances.</p>
+<p><img src="https://www.plantuml.com/plantuml/svg/XLF1QkCm4BtxAqHwoHvis1u33TtDNXRQqiLx2pceqZWHo9RGZ5hCqdxxnYDLgKj8VJ3pvZq_ZvwaMoGPAFQswfpL4CJYGVQ0NYeGlLEknX49-eMGA5Bvq8f_bJW-oWqKd1KBrcLa8R3s15cxRK458B5yb8WlBcZyjfjaFiDYcBuHJRCkd5W95K0ILCdgDsA4m9yRBbDx0u5CPzHHo9mwuZEst2-My-7-thLfBBB836lhTS7fVwBXZbWbN7sGRWz6QnXsmUmFLC-MLy19fTtBKBFvQtKc_yuvpZ8YX9Bwzdvi_znjR4JA8QXKvwMG9EYYRO6OHBoOlt9-dEOILzOCq6X71FfyAAmbUqxwwBHO-c1w6SQapU037S1ResIYC_Z-1N_zFabuDWe-_GAVbP_nnQFmAHDoUw03XFS0DsxepFvUUh7inqODNTBtux6S6VvGoiKXvoZBhByCXkZ9kE5dr7j8lDTFB7ZbDx_olapd9-y2egXvpzSbe7bx7ioyNmBXbOkRxTMJZR2B_cRcnkkUiyNq8dqz7S9oHj_MfxEnuhAQzlvjcYTpP0lrwOeXdYxOBGmwzlO_" alt="Overview of clustering related resources" /></p>
+<h3 id="statefulset"><a class="header" href="#statefulset">StatefulSet</a></h3>
+<p>MOCO tries not to update the StatefulSet frequently.
+It updates the StatefulSet only when the update is a must.</p>
+<h4 id="the-conditions-for-statefulset-update"><a class="header" href="#the-conditions-for-statefulset-update">The conditions for StatefulSet update</a></h4>
+<p>The StatefulSet will be updated when:</p>
+<ul>
+<li>Some fields under <code>spec</code> of MySQLCluster are modified.</li>
+<li><code>my.cnf</code> for mysqld is updated.</li>
+<li>the version of the reconciler used to reconcile the StatefulSet is obsoleted.</li>
+<li>the image of moco-agent given to the controller is updated.</li>
+<li>the image of mysqld_exporter given to the controller is updated.</li>
+</ul>
+<h3 id="when-the-statefulset-is-not-updated"><a class="header" href="#when-the-statefulset-is-not-updated">When the StatefulSet is <em>not</em> updated</a></h3>
+<ul>
+<li>the image of fluent-bit given to the controller is changed.
+<ul>
+<li>because the controller does not depend on fluent-bit.</li>
+</ul>
+</li>
+</ul>
+<p>The fluent-bit sidecar container is updated only when some fields under <code>spec</code> of MySQLCluster are modified.</p>
+<h3 id="secrets"><a class="header" href="#secrets">Secrets</a></h3>
+<p>MOCO generates random passwords for users that MOCO uses to access MySQL.</p>
+<p>The generated passwords are stored in two Secrets.
+One is in the same namespace as <code>moco-controller</code>, and the other is in the namespace of MySQLCluster.</p>
+<h3 id="certificate"><a class="header" href="#certificate">Certificate</a></h3>
+<p>MOCO creates a Certificate in the same namespace as <code>moco-controller</code> to issue a TLS certificate for <code>moco-agent</code>.</p>
+<p>After cert-manager issues a TLS certificate and creates a Secret for it, MOCO copies the Secret to the namespace of MySQLCluster.  For details, read <a href="security.html">security.md</a>.</p>
+<h3 id="service"><a class="header" href="#service">Service</a></h3>
+<p>MOCO creates three Services for each MySQLCluster, that is:</p>
+<ul>
+<li>A headless Service, required for every StatefulSet</li>
+<li>A Service for the primary mysqld instance</li>
+<li>A Service for replica mysql instances</li>
+</ul>
+<p>The Services' labels, annotations, and <code>spec</code> fields can be customized with MySQLCluster's <code>status.serviceTemplate</code> field.</p>
+<p>The following fields in Service <code>spec</code> may not be customized, though.</p>
+<ul>
+<li><code>clusterIP</code></li>
+<li><code>ports</code></li>
+<li><code>selector</code></li>
+</ul>
+<h3 id="configmap"><a class="header" href="#configmap">ConfigMap</a></h3>
+<p>MOCO creates and updates a ConfigMap for <code>my.cnf</code>.
+The name of this ConfigMap is calculated from the contents of <code>my.cnf</code> that may be changed by users.</p>
+<p>MOCO deletes old ConfigMaps of <code>my.cnf</code> after a new ConfigMap for <code>my.cnf</code> is created.</p>
+<p>If the cluster does not disable a sidecar container for slow query logs, MOCO creates a ConfigMap for the sidecar.</p>
+<h3 id="poddisruptionbudget"><a class="header" href="#poddisruptionbudget">PodDisruptionBudget</a></h3>
+<p>MOCO creates a PodDisruptionBudget for each MySQLCluster to prevent
+too few semi-sync replica servers.</p>
+<p>The <code>spec.maxUnavailable</code> value is calculated from MySQLCluster's
+<code>spec.replicas</code> as follows:</p>
+<pre><code>`spec.maxUnavailable` = floor(`spec.replicas` / 2)
+</code></pre>
+<p>If <code>spec.replicas</code> is 1, MOCO does not create a PDB.</p>
+<h3 id="serviceaccount"><a class="header" href="#serviceaccount">ServiceAccount</a></h3>
+<p>MOCO creates a ServiceAccount for Pods of the StatefulSet.
+The ServiceAccount is not bound to any Roles/ClusterRoles.</p>
+<h2 id="backup-and-restore-related-resources"><a class="header" href="#backup-and-restore-related-resources">Backup and restore related resources</a></h2>
+<p>See <a href="backup.html">backup.md</a> for the overview of the backup and restoration mechanism.</p>
+<h3 id="cronjob"><a class="header" href="#cronjob">CronJob</a></h3>
+<p>This is the only resource created when backup is enabled for MySQLCluster.</p>
+<p>If the backup is disabled, the CronJob is deleted.</p>
+<h3 id="job"><a class="header" href="#job">Job</a></h3>
+<p>To restore data from a backup, MOCO creates a Job.
+MOCO deletes the Job after the Job finishes successfully.</p>
+<p>If the Job fails, MOCO leaves the Job.</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-maintains-mysql-clusters"><a class="header" href="#how-moco-maintains-mysql-clusters">How MOCO maintains MySQL clusters</a></h1>
+<p>For each <a href="crd_mysqlcluster.html">MySQLCluster</a>, MOCO creates and maintains a set of <code>mysqld</code> instances.
+The set contains one <em>primary</em> instance and may contain <em>multiple</em> replica instances depending on the <code>spec.replicas</code> value of MySQLCluster.</p>
+<p>This document describes how MOCO does this job safely.</p>
+<ul>
+<li><a href="clustering.html#terminology">Terminology</a></li>
+<li><a href="clustering.html#prerequisites">Prerequisites</a></li>
+<li><a href="clustering.html#limitations">Limitations</a></li>
+<li><a href="clustering.html#possible-states">Possible states</a>
+<ul>
+<li><a href="clustering.html#mysqlcluster">MySQLCluster</a></li>
+<li><a href="clustering.html#pod">Pod</a></li>
+<li><a href="clustering.html#mysql-data">MySQL data</a></li>
+</ul>
+</li>
+<li><a href="clustering.html#invariants">Invariants</a></li>
+<li><a href="clustering.html#the-maintenance-flow">The maintenance flow</a>
+<ul>
+<li><a href="clustering.html#gather-the-current-status">Gather the current status</a></li>
+<li><a href="clustering.html#update-status-of-mysqlcluster">Update <code>status</code> of MySQLCluster</a></li>
+<li><a href="clustering.html#determine-what-moco-should-do-for-the-cluster">Determine what MOCO should do for the cluster</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="terminology"><a class="header" href="#terminology">Terminology</a></h2>
+<ul>
+<li>Replication: <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html">GTID-based replication</a> between <code>mysqld</code> instances.</li>
+<li>Cluster: a group of <code>mysqld</code> instances that replicate data between them.</li>
+<li>Primary (instance): a single source instance of <code>mysqld</code> in a cluster.</li>
+<li>Replica (instance): a read-only instance of <code>mysqld</code> that synchronizes data with the primary instance.</li>
+<li>Intermediate primary: a special primary instance that replicates data from an external <code>mysqld</code>.</li>
+<li><a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">Errant transaction</a>: a transaction that exists only on a replica instance.</li>
+<li>Errant replica: a replica instance that has errant transactions.</li>
+<li>Switchover: operation to change a live primary to a replica and promote a replica to the new primary.</li>
+<li>Failover: operation to replace a dead primary with a replica.</li>
+</ul>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>MySQLCluster allows 1, 3, or 5 for <code>spec.replicas</code> value.  If 1, MOCO runs a single <code>mysqld</code> instance without configuring replication.  If 3 or 5, MOCO chooses a <code>mysqld</code> instance as a primary, writable instance and makes all other instances as replicas of the primary instance.</p>
+<p><code>status.currentPrimaryIndex</code> in MySQLCluster is used to record the current chosen primary instance.
+Initially, <code>status.currentPrimaryIndex</code> is zero and therefore the index of the primary instance is zero.</p>
+<p>As a special case, if <code>spec.replicationSourceSecretName</code> is set for MySQLCluster, the primary instance is configured as a replica of an external MySQL server.  In this case, the primary instance will not be writable.  We call this type of primary instance <em>intermediate primary</em>.</p>
+<p>If <code>spec.replicationSourceSecretName</code> is <em>not</em> set, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html">semisynchronous replication</a> between the primary and replicas.  Otherwise, the replication is asynchronous.</p>
+<p>For semi-synchronous replication, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout"><code>rpl_semi_sync_master_timeout</code></a> long enough so that there should be at least one (in case of <code>spec.replicas</code> == 3) or two (in case of <code>spec.replicas</code> == 5) replica instances that have the same commit as the primary.</p>
+<p>MOCO also disables <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery"><code>relay_log_recovery</code></a> because enabling it would drop the relay logs on replicas.</p>
+<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_slave_start</code> to prevent misconfigured replication.</p>
+<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
+<p><code>moco-agent</code> also provides a readiness probe for <code>mysqld</code> container.  If a replica instance does not start replication threads or is too delayed to execute transactions, the container and the Pod will be determined as unready.</p>
+<h2 id="limitations-1"><a class="header" href="#limitations-1">Limitations</a></h2>
+<p>Currently, MOCO does not re-initialize data after the primary instance fails.</p>
+<p>After failover to a replica instance, the old primary may have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a> because it may recover unacknowledged transactions in its binary log.  This is an inevitable limitation in MySQL semi-synchronous replication.</p>
+<p>If this happens, MOCO detects the errant transaction and will not allow the old primary to rejoin the cluster as a replica.</p>
+<p>Users need to delete the volume data (PersistentVolumeClaim) and the pod of the old primary to re-initialize it.</p>
+<h2 id="possible-states"><a class="header" href="#possible-states">Possible states</a></h2>
+<h3 id="mysqlcluster-1"><a class="header" href="#mysqlcluster-1">MySQLCluster</a></h3>
+<p>MySQLCluster can be one of the following states.</p>
+<p>The initial state is <em>Cloning</em> if <code>spec.replicationSourceSecretName</code> is set, or <em>Restoring</em> if <code>spec.restore</code> is set.
+Otherwise, the initial state is <em>Incomplete</em>.</p>
+<p>Note that, if the primary Pod is <strong>ready</strong>, the <code>mysqld</code> is assured writable.
+Likewise, if a replica Pod is ready, the <code>mysqld</code> is assured read-only and running replication threads w/o too much delay.</p>
+<ol>
+<li>Healthy
+<ul>
+<li>All Pods are ready.</li>
+<li>All replicas have no errant transactions.</li>
+<li>All replicas are read-only and connected to the primary.</li>
+<li>For intermediate primary instance, the primary works as a replica for an external <code>mysqld</code> and is read-only.</li>
+</ul>
+</li>
+<li>Cloning
+<ul>
+<li><code>spec.replicationSourceSecretName</code> is set.</li>
+<li>The cloning result exists and is not &quot;Completed&quot; <em>or</em> there is no cloning result and the instance has no data.</li>
+<li>(note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)</li>
+</ul>
+</li>
+<li>Restoring
+<ul>
+<li><code>spec.restore</code> is set.</li>
+<li><code>status.restoredTime</code> is not set.</li>
+</ul>
+</li>
+<li>Degraded
+<ul>
+<li>The primary Pod is ready and does not lose data.</li>
+<li>For intermediate primary instance, the primary works as a replica for an external <code>mysqld</code> and is read-only.</li>
+<li>Half or more replicas are ready, read-only, connected to the primary, and have no errant transactions.  For example, if <code>spec.replicas</code> is 5, two or more such replicas are needed.</li>
+<li>At least one replica has some problems.</li>
+</ul>
+</li>
+<li>Failed
+<ul>
+<li>The primary instance is not running or lost data.</li>
+<li>More than half of replicas are running and have data without errant transactions.  For example, if <code>spec.replicas</code> is 5, three or more such replicas are needed.</li>
+</ul>
+</li>
+<li>Lost
+<ul>
+<li>The primary instance is not running or lost data.</li>
+<li>Half or more replicas are not running or lost data or have errant transactions.</li>
+</ul>
+</li>
+<li>Incomplete
+<ul>
+<li>None of the above states applies.</li>
+</ul>
+</li>
+</ol>
+<p>MOCO can recover the cluster to Healthy from <strong>Degraded</strong>, <strong>Failed</strong>, or <strong>Incomplete</strong> if all Pods are running and there are no <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a>.</p>
+<p>MOCO can recover the cluster to Degraded from <strong>Failed</strong> when not all Pods are running.  Recovering from Failed is called <em>failover</em>.</p>
+<p>MOCO cannot recover the cluster from <strong>Lost</strong>.  Users need to restore data from backups.</p>
+<h3 id="pod"><a class="header" href="#pod">Pod</a></h3>
+<p><code>mysqld</code> is run as a container in a Pod.
+Therefore, MOCO needs to be aware of the following conditions.</p>
+<ol>
+<li>Missing: the Pod does not exist.</li>
+<li>Exist: the Pod exists and not <em>Terminating</em> or <em>Demoting</em>.</li>
+<li>Terminating: The Pod exists and <code>metadata.deletionTimestamp</code> is <em>not</em> null.</li>
+<li>Demoting: The Pod exists and has <code>moco.cybozu.com/demote: true</code> annotation.</li>
+</ol>
+<p>If there are missing Pods, MOCO does nothing for the MySQLCluster.</p>
+<p>If a primary instance Pod is <em>Terminating</em> or <em>Demoting</em>, MOCO controller changes the primary to one of the replica instances.  This operation is called <em>switchover</em>.</p>
+<h3 id="mysql-data"><a class="header" href="#mysql-data">MySQL data</a></h3>
+<p>MOCO checks replica instances whether they have errant transactions compared to the primary instance.
+If it detects such an instance, MOCO records the instance with MySQLCluster and excludes it from the cluster.</p>
+<p>The user needs to delete the Pod and the volume manually and let the StatefulSet controller to re-create them.
+After a newly initialized instance gets created, MOCO will allow it to rejoin the cluster.</p>
+<h2 id="invariants"><a class="header" href="#invariants">Invariants</a></h2>
+<ul>
+<li>By definition, the primary instance recorded in MySQLCluster has no errant transactions.  It is always the single source of truth.</li>
+<li>Errant replicas are not treated as ready even if their Pod status is ready.</li>
+</ul>
+<h2 id="the-maintenance-flow"><a class="header" href="#the-maintenance-flow">The maintenance flow</a></h2>
+<p>MOCO runs the following infinite loop for each MySQLCluster.
+It stops when MySQLCluster resource is deleted.</p>
+<ol>
+<li>Gather the current status</li>
+<li>Update <code>status</code> of MySQLCluster</li>
+<li>Determine what MOCO should do for the cluster</li>
+<li>If there is nothing to do, wait a while and go to 1</li>
+<li>Do the determined operation then go to 1</li>
+</ol>
+<p>Read the following sub-sections about 1 to 3.</p>
+<h3 id="gather-the-current-status"><a class="header" href="#gather-the-current-status">Gather the current status</a></h3>
+<p>MOCO gathers the information from <code>kube-apiserver</code> and <code>mysqld</code> as follows:</p>
+<ul>
+<li>MySQLCluster resource</li>
+<li>Pod resources
+<ul>
+<li>If some of the Pods are missing, MOCO does nothing.</li>
+</ul>
+</li>
+<li><code>mysqld</code>
+<ul>
+<li><code>SHOW SLAVE HOSTS</code> (on the primary)</li>
+<li><code>SHOW SLAVE STATUS</code> (on the replicas)</li>
+<li>Global variables such as <code>gtid_executed</code> or <code>super_read_only</code></li>
+<li>Result of CLONE from <code>performance_schema.clone_status</code> table</li>
+</ul>
+</li>
+</ul>
+<p>If MOCO cannot connect to an instance for a certain period, that instance is determined as failed.</p>
+<h3 id="update-status-of-mysqlcluster"><a class="header" href="#update-status-of-mysqlcluster">Update <code>status</code> of MySQLCluster</a></h3>
+<p>In this phase, MOCO updates <code>status</code> field of MySQLCluster as follows:</p>
+<ol>
+<li>Determine the current MySQLCluster state.</li>
+<li>Add or update type=<code>Initialized</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is not Cloning.</li>
+<li>otherwise, <code>False</code>.</li>
+</ul>
+</li>
+<li>Add or update type=<code>Available</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is Healthy or Degraded.</li>
+<li>otherwise, <code>False</code>.</li>
+</ul>
+</li>
+<li>Add or update type=<code>Healthy</code> condition to <code>status.conditions</code> as
+<ul>
+<li><code>True</code> if the cluster state is Healthy.</li>
+<li>otherwise, <code>False</code>.</li>
+<li>The <code>Reason</code> field is set to the cluster state such as &quot;Failed&quot; or &quot;Incomplete&quot;.</li>
+</ul>
+</li>
+<li>Set the number of ready replica Pods to <code>status.syncedReplicas</code>.</li>
+<li>Add newly found errant replicas to <code>status.errantReplicaList</code>.</li>
+<li>Remove re-initialized and/or no-longer errant replicas from <code>status.errantReplicaList</code></li>
+<li>Set <code>status.errantReplicas</code> to the length of <code>status.errantReplicaList</code>.</li>
+</ol>
+<h3 id="determine-what-moco-should-do-for-the-cluster"><a class="header" href="#determine-what-moco-should-do-for-the-cluster">Determine what MOCO should do for the cluster</a></h3>
+<p>The operation depends on the current cluster state.</p>
+<p>The operation and its result are recorded as Events of MySQLCluster resource.</p>
+<p>cf. <a href="https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application-introspection/">Application Introspection and Debugging</a></p>
+<h4 id="healthy"><a class="header" href="#healthy">Healthy</a></h4>
+<p>If the primary instance Pod is Terminating or Demoting, switch the primary instance to another replica.
+Otherwise, just wait a while.</p>
+<p>The switchover is done as follows.
+It takes at least several seconds for a new primary to become writable.</p>
+<ol>
+<li>Make the primary instance <code>super_read_only=1</code>.</li>
+<li>Kill all existing connections except ones from <code>localhost</code> and ones for MOCO.</li>
+<li>Wait for a replica to catch up the executed GTID set of the primary instance.</li>
+<li>Set <code>status.currentPrimaryIndex</code> to the replica's index.</li>
+<li>If the old primary is Demoting, remove <code>moco.cybozu.com/demote</code> annotation from the Pod.</li>
+</ol>
+<h4 id="cloning"><a class="header" href="#cloning">Cloning</a></h4>
+<p>Execute <a href="https://dev.mysql.com/doc/refman/8.0/en/clone-plugin-remote.html"><code>CLONE INSTANCE</code></a> on the intermediate primary instance to clone data from an external MySQL instance.</p>
+<p>If the cloning goes successful, do the same as Intermediate case.</p>
+<h4 id="restoring"><a class="header" href="#restoring">Restoring</a></h4>
+<p>Do nothing.</p>
+<h4 id="degraded"><a class="header" href="#degraded">Degraded</a></h4>
+<p>First, check if the primary instance Pod is Terminating or Demoting, and if it is, do the switchover just like Healthy case.</p>
+<p>Then, do the same as Intermediate case to try to fix the problems.
+It is not possible to recover the cluster to Healthy if there are errant or stopped replicas, though.</p>
+<h4 id="failed"><a class="header" href="#failed">Failed</a></h4>
+<p>MOCO chooses the most advanced instance as the new primary instance.
+The most advanced means that its retrieved GTID set is the superset of all other replicas except for those have errant transactions.</p>
+<p>To prevent accidental writes to the old primary instance (so-called split-brain), MOCO stops replication IO_THREAD for all replicas.  This way, the old primary cannot get necessary acks from replicas to write further transactions.</p>
+<p>The failover is done as follows:</p>
+<ol>
+<li>Stop IO_THREAD on all replicas.</li>
+<li>Choose the most advanced replica as the new primary.  Errant replicas recorded in MySQLCluster are excluded from the candidates.</li>
+<li>Wait for the replica to execute all retrieved GTID set.</li>
+<li>Update <code>status.currentPrimaryIndex</code> to the new primary's index.</li>
+</ol>
+<h4 id="lost"><a class="header" href="#lost">Lost</a></h4>
+<p>There is nothing can be done.</p>
+<h4 id="intermediate"><a class="header" href="#intermediate">Intermediate</a></h4>
+<ul>
+<li>On the primary that was an intermediate primary, wait for all the retrieved GTID set to be executed.</li>
+<li>Start replication between the primary and non-errant replicas.
+<ul>
+<li>If a replication has no data, MOCO clones the primary data to the replica first.</li>
+</ul>
+</li>
+<li>Stop replication of errant replicas.</li>
+<li>Set <code>super_read_only=1</code> for replica instances that are writable.</li>
+<li>Adjust <code>moco.cybozu.com/role</code> label to Pods according to their roles.
+<ul>
+<li>For errant replicas, the label is removed to prevent users from reading inconsistent data.</li>
+</ul>
+</li>
+<li>Finally, make the primary <code>mysqld</code> writable if the primary is not an intermediate primary.</li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="backup-and-restore-1"><a class="header" href="#backup-and-restore-1">Backup and restore</a></h1>
+<p>This document describes how MOCO takes a backup of MySQLCluster data and restores a cluster from a backup.</p>
+<ul>
+<li><a href="backup.html#overview">Overview</a></li>
+<li><a href="backup.html#design-goals">Design goals</a></li>
+<li><a href="backup.html#implementation">Implementation</a>
+<ul>
+<li><a href="backup.html#backup-file-keys">Backup file keys</a></li>
+<li><a href="backup.html#timestamps">Timestamps</a></li>
+<li><a href="backup.html#backup">Backup</a></li>
+<li><a href="backup.html#restore">Restore</a></li>
+<li><a href="backup.html#caveats">Caveats</a></li>
+</ul>
+</li>
+<li><a href="backup.html#considered-options">Considered options</a>
+<ul>
+<li><a href="backup.html#why-do-we-use-s3-compatible-object-storage-to-store-backups">Why do we use S3-compatible object storage to store backups?</a></li>
+<li><a href="backup.html#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></li>
+<li><a href="backup.html#why-do-we-prefer-mysqlsh-to-mysqldump">Why do we prefer <code>mysqlsh</code> to <code>mysqldump</code>?</a></li>
+<li><a href="backup.html#why-dont-we-do-continuous-backup">Why don't we do continuous backup?</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>A MySQLCluster can be configured to take backups regularly by referencing a BackupPolicy in <code>spec.backupPolicyName</code>.  For each MySQLCluster associated with a BackupPolicy, <code>moco-controller</code> creates a CronJob.
+The CronJob creates a Job to take a full backup periodically.
+The Job also takes a backup of binary logs for <a href="https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery.html">Point-in-Time Recovery (PiTR)</a>.
+The backups are stored in a S3-compatible object storage bucket.</p>
+<p>This figure illustrates how MOCO takes a backup of a MySQLCluster.</p>
+<p><img src="https://www.plantuml.com/plantuml/svg/VP9DRzim38Rl-XM4xpOIfzkXXw1hRiE-Sonwa6N6LIUBdZu614FwsoTHTkjjM4yct-SbOPAwyK6w44SZ5DdWo40rag9wpWow2gI7h0bn8jEZW-gJ7D5FKY6SY9YdB_mI001t7y_7hnyE9lg0xfvhp_w7AUnMgkzn-a96gpEpYKE6R8DwFsjm3GvFwD0gBCK7H_OzTLodKbpKHNcaZeLCe6dsMKWzsYOfACFSuuZkfrRuJYcADd2XbuoolSv9CNuZWunT2bwaMsrxROTdqfMS3QiyZS7fUeX_FSdavH-MYn3AKEoXEkxWGECaW-uCmkVk4LM0Oo0d1wpcLI_dA5k5TjDkwqrRRwxu91shxUnblpO8LH_7YGqvQ1bUNcstMxNRljvk-nTCeneQ69VmnS1sgEyUTD-ZlNTwU0ZrVkswv7NaXyVdvBjUmtQvvpFXdVwNBDjUy_BIdfwMDx9h-6z4obZbnIJzge4fXaLU9aZWpGhiWTibzMq3SUfbGF11XkZ53ThKolm6" alt="Backup" /></p>
+<ol>
+<li><code>moco-controller</code> creates a CronJob and Role/RoleBinding to allow access to MySQLCluster for the Job Pod.</li>
+<li>At each configured interval, CronJob creates a Job.</li>
+<li>The Job dumps all data from a <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-dump-instance-schema.html">MySQL shell's dump instance utility</a>.</li>
+<li>The Job creates a tarball of the dumped data and put it in a bucket of S3 compatible object storage.</li>
+<li>The Job also dumps binlogs since the last backup and put it in the same bucket (with a different name, of course).</li>
+<li>The Job finally updates MySQLCluster status to record the last successful backup.</li>
+</ol>
+<p>To restore from a backup, users need to create a new MySQLCluster with <code>spec.restore</code> filled with necessary information such as the bucket name of the object storage, the object key, and so on.</p>
+<p>The next figure illustrates how MOCO restores MySQL cluster from a backup.</p>
+<p><img src="https://www.plantuml.com/plantuml/svg/TPA_xzCm4CLt_nMdx8xwJM3f49LsG_me3LlLmR6lgOlZYnm7X53xjuFj6WAeItBtFiydvrqsanVEpuDXPp8A7HGVn83JA2H29rm1OWfl-C4008xllxUVtktCF7bqfy1agXFTauhYI2e86K9PDa63DKY7mcDolwKkkg_K9U501hVQActx2Dollalz7yDlagGMtLSjyOsKD5iVuIG22cE16pnxdfN5FE2yYJsimU4P7Lg9_viQcCHVZXjZqj2ie6XhsD4m2gyxW_2nkwBqq7foeiUOsbG_Gil1ReNyCezGhQeNlghugaxX9ZLPerqRX4BDmnXvAFvXdRQ6-aXJcNaq0pzUj59eJqxt5y-RXUSMFu2iTsIW64WIVtG6qww3nbXuXgt54DVmKkR5PH1ZUavoW4j3lDlzdcTM9IZwPWq9nO8IIFf7wXAYckwzEFBgwP7N9UprvmFRe5NpO7u2" alt="Restore" /></p>
+<ol>
+<li><code>moco-controller</code> creates a Job and Role/RoleBinding for restoration.</li>
+<li>The Job downloads a tarball of dumped files of the specified backup.</li>
+<li>The Job loads data into an empty <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-load-dump.html">MySQL shell's dump loading utility</a>.</li>
+<li>If the user wanted to restore data at a point-in-time, the Job downloads saved binlogs.</li>
+<li>The Job applies binlogs up to the specified point-in-time using <a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html"><code>mysqlbinlog</code></a>.</li>
+<li>The Job finally updates MySQLCluster status to record the restoration time.</li>
+</ol>
+<h2 id="design-goals"><a class="header" href="#design-goals">Design goals</a></h2>
+<p>Must:</p>
+<ul>
+<li>Users must be able to configure different backup policies for each MySQLCluster.</li>
+<li>Users must be able to restore MySQL data at a point-in-time from backups.</li>
+<li>Users must be able to restore MySQL data without the original MySQLCluster resource.</li>
+<li><code>moco-controller</code> must export metrics about backups.</li>
+</ul>
+<p>Should:</p>
+<ul>
+<li>Backup data should be compressed to save the storage space.</li>
+<li>Backup data should be stored in an object storage.</li>
+<li>Backups should be taken from a replica instance as much as possible.</li>
+</ul>
+<p>These &quot;should's&quot; are mostly in terms of money or performance.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<h3 id="backup-file-keys"><a class="header" href="#backup-file-keys">Backup file keys</a></h3>
+<p>Backup files are stored in an object storage bucket with the following keys.</p>
+<ul>
+<li>Key for a tarball of a fully dumped MySQL: <code>moco/&lt;namespace&gt;/&lt;name&gt;/YYYYMMDD-hhmmss/dump.tar</code></li>
+<li>Key for a compressed tarball of binlog files: <code>moco/&lt;namespace&gt;/&lt;name&gt;/YYYYMMDD-hhmmss/binlog.tar.zst</code></li>
+</ul>
+<p><code>&lt;namespace&gt;</code> is the namespace of MySQLCluster, and <code>&lt;name&gt;</code> is the name of MySQLCluster.
+<code>YYYYMMDD-hhmmss</code> is the date and time of the backup where <code>YYYY</code> is the year, <code>MM</code> is two-digit month, <code>DD</code> is two-digit day, <code>hh</code> is two-digit hour in 24-hour format, <code>mm</code> is two-digit minute, and <code>ss</code> is two-digit second.</p>
+<p>Example: <code>moco/foo/bar/20210515-230003/dump.tar</code></p>
+<p>This allows multiple MySQLClusters to share the same bucket.</p>
+<h3 id="timestamps"><a class="header" href="#timestamps">Timestamps</a></h3>
+<p>Internally, the time for PiTR is formatted in UTC timezone.</p>
+<p>The restore Job runs <code>mysqlbinlog</code> with <code>TZ=Etc/UTC</code> timezone.</p>
+<h3 id="backup-1"><a class="header" href="#backup-1">Backup</a></h3>
+<p>As described in Overview, the backup process is implemented with CronJob and Job.
+In addition, users need to provide a ServiceAccount for the Job.</p>
+<p>The ServiceAccount is often used to grant access to the object storage bucket where the backup files will be stored.
+For instance, Amazon Elastic Kubernetes Service (EKS) has <a href="https://aws.amazon.com/blogs/opensource/introducing-fine-grained-iam-roles-service-accounts/">a feature to create such a ServiceAccount</a>.
+Kubernetes itself is also developing such an enhancement called <a href="https://github.com/kubernetes-sigs/container-object-storage-interface-api">Container Object Storage Interface (COSI)</a>.</p>
+<p>To allow the backup Job to update MySQLCluster status, MOCO creates Role and RoleBinding.
+The RoleBinding grants the access to the given ServiceAccount.</p>
+<p>For the time being, MOCO only supports AWS S3 API as it prevails among other object storage APIs.
+We intend to extend the support to S3-compatible object storages such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.</p>
+<p>For the first time, the backup Job chooses a replica instance as the backup source if available.
+For the second and subsequent backups, the Job will choose the last chosen instance as long as it is still a replica and available.</p>
+<p>The backups are divided into two: a full dump and binlogs.
+A full dump is a snapshot of the entire MySQL database.
+Binlogs are records of transactions.
+With <code>mysqlbinlog</code>, binlogs can be used to apply transactions to a database restored from a full dump for PiTR.</p>
+<p>For the first time, MOCO only takes a full dump of a MySQL instance, and records the GTID at the backup.
+For the second and subsequent backups, MOCO will retrieve binlogs since the GTID of the last backup until now.</p>
+<p>To take a full dump, MOCO uses <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-dump-instance-schema.html">MySQL shell's dump instance utility</a>.
+It performs <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">significantly faster</a> than <code>mysqldump</code> or <code>mysqlpump</code>.
+The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd compression algorithm</a>.</p>
+<p>MOCO then creates a tarball of the dump and puts it to an object storage bucket.</p>
+<p>To retrieve transactions since the last backup until now, <code>mysqlbinlog</code> is used with these flags:</p>
+<ul>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-master"><code>--read-from-remote-master=BINLOG-DUMP-GTIDS</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_exclude-gtids"><code>--exclude-gtids=&lt;the GTID of the last backup&gt;</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_to-last-log"><code>--to-last-log</code></a></li>
+</ul>
+<p>The retrieved binlog files are packed into a tarball and compressed with zstd, then put to an object storage bucket.</p>
+<p>Finally, the Job updates MySQLCluster status field with the following information:</p>
+<ul>
+<li>The time of backup</li>
+<li>The time spent on the backup</li>
+<li>The ordinal of the backup source instance</li>
+<li><code>server_uuid</code> of the instance (to check whether the instance was re-initialized or not)</li>
+<li>The binlog filename in <code>SHOW MASTER STATUS</code> output.</li>
+<li>The size of the tarball of the dumped files</li>
+<li>The size of the tarball of the binlog files</li>
+<li>The maximum usage of the working directory</li>
+<li>Warnings, if any</li>
+</ul>
+<h3 id="restore-1"><a class="header" href="#restore-1">Restore</a></h3>
+<p>To restore MySQL data from a backup, users need to create a new MySQLCluster with appropriate <code>spec.restore</code> field.
+<code>spec.restore</code> needs to provide at least the following information:</p>
+<ul>
+<li>The bucket name</li>
+<li>Namespace and name of the original MySQLCluster</li>
+<li>A point-in-time in RFC3339 format</li>
+</ul>
+<p>After <code>moco-controller</code> identifies <code>mysqld</code> is running, it creates a Job to retrieve backup files and load them into <code>mysqld</code>.</p>
+<p>The Job looks for the most recent tarball of the dumped files that is older than the specified point-in-time in the bucket, and retrieves it.
+The dumped files are then loaded to <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-load-dump.html">MySQL shell's load dump utility</a>.</p>
+<p>If the point-in-time is different from the time of the dump file, and if there is a compressed tarball of binlog files, then the Job retrieves binlog files and applies transactions up to the point-in-time.</p>
+<p>After restoration process finishes, the Job updates MySQLCluster status to record the restoration time.
+<code>moco-controller</code> then configures the clustering as usual.</p>
+<p>If the Job fails, <code>moco-controller</code> leaves the Job as is.
+The restored MySQL cluster will also be left read-only.
+If some of the data have been restored, they can be read from the cluster.</p>
+<p>If a failed Job is deleted, <code>moco-controller</code> will create a new Job to give it another chance.
+Users can safely delete a successful Job.</p>
+<h3 id="caveats"><a class="header" href="#caveats">Caveats</a></h3>
+<ul>
+<li>
+<p>No automatic deletion of backup files</p>
+<p>MOCO does not delete old backup files from object storage.
+Users should configure <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">a bucket lifecycle policy</a> to delete old backups automatically.</p>
+</li>
+<li>
+<p>Duplicated backup Jobs</p>
+<p>CronJob may create two or more Jobs at a time.
+If this happens, only one Job can update MySQLCluster status.</p>
+</li>
+<li>
+<p>Lost binlog files</p>
+<p>If <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_binlog_expire_logs_seconds"><code>binlog_expire_logs_seconds</code></a> or <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_expire_logs_days"><code>expire_logs_days</code></a> is set to a shorter value than the interval of backups, MOCO cannot save binlogs correctly.
+Users are responsible to configure <code>binlog_expire_logs_seconds</code> appropriately.</p>
+</li>
+</ul>
+<h2 id="considered-options"><a class="header" href="#considered-options">Considered options</a></h2>
+<p>There were many design choices and alternative methods to implement backup/restore feature for MySQL.
+Here are descriptions of why we determined the current design.</p>
+<h3 id="why-do-we-use-s3-compatible-object-storage-to-store-backups"><a class="header" href="#why-do-we-use-s3-compatible-object-storage-to-store-backups">Why do we use S3-compatible object storage to store backups?</a></h3>
+<p>Compared to file systems, object storage is generally more cost-effective.
+It also has many useful features such as <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">object lifecycle management</a>.</p>
+<p>AWS S3 API is the most prevailing API for object storages.</p>
+<h3 id="why-do-we-use-jobs-for-backup-and-restoration"><a class="header" href="#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></h3>
+<p>Backup and restoration can be a CPU- and memory-consuming task.
+Running such a task in <code>moco-controller</code> is dangerous because <code>moco-controller</code> manages a lot of MySQLCluster.</p>
+<p><code>moco-agent</code> is also not a safe place to run backup job because it is a sidecar of <code>mysqld</code> Pod.
+If backup is run in <code>mysqld</code> Pod, it would interfere with the <code>mysqld</code> process.</p>
+<h3 id="why-do-we-prefer-mysqlsh-to-mysqldump"><a class="header" href="#why-do-we-prefer-mysqlsh-to-mysqldump">Why do we prefer <code>mysqlsh</code> to <code>mysqldump</code>?</a></h3>
+<p>The biggest reason is the difference in how these tools lock the instance.</p>
+<p><code>mysqlsh</code> uses <a href="https://dev.mysql.com/doc/refman/8.0/en/lock-instance-for-backup.html"><code>LOCK INSTANCE FOR BACKUP</code></a> which blocks DDL until the lock is released.  <code>mysqldump</code>, on the other hand, allows DDL to be executed.  Once DDL is executed <em>and</em> acquire meta data lock, which means that <strong>any DML for the table modified by DDL will be blocked</strong>.</p>
+<p>Blocking DML during backup is not desirable, especially when the only available backup source is the primary instance.</p>
+<p>Another reason is that <code>mysqhsl</code> is <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">much faster</a> than <code>mysqldump</code> / <code>mysqlpump</code>.</p>
+<h3 id="why-dont-we-do-continuous-backup"><a class="header" href="#why-dont-we-do-continuous-backup">Why don't we do continuous backup?</a></h3>
+<p>Continuous backup is a technique to save executed transactions in real time.
+For MySQL, this can be done with <code>mysqlbinlog --stop-never</code>.  This command continuously retrieves transactions from binary logs and outputs them to stdout.</p>
+<p>MOCO does not adopt this technique for the following reasons:</p>
+<ul>
+<li>
+<p>We assume MOCO clusters have replica instances in most cases.</p>
+<p>When the data of the primary instance is lost, one of replicas can be promoted as a new primary.</p>
+</li>
+<li>
+<p>It is troublesome to control the continuous backup process on Kubernetes.</p>
+<p>The process needs to be kept running between full backups.
+If we do so, the entire backup process should be a persistent workload, not a (Cron)Job.</p>
+</li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="upgrading-mysqld"><a class="header" href="#upgrading-mysqld">Upgrading mysqld</a></h1>
+<p>This document describes how mysqld upgrades its data and what MOCO has to do about it.</p>
+<ul>
+<li><a href="upgrading.html#preconditions">Preconditions</a>
+<ul>
+<li><a href="upgrading.html#mysql-data">MySQL data</a></li>
+<li><a href="upgrading.html#downgrading">Downgrading</a></li>
+<li><a href="upgrading.html#upgrading-a-replication-setup">Upgrading a replication setup</a></li>
+<li><a href="upgrading.html#statefulset-behavior">StatefulSet behavior</a></li>
+<li><a href="upgrading.html#automatic-switchover">Automatic switchover</a></li>
+</ul>
+</li>
+<li><a href="upgrading.html#moco-implementation">MOCO implementation</a>
+<ul>
+<li><a href="upgrading.html#example">Example</a></li>
+<li><a href="upgrading.html#limitations">Limitations</a></li>
+</ul>
+</li>
+<li><a href="upgrading.html#users-responsibility">User's responsibility</a></li>
+</ul>
+<h2 id="preconditions"><a class="header" href="#preconditions">Preconditions</a></h2>
+<h3 id="mysql-data-1"><a class="header" href="#mysql-data-1">MySQL data</a></h3>
+<p>Beginning with 8.0.16, <code>mysqld</code> can update all data that need to be updated when it starts running.
+This means that MOCO needs nothing to do with MySQL data.</p>
+<p>One thing that we should care about is that the update process may take a long time.
+The startup probe of <code>mysqld</code> container should be configured to wait for <code>mysqld</code> to
+complete updating data.</p>
+<p>ref: https://dev.mysql.com/doc/refman/8.0/en/upgrading-what-is-upgraded.html</p>
+<h3 id="downgrading"><a class="header" href="#downgrading">Downgrading</a></h3>
+<p>MySQL 8.0 does not support any kind of downgrading.</p>
+<p>ref: https://dev.mysql.com/doc/refman/8.0/en/downgrading.html</p>
+<p>Internally, MySQL has a version called &quot;data dictionary (DD) version&quot;.
+If two MySQL versions have the same DD version, they are considered to have data compatibility.</p>
+<p>ref: https://github.com/mysql/mysql-server/blob/mysql-8.0.24/sql/dd/dd_version.h#L209</p>
+<p>Nevertheless, DD versions do change from time to time between revisions of MySQL 8.0.
+Therefore, the simplest way to avoid DD version mismatch is to not downgrade MySQL.</p>
+<h3 id="upgrading-a-replication-setup"><a class="header" href="#upgrading-a-replication-setup">Upgrading a replication setup</a></h3>
+<p>In a nutshell, replica MySQL instances should be the same or newer than the source MySQL instance.</p>
+<p>refs:</p>
+<ul>
+<li>https://dev.mysql.com/doc/refman/8.0/en/replication-compatibility.html</li>
+<li>https://dev.mysql.com/doc/refman/8.0/en/replication-upgrade.html</li>
+</ul>
+<h3 id="statefulset-behavior"><a class="header" href="#statefulset-behavior">StatefulSet behavior</a></h3>
+<p>When the Pod template of a StatefulSet is updated, Kubernetes updates the Pods.
+With the default update strategy <code>RollingUpdate</code>, the Pods are updated one by one
+from the largest ordinal to the smallest.</p>
+<p>StatefulSet controller keeps the old Pod template until it completes the rolling update.
+If a Pod that is not being updated are deleted, StatefulSet controller restores the Pod
+from the old template.</p>
+<p>This means that, if the cluster is Healthy, MySQL is assured to be updated one by one
+from the instance of the largest ordinal to the smallest.</p>
+<p>refs: </p>
+<ul>
+<li>https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#rolling-updates</li>
+<li>https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#rolling-update</li>
+</ul>
+<h3 id="automatic-switchover"><a class="header" href="#automatic-switchover">Automatic switchover</a></h3>
+<p>MOCO switches the primary instance when the Pod of the instance is being deleted.
+Read <a href="clustering.html"><code>clustering.md</code></a> for details.</p>
+<h2 id="moco-implementation"><a class="header" href="#moco-implementation">MOCO implementation</a></h2>
+<p>With the preconditions listed above, MOCO can upgrade <code>mysqld</code> in MySQLCluster safely
+as follows.</p>
+<ol>
+<li>Set <code>.spec.updateStrategy</code> field in StatefulSet to <code>RollingUpdate</code>.</li>
+<li>Choose the lowest ordinal Pod as the next primary upon a switchover.</li>
+<li>Configure the startup probe of <code>mysqld</code> container to wait long enough.
+<ul>
+<li>By default, MOCO configures the probe to wait up to one hour.</li>
+<li>Users can adjust the duration for each MySQLCluster.</li>
+</ul>
+</li>
+</ol>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p>Suppose that we are updating a three-instance cluster.
+The <code>mysqld</code> instances in the cluster have ordinals 0, 1, and 2, and the
+current primary instance is instance 1.</p>
+<p>After MOCO updates the Pod template of the StatefulSet created for the cluster,
+Kubernetes start re-creating Pods starting from instance 2.</p>
+<p>Instance 2 is a replica and therefore is safe for an update.</p>
+<p>Next to instance 2, the instance 1 Pod is deleted.  The deletion triggers
+an automatic switchover so that MOCO changes the primary to the instance 0
+because it has the lowest ordinal.  Because instance 0 is running an old
+<code>mysqld</code>, the preconditions are kept.</p>
+<p>Finally, instance 0 is re-created in the same way.  This time, MOCO switches
+the primary to instance 1.  Since both instance 1 and 2 has been updated and
+instance 0 is being deleted, the preconditions are kept.</p>
+<h3 id="limitations-2"><a class="header" href="#limitations-2">Limitations</a></h3>
+<p>If an instance is down during an upgrade, MOCO may choose an already updated
+instance as the new primary even though some instances are still running an
+old version.</p>
+<p>If this happens, users may need to manually delete the old replica data and
+re-initialize the replica to restore the cluster health.</p>
+<h2 id="users-responsibility"><a class="header" href="#users-responsibility">User's responsibility</a></h2>
+<ul>
+<li>Make sure that the cluster is healthy before upgrading</li>
+<li>Check and <a href="https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html">prepare your installation for upgrade</a></li>
+<li>Do not attempt to downgrade MySQL</li>
+</ul>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="security-considerations"><a class="header" href="#security-considerations">Security considerations</a></h1>
+<h2 id="grpc-api"><a class="header" href="#grpc-api">gRPC API</a></h2>
+<p><a href="https://github.com/cybozu-go/moco-agent">moco-agent</a>, a sidecar container in mysqld Pod, provides gRPC API to
+execute <code>CLONE INSTANCE</code> and required operations after CLONE.
+More importantly, the request contains credentials to access the source
+database.</p>
+<p>To protect the credentials and prevent abuse of API, MOCO configures mTLS
+between moco-agent and moco-controller as follows:</p>
+<ol>
+<li>Create an <a href="https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.Issuer">Issuer</a> resource in <code>moco-system</code> namespace as the Certificate Authority.</li>
+<li>Create a <a href="https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.Certificate">Certificate</a> resource to issue the certificate for <code>moco-controller</code>.</li>
+<li><code>moco-controller</code> issues certificates for each MySQLCluster by creating <a href="https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.Certificate">Certificate</a> resources.</li>
+<li><code>moco-controller</code> copies Secret resources created by cert-manager to the namespaces of MySQLCluster.</li>
+<li>Both moco-controller and moco-agent verifies the certificate with the CA certificate.
+<ul>
+<li>The CA certificate is embedded in the Secret resources.</li>
+</ul>
+</li>
+<li>moco-agent additionally verifies the certificate from <code>moco-controller</code> if it's Common Name is <code>moco-controller</code>.</li>
+</ol>
+<h2 id="mysql-passwords"><a class="header" href="#mysql-passwords">MySQL passwords</a></h2>
+<p>MOCO generates its user passwords randomly with the OS random device.
+The passwords then stored as Secret resources.</p>
+<p>As to communication between moco-controller and mysqld, it is not (yet) over TLS.
+That said, the password is encrypted anyway thanks to <a href="https://dev.mysql.com/doc/refman/8.0/en/caching-sha2-pluggable-authentication.html">caching_sha2_password</a> authentication.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+        
+        
+
+    </body>
+</html>

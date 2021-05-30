@@ -1,0 +1,432 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Backup and restore - MOCO Documentation</title>
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">MOCO</a></li><li class="chapter-item expanded affix "><li class="part-title">User manual</li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">1.</strong> Getting started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">1.1.</strong> Deploying MOCO</a></li><li class="chapter-item expanded "><a href="install-plugin.html"><strong aria-hidden="true">1.2.</strong> Installing kubectl-moco</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="advanced.html"><strong aria-hidden="true">3.</strong> Advanced topics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="custom-mysqld.html"><strong aria-hidden="true">3.1.</strong> Building your own imge</a></li></ol></li><li class="chapter-item expanded "><a href="troubles.html"><strong aria-hidden="true">4.</strong> Troubleshooting</a></li><li class="chapter-item expanded affix "><li class="part-title">References</li><li class="chapter-item expanded "><a href="crd.html"><strong aria-hidden="true">5.</strong> Custom resources</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="crd_mysqlcluster.html"><strong aria-hidden="true">5.1.</strong> MySQLCluster</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy.html"><strong aria-hidden="true">5.2.</strong> BackupPolicy</a></li></ol></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">6.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="kubectl-moco.html"><strong aria-hidden="true">6.1.</strong> kubectl-moco</a></li><li class="chapter-item expanded "><a href="moco-controller.html"><strong aria-hidden="true">6.2.</strong> moco-controller</a></li><li class="chapter-item expanded "><a href="moco-backup.html"><strong aria-hidden="true">6.3.</strong> moco-backup</a></li></ol></li><li class="chapter-item expanded "><a href="metrics.html"><strong aria-hidden="true">7.</strong> Metrics</a></li><li class="chapter-item expanded affix "><li class="part-title">Developer documents</li><li class="chapter-item expanded "><a href="notes.html"><strong aria-hidden="true">8.</strong> Design notes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="design.html"><strong aria-hidden="true">8.1.</strong> Goals</a></li><li class="chapter-item expanded "><a href="reconcile.html"><strong aria-hidden="true">8.2.</strong> Reconciliation</a></li><li class="chapter-item expanded "><a href="clustering.html"><strong aria-hidden="true">8.3.</strong> Clustering</a></li><li class="chapter-item expanded "><a href="backup.html" class="active"><strong aria-hidden="true">8.4.</strong> Backup and restore</a></li><li class="chapter-item expanded "><a href="upgrading.html"><strong aria-hidden="true">8.5.</strong> Upgrading mysqld</a></li><li class="chapter-item expanded "><a href="security.html"><strong aria-hidden="true">8.6.</strong> Security</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">MOCO Documentation</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/cybozu-go/moco/edit/main/docs/src/backup.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                        
+
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="backup-and-restore"><a class="header" href="#backup-and-restore">Backup and restore</a></h1>
+<p>This document describes how MOCO takes a backup of MySQLCluster data and restores a cluster from a backup.</p>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#design-goals">Design goals</a></li>
+<li><a href="#implementation">Implementation</a>
+<ul>
+<li><a href="#backup-file-keys">Backup file keys</a></li>
+<li><a href="#timestamps">Timestamps</a></li>
+<li><a href="#backup">Backup</a></li>
+<li><a href="#restore">Restore</a></li>
+<li><a href="#caveats">Caveats</a></li>
+</ul>
+</li>
+<li><a href="#considered-options">Considered options</a>
+<ul>
+<li><a href="#why-do-we-use-s3-compatible-object-storage-to-store-backups">Why do we use S3-compatible object storage to store backups?</a></li>
+<li><a href="#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></li>
+<li><a href="#why-do-we-prefer-mysqlsh-to-mysqldump">Why do we prefer <code>mysqlsh</code> to <code>mysqldump</code>?</a></li>
+<li><a href="#why-dont-we-do-continuous-backup">Why don't we do continuous backup?</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>A MySQLCluster can be configured to take backups regularly by referencing a BackupPolicy in <code>spec.backupPolicyName</code>.  For each MySQLCluster associated with a BackupPolicy, <code>moco-controller</code> creates a CronJob.
+The CronJob creates a Job to take a full backup periodically.
+The Job also takes a backup of binary logs for <a href="https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery.html">Point-in-Time Recovery (PiTR)</a>.
+The backups are stored in a S3-compatible object storage bucket.</p>
+<p>This figure illustrates how MOCO takes a backup of a MySQLCluster.</p>
+<p><img src="https://www.plantuml.com/plantuml/svg/VP9DRzim38Rl-XM4xpOIfzkXXw1hRiE-Sonwa6N6LIUBdZu614FwsoTHTkjjM4yct-SbOPAwyK6w44SZ5DdWo40rag9wpWow2gI7h0bn8jEZW-gJ7D5FKY6SY9YdB_mI001t7y_7hnyE9lg0xfvhp_w7AUnMgkzn-a96gpEpYKE6R8DwFsjm3GvFwD0gBCK7H_OzTLodKbpKHNcaZeLCe6dsMKWzsYOfACFSuuZkfrRuJYcADd2XbuoolSv9CNuZWunT2bwaMsrxROTdqfMS3QiyZS7fUeX_FSdavH-MYn3AKEoXEkxWGECaW-uCmkVk4LM0Oo0d1wpcLI_dA5k5TjDkwqrRRwxu91shxUnblpO8LH_7YGqvQ1bUNcstMxNRljvk-nTCeneQ69VmnS1sgEyUTD-ZlNTwU0ZrVkswv7NaXyVdvBjUmtQvvpFXdVwNBDjUy_BIdfwMDx9h-6z4obZbnIJzge4fXaLU9aZWpGhiWTibzMq3SUfbGF11XkZ53ThKolm6" alt="Backup" /></p>
+<ol>
+<li><code>moco-controller</code> creates a CronJob and Role/RoleBinding to allow access to MySQLCluster for the Job Pod.</li>
+<li>At each configured interval, CronJob creates a Job.</li>
+<li>The Job dumps all data from a <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-dump-instance-schema.html">MySQL shell's dump instance utility</a>.</li>
+<li>The Job creates a tarball of the dumped data and put it in a bucket of S3 compatible object storage.</li>
+<li>The Job also dumps binlogs since the last backup and put it in the same bucket (with a different name, of course).</li>
+<li>The Job finally updates MySQLCluster status to record the last successful backup.</li>
+</ol>
+<p>To restore from a backup, users need to create a new MySQLCluster with <code>spec.restore</code> filled with necessary information such as the bucket name of the object storage, the object key, and so on.</p>
+<p>The next figure illustrates how MOCO restores MySQL cluster from a backup.</p>
+<p><img src="https://www.plantuml.com/plantuml/svg/TPA_xzCm4CLt_nMdx8xwJM3f49LsG_me3LlLmR6lgOlZYnm7X53xjuFj6WAeItBtFiydvrqsanVEpuDXPp8A7HGVn83JA2H29rm1OWfl-C4008xllxUVtktCF7bqfy1agXFTauhYI2e86K9PDa63DKY7mcDolwKkkg_K9U501hVQActx2Dollalz7yDlagGMtLSjyOsKD5iVuIG22cE16pnxdfN5FE2yYJsimU4P7Lg9_viQcCHVZXjZqj2ie6XhsD4m2gyxW_2nkwBqq7foeiUOsbG_Gil1ReNyCezGhQeNlghugaxX9ZLPerqRX4BDmnXvAFvXdRQ6-aXJcNaq0pzUj59eJqxt5y-RXUSMFu2iTsIW64WIVtG6qww3nbXuXgt54DVmKkR5PH1ZUavoW4j3lDlzdcTM9IZwPWq9nO8IIFf7wXAYckwzEFBgwP7N9UprvmFRe5NpO7u2" alt="Restore" /></p>
+<ol>
+<li><code>moco-controller</code> creates a Job and Role/RoleBinding for restoration.</li>
+<li>The Job downloads a tarball of dumped files of the specified backup.</li>
+<li>The Job loads data into an empty <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-load-dump.html">MySQL shell's dump loading utility</a>.</li>
+<li>If the user wanted to restore data at a point-in-time, the Job downloads saved binlogs.</li>
+<li>The Job applies binlogs up to the specified point-in-time using <a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html"><code>mysqlbinlog</code></a>.</li>
+<li>The Job finally updates MySQLCluster status to record the restoration time.</li>
+</ol>
+<h2 id="design-goals"><a class="header" href="#design-goals">Design goals</a></h2>
+<p>Must:</p>
+<ul>
+<li>Users must be able to configure different backup policies for each MySQLCluster.</li>
+<li>Users must be able to restore MySQL data at a point-in-time from backups.</li>
+<li>Users must be able to restore MySQL data without the original MySQLCluster resource.</li>
+<li><code>moco-controller</code> must export metrics about backups.</li>
+</ul>
+<p>Should:</p>
+<ul>
+<li>Backup data should be compressed to save the storage space.</li>
+<li>Backup data should be stored in an object storage.</li>
+<li>Backups should be taken from a replica instance as much as possible.</li>
+</ul>
+<p>These &quot;should's&quot; are mostly in terms of money or performance.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<h3 id="backup-file-keys"><a class="header" href="#backup-file-keys">Backup file keys</a></h3>
+<p>Backup files are stored in an object storage bucket with the following keys.</p>
+<ul>
+<li>Key for a tarball of a fully dumped MySQL: <code>moco/&lt;namespace&gt;/&lt;name&gt;/YYYYMMDD-hhmmss/dump.tar</code></li>
+<li>Key for a compressed tarball of binlog files: <code>moco/&lt;namespace&gt;/&lt;name&gt;/YYYYMMDD-hhmmss/binlog.tar.zst</code></li>
+</ul>
+<p><code>&lt;namespace&gt;</code> is the namespace of MySQLCluster, and <code>&lt;name&gt;</code> is the name of MySQLCluster.
+<code>YYYYMMDD-hhmmss</code> is the date and time of the backup where <code>YYYY</code> is the year, <code>MM</code> is two-digit month, <code>DD</code> is two-digit day, <code>hh</code> is two-digit hour in 24-hour format, <code>mm</code> is two-digit minute, and <code>ss</code> is two-digit second.</p>
+<p>Example: <code>moco/foo/bar/20210515-230003/dump.tar</code></p>
+<p>This allows multiple MySQLClusters to share the same bucket.</p>
+<h3 id="timestamps"><a class="header" href="#timestamps">Timestamps</a></h3>
+<p>Internally, the time for PiTR is formatted in UTC timezone.</p>
+<p>The restore Job runs <code>mysqlbinlog</code> with <code>TZ=Etc/UTC</code> timezone.</p>
+<h3 id="backup"><a class="header" href="#backup">Backup</a></h3>
+<p>As described in Overview, the backup process is implemented with CronJob and Job.
+In addition, users need to provide a ServiceAccount for the Job.</p>
+<p>The ServiceAccount is often used to grant access to the object storage bucket where the backup files will be stored.
+For instance, Amazon Elastic Kubernetes Service (EKS) has <a href="https://aws.amazon.com/blogs/opensource/introducing-fine-grained-iam-roles-service-accounts/">a feature to create such a ServiceAccount</a>.
+Kubernetes itself is also developing such an enhancement called <a href="https://github.com/kubernetes-sigs/container-object-storage-interface-api">Container Object Storage Interface (COSI)</a>.</p>
+<p>To allow the backup Job to update MySQLCluster status, MOCO creates Role and RoleBinding.
+The RoleBinding grants the access to the given ServiceAccount.</p>
+<p>For the time being, MOCO only supports AWS S3 API as it prevails among other object storage APIs.
+We intend to extend the support to S3-compatible object storages such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.</p>
+<p>For the first time, the backup Job chooses a replica instance as the backup source if available.
+For the second and subsequent backups, the Job will choose the last chosen instance as long as it is still a replica and available.</p>
+<p>The backups are divided into two: a full dump and binlogs.
+A full dump is a snapshot of the entire MySQL database.
+Binlogs are records of transactions.
+With <code>mysqlbinlog</code>, binlogs can be used to apply transactions to a database restored from a full dump for PiTR.</p>
+<p>For the first time, MOCO only takes a full dump of a MySQL instance, and records the GTID at the backup.
+For the second and subsequent backups, MOCO will retrieve binlogs since the GTID of the last backup until now.</p>
+<p>To take a full dump, MOCO uses <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-dump-instance-schema.html">MySQL shell's dump instance utility</a>.
+It performs <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">significantly faster</a> than <code>mysqldump</code> or <code>mysqlpump</code>.
+The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd compression algorithm</a>.</p>
+<p>MOCO then creates a tarball of the dump and puts it to an object storage bucket.</p>
+<p>To retrieve transactions since the last backup until now, <code>mysqlbinlog</code> is used with these flags:</p>
+<ul>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-master"><code>--read-from-remote-master=BINLOG-DUMP-GTIDS</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_exclude-gtids"><code>--exclude-gtids=&lt;the GTID of the last backup&gt;</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_to-last-log"><code>--to-last-log</code></a></li>
+</ul>
+<p>The retrieved binlog files are packed into a tarball and compressed with zstd, then put to an object storage bucket.</p>
+<p>Finally, the Job updates MySQLCluster status field with the following information:</p>
+<ul>
+<li>The time of backup</li>
+<li>The time spent on the backup</li>
+<li>The ordinal of the backup source instance</li>
+<li><code>server_uuid</code> of the instance (to check whether the instance was re-initialized or not)</li>
+<li>The binlog filename in <code>SHOW MASTER STATUS</code> output.</li>
+<li>The size of the tarball of the dumped files</li>
+<li>The size of the tarball of the binlog files</li>
+<li>The maximum usage of the working directory</li>
+<li>Warnings, if any</li>
+</ul>
+<h3 id="restore"><a class="header" href="#restore">Restore</a></h3>
+<p>To restore MySQL data from a backup, users need to create a new MySQLCluster with appropriate <code>spec.restore</code> field.
+<code>spec.restore</code> needs to provide at least the following information:</p>
+<ul>
+<li>The bucket name</li>
+<li>Namespace and name of the original MySQLCluster</li>
+<li>A point-in-time in RFC3339 format</li>
+</ul>
+<p>After <code>moco-controller</code> identifies <code>mysqld</code> is running, it creates a Job to retrieve backup files and load them into <code>mysqld</code>.</p>
+<p>The Job looks for the most recent tarball of the dumped files that is older than the specified point-in-time in the bucket, and retrieves it.
+The dumped files are then loaded to <code>mysqld</code> using <a href="https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-utilities-load-dump.html">MySQL shell's load dump utility</a>.</p>
+<p>If the point-in-time is different from the time of the dump file, and if there is a compressed tarball of binlog files, then the Job retrieves binlog files and applies transactions up to the point-in-time.</p>
+<p>After restoration process finishes, the Job updates MySQLCluster status to record the restoration time.
+<code>moco-controller</code> then configures the clustering as usual.</p>
+<p>If the Job fails, <code>moco-controller</code> leaves the Job as is.
+The restored MySQL cluster will also be left read-only.
+If some of the data have been restored, they can be read from the cluster.</p>
+<p>If a failed Job is deleted, <code>moco-controller</code> will create a new Job to give it another chance.
+Users can safely delete a successful Job.</p>
+<h3 id="caveats"><a class="header" href="#caveats">Caveats</a></h3>
+<ul>
+<li>
+<p>No automatic deletion of backup files</p>
+<p>MOCO does not delete old backup files from object storage.
+Users should configure <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">a bucket lifecycle policy</a> to delete old backups automatically.</p>
+</li>
+<li>
+<p>Duplicated backup Jobs</p>
+<p>CronJob may create two or more Jobs at a time.
+If this happens, only one Job can update MySQLCluster status.</p>
+</li>
+<li>
+<p>Lost binlog files</p>
+<p>If <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_binlog_expire_logs_seconds"><code>binlog_expire_logs_seconds</code></a> or <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_expire_logs_days"><code>expire_logs_days</code></a> is set to a shorter value than the interval of backups, MOCO cannot save binlogs correctly.
+Users are responsible to configure <code>binlog_expire_logs_seconds</code> appropriately.</p>
+</li>
+</ul>
+<h2 id="considered-options"><a class="header" href="#considered-options">Considered options</a></h2>
+<p>There were many design choices and alternative methods to implement backup/restore feature for MySQL.
+Here are descriptions of why we determined the current design.</p>
+<h3 id="why-do-we-use-s3-compatible-object-storage-to-store-backups"><a class="header" href="#why-do-we-use-s3-compatible-object-storage-to-store-backups">Why do we use S3-compatible object storage to store backups?</a></h3>
+<p>Compared to file systems, object storage is generally more cost-effective.
+It also has many useful features such as <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">object lifecycle management</a>.</p>
+<p>AWS S3 API is the most prevailing API for object storages.</p>
+<h3 id="why-do-we-use-jobs-for-backup-and-restoration"><a class="header" href="#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></h3>
+<p>Backup and restoration can be a CPU- and memory-consuming task.
+Running such a task in <code>moco-controller</code> is dangerous because <code>moco-controller</code> manages a lot of MySQLCluster.</p>
+<p><code>moco-agent</code> is also not a safe place to run backup job because it is a sidecar of <code>mysqld</code> Pod.
+If backup is run in <code>mysqld</code> Pod, it would interfere with the <code>mysqld</code> process.</p>
+<h3 id="why-do-we-prefer-mysqlsh-to-mysqldump"><a class="header" href="#why-do-we-prefer-mysqlsh-to-mysqldump">Why do we prefer <code>mysqlsh</code> to <code>mysqldump</code>?</a></h3>
+<p>The biggest reason is the difference in how these tools lock the instance.</p>
+<p><code>mysqlsh</code> uses <a href="https://dev.mysql.com/doc/refman/8.0/en/lock-instance-for-backup.html"><code>LOCK INSTANCE FOR BACKUP</code></a> which blocks DDL until the lock is released.  <code>mysqldump</code>, on the other hand, allows DDL to be executed.  Once DDL is executed <em>and</em> acquire meta data lock, which means that <strong>any DML for the table modified by DDL will be blocked</strong>.</p>
+<p>Blocking DML during backup is not desirable, especially when the only available backup source is the primary instance.</p>
+<p>Another reason is that <code>mysqhsl</code> is <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">much faster</a> than <code>mysqldump</code> / <code>mysqlpump</code>.</p>
+<h3 id="why-dont-we-do-continuous-backup"><a class="header" href="#why-dont-we-do-continuous-backup">Why don't we do continuous backup?</a></h3>
+<p>Continuous backup is a technique to save executed transactions in real time.
+For MySQL, this can be done with <code>mysqlbinlog --stop-never</code>.  This command continuously retrieves transactions from binary logs and outputs them to stdout.</p>
+<p>MOCO does not adopt this technique for the following reasons:</p>
+<ul>
+<li>
+<p>We assume MOCO clusters have replica instances in most cases.</p>
+<p>When the data of the primary instance is lost, one of replicas can be promoted as a new primary.</p>
+</li>
+<li>
+<p>It is troublesome to control the continuous backup process on Kubernetes.</p>
+<p>The process needs to be kept running between full backups.
+If we do so, the entire backup process should be a persistent workload, not a (Cron)Job.</p>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="clustering.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="upgrading.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a rel="prev" href="clustering.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a rel="next" href="upgrading.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
