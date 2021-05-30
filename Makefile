@@ -4,6 +4,7 @@ CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print su
 KUSTOMIZE_VERSION = 4.1.3
 CRD_TO_MARKDOWN_VERSION = 0.0.3
 MYSQLSH_VERSION = 8.0.25-1
+MDBOOK_VERSION = 0.4.8
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
@@ -60,6 +61,11 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
+
+.PHONY: book
+book: mdbook
+	rm -rf docs/book
+	cd docs; $(MDBOOK) build
 
 .PHONY: check-generate
 check-generate:
@@ -150,8 +156,15 @@ $(KUSTOMIZE):
 	tar -C bin -xzf -
 
 CRD_TO_MARKDOWN := $(shell pwd)/bin/crd-to-markdown
+.PHONY: crd-to-markdown
 crd-to-markdown: ## Download crd-to-markdown locally if necessary.
 	$(call go-get-tool,$(CRD_TO_MARKDOWN),github.com/clamoriniere/crd-to-markdown@v$(CRD_TO_MARKDOWN_VERSION))
+
+MDBOOK := $(shell pwd)/bin/mdbook
+.PHONY: mdbook
+mdbook: ## Donwload mdbook locally if necessary
+	mkdir -p bin
+	curl -fsL https://github.com/rust-lang/mdBook/releases/download/v$(MDBOOK_VERSION)/mdbook-v$(MDBOOK_VERSION)-x86_64-unknown-linux-gnu.tar.gz | tar -C bin -xzf -
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
