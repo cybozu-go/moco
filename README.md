@@ -106,11 +106,9 @@ $ make stop
 
 ## Documentation
 
-- [`docs/setup.md`](docs/setup.md) for installing MOCO.
-- [`docs/usage.md`](docs/usage.md) is the user manual of MOCO.
-- [`examples`](examples/) directory contains example MySQLCluster manifests.
+See https://cybozu-go.github.io/moco/
 
-[`docs`](docs/) directory also contains other design or specification documents.
+[`examples`](examples/) directory contains example MySQLCluster manifests.
 
 ## Docker images
 
