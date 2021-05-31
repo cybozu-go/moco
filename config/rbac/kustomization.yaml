@@ -5,3 +5,5 @@ resources:
 - leader_election_role_binding.yaml
 - mysqlcluster_editor_role.yaml
 - mysqlcluster_viewer_role.yaml
+- backuppolicy_editor_role.yaml
+- backuppolicy_viewer_role.yaml

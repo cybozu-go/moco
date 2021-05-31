@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.2] - 2021-06-01
+
+### Changed
+- Fix RBAC for BackupPolicy (#258)
+
 ## [0.9.1] - 2021-05-31
 
 ### Changed
@@ -175,7 +180,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/cybozu-go/moco/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/cybozu-go/moco/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/cybozu-go/moco/compare/v0.8.3...v0.9.0
 [0.8.3]: https://github.com/cybozu-go/moco/compare/v0.8.2...v0.8.3
