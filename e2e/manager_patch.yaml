@@ -14,5 +14,7 @@ spec:
         - --check-interval=5s
         - --backup-image=moco-backup:dev
         env:
+        - name: DEBUG_CONTROLLER
+          value: "1"
         - name: TEST_NO_JOB_RESOURCE
           value: "1"
