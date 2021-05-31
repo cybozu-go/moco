@@ -51,7 +51,7 @@ help: ## Display this help.
 manifests: controller-gen## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	@echo "Shrinking CRD size..."
-	sed -i -E 's/^(                        +description: ).*$$/\1""/' config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
+	sed -i -E 's/^(                        +description: ).*$$/\1"omitted"/' config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

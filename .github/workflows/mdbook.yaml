@@ -30,12 +30,20 @@ jobs:
         name: book
     - run: ls -R
     - run: git add .
-    - run: git status -sb
+    - name: Check diff
+      run: |
+        diffs=$(git status -s)
+        if [ "$diffs" = "" ]; then
+          echo "NO_DIFF=1" >> $GITHUB_ENV
+        else
+          printf "%s\n" "$diffs"
+        fi
     - name: Commit changes
+      if: env.NO_DIFF != '1'
       run: |
         git config --global user.name 'Cybozu Neco'
         git config --global user.email 'cybozu-neco@users.noreply.github.com'
         git commit -m 'update'
     - name: Push to gh-pages
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && env.NO_DIFF != '1'
       run: git push origin gh-pages
