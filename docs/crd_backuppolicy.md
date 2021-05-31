@@ -68,7 +68,7 @@ JobConfig is a set of parameters for backup and restore job Pods.
 | ----- | ----------- | ------ | -------- |
 | serviceAccountName | ServiceAccountName specifies the ServiceAccount to run the Pod. | string | true |
 | bucketConfig | Specifies how to access an object storage bucket. | [BucketConfig](#bucketconfig) | true |
-| workVolume | WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes | corev1.VolumeSource | true |
+| workVolume | WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes | [corev1.VolumeSource](https://pkg.go.dev/k8s.io/api/core/v1#VolumeSource) | true |
 | threads | Threads is the number of threads used for backup or restoration. | int | false |
 | memory | Memory is the amount of memory requested for the Pod. | *[resource.Quantity](https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity) | false |
 | maxMemory | MaxMemory is the amount of maximum memory for the Pod. | *[resource.Quantity](https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity) | false |
