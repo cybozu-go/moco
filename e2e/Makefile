@@ -1,5 +1,5 @@
-KIND_VERSION = 0.10.0
-KUBERNETES_VERSION = 1.19.7
+KIND_VERSION = 0.11.1
+KUBERNETES_VERSION = 1.19.11
 CERT_MANAGER_VERSION = 1.3.1
 MYSQL_VERSION = 8.0.25
 
@@ -62,7 +62,7 @@ logs:
 	rm -rf logs
 
 .PHONY: stop
-stop:
+stop: $(KIND) 
 	$(KIND) delete cluster --name=moco
 	-docker image rm moco:dev
 	-docker image rm moco-backup:dev

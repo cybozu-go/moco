@@ -331,6 +331,9 @@ To remove old backups automatically, you can set a lifecycle configuration to th
 
 ref: [Setting lifecycle configuration on a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/how-to-set-lifecycle-configuration-intro.html)
 
+A bucket can be shared safely across multiple MySQLClusters.
+Object keys are prefixed with `moco/`.
+
 ### BackupPolicy
 
 [BackupPolicy](crd_backuppolicy.md) is a custom resource to define a policy for taking backups.

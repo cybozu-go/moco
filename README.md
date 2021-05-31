@@ -23,9 +23,9 @@ MOCO is designed to have the following properties.
 ## Supported software
 
 - MySQL: 8.0.18 and 8.0.25
-- Kubernetes: 1.19 and 1.20
+- Kubernetes: 1.19, 1.20, 1.21
 
-Other versions may work, though not tested.
+Other MySQL 8 releases would probably work.  They are simply not tested in our CI.
 
 ## Features
 
