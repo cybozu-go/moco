@@ -816,7 +816,7 @@ spec:
 <p>BackupStatus represents the status of the last successful backup.</p>
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>time</td><td>The time of the backup.  This is used to generate object keys of backup files in a bucket.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
-<tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td>metav1.Duration</td><td>true</td></tr>
+<tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">metav1.Duration</a></td><td>true</td></tr>
 <tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
 <tr><td>sourceUUID</td><td>SourceUUID is the <code>server_uuid</code> of the backup source instance.</td><td>string</td><td>true</td></tr>
 <tr><td>binlogFilename</td><td>BinlogFilename is the binlog filename that the backup source instance was writing to at the backup.</td><td>string</td><td>true</td></tr>
@@ -943,7 +943,7 @@ spec:
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_mysqlcluster.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
-<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td>corev1.VolumeSource</td><td>true</td></tr>
+<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#VolumeSource">corev1.VolumeSource</a></td><td>true</td></tr>
 <tr><td>threads</td><td>Threads is the number of threads used for backup or restoration.</td><td>int</td><td>false</td></tr>
 <tr><td>memory</td><td>Memory is the amount of memory requested for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
@@ -1001,7 +1001,7 @@ spec:
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_backuppolicy.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
-<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td>corev1.VolumeSource</td><td>true</td></tr>
+<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#VolumeSource">corev1.VolumeSource</a></td><td>true</td></tr>
 <tr><td>threads</td><td>Threads is the number of threads used for backup or restoration.</td><td>int</td><td>false</td></tr>
 <tr><td>memory</td><td>Memory is the amount of memory requested for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
@@ -1055,6 +1055,7 @@ For example, the following options are available.</p>
 <h2 id="kubectl-moco-switchover-cluster_name"><a class="header" href="#kubectl-moco-switchover-cluster_name"><code>kubectl moco switchover CLUSTER_NAME</code></a></h2>
 <p>Switch the primary instance to one of the replicas.</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-controller"><a class="header" href="#moco-controller"><code>moco-controller</code></a></h1>
+<p><code>moco-controller</code> controls MySQL clusters on Kubernetes.</p>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h2>
 <table><thead><tr><th>Name</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>POD_NAMESPACE</code></td><td>Yes</td><td>The namespace name where <code>moco-controller</code> runs.</td></tr>
@@ -1092,7 +1093,7 @@ For example, the following options are available.</p>
       --zap-stacktrace-level level       Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
 </code></pre>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-backup"><a class="header" href="#moco-backup"><code>moco-backup</code></a></h1>
-<p><code>moco-backup</code> command is used in <code>github.com/cybozu-go/moco-backup</code> container.
+<p><code>moco-backup</code> command is used in <code>ghcr.io/cybozu-go/moco-backup</code> container.
 Normally, users need not take care of this command.</p>
 <h2 id="environment-variables-1"><a class="header" href="#environment-variables-1">Environment variables</a></h2>
 <p><code>moco-backup</code> takes configurations of S3 API from environment variables.
