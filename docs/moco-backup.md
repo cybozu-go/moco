@@ -1,6 +1,6 @@
 # `moco-backup`
 
-`moco-backup` command is used in `github.com/cybozu-go/moco-backup` container.
+`moco-backup` command is used in `ghcr.io/cybozu-go/moco-backup` container.
 Normally, users need not take care of this command.
 
 ## Environment variables

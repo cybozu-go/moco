@@ -1,6 +1,7 @@
 `moco-controller`
 ================
 
+`moco-controller` controls MySQL clusters on Kubernetes.
 ## Environment variables
 
 | Name            | Required | Description                                      |

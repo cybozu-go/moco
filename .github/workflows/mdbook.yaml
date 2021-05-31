@@ -1,0 +1,41 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+    - 'main'
+jobs:
+  build:
+    name: Build book
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: make book
+    - uses: actions/upload-artifact@v2
+      with:
+        name: book
+        path: docs/book
+        retention-days: 1
+  publish:
+    name: Publish book on GitHub Pages
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: gh-pages
+    - run: rm -rf *
+    - uses: actions/download-artifact@v2
+      with:
+        name: book
+    - run: ls -R
+    - run: git add .
+    - run: git status -sb
+    - name: Commit changes
+      run: |
+        git config --global user.name 'Cybozu Neco'
+        git config --global user.email 'cybozu-neco@users.noreply.github.com'
+        git commit -m 'update'
+    - name: Push to gh-pages
+      if: github.ref == 'refs/heads/main'
+      run: git push origin gh-pages

@@ -1,0 +1,10 @@
+[book]
+language = "en"
+multilingual = false
+src = "."
+title = "MOCO Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/cybozu-go/moco"
+edit-url-template = "https://github.com/cybozu-go/moco/edit/main/docs/{path}"
+site-url = "/moco/"
