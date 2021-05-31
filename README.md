@@ -5,6 +5,8 @@
 
 # MOCO
 
+<img src="./docs/logo.svg" width="160" alt="moco logo" />
+
 MOCO is a Kubernetes operator for [MySQL][].
 Its primary function is to manage MySQL clusters using [GTID-based](https://dev.mysql.com/doc/refman/8.0/en/replication-gtids.html) [semi-synchronous](https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html) replication.  It does _not_ manage [group replication](https://dev.mysql.com/doc/refman/8.0/en/group-replication.html) clusters.
 

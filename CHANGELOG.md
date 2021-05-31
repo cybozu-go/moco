@@ -5,6 +5,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2021-05-31
+
+### Added
+- Backup and Point-in-Time Recovery feature (#247)
+    - To use the new backup feature, clusters created with MOCO v0.8 needs to be re-created.
+- Support for Kubernetes 1.21 (#251)
+- Allow opaque `my.cnf` configurations (#252)
+- Documentation site on https://cybozu-go.github.io/moco/ (#254)
+
+### Changed
+- Update `moco-agent` to v0.6.5 (#247)
+
+### Fixed
+- Controller failed to update Service if `spec.externalTrafficPolicy` is set to Local (#250)
+
 ## [0.8.3] - 2021-05-12
 
 ### Changed
@@ -155,7 +170,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.8.3...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/cybozu-go/moco/compare/v0.8.3...v0.9.0
 [0.8.3]: https://github.com/cybozu-go/moco/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/cybozu-go/moco/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/cybozu-go/moco/compare/v0.8.0...v0.8.1
