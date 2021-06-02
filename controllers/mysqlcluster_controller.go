@@ -539,6 +539,9 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		if len(saSpec.ExternalTrafficPolicy) == 0 {
 			saSpec.ExternalTrafficPolicy = svc.Spec.ExternalTrafficPolicy
 		}
+		if saSpec.HealthCheckNodePort == 0 {
+			saSpec.HealthCheckNodePort = svc.Spec.HealthCheckNodePort
+		}
 		if saSpec.IPFamilies == nil {
 			saSpec.IPFamilies = svc.Spec.IPFamilies
 		}
