@@ -586,6 +586,36 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(headless.Spec.ExternalTrafficPolicy).NotTo(Equal(corev1.ServiceExternalTrafficPolicyTypeLocal))
+
+		// Edit Service again should succeed
+		Eventually(func() error {
+			cluster = &mocov1beta1.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+			if err != nil {
+				return err
+			}
+			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+				ObjectMeta: mocov1beta1.ObjectMeta{
+					Annotations: map[string]string{"foo": "bar"},
+				},
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			}
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		Eventually(func() error {
+			primary = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
+				return err
+			}
+			if primary.Annotations["foo"] != "bar" {
+				return errors.New("service does not have annotation foo")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 
 	It("should reconcile statefulset", func() {
