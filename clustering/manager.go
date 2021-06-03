@@ -24,6 +24,7 @@ import (
 // This interface is meant to be used by MySQLClusterReconciler.
 type ClusterManager interface {
 	Update(context.Context, types.NamespacedName)
+	UpdateNoStart(context.Context, types.NamespacedName)
 	Stop(types.NamespacedName)
 	StopAll()
 }
@@ -59,6 +60,14 @@ type clusterManager struct {
 }
 
 func (m *clusterManager) Update(ctx context.Context, name types.NamespacedName) {
+	m.update(ctx, name, false)
+}
+
+func (m *clusterManager) UpdateNoStart(ctx context.Context, name types.NamespacedName) {
+	m.update(ctx, name, true)
+}
+
+func (m *clusterManager) update(ctx context.Context, name types.NamespacedName, noStart bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -66,6 +75,9 @@ func (m *clusterManager) Update(ctx context.Context, name types.NamespacedName) 
 	p, ok := m.processes[key]
 	if ok {
 		p.Update()
+		return
+	}
+	if noStart {
 		return
 	}
 

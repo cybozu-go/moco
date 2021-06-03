@@ -100,6 +100,14 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
+	if err = (&controllers.PodWatcher{
+		Client:         mgr.GetClient(),
+		ClusterManager: clusterMgr,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PodWatcher")
+		return err
+	}
+
 	if err = (&mocov1beta1.MySQLCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
 		return err

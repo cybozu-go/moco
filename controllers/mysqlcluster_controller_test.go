@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
-	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -21,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,40 +26,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-type mockManager struct {
-	mu       sync.Mutex
-	clusters map[string]struct{}
-}
-
-var _ clustering.ClusterManager = &mockManager{}
-
-func (m *mockManager) Update(ctx context.Context, key types.NamespacedName) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.clusters[key.String()] = struct{}{}
-}
-
-func (m *mockManager) Stop(key types.NamespacedName) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	delete(m.clusters, key.String())
-}
-
-func (m *mockManager) StopAll() {}
-
-func (m *mockManager) getKeys() map[string]bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	keys := make(map[string]bool)
-	for k := range m.clusters {
-		keys[k] = true
-	}
-	return keys
-}
 
 const (
 	testMocoSystemNamespace = "moco-system"
