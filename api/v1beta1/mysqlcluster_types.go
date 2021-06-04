@@ -337,6 +337,10 @@ type MySQLClusterStatus struct {
 	// +optional
 	RestoredTime *metav1.Time `json:"restoredTime,omitempty"`
 
+	// Cloned indicates if the initial cloning from an external source has been completed.
+	// +optional
+	Cloned bool `json:"cloned,omitempty"`
+
 	// ReconcileInfo represents version information for reconciler.
 	// +optional
 	ReconcileInfo ReconcileInfo `json:"reconcileInfo"`

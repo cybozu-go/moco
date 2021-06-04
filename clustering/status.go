@@ -349,9 +349,13 @@ func isCloning(ss *StatusSet) bool {
 		return false
 	}
 
+	if ss.Cluster.Status.Cloned {
+		return false
+	}
+
 	pst := ss.MySQLStatus[ss.Primary]
 	if pst == nil {
-		return false
+		return true
 	}
 
 	if pst.CloneStatus != nil && pst.CloneStatus.State.String != "Completed" {

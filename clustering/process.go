@@ -158,6 +158,10 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 	p.log.Info("cluster state is " + ss.State.String())
 	switch ss.State {
 	case StateCloning:
+		if p.isCloning(ctx, ss) {
+			return false, nil
+		}
+
 		redo, err := p.clone(ctx, ss)
 		if err != nil {
 			event.InitCloneFailed.Emit(ss.Cluster, p.recorder, err)
@@ -294,7 +298,14 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		p.metrics.readyReplicas.Set(float64(syncedReplicas))
 		p.metrics.errantReplicas.Set(float64(len(ss.Errants)))
 
-		cluster.Status.Conditions = conditions
+		// the completion of initial cloning is recorded in the status
+		// to make it possible to determine the cloning status even while
+		// the primary instance is down.
+		if cluster.Spec.ReplicationSourceSecretName != nil && ss.State != StateCloning {
+			cluster.Status.Cloned = true
+		}
+
+		// if nothing has changed, skip updating.
 		if equality.Semantic.DeepEqual(orig, cluster) {
 			return nil
 		}

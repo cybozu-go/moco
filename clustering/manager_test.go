@@ -324,6 +324,10 @@ var _ = Describe("manager", func() {
 				return err
 			}
 
+			if cluster.Status.Cloned {
+				return errors.New("status.cloned is set to true")
+			}
+
 			for _, cond := range cluster.Status.Conditions {
 				if cond.Type != mocov1beta1.ConditionInitialized {
 					continue
@@ -388,6 +392,8 @@ var _ = Describe("manager", func() {
 			}
 			return fmt.Errorf("no health condition")
 		}).Should(Succeed())
+
+		Expect(cluster.Status.Cloned).To(BeTrue())
 
 		events := &corev1.EventList{}
 		err = k8sClient.List(ctx, events, client.InNamespace("test"))

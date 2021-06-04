@@ -80,6 +80,7 @@ Likewise, if a replica Pod is ready, the `mysqld` is assured read-only and runni
     - For intermediate primary instance, the primary works as a replica for an external `mysqld` and is read-only.
 2. Cloning
     - `spec.replicationSourceSecretName` is set.
+    - `status.cloned` is false.
     - The cloning result exists and is not "Completed" _or_ there is no cloning result and the instance has no data.
     - (note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)
 3. Restoring
@@ -179,6 +180,7 @@ In this phase, MOCO updates `status` field of MySQLCluster as follows:
 5. Add newly found errant replicas to `status.errantReplicaList`.
 6. Remove re-initialized and/or no-longer errant replicas from `status.errantReplicaList`
 7. Set `status.errantReplicas` to the length of `status.errantReplicaList`.
+8. Set `status.cloned` to true if `spec.replicationSourceSecret` is not nil and the state is not Cloning.
 
 ### Determine what MOCO should do for the cluster
 

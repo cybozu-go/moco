@@ -36,13 +36,20 @@ func init() {
 	waitForRestartDuration = interval
 }
 
-func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error) {
-	pst := ss.MySQLStatus[ss.Cluster.Status.CurrentPrimaryIndex]
+func (p *managerProcess) isCloning(ctx context.Context, ss *StatusSet) bool {
+	pst := ss.MySQLStatus[ss.Primary]
+	if pst == nil {
+		p.log.Info("the status of the primary is missing")
+		return true
+	}
 	if pst.CloneStatus != nil && pst.CloneStatus.State.String != "Failed" {
 		p.log.Info("cloning...", "state", pst.CloneStatus.State.String)
-		return false, nil
+		return true
 	}
+	return false
+}
 
+func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error) {
 	secret := &corev1.Secret{}
 	name := client.ObjectKey{Namespace: ss.Cluster.Namespace, Name: *ss.Cluster.Spec.ReplicationSourceSecretName}
 	if err := p.client.Get(ctx, name, secret); err != nil {

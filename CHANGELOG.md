@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.5] - 2021-06-04
+
+### Fixed
+- Timeout while cloning large data (#261)
+- Better handling of Cloning state (#261)
+- Manual switch over did not take place immediately (#261)
+
+### Changed
+- Update `moco-agent` to 0.6.6 (#261)
+
 ## [0.9.4] - 2021-06-03
 
 ### Fixed
@@ -190,7 +200,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.5...HEAD
+[0.9.5]: https://github.com/cybozu-go/moco/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/cybozu-go/moco/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/cybozu-go/moco/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/cybozu-go/moco/compare/v0.9.1...v0.9.2
