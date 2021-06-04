@@ -262,6 +262,7 @@
 <tr><td>errantReplicaList</td><td>ErrantReplicaList is the list of indices of errant replicas.</td><td>[]int</td><td>false</td></tr>
 <tr><td>backup</td><td>Backup is the status of the last successful backup.</td><td><a href="#backupstatus">BackupStatus</a></td><td>true</td></tr>
 <tr><td>restoredTime</td><td>RestoredTime is the time when the cluster data is restored.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>false</td></tr>
+<tr><td>cloned</td><td>Cloned indicates if the initial cloning from an external source has been completed.</td><td>bool</td><td>false</td></tr>
 <tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>

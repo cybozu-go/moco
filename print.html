@@ -882,6 +882,7 @@ spec:
 <tr><td>errantReplicaList</td><td>ErrantReplicaList is the list of indices of errant replicas.</td><td>[]int</td><td>false</td></tr>
 <tr><td>backup</td><td>Backup is the status of the last successful backup.</td><td><a href="crd_mysqlcluster.html#backupstatus">BackupStatus</a></td><td>true</td></tr>
 <tr><td>restoredTime</td><td>RestoredTime is the time when the cluster data is restored.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>false</td></tr>
+<tr><td>cloned</td><td>Cloned indicates if the initial cloning from an external source has been completed.</td><td>bool</td><td>false</td></tr>
 <tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="crd_mysqlcluster.html#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
 </tbody></table>
 <p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
@@ -1447,6 +1448,7 @@ Likewise, if a replica Pod is ready, the <code>mysqld</code> is assured read-onl
 <li>Cloning
 <ul>
 <li><code>spec.replicationSourceSecretName</code> is set.</li>
+<li><code>status.cloned</code> is false.</li>
 <li>The cloning result exists and is not &quot;Completed&quot; <em>or</em> there is no cloning result and the instance has no data.</li>
 <li>(note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)</li>
 </ul>
@@ -1564,6 +1566,7 @@ It stops when MySQLCluster resource is deleted.</p>
 <li>Add newly found errant replicas to <code>status.errantReplicaList</code>.</li>
 <li>Remove re-initialized and/or no-longer errant replicas from <code>status.errantReplicaList</code></li>
 <li>Set <code>status.errantReplicas</code> to the length of <code>status.errantReplicaList</code>.</li>
+<li>Set <code>status.cloned</code> to true if <code>spec.replicationSourceSecret</code> is not nil and the state is not Cloning.</li>
 </ol>
 <h3 id="determine-what-moco-should-do-for-the-cluster"><a class="header" href="#determine-what-moco-should-do-for-the-cluster">Determine what MOCO should do for the cluster</a></h3>
 <p>The operation depends on the current cluster state.</p>
