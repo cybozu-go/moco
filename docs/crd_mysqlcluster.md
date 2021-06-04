@@ -111,6 +111,7 @@ MySQLClusterStatus defines the observed state of MySQLCluster
 | errantReplicaList | ErrantReplicaList is the list of indices of errant replicas. | []int | false |
 | backup | Backup is the status of the last successful backup. | [BackupStatus](#backupstatus) | true |
 | restoredTime | RestoredTime is the time when the cluster data is restored. | *[metav1.Time](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time) | false |
+| cloned | Cloned indicates if the initial cloning from an external source has been completed. | bool | false |
 | reconcileInfo | ReconcileInfo represents version information for reconciler. | [ReconcileInfo](#reconcileinfo) | true |
 
 [Back to Custom Resources](#custom-resources)
