@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/moco-mysql:8.0.25
+        image: quay.io/cybozu/mysql:8.0.25
   volumeClaimTemplates:
   - metadata:
       name: mysql-data

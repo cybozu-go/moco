@@ -54,7 +54,7 @@ Edit the following lines in `Dockerfile`:
 
 ```
 # The tag should be the latest one
-FROM quay.io/cybozu/moco-mysql:8.0.25.1 as mysql
+FROM quay.io/cybozu/mysql:8.0.25.1 as mysql
 
 # See the below description for how to get the version string.
 ARG MYSQLSH_VERSION=8.0.25-1

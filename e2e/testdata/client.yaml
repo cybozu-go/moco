@@ -7,5 +7,5 @@ metadata:
 spec:
   containers:
   - name: pause
-    image: quay.io/cybozu/moco-mysql:{{ . }}
+    image: quay.io/cybozu/mysql:{{ . }}
     command: ["pause"]
