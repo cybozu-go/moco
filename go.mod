@@ -14,22 +14,22 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/go-cmp v0.5.6
 	github.com/jmoiron/sqlx v1.3.4
-	github.com/onsi/ginkgo v1.16.2
-	github.com/onsi/gomega v1.12.0
-	github.com/prometheus/client_golang v1.10.0
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.13.0
+	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.25.0
+	github.com/prometheus/common v0.26.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.17.0
 	google.golang.org/grpc v1.38.0
-	k8s.io/api v0.20.7
-	k8s.io/apimachinery v0.20.7
-	k8s.io/cli-runtime v0.20.7
-	k8s.io/client-go v0.20.7
+	k8s.io/api v0.21.1
+	k8s.io/apimachinery v0.21.1
+	k8s.io/cli-runtime v0.21.1
+	k8s.io/client-go v0.21.1
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.20.7
-	k8s.io/utils v0.0.0-20210521133846-da695404a2bc
-	sigs.k8s.io/controller-runtime v0.8.3
+	k8s.io/kubectl v0.21.1
+	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
+	sigs.k8s.io/controller-runtime v0.9.0
 )
