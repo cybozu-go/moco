@@ -321,7 +321,7 @@ spec:
       containers:
       # At least a container named &quot;mysqld&quot; must be defined.
       - name: mysqld
-        image: quay.io/cybozu/moco-mysql:8.0.25
+        image: quay.io/cybozu/mysql:8.0.25
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -375,7 +375,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/moco-mysql:8.0.25  # must be the same version as the donor
+        image: quay.io/cybozu/mysql:8.0.25  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -387,7 +387,7 @@ spec:
 </code></pre>
 <p>To stop the replication from the donor, update MySQLCluster with <code>spec.replicationSourceSecretName: null</code>.</p>
 <h3 id="bring-your-own-image"><a class="header" href="#bring-your-own-image">Bring your own image</a></h3>
-<p>We provide a pre-built MySQL container image at <a href="http://quay.io/cybozu/moco-mysql">quay.io/cybozu/moco-mysql</a>.
+<p>We provide pre-built MySQL container images at <a href="http://quay.io/cybozu/mysql">quay.io/cybozu/mysql</a>.
 If you want to build and use your own image, read <a href="custom-mysqld.html"><code>custom-mysqld.md</code></a>.</p>
 <h2 id="configurations"><a class="header" href="#configurations">Configurations</a></h2>
 <p>The default and constant configuration values for <code>mysqld</code> are available on <a href="https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-variables">pkg.go.dev</a>.
@@ -717,7 +717,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: quay.io/cybozu/moco-mysql:8.0.25
+        image: quay.io/cybozu/mysql:8.0.25
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
@@ -730,7 +730,7 @@ $ kubectl delete --grace-period=1 pods moco-test-0
 Delete such pending Pods until PVC is actually removed.</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
-<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/moco-mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/moco-mysql</code></a>.
+<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/mysql</code></a>.
 Users can use one of these images to supply <code>mysqld</code> container in <a href="crd_mysqlcluster.html">MySQLCluster</a> like:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
@@ -739,15 +739,15 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/moco-mysql:8.0.25
+        image: quay.io/cybozu/mysql:8.0.25
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
 <p>The easiest way to build a custom <code>mysqld</code> for MOCO is to copy and edit our Dockerfile.
-You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql"><code>moco-mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
+You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/mysql"><code>mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
 <p>You should keep the following points:</p>
 <ul>
-<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql/moco-init"><code>moco-init</code></a></li>
+<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/mysql/moco-init"><code>moco-init</code></a></li>
 <li>Add directories for <code>mysqld</code> and <code>moco-init</code> to <code>PATH</code></li>
 <li><code>ENTRYPOINT</code> should be <code>[&quot;mysqld&quot;]</code></li>
 <li><code>USER</code> should be <code>10000:10000</code></li>
@@ -757,7 +757,7 @@ You can find it under <a href="https://github.com/cybozu/neco-containers/tree/ma
 <p>On Ubuntu 20.04, you can build the source code as follows:</p>
 <pre><code class="language-console">$ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
-    cmake libncurses5-dev libjemalloc-dev libnuma-dev pkg-config
+    cmake libncurses5-dev libjemalloc-dev libnuma-dev libaio-dev pkg-config
 $ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
 $ tar -x -z -f mysql-boost-8.0.20.tar.gz
 $ cd mysql-8.0.20

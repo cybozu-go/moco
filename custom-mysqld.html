@@ -174,7 +174,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
-<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/moco-mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/moco-mysql</code></a>.
+<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/mysql</code></a>.
 Users can use one of these images to supply <code>mysqld</code> container in <a href="crd_mysqlcluster.html">MySQLCluster</a> like:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
 kind: MySQLCluster
@@ -183,15 +183,15 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/moco-mysql:8.0.25
+        image: quay.io/cybozu/mysql:8.0.25
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
 <p>The easiest way to build a custom <code>mysqld</code> for MOCO is to copy and edit our Dockerfile.
-You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql"><code>moco-mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
+You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/mysql"><code>mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
 <p>You should keep the following points:</p>
 <ul>
-<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/moco-mysql/moco-init"><code>moco-init</code></a></li>
+<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/mysql/moco-init"><code>moco-init</code></a></li>
 <li>Add directories for <code>mysqld</code> and <code>moco-init</code> to <code>PATH</code></li>
 <li><code>ENTRYPOINT</code> should be <code>[&quot;mysqld&quot;]</code></li>
 <li><code>USER</code> should be <code>10000:10000</code></li>
@@ -201,7 +201,7 @@ You can find it under <a href="https://github.com/cybozu/neco-containers/tree/ma
 <p>On Ubuntu 20.04, you can build the source code as follows:</p>
 <pre><code class="language-console">$ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
-    cmake libncurses5-dev libjemalloc-dev libnuma-dev pkg-config
+    cmake libncurses5-dev libjemalloc-dev libnuma-dev libaio-dev pkg-config
 $ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
 $ tar -x -z -f mysql-boost-8.0.20.tar.gz
 $ cd mysql-8.0.20
