@@ -1,5 +1,5 @@
 # Tool versions
-CTRL_TOOLS_VERSION=0.5.0
+CTRL_TOOLS_VERSION=0.6.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.1.3
 CRD_TO_MARKDOWN_VERSION = 0.0.3
@@ -18,7 +18,7 @@ SHELL = /bin/bash
 .SHELLFLAGS = -e -o pipefail -c
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS = "crd:crdVersions=v1"
+CRD_OPTIONS = "crd:crdVersions=v1,maxDescLen=220"
 
 # for Go
 GOOS = $(shell go env GOOS)
@@ -50,8 +50,6 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	@echo "Shrinking CRD size..."
-	sed -i -E 's/^(                        +description: ).*$$/\1"omitted"/' config/crd/bases/moco.cybozu.com_mysqlclusters.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -72,29 +70,18 @@ check-generate:
 	$(MAKE) manifests generate apidoc
 	git diff --exit-code --name-only
 
-ENVTEST_ASSETS_DIR := $(shell pwd)/testbin
 .PHONY: envtest
-envtest:
-	mkdir -p ${ENVTEST_ASSETS_DIR}
-	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v$(CTRL_RUNTIME_VERSION)/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
-		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
-		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+envtest: setup-envtest
+	source <($(SETUP_ENVTEST) use -p env); \
 		export MOCO_CHECK_INTERVAL=100ms; \
 		export MOCO_WAIT_INTERVAL=100ms; \
 		go test -v -count 1 -race ./clustering -ginkgo.progress -ginkgo.v -ginkgo.failFast
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
-		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
-		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+	source <($(SETUP_ENVTEST) use -p env); \
 		export DEBUG_CONTROLLER=1; \
 		go test -v -count 1 -race ./controllers -ginkgo.progress -ginkgo.v -ginkgo.failFast
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
-		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
-		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+	source <($(SETUP_ENVTEST) use -p env); \
 		go test -v -count 1 -race ./api/... -ginkgo.progress -ginkgo.v
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; \
-		fetch_envtest_tools $(ENVTEST_ASSETS_DIR); \
-		setup_envtest_env $(ENVTEST_ASSETS_DIR); \
+	source <($(SETUP_ENVTEST) use -p env); \
 		go test -v -count 1 -race ./backup -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: test-dbop
@@ -145,6 +132,12 @@ build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX):
 CONTROLLER_GEN := $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRL_TOOLS_VERSION))
+
+SETUP_ENVTEST := $(shell pwd)/bin/setup-envtest
+.PHONY: setup-envtest
+setup-envtest: ## Download setup-envtest locally if necessary
+	# see https://github.com/kubernetes-sigs/controller-runtime/tree/master/tools/setup-envtest
+	GOBIN=$(shell pwd)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 KUSTOMIZE := $(shell pwd)/bin/kustomize
 .PHONY: kustomize
