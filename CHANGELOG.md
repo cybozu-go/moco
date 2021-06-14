@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2021-06-13
+
+### Changed
+- Migrate the official MySQL image repository to [quay.io/cybozu/mysql](https://quay.io/cybozu/mysql) (#262)
+- Update controller-runtime to 0.9.0 (#262)
+- Update fluent-bit to 1.7.8 (#263)
+- Update mysqld_exporter to 0.13.0 (#263)
+
 ## [0.9.5] - 2021-06-04
 
 ### Fixed
@@ -200,7 +208,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.9.5...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/cybozu-go/moco/compare/v0.9.5...v0.10.0
 [0.9.5]: https://github.com/cybozu-go/moco/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/cybozu-go/moco/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/cybozu-go/moco/compare/v0.9.2...v0.9.3
