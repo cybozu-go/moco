@@ -1130,24 +1130,18 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1beta1.MySQLCluster) error {
 	secretName := cluster.ControllerSecretName()
 	secret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: secretName}, secret)
-	if err == nil {
-		if err := r.Delete(ctx, secret); err != nil {
-			return fmt.Errorf("failed to delete controller secret %s: %w", secretName, err)
-		}
-	} else if !apierrors.IsNotFound(err) {
-		return err
+	secret.SetNamespace(r.SystemNamespace)
+	secret.SetName(secretName)
+	if err := r.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete controller secret %s: %w", secretName, err)
 	}
 
 	certName := cluster.CertificateName()
 	cert := certificateObj.DeepCopy()
-	err = r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: certName}, cert)
-	if err == nil {
-		if err := r.Delete(ctx, cert); err != nil {
-			return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
-		}
-	} else if !apierrors.IsNotFound(err) {
-		return err
+	cert.SetNamespace(r.SystemNamespace)
+	cert.SetName(certName)
+	if err := r.Delete(ctx, cert); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
 	return nil
