@@ -436,6 +436,40 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = bar"))
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("innodb_buffer_pool_size = 367001600"))
+
+		userCM = &corev1.ConfigMap{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "user-conf"}, userCM)
+		Expect(err).NotTo(HaveOccurred())
+		userCM.Data["foo"] = "baz"
+		err = k8sClient.Update(ctx, userCM)
+		Expect(err).NotTo(HaveOccurred())
+
+		oldName = cm.Name
+		Eventually(func() error {
+			cms := &corev1.ConfigMapList{}
+			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
+				return err
+			}
+
+			var mycnfCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if cm.Name == oldName {
+					continue
+				}
+				if strings.HasPrefix(cm.Name, "moco-test.") {
+					mycnfCMs = append(mycnfCMs, &cms.Items[i])
+				}
+			}
+
+			if len(mycnfCMs) != 1 {
+				return fmt.Errorf("the number of config maps is not 1: %d", len(mycnfCMs))
+			}
+
+			cm = mycnfCMs[0]
+			return nil
+		}).Should(Succeed())
+
+		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = baz"))
 	})
 
 	It("should reconcile service account", func() {

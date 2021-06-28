@@ -1168,6 +1168,23 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	})
 
+	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+		clusters := &mocov1beta1.MySQLClusterList{}
+		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
+			return nil
+		}
+		var req []reconcile.Request
+		for _, c := range clusters.Items {
+			if c.Spec.MySQLConfigMapName == nil {
+				continue
+			}
+			if *c.Spec.MySQLConfigMapName == a.GetName() {
+				req = append(req, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&c)})
+			}
+		}
+		return req
+	})
+
 	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
 		clusters := &mocov1beta1.MySQLClusterList{}
 		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
@@ -1198,6 +1215,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&batchv1.Job{}).
 		Watches(&source.Kind{Type: certificateObj}, certHandler).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, configMapHandler).
 		Watches(&source.Kind{Type: &mocov1beta1.BackupPolicy{}}, backupPolicyHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: 8},

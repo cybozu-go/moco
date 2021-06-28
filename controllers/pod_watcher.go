@@ -17,7 +17,7 @@ import (
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// PodWatcher Watched MySQL pods and informs the cluster manager of the event.
+// PodWatcher watches MySQL pods and informs the cluster manager of the event.
 type PodWatcher struct {
 	client.Client
 	ClusterManager clustering.ClusterManager
