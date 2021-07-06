@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.3] - 2021-07-06
+
+### Fixed
+- Watch ConfigMap for customizing my.cnf (#271)
+
 ## [0.10.2] - 2021-06-24
 
 ### Changed
@@ -218,7 +223,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/cybozu-go/moco/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/cybozu-go/moco/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/cybozu-go/moco/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/cybozu-go/moco/compare/v0.9.5...v0.10.0
