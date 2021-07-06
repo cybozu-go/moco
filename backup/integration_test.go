@@ -194,7 +194,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bc.contents).To(HaveLen(1))
 
 		time.Sleep(1100 * time.Millisecond)
-		restorePoint := time.Now()
+		restorePoint := time.Now().UTC()
 		time.Sleep(1100 * time.Millisecond)
 
 		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {

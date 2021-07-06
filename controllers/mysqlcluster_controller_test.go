@@ -1150,7 +1150,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			"single",
 			"test",
 			"test",
-			now.Format(constants.BackupTimeFormat),
+			now.UTC().Format(constants.BackupTimeFormat),
 		}))
 		Expect(c.EnvFrom).To(HaveLen(1))
 		Expect(c.Env).To(HaveLen(2))

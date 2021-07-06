@@ -418,7 +418,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	pw2 = nil
 
 	bw := &ByteCountWriter{}
-	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.BinlogFilename, lastBackup.Time.Time)
+	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.BinlogFilename, lastBackup.Time.Time.UTC())
 	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw)); err != nil {
 		return fmt.Errorf("failed to put binlog.tar.zst: %w", err)
 	}
