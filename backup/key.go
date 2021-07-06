@@ -10,7 +10,7 @@ import (
 const prefix = "moco"
 
 func calcKey(clusterNS, clusterName, filename string, dt time.Time) string {
-	return path.Join(prefix, clusterNS, clusterName, dt.Format(constants.BackupTimeFormat), filename)
+	return path.Join(prefix, clusterNS, clusterName, dt.UTC().Format(constants.BackupTimeFormat), filename)
 }
 
 func calcPrefix(clusterNS, clusterName string) string {
