@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -25,8 +24,11 @@ var _ = Describe("BackupPolicy Webhook", func() {
 	ctx := context.TODO()
 
 	BeforeEach(func() {
+		err := deleteMySQLCluster()
+		Expect(err).NotTo(HaveOccurred())
+
 		r := &BackupPolicy{}
-		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
 		if apierrors.IsNotFound(err) {
 			return
 		}
@@ -74,4 +76,33 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
+
+	It("should delete BackupPolicy", func() {
+		cluster := makeMySQLCluster()
+		cluster.Spec.BackupPolicyName = pointer.String("no-test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		backup := makeBackupPolicy()
+		err = k8sClient.Create(ctx, backup)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = k8sClient.Delete(ctx, backup)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should NOT delete BackupPolicy which is referenced by MySQLCluster", func() {
+		cluster := makeMySQLCluster()
+		cluster.Spec.BackupPolicyName = pointer.String("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		backup := makeBackupPolicy()
+		err = k8sClient.Create(ctx, backup)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = k8sClient.Delete(ctx, backup)
+		Expect(err).To(HaveOccurred())
+	})
+
 })

@@ -41,20 +41,34 @@ func makeMySQLCluster() *MySQLCluster {
 	}
 }
 
+func deleteMySQLCluster() error {
+	r := &MySQLCluster{}
+	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	r.Finalizers = nil
+	if err := k8sClient.Update(ctx, r); err != nil {
+		return err
+	}
+
+	if err := k8sClient.Delete(ctx, r); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 var _ = Describe("MySQLCluster Webhook", func() {
 	ctx := context.TODO()
 
 	BeforeEach(func() {
-		r := &MySQLCluster{}
-		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
-		if apierrors.IsNotFound(err) {
-			return
-		}
-		Expect(err).NotTo(HaveOccurred())
-		r.Finalizers = nil
-		err = k8sClient.Update(ctx, r)
-		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.Delete(ctx, r)
+		err := deleteMySQLCluster()
 		Expect(err).NotTo(HaveOccurred())
 	})
 

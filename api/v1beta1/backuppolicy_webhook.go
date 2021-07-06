@@ -53,7 +53,10 @@ func (r *BackupPolicy) ValidateDelete() error {
 		if cluster.Spec.BackupPolicyName == nil {
 			continue
 		}
-		return fmt.Errorf("MySQLCluster %s/%s has a reference to this policy", cluster.Namespace, cluster.Name)
+
+		if *cluster.Spec.BackupPolicyName == r.Name {
+			return fmt.Errorf("MySQLCluster %s/%s has a reference to this policy", cluster.Namespace, cluster.Name)
+		}
 	}
 	return nil
 }
