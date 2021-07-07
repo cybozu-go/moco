@@ -199,7 +199,7 @@
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicyspec"><a class="header" href="#backuppolicyspec">BackupPolicySpec</a></h4>
-<p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
+<p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>schedule</td><td>The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron</td><td>string</td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for backup Pod.</td><td><a href="#jobconfig">JobConfig</a></td><td>true</td></tr>
@@ -207,6 +207,8 @@
 <tr><td>concurrencyPolicy</td><td>Specifies how to treat concurrent executions of a Job. Valid values are: - &quot;Allow&quot; (default): allows CronJobs to run concurrently; - &quot;Forbid&quot;: forbids concurrent runs, skipping next run if previous run hasn't finished yet; - &quot;Replace&quot;: cancels currently running job and replaces it with a new one</td><td><a href="https://pkg.go.dev/k8s.io/api/batch/v1beta1#ConcurrencyPolicy">batchv1beta1.ConcurrencyPolicy</a></td><td>false</td></tr>
 <tr><td>activeDeadlineSeconds</td><td>Specifies the duration in seconds relative to the startTime that the job may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again.</td><td>*int64</td><td>false</td></tr>
 <tr><td>backoffLimit</td><td>Specifies the number of retries before marking this job failed. Defaults to 6</td><td>*int32</td><td>false</td></tr>
+<tr><td>successfulJobsHistoryLimit</td><td>The number of successful finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 3.</td><td>*int32</td><td>false</td></tr>
+<tr><td>failedJobsHistoryLimit</td><td>The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1.</td><td>*int32</td><td>false</td></tr>
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
