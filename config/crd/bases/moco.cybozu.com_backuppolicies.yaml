@@ -60,6 +60,14 @@ spec:
                 - Forbid
                 - Replace
                 type: string
+              failedJobsHistoryLimit:
+                description: The number of failed finished jobs to retain. This is
+                  a pointer to distinguish between explicit zero and not specified.
+                  Defaults to 1.
+                format: int32
+                minimum: 0
+                nullable: true
+                type: integer
               jobConfig:
                 description: Specifies parameters for backup Pod.
                 properties:
@@ -1544,6 +1552,14 @@ spec:
                   it misses scheduled time for any reason.  Missed jobs executions
                   will be counted as failed ones.
                 format: int64
+                nullable: true
+                type: integer
+              successfulJobsHistoryLimit:
+                description: The number of successful finished jobs to retain. This
+                  is a pointer to distinguish between explicit zero and not specified.
+                  Defaults to 3.
+                format: int32
+                minimum: 0
                 nullable: true
                 type: integer
             required:
