@@ -892,6 +892,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		bp.Spec.ConcurrencyPolicy = batchv1beta1.ForbidConcurrent
 		bp.Spec.StartingDeadlineSeconds = pointer.Int64(10)
 		bp.Spec.Schedule = "*/5 * * * *"
+		bp.Spec.SuccessfulJobsHistoryLimit = pointer.Int32(1)
+		bp.Spec.FailedJobsHistoryLimit = pointer.Int32(2)
 		jc := &bp.Spec.JobConfig
 		jc.Threads = 3
 		jc.ServiceAccountName = "foo"
@@ -935,6 +937,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
 		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(pointer.Int64(10)))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.ForbidConcurrent))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(1)))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(2)))
 		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
 		js := &cj.Spec.JobTemplate.Spec
 		Expect(js.ActiveDeadlineSeconds).To(Equal(pointer.Int64(100)))
@@ -986,6 +990,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		bp.Spec.ConcurrencyPolicy = batchv1beta1.AllowConcurrent
 		bp.Spec.StartingDeadlineSeconds = nil
 		bp.Spec.Schedule = "*/5 1 * * *"
+		bp.Spec.SuccessfulJobsHistoryLimit = nil
+		bp.Spec.FailedJobsHistoryLimit = nil
 		jc = &bp.Spec.JobConfig
 		jc.Threads = 1
 		jc.ServiceAccountName = "oof"
@@ -1014,6 +1020,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.AllowConcurrent))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(3)))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(1)))
 		js = &cj.Spec.JobTemplate.Spec
 		Expect(js.ActiveDeadlineSeconds).To(BeNil())
 		Expect(js.BackoffLimit).To(BeNil())

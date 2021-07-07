@@ -17,6 +17,8 @@ import (
 // - Schedule
 // - StartingDeadlineSeconds
 // - ConcurrencyPolicy
+// - SuccessfulJobsHistoryLimit
+// - FailedJobsHistoryLimit
 //
 // The following fields will be copied to CronJob.spec.jobTemplate.
 //
@@ -64,6 +66,22 @@ type BackupPolicySpec struct {
 	// +nullable
 	// +optional
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
+
+	// The number of successful finished jobs to retain.
+	// This is a pointer to distinguish between explicit zero and not specified.
+	// Defaults to 3.
+	// +kubebuilder:validation:Minimum=0
+	// +nullable
+	// +optional
+	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
+
+	// The number of failed finished jobs to retain.
+	// This is a pointer to distinguish between explicit zero and not specified.
+	// Defaults to 1.
+	// +kubebuilder:validation:Minimum=0
+	// +nullable
+	// +optional
+	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 }
 
 func (s *BackupPolicySpec) validate() field.ErrorList {
