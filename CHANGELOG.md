@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.4] - 2021-07-07
+
+### Fixed
+- Fix delete BackupPolicy error (#276)
+- Fix not to be affected by the system time zone (#277)
+
+### Added
+- Add History Limit to BackupPolicySpec (#279)
+
 ## [0.10.3] - 2021-07-06
 
 ### Fixed
@@ -223,7 +232,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.4...HEAD
+[0.10.4]: https://github.com/cybozu-go/moco/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/cybozu-go/moco/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/cybozu-go/moco/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/cybozu-go/moco/compare/v0.10.0...v0.10.1
