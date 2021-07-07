@@ -856,6 +856,8 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		cj.Spec.Schedule = bp.Spec.Schedule
 		cj.Spec.StartingDeadlineSeconds = bp.Spec.StartingDeadlineSeconds
 		cj.Spec.ConcurrencyPolicy = bp.Spec.ConcurrencyPolicy
+		cj.Spec.SuccessfulJobsHistoryLimit = bp.Spec.SuccessfulJobsHistoryLimit
+		cj.Spec.FailedJobsHistoryLimit = bp.Spec.FailedJobsHistoryLimit
 		cj.Spec.JobTemplate.Labels = labelSetForJob(cluster)
 		cj.Spec.JobTemplate.Spec.ActiveDeadlineSeconds = bp.Spec.ActiveDeadlineSeconds
 		cj.Spec.JobTemplate.Spec.BackoffLimit = bp.Spec.BackoffLimit

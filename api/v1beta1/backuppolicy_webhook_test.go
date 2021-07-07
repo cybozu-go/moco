@@ -78,6 +78,20 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should deny BackupPolicy with invalid successfulJobsHistoryLimit", func() {
+		r := makeBackupPolicy()
+		r.Spec.SuccessfulJobsHistoryLimit = pointer.Int32(-1)
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should deny BackupPolicy with invalid failedJobsHistoryLimit", func() {
+		r := makeBackupPolicy()
+		r.Spec.FailedJobsHistoryLimit = pointer.Int32(-1)
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should delete BackupPolicy", func() {
 		cluster := makeMySQLCluster()
 		cluster.Spec.BackupPolicyName = pointer.String("no-test")

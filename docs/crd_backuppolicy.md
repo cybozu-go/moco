@@ -34,7 +34,7 @@ BackupPolicyList contains a list of BackupPolicy
 
 #### BackupPolicySpec
 
-BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit
+BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -44,6 +44,8 @@ BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe
 | concurrencyPolicy | Specifies how to treat concurrent executions of a Job. Valid values are: - \"Allow\" (default): allows CronJobs to run concurrently; - \"Forbid\": forbids concurrent runs, skipping next run if previous run hasn't finished yet; - \"Replace\": cancels currently running job and replaces it with a new one | [batchv1beta1.ConcurrencyPolicy](https://pkg.go.dev/k8s.io/api/batch/v1beta1#ConcurrencyPolicy) | false |
 | activeDeadlineSeconds | Specifies the duration in seconds relative to the startTime that the job may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again. | *int64 | false |
 | backoffLimit | Specifies the number of retries before marking this job failed. Defaults to 6 | *int32 | false |
+| successfulJobsHistoryLimit | The number of successful finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 3. | *int32 | false |
+| failedJobsHistoryLimit | The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1. | *int32 | false |
 
 [Back to Custom Resources](#custom-resources)
 
