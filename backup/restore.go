@@ -115,17 +115,22 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 		}
 
 		if err := op.Ping(); err != nil {
+			rm.log.Error(err, "failed to ping")
 			continue
 		}
 		st := &bkop.ServerStatus{}
 		if err := op.GetServerStatus(ctx, st); err != nil {
+			rm.log.Error(err, "failed to GetServerStatus")
 			continue
 		}
 		if !st.SuperReadOnly {
+			rm.log.Info("super_readonly is not true")
 			continue
 		}
 		break
 	}
+
+	rm.log.Info("mysqld is ready!!!")
 
 	keys, err := rm.bucket.List(ctx, rm.keyPrefix)
 	if err != nil {
