@@ -7,3 +7,4 @@ resources:
 - mysqlcluster_viewer_role.yaml
 - backuppolicy_editor_role.yaml
 - backuppolicy_viewer_role.yaml
+- service_account.yaml

@@ -65,4 +65,5 @@ spec:
         secret:
           defaultMode: 420
           secretName: moco-controller-grpc
+      serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
