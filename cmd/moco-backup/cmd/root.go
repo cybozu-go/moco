@@ -65,9 +65,12 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	defer func() {
-		err := recover()
-		if err != nil && errors.Is(err.(error), backup.ErrBadConnection) {
-			execute()
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok && errors.Is(err, backup.ErrBadConnection) {
+				execute()
+			} else {
+				panic(r)
+			}
 		}
 	}()
 
