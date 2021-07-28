@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (o *operator) PrepareRestore(ctx context.Context) error {
+func (o operator) PrepareRestore(ctx context.Context) error {
 	if _, err := o.db.ExecContext(ctx, `SET GLOBAL local_infile=1`); err != nil {
 		return fmt.Errorf("failed to turn on local_infile: %w", err)
 	}
@@ -20,7 +20,7 @@ func (o *operator) PrepareRestore(ctx context.Context) error {
 	return nil
 }
 
-func (o *operator) LoadDump(ctx context.Context, dir string) error {
+func (o operator) LoadDump(ctx context.Context, dir string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s:%d", o.user, o.host, o.port),
 		"--passwords-from-stdin",
@@ -45,7 +45,7 @@ func (o *operator) LoadDump(ctx context.Context, dir string) error {
 	return cmd.Run()
 }
 
-func (o *operator) LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error {
+func (o operator) LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error {
 	dirents, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (o *operator) LoadBinlog(ctx context.Context, dir string, restorePoint time
 	return nil
 }
 
-func (o *operator) FinishRestore(ctx context.Context) error {
+func (o operator) FinishRestore(ctx context.Context) error {
 	if _, err := o.db.ExecContext(ctx, `SET GLOBAL super_read_only=1`); err != nil {
 		return fmt.Errorf("failed to set super_read_only=1: %w", err)
 	}

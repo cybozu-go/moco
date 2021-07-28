@@ -14,9 +14,6 @@ type Operator interface {
 	// Ping checks the connectivity to the database server.
 	Ping() error
 
-	// Reconnect reconnects the database and reflect the user's latest information, including privileges
-	Reconnect() error
-
 	// Close ust be called when the operator is no longer in use.
 	Close()
 
@@ -57,19 +54,10 @@ type operator struct {
 	threads  int
 }
 
-var _ Operator = &operator{}
+var _ Operator = operator{}
 
 // NewOperator creates an Operator.
 func NewOperator(host string, port int, user, password string, threads int) (Operator, error) {
-	db, err := connect(host, port, user, password)
-	if err != nil {
-		return nil, err
-	}
-
-	return &operator{db, host, port, user, password, threads}, nil
-}
-
-func connect(host string, port int, user, password string) (*sqlx.DB, error) {
 	cfg := mysql.NewConfig()
 	cfg.User = user
 	cfg.Passwd = password
@@ -85,26 +73,13 @@ func connect(host string, port int, user, password string) (*sqlx.DB, error) {
 	}
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)
-
-	return db, nil
+	return operator{db, host, port, user, password, threads}, nil
 }
 
-func (o *operator) Ping() error {
+func (o operator) Ping() error {
 	return o.db.Ping()
 }
 
-func (o *operator) Reconnect() error {
-	o.db.Close()
-
-	db, err := connect(o.host, o.port, o.user, o.password)
-	if err != nil {
-		return err
-	}
-	o.db = db
-
-	return nil
-}
-
-func (o *operator) Close() {
+func (o operator) Close() {
 	o.db.Close()
 }

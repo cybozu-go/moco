@@ -10,7 +10,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 )
 
-func (o *operator) DumpFull(ctx context.Context, dir string) error {
+func (o operator) DumpFull(ctx context.Context, dir string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s:%d", o.user, o.host, o.port),
 		"--passwords-from-stdin",
@@ -31,7 +31,7 @@ func (o *operator) DumpFull(ctx context.Context, dir string) error {
 	return cmd.Run()
 }
 
-func (o *operator) GetBinlogs(ctx context.Context) ([]string, error) {
+func (o operator) GetBinlogs(ctx context.Context) ([]string, error) {
 	var binlogs []showBinaryLogs
 	if err := o.db.SelectContext(ctx, &binlogs, `SHOW BINARY LOGS`); err != nil {
 		return nil, fmt.Errorf("failed to show binary logs: %w", err)
@@ -44,7 +44,7 @@ func (o *operator) GetBinlogs(ctx context.Context) ([]string, error) {
 	return r, nil
 }
 
-func (o *operator) DumpBinlog(ctx context.Context, dir, binlogName, filterGTID string) error {
+func (o operator) DumpBinlog(ctx context.Context, dir, binlogName, filterGTID string) error {
 	args := []string{
 		"-h", o.host,
 		"--port", fmt.Sprint(o.port),

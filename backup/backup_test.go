@@ -21,10 +21,6 @@ func (o *choosePodMockOp) Ping() error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) Reconnect() error {
-	panic("not implemented")
-}
-
 func (o *choosePodMockOp) Close() {
 	o.closed = true
 }
