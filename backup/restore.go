@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -42,6 +43,8 @@ type RestoreManager struct {
 	restorePoint time.Time
 	workDir      string
 }
+
+var ErrBadConnection = errors.New("the connection hasn't reflected the latest user's privileges")
 
 func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time) (*RestoreManager, error) {
 	log := zap.New(zap.WriteTo(os.Stderr), zap.StacktraceLevel(zapcore.DPanicLevel))
@@ -119,7 +122,11 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 		}
 		st := &bkop.ServerStatus{}
 		if err := op.GetServerStatus(ctx, st); err != nil {
-			continue
+			rm.log.Error(err, "failed to get server status")
+			// SHOW MASTER STATUS fails due to the insufficient privileges,
+			// if this restore process connects a target database before moco-agent grants privileges to moco-admin.
+			// In this case, the restore process panics and retries from the beginning.
+			panic(ErrBadConnection)
 		}
 		if !st.SuperReadOnly {
 			continue
