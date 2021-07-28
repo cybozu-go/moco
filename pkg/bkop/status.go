@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (o operator) GetServerStatus(ctx context.Context, st *ServerStatus) error {
+func (o *operator) GetServerStatus(ctx context.Context, st *ServerStatus) error {
 	ms := &showMasterStatus{}
 	if err := o.db.GetContext(ctx, ms, `SHOW MASTER STATUS`); err != nil {
 		return fmt.Errorf("failed to show master status: %w", err)

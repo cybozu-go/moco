@@ -72,12 +72,12 @@ var _ = Describe("Operator", func() {
 		err = opRe.Ping()
 		Expect(err).NotTo(HaveOccurred())
 
-		opRe.(operator).db.MustExec(`SET GLOBAL read_only=0`)
-		opRe.(operator).db.MustExec(`DROP USER 'root'@'localhost'`)
-		opRe.(operator).db.MustExec(`DROP USER 'root'@'%'`)
-		opRe.(operator).db.MustExec(`FLUSH LOCAL PRIVILEGES`)
-		opRe.(operator).db.MustExec(`RESET MASTER`)
-		opRe.(operator).db.MustExec(`SET GLOBAL super_read_only=1`)
+		opRe.(*operator).db.MustExec(`SET GLOBAL read_only=0`)
+		opRe.(*operator).db.MustExec(`DROP USER 'root'@'localhost'`)
+		opRe.(*operator).db.MustExec(`DROP USER 'root'@'%'`)
+		opRe.(*operator).db.MustExec(`FLUSH LOCAL PRIVILEGES`)
+		opRe.(*operator).db.MustExec(`RESET MASTER`)
+		opRe.(*operator).db.MustExec(`SET GLOBAL super_read_only=1`)
 
 		baseDir, err = os.MkdirTemp("", "")
 		Expect(err).NotTo(HaveOccurred())
@@ -165,7 +165,7 @@ var _ = Describe("Operator", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		var restoredGTID string
-		err = opRe.(operator).db.Get(&restoredGTID, `SELECT @@gtid_executed`)
+		err = opRe.(*operator).db.Get(&restoredGTID, `SELECT @@gtid_executed`)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(restoredGTID).To(Equal(dumpGTID))
 
@@ -173,17 +173,17 @@ var _ = Describe("Operator", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(restoredGTID).To(Equal(dumpGTID))
 		var maxID int
-		err = opRe.(operator).db.Get(&maxID, `SELECT MAX(i) FROM foo.t`)
+		err = opRe.(*operator).db.Get(&maxID, `SELECT MAX(i) FROM foo.t`)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(maxID).To(Equal(2))
 
 		err = opRe.FinishRestore(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		var superReadOnly, localInFile bool
-		err = opRe.(operator).db.Get(&superReadOnly, `SELECT @@super_read_only`)
+		err = opRe.(*operator).db.Get(&superReadOnly, `SELECT @@super_read_only`)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(superReadOnly).To(BeTrue())
-		err = opRe.(operator).db.Get(&localInFile, `SELECT @@local_infile`)
+		err = opRe.(*operator).db.Get(&localInFile, `SELECT @@local_infile`)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(localInFile).To(BeFalse())
 	})

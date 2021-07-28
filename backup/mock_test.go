@@ -41,6 +41,10 @@ func (o *mockOperator) Ping() error {
 	return nil
 }
 
+func (o *mockOperator) Reconnect() error {
+	return nil
+}
+
 func (o *mockOperator) Close() {
 	o.closed = true
 }

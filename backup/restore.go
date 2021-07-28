@@ -119,6 +119,10 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 		}
 		st := &bkop.ServerStatus{}
 		if err := op.GetServerStatus(ctx, st); err != nil {
+			rm.log.Error(err, "failed to get server status")
+			if err := op.Reconnect(); err != nil {
+				rm.log.Error(err, "failed to reconnect")
+			}
 			continue
 		}
 		if !st.SuperReadOnly {
