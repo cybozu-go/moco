@@ -1092,11 +1092,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 				Resources: []string{"pods"},
 				Verbs:     []string{"get"},
 			},
-			{
-				APIGroups: []string{""},
-				Resources: []string{"events"},
-				Verbs:     []string{"create"},
-			},
 		}
 		return ctrl.SetControllerReference(job, role, r.Scheme)
 	})
