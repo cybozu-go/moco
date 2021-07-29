@@ -46,7 +46,7 @@ endif
 
 .PHONY: test
 test:
-	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 \
+	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
 		go test -v -race . -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: test-upgrade
