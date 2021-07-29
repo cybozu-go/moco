@@ -77,6 +77,7 @@ func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
 	// imperfectly emulate moco-agent initialization
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AdminUser, pwd.Admin())
 	db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.AdminUser)
+	db.MustExec(`GRANT PROXY ON ''@'' TO ?@'%' WITH GRANT OPTION`, constants.AdminUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.AgentUser, pwd.Agent())
 	db.MustExec(`GRANT ALL ON *.* TO ?@'%'`, constants.AgentUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReplicationUser, pwd.Replicator())
