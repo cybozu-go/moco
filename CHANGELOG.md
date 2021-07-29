@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.5] - 2021-07-29
+
+### Changed
+- Create ServiceAccount for moco controller (#281)
+- Change LICENSE from MIT to Apache 2 (#291)
+
+### Fixed
+- Random failure when restoring a database (#284)
+- Failed to restore data due to missing PROXY privilege (#287)
+
 ## [0.10.4] - 2021-07-07
 
 ### Fixed
@@ -232,7 +242,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.5...HEAD
+[0.10.5]: https://github.com/cybozu-go/moco/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/cybozu-go/moco/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/cybozu-go/moco/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/cybozu-go/moco/compare/v0.10.1...v0.10.2
