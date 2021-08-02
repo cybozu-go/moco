@@ -713,6 +713,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(foundSlowLogConfig).To(BeTrue())
 
 		By("editing statefulset")
+		// Sleep before editing statefulset to avoid slow query agent container from being restored by the controller
+		time.Sleep(1 * time.Second)
+
 		for i, c := range sts.Spec.Template.Spec.Containers {
 			switch c.Name {
 			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName:
