@@ -113,7 +113,7 @@ spec:
           storage: 1Gi
 ```
 
-There are other example manifests in [`examples`](../examples/) directory.
+There are other example manifests in [`examples`](https://github.com/cybozu-go/moco/tree/main/examples) directory.
 
 The complete reference of MySQLCluster is [`crd_mysqlcluster.md`](crd_mysqlcluster.md).
 
