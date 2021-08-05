@@ -21,7 +21,7 @@ That's all!
 
 ## Customize manifests
 
-If you want to edit the manifest, [`config/`](../config/) directory contains the source YAML for [kustomize](https://kustomize.io/).
+If you want to edit the manifest, [`config/`](https://github.com/cybozu-go/moco/tree/main/config) directory contains the source YAML for [kustomize](https://kustomize.io/).
 
 ## Next step
 
