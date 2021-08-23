@@ -32,7 +32,7 @@ jobs:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26"]
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
     name: End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26"]
         k8s-version: ["1.19.11", "1.20.7", "1.21.1"]
     runs-on: ubuntu-20.04
     steps:
