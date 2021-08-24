@@ -18,13 +18,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM quay.io/cybozu/mysql:8.0.25.1 as mysql
+FROM quay.io/cybozu/mysql:8.0.26.2 as mysql
 
 # the backup image
 FROM quay.io/cybozu/ubuntu:20.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.0.25-1
+ARG MYSQLSH_VERSION=8.0.26-1
 
 COPY --from=builder /work/moco-backup /moco-backup
 
