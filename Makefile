@@ -3,7 +3,7 @@ CTRL_TOOLS_VERSION=0.6.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.1.3
 CRD_TO_MARKDOWN_VERSION = 0.0.3
-MYSQLSH_VERSION = 8.0.25-1
+MYSQLSH_VERSION = 8.0.26-1
 MDBOOK_VERSION = 0.4.9
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
