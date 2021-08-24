@@ -81,7 +81,7 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| replicas | Replicas is the number of instances. Available values are 1, 3, and 5. | int32 | false |
+| replicas | Replicas is the number of instances. Available values are positive integers that are odd numbers. | int32 | false |
 | podTemplate | PodTemplate is a `Pod` template for MySQL server container. | [PodTemplateSpec](#podtemplatespec) | true |
 | volumeClaimTemplates | VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container. A claim named \"mysql-data\" must be included in the list. | [][PersistentVolumeClaim](#persistentvolumeclaim) | true |
 | serviceTemplate | ServiceTemplate is a `Service` template for both primary and replicas. | *[ServiceTemplate](#servicetemplate) | false |
