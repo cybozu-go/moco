@@ -22,7 +22,7 @@ You can choose one of the following user for `--mysql-user` option value.
 
 | Name            | Description                                        |
 | --------------- | -------------------------------------------------- |
-| `moco-readable` | A read-only user.                                  |
+| `moco-readonly` | A read-only user.                                  |
 | `moco-writable` | A user that can edit users, databases, and tables. |
 | `moco-admin`    | The super-user.                                    |
 
