@@ -32,7 +32,7 @@ This document describes how MOCO does this job safely.
 
 ## Prerequisites
 
-MySQLCluster allows 1, 3, or 5 for `spec.replicas` value.  If 1, MOCO runs a single `mysqld` instance without configuring replication.  If 3 or 5, MOCO chooses a `mysqld` instance as a primary, writable instance and makes all other instances as replicas of the primary instance.
+MySQLCluster allows positive integers that are odd numbers for `spec.replicas` value.  If 1, MOCO runs a single `mysqld` instance without configuring replication.  If odd number of 3 or more, MOCO chooses a `mysqld` instance as a primary, writable instance and makes all other instances as replicas of the primary instance.
 
 `status.currentPrimaryIndex` in MySQLCluster is used to record the current chosen primary instance.
 Initially, `status.currentPrimaryIndex` is zero and therefore the index of the primary instance is zero.
@@ -41,7 +41,8 @@ As a special case, if `spec.replicationSourceSecretName` is set for MySQLCluster
 
 If `spec.replicationSourceSecretName` is _not_ set, MOCO configures [semisynchronous replication](https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html) between the primary and replicas.  Otherwise, the replication is asynchronous.
 
-For semi-synchronous replication, MOCO configures [`rpl_semi_sync_master_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout) long enough so that there should be at least one (in case of `spec.replicas` == 3) or two (in case of `spec.replicas` == 5) replica instances that have the same commit as the primary.
+For semi-synchronous replication, MOCO configures [`rpl_semi_sync_master_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout) long enough so that there should be at least half of replica instances that have the same commit as the primary.
+For example, in case of `spec.replicas` == 3, the number of replica instance is 1,  in case of `spec.replicas` == 5, the number of replica instances is 2.
 
 MOCO also disables [`relay_log_recovery`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery) because enabling it would drop the relay logs on replicas.
 
