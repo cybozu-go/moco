@@ -41,8 +41,9 @@ As a special case, if `spec.replicationSourceSecretName` is set for MySQLCluster
 
 If `spec.replicationSourceSecretName` is _not_ set, MOCO configures [semisynchronous replication](https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html) between the primary and replicas.  Otherwise, the replication is asynchronous.
 
-For semi-synchronous replication, MOCO configures [`rpl_semi_sync_master_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout) long enough so that there should be at least half of replica instances that have the same commit as the primary.
-For example, in case of `spec.replicas` == 3, the number of replica instance is 1,  in case of `spec.replicas` == 5, the number of replica instances is 2.
+For semi-synchronous replication, MOCO configures [`rpl_semi_sync_master_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout) long enough so that it never degrades to asynchronous replication.
+
+Likewise, MOCO configures [`rpl_semi_sync_master_wait_for_slave_count`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_for_slave_count) to (`spec.replicas` - 1 / 2) to make sure that at least half of replica instances have the same commit as the primary.  e.g., If `spec.replicas` is 5, `rpl_semi_sync_master_wait_for_slave_count` will be set to 2.
 
 MOCO also disables [`relay_log_recovery`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery) because enabling it would drop the relay logs on replicas.
 
