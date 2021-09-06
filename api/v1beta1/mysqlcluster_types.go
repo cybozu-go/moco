@@ -19,7 +19,7 @@ type MySQLClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Replicas is the number of instances. Available values are positive integers that are odd numbers.
+	// Replicas is the number of instances. Available values are positive odd numbers.
 	// +kubebuilder:default=1
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
