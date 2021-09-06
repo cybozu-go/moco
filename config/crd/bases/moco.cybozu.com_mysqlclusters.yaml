@@ -5815,7 +5815,7 @@ spec:
               replicas:
                 default: 1
                 description: Replicas is the number of instances. Available values
-                  are positive integers that are odd numbers.
+                  are positive odd numbers.
                 format: int32
                 type: integer
               replicationSourceSecretName:
