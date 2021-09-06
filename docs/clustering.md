@@ -32,7 +32,7 @@ This document describes how MOCO does this job safely.
 
 ## Prerequisites
 
-MySQLCluster allows positive integers that are odd numbers for `spec.replicas` value.  If 1, MOCO runs a single `mysqld` instance without configuring replication.  If odd number of 3 or more, MOCO chooses a `mysqld` instance as a primary, writable instance and makes all other instances as replicas of the primary instance.
+MySQLCluster allows positive odd numbers for `spec.replicas` value.  If 1, MOCO runs a single `mysqld` instance without configuring replication.  If 3 or greater, MOCO chooses a `mysqld` instance as a primary, writable instance and configures all other instances as replicas of the primary instance.
 
 `status.currentPrimaryIndex` in MySQLCluster is used to record the current chosen primary instance.
 Initially, `status.currentPrimaryIndex` is zero and therefore the index of the primary instance is zero.
