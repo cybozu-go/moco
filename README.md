@@ -33,7 +33,7 @@ Other MySQL 8 releases would probably work.  They are simply not tested in our C
 
 ## Features
 
-- Cluster of 1, 3, or 5 MySQL instances
+- Cluster with odd number of MySQL instances
 - [`kubectl` plugin](docs/kubectl-moco.md)
 - Replication from an external MySQL instance
 - Manual and automatic switchover of the primary instance
