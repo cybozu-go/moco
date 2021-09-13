@@ -19,8 +19,7 @@ type MySQLClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Replicas is the number of instances. Available values are 1, 3, and 5.
-	// +kubebuilder:validation:Enum=1;3;5
+	// Replicas is the number of instances. Available values are positive odd numbers.
 	// +kubebuilder:default=1
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
@@ -131,6 +130,14 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSchedule, err.Error()))
 		}
+	}
+
+	pp = p.Child("replicas")
+	if s.Replicas%2 == 0 {
+		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive odd number"))
+	}
+	if s.Replicas <= 0 {
+		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive integer"))
 	}
 
 	p = p.Child("podTemplate", "spec")

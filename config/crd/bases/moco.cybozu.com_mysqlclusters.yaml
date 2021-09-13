@@ -5815,11 +5815,7 @@ spec:
               replicas:
                 default: 1
                 description: Replicas is the number of instances. Available values
-                  are 1, 3, and 5.
-                enum:
-                - 1
-                - 3
-                - 5
+                  are positive odd numbers.
                 format: int32
                 type: integer
               replicationSourceSecretName:

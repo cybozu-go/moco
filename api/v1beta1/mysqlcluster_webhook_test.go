@@ -233,6 +233,17 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should deny negative values for replicas", func() {
+		r := makeMySQLCluster()
+		r.Spec.Replicas = 4
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r.Spec.Replicas = -1
+		err = k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny adding replication source secret", func() {
 		r := makeMySQLCluster()
 		err := k8sClient.Create(ctx, r)
