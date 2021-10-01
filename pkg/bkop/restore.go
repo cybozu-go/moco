@@ -45,8 +45,8 @@ func (o operator) LoadDump(ctx context.Context, dir string) error {
 	return cmd.Run()
 }
 
-func (o operator) LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error {
-	dirents, err := os.ReadDir(dir)
+func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
+	dirents, err := os.ReadDir(binlogDir)
 	if err != nil {
 		return err
 	}
@@ -61,12 +61,12 @@ func (o operator) LoadBinlog(ctx context.Context, dir string, restorePoint time.
 	}
 
 	if len(binlogs) == 0 {
-		return fmt.Errorf("no binlog files in %s", dir)
+		return fmt.Errorf("no binlog files in %s", binlogDir)
 	}
 	SortBinlogs(binlogs)
 	binlogFiles := make([]string, len(binlogs))
 	for i, n := range binlogs {
-		binlogFiles[i] = filepath.Join(dir, n)
+		binlogFiles[i] = filepath.Join(binlogDir, n)
 	}
 
 	pr, pw, err := os.Pipe()
@@ -93,6 +93,8 @@ func (o operator) LoadBinlog(ctx context.Context, dir string, restorePoint time.
 	binlogCmd.Stderr = os.Stderr
 	env := os.Environ()
 	env = append(env, "TZ=Etc/UTC")
+	// mysqlbinlog requires enough space to be specified as TMPDIR.
+	env = append(env, fmt.Sprintf("TMPDIR=%s", tmpDir))
 	binlogCmd.Env = env
 
 	mysqlArgs := []string{
