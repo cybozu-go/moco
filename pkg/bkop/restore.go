@@ -94,7 +94,7 @@ func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, rest
 	env := os.Environ()
 	env = append(env, "TZ=Etc/UTC")
 	// mysqlbinlog requires enough space to be specified as TMPDIR.
-	env = append(env, fmt.Sprintf("TMPDIR=%s", tmpDir))
+	env = append(env, "TMPDIR="+tmpDir)
 	binlogCmd.Env = env
 
 	mysqlArgs := []string{
