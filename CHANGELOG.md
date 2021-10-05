@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.6] - 2021-10-05
+
+### Added
+- Add MySQL 8.0.26 Support (#302)
+- Supports more than 5 MySQL instances (#303)
+
+### Fixed
+- Fix a dead link in GitHub pages (#301)
+- Set TMPDIR for mysqlbinlog (#309)
+
 ## [0.10.5] - 2021-07-29
 
 ### Changed
@@ -242,7 +252,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.5...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.6...HEAD
+[0.10.6]: https://github.com/cybozu-go/moco/compare/v0.10.5...v0.10.6
 [0.10.5]: https://github.com/cybozu-go/moco/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/cybozu-go/moco/compare/v0.10.3...v0.10.4
 [0.10.3]: https://github.com/cybozu-go/moco/compare/v0.10.2...v0.10.3
