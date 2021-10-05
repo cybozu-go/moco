@@ -301,5 +301,14 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 		return fmt.Errorf("zstd exited abnormally: %w", err)
 	}
 
-	return op.LoadBinlog(ctx, binlogDir, rm.restorePoint)
+	// for mysqlbinlog
+	tmpDir := filepath.Join(rm.workDir, "tmp")
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return fmt.Errorf("failed to create %s: %w", tmpDir, err)
+	}
+	defer func() {
+		os.RemoveAll(tmpDir)
+	}()
+
+	return op.LoadBinlog(ctx, binlogDir, tmpDir, rm.restorePoint)
 }

@@ -50,7 +50,7 @@ func (o *choosePodMockOp) LoadDump(ctx context.Context, dir string) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error {
+func (o *choosePodMockOp) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
 	panic("not implemented")
 }
 

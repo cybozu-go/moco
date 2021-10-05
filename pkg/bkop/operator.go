@@ -39,7 +39,7 @@ type Operator interface {
 	LoadDump(ctx context.Context, dir string) error
 
 	// LoadBinLog applies binary logs up to `restorePoint`.
-	LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error
+	LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error
 
 	// FinishRestore sets global variables of the database instance after restoration.
 	FinishRestore(context.Context) error

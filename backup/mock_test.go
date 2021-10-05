@@ -105,11 +105,11 @@ func (o *mockOperator) LoadDump(ctx context.Context, dir string) error {
 	return err
 }
 
-func (o *mockOperator) LoadBinlog(ctx context.Context, dir string, restorePoint time.Time) error {
+func (o *mockOperator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
 	if !o.prepared {
 		return errors.New("not prepared")
 	}
-	entries, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(binlogDir)
 	if err != nil {
 		return err
 	}
