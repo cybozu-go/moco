@@ -85,6 +85,8 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | podTemplate | PodTemplate is a `Pod` template for MySQL server container. | [PodTemplateSpec](#podtemplatespec) | true |
 | volumeClaimTemplates | VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container. A claim named \"mysql-data\" must be included in the list. | [][PersistentVolumeClaim](#persistentvolumeclaim) | true |
 | serviceTemplate | ServiceTemplate is a `Service` template for both primary and replicas. | *[ServiceTemplate](#servicetemplate) | false |
+| primaryServiceTemplate | PrimaryServiceTemplate is a `Service` template only for primary mysqld instance. | *[ServiceTemplate](#servicetemplate) | false |
+| replicaServiceTemplate | ReplicaServiceTemplate is a `Service` template only for replica mysqld instances. | *[ServiceTemplate](#servicetemplate) | false |
 | mysqlConfigMapName | MySQLConfigMapName is a `ConfigMap` name of MySQL config. | *string | false |
 | replicationSourceSecretName | ReplicationSourceSecretName is a `Secret` name which contains replication source info. If this field is given, the `MySQLCluster` works as an intermediate primary. | *string | false |
 | collectors | Collectors is the list of collector flag names of mysqld_exporter. If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect and export mysqld metrics in Prometheus format.\n\nSee https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.\n\nExample: [\"engine_innodb_status\", \"info_schema.innodb_metrics\"] | []string | false |
@@ -181,7 +183,7 @@ ServiceTemplate defines the desired spec and annotations of Service
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  Only `annotations` and `labels` are valid. | [ObjectMeta](#objectmeta) | false |
-| spec | Spec is the ServiceSpec | *[corev1.ServiceSpec](https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec) | false |
+| spec | Spec is the ServiceSpec. | *[corev1.ServiceSpec](https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec) | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -36,6 +36,12 @@ type MySQLClusterSpec struct {
 	// +optional
 	ServiceTemplate *ServiceTemplate `json:"serviceTemplate,omitempty"`
 
+	// PrimaryServiceTemplate is a `Service` template only for primary mysqld instance.
+	PrimaryServiceTemplate *ServiceTemplate `json:"primaryServiceTemplate,omitempty"`
+
+	// ReplicaServiceTemplate is a `Service` template only for replica mysqld instances.
+	ReplicaServiceTemplate *ServiceTemplate `json:"replicaServiceTemplate,omitempty"`
+
 	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
 	// +nullable
 	// +optional
@@ -288,7 +294,7 @@ type ServiceTemplate struct {
 	// +optional
 	ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec is the ServiceSpec
+	// Spec is the ServiceSpec.
 	// +optional
 	Spec *corev1.ServiceSpec `json:"spec,omitempty"`
 }

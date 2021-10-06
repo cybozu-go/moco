@@ -277,6 +277,16 @@ func (in *MySQLClusterSpec) DeepCopyInto(out *MySQLClusterSpec) {
 		*out = new(ServiceTemplate)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PrimaryServiceTemplate != nil {
+		in, out := &in.PrimaryServiceTemplate, &out.PrimaryServiceTemplate
+		*out = new(ServiceTemplate)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ReplicaServiceTemplate != nil {
+		in, out := &in.ReplicaServiceTemplate, &out.ReplicaServiceTemplate
+		*out = new(ServiceTemplate)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.MySQLConfigMapName != nil {
 		in, out := &in.MySQLConfigMapName, &out.MySQLConfigMapName
 		*out = new(string)

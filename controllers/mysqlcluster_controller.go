@@ -477,25 +477,25 @@ func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, 
 }
 
 func (r *MySQLClusterReconciler) reconcileV1Service(ctx context.Context, req ctrl.Request, cluster *mocov1beta1.MySQLCluster) error {
-	if err := r.reconcileV1Service1(ctx, cluster, cluster.HeadlessServiceName(), true, labelSet(cluster, false)); err != nil {
+	if err := r.reconcileV1Service1(ctx, cluster, cluster.HeadlessServiceName(), "headless", labelSet(cluster, false)); err != nil {
 		return err
 	}
 
 	primarySelector := labelSet(cluster, false)
 	primarySelector[constants.LabelMocoRole] = constants.RolePrimary
-	if err := r.reconcileV1Service1(ctx, cluster, cluster.PrimaryServiceName(), false, primarySelector); err != nil {
+	if err := r.reconcileV1Service1(ctx, cluster, cluster.PrimaryServiceName(), "primary", primarySelector); err != nil {
 		return err
 	}
 
 	replicaSelector := labelSet(cluster, false)
 	replicaSelector[constants.LabelMocoRole] = constants.RoleReplica
-	if err := r.reconcileV1Service1(ctx, cluster, cluster.ReplicaServiceName(), false, replicaSelector); err != nil {
+	if err := r.reconcileV1Service1(ctx, cluster, cluster.ReplicaServiceName(), "replica", replicaSelector); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluster *mocov1beta1.MySQLCluster, name string, headless bool, selector map[string]string) error {
+func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluster *mocov1beta1.MySQLCluster, name string, target string, selector map[string]string) error {
 	log := crlog.FromContext(ctx)
 
 	svc := &corev1.Service{}
@@ -509,7 +509,16 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 		saSpec := &corev1.ServiceSpec{}
 		tmpl := cluster.Spec.ServiceTemplate
-		if !headless && tmpl != nil {
+
+		var extTmpl *mocov1beta1.ServiceTemplate
+		if target == "primary" && cluster.Spec.PrimaryServiceTemplate != nil {
+			extTmpl = cluster.Spec.PrimaryServiceTemplate
+		}
+		if target == "replica" && cluster.Spec.ReplicaServiceTemplate != nil {
+			extTmpl = cluster.Spec.ReplicaServiceTemplate
+		}
+
+		if target != "headless" && tmpl != nil {
 			svc.Annotations = mergeMap(svc.Annotations, tmpl.Annotations)
 			svc.Labels = mergeMap(svc.Labels, tmpl.Labels)
 			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
@@ -517,11 +526,20 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 			if tmpl.Spec != nil {
 				tmpl.Spec.DeepCopyInto(saSpec)
 			}
+
+			if extTmpl != nil {
+				svc.Annotations = mergeMap(svc.Annotations, extTmpl.Annotations)
+				svc.Labels = mergeMap(svc.Labels, extTmpl.Labels)
+
+				if extTmpl.Spec != nil {
+					extTmpl.Spec.DeepCopyInto(saSpec)
+				}
+			}
 		} else {
 			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
 		}
 
-		if headless {
+		if target == "headless" {
 			saSpec.ClusterIP = corev1.ClusterIPNone
 			saSpec.ClusterIPs = svc.Spec.ClusterIPs
 			saSpec.Type = corev1.ServiceTypeClusterIP

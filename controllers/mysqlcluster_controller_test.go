@@ -532,25 +532,39 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
 				ObjectMeta: mocov1beta1.ObjectMeta{
-					Annotations: map[string]string{"foo": "bar"},
-					Labels:      map[string]string{"foo": "baz"},
+					Annotations: map[string]string{"one": "foo"},
+					Labels:      map[string]string{"one": "baz", "two": "foo"},
+				},
+			}
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta1.ServiceTemplate{
+				ObjectMeta: mocov1beta1.ObjectMeta{
+					Labels: map[string]string{"one": "qux", "two": "bar", "three": "baz"},
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta1.ServiceTemplate{
+				ObjectMeta: mocov1beta1.ObjectMeta{
+					Labels: map[string]string{"one": "quux"},
 				},
 			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			primary = &corev1.Service{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
-				return err
-			}
-			if primary.Annotations["foo"] != "bar" {
-				return errors.New("no annotation")
-			}
-			if primary.Labels["foo"] != "baz" {
-				return errors.New("no label")
-			}
-			return nil
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary)).Should(Succeed())
+
+			g.Expect(primary.Annotations["one"]).To(Equal("foo"))
+			g.Expect(primary.Labels["one"]).To(Equal("qux"))
+			g.Expect(primary.Labels["two"]).To(Equal("bar"))
+			g.Expect(primary.Labels["three"]).To(Equal("baz"))
+
+			replica = &corev1.Service{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica)).Should(Succeed())
+
+			g.Expect(replica.Annotations["one"]).To(Equal("foo"))
+			g.Expect(replica.Labels["one"]).To(Equal("quux"))
+			g.Expect(replica.Labels["two"]).To(Equal("foo"))
+			g.Expect(replica.Labels).ShouldNot(ContainElement("three"))
 		}).Should(Succeed())
 
 		Eventually(func() error {
@@ -562,20 +576,29 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
 				Spec: &corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
+				},
+			}
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta1.ServiceTemplate{
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 				},
 			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		Eventually(func() error {
+		Eventually(func(g Gomega) error {
 			primary = &corev1.Service{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
-				return err
-			}
-			if primary.Spec.Type != corev1.ServiceTypeLoadBalancer {
-				return errors.New("service type is not updated")
-			}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary)).Should(Succeed())
+			g.Expect(primary.Spec.Type).To(Equal(corev1.ServiceTypeLoadBalancer))
+			g.Expect(primary.Spec.ExternalTrafficPolicy).To(Equal(corev1.ServiceExternalTrafficPolicyTypeLocal))
+
+			replica = &corev1.Service{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica)).Should(Succeed())
+			g.Expect(replica.Spec.Type).To(Equal(corev1.ServiceTypeLoadBalancer))
+			g.Expect(replica.Spec.ExternalTrafficPolicy).To(Equal(corev1.ServiceExternalTrafficPolicyTypeCluster))
+
 			return nil
 		}).Should(Succeed())
 
@@ -593,25 +616,39 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
 				ObjectMeta: mocov1beta1.ObjectMeta{
-					Annotations: map[string]string{"foo": "bar"},
+					Annotations: map[string]string{"one": "bar"},
+					Labels:      map[string]string{"one": "baz", "two": "baz"},
 				},
 				Spec: &corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 				},
 			}
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta1.ServiceTemplate{
+				ObjectMeta: mocov1beta1.ObjectMeta{
+					Labels: map[string]string{"one": "qux", "three": "baz"},
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = nil
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			primary = &corev1.Service{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
-				return err
-			}
-			if primary.Annotations["foo"] != "bar" {
-				return errors.New("service does not have annotation foo")
-			}
-			return nil
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary)).Should(Succeed())
+
+			g.Expect(primary.Annotations["one"]).To(Equal("bar"))
+			g.Expect(primary.Labels["one"]).To(Equal("qux"))
+			g.Expect(primary.Labels["two"]).To(Equal("baz"))
+			g.Expect(primary.Labels["three"]).To(Equal("baz"))
+
+			replica = &corev1.Service{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica)).Should(Succeed())
+
+			g.Expect(replica.Annotations["one"]).To(Equal("bar"))
+			g.Expect(replica.Labels["one"]).To(Equal("baz"))
+			g.Expect(replica.Labels["two"]).To(Equal("baz"))
+			g.Expect(replica.Labels).ShouldNot(ContainElement("three"))
 		}).Should(Succeed())
 	})
 

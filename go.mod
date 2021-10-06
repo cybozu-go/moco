@@ -15,7 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/onsi/ginkgo v1.16.4
-	github.com/onsi/gomega v1.13.0
+	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
