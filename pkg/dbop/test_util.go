@@ -105,7 +105,7 @@ func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
 
 func NewTestFactory() OperatorFactory {
 	return &testFactory{
-		portBase:    35000,
+		portBase:    10000,
 		instanceMap: make(map[string][]int),
 	}
 }
