@@ -1,0 +1,45 @@
+before:
+  hooks:
+    - make release-manifests-build
+
+builds:
+  - id: kubectl-moco
+    main: ./cmd/kubectl-moco
+    binary: kubectl-moco
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ignore: # ref: https://goreleaser.com/deprecations/#builds-for-windowsarm64
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - builds:
+      - kubectl-moco
+    name_template: "kubectl-{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    wrap_in_directory: false
+    format: tar.gz
+    files:
+      - LICENSE
+      - build/moco.yaml
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  skip: true
+
+release:
+  github:
+    owner: cybozu-go
+    name: moco
+  prerelease: auto
+  name_template: "Release {{ .Tag }}"
+  footer: |
+    See [CHANGELOG.md](./CHANGELOG.md) for details.
