@@ -302,6 +302,8 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 	bm.workDirUsage = usage
 	bm.log.Info("work dir usage (full dump)", "bytes", usage)
 
+	partSize := decidePartSize(usage)
+
 	tarCmd := exec.Command("tar", "-c", "-f", "-", "-C", bm.workDir, "dump")
 	pr, pw, err := os.Pipe()
 	if err != nil {
@@ -326,7 +328,7 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 
 	bw := &ByteCountWriter{}
 	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.DumpFilename, bm.startTime)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr, bw)); err != nil {
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr, bw), partSize); err != nil {
 		return fmt.Errorf("failed to put dump.tar: %w", err)
 	}
 	if err := tarCmd.Wait(); err != nil {
@@ -371,6 +373,8 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	if usage > bm.workDirUsage {
 		bm.workDirUsage = usage
 	}
+
+	partSize := decidePartSize(usage)
 
 	tarCmd := exec.Command("tar", "-c", "-f", "-", "-C", bm.workDir, "binlog")
 	pr, pw, err := os.Pipe()
@@ -419,7 +423,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 
 	bw := &ByteCountWriter{}
 	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.BinlogFilename, lastBackup.Time.Time)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw)); err != nil {
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw), partSize); err != nil {
 		return fmt.Errorf("failed to put binlog.tar.zst: %w", err)
 	}
 	if err := tarCmd.Wait(); err != nil {
@@ -462,4 +466,14 @@ func dirUsage(dir string) (int64, error) {
 	}
 
 	return usage, nil
+}
+
+func decidePartSize(usage int64) int64 {
+	var partSize int64
+	partSize = usage / bucket.UploadParts
+	if partSize <= bucket.DefaultPartSize {
+		return bucket.DefaultPartSize
+	}
+	partSize = (100 << 20) * ((partSize / 100 << 20) + 1)
+	return partSize
 }

@@ -31,7 +31,7 @@ func makeBucket(bucketName string) (bucket.Bucket, error) {
 	if commonArgs.usePathStyle {
 		opts = append(opts, bucket.WithPathStyle())
 	}
-	return bucket.NewS3Bucket(bucketName, 0, opts...)
+	return bucket.NewS3Bucket(bucketName, opts...)
 }
 
 var mysqlPassword = os.Getenv("MYSQL_PASSWORD")
