@@ -646,3 +646,4 @@ Delete such pending Pods until PVC is actually removed.
 [S3]: https://aws.amazon.com/s3/
 [MinIO]: https://min.io/
 [EKS]: https://aws.amazon.com/eks/
+[CronJob]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
