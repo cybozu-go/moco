@@ -6,6 +6,7 @@
 
 - [Getting started](getting_started.md)
     - [Deploying MOCO](setup.md)
+    - [Helm Chart](helm.md)
     - [Installing kubectl-moco](install-plugin.md)
 - [Usage](usage.md)
 - [Advanced topics](advanced.md)

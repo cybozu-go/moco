@@ -1,0 +1,12 @@
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: helm-metadata-labels
+labels:
+  helm.sh/chart: '{{ include "moco.chart" . }}'
+  app.kubernetes.io/name: '{{ include "moco.name" . }}'
+  app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+  app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+fieldSpecs:
+  - path: metadata/labels
+    create: true
