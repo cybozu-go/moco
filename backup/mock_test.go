@@ -136,7 +136,7 @@ type mockBucket struct {
 
 var _ bucket.Bucket = &mockBucket{}
 
-func (b *mockBucket) Put(ctx context.Context, key string, r io.Reader, partSize int64) error {
+func (b *mockBucket) Put(ctx context.Context, key string, r io.Reader, objectSize int64) error {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return err

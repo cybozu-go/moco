@@ -56,13 +56,11 @@ func WithHTTPClient(c *http.Client) func(*s3.Options) {
 }
 
 type s3Bucket struct {
-	name     string
-	partSize int64
-	client   *s3.Client
+	name   string
+	client *s3.Client
 }
 
 // NewS3Bucket creates a Bucket that manage object in S3.
-// PartSize is used to put objects with the upload manager.
 func NewS3Bucket(name string, optFns ...func(*s3.Options)) (Bucket, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
@@ -70,13 +68,12 @@ func NewS3Bucket(name string, optFns ...func(*s3.Options)) (Bucket, error) {
 	}
 
 	return s3Bucket{
-		name:     name,
-		partSize: DefaultPartSize,
-		client:   s3.NewFromConfig(cfg, optFns...),
+		name:   name,
+		client: s3.NewFromConfig(cfg, optFns...),
 	}, nil
 }
 
-func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, partSize int64) error {
+func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSize int64) error {
 	mt := "application/octet-stream"
 	switch {
 	case strings.HasSuffix(key, ".tar"):
@@ -88,11 +85,7 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, partSize 
 	uploader := manager.NewUploader(b.client, func(u *manager.Uploader) {
 		u.Concurrency = 1
 		u.LeavePartsOnError = false
-		if partSize > b.partSize {
-			u.PartSize = partSize
-		} else {
-			u.PartSize = b.partSize
-		}
+		u.PartSize = decidePartSize(objectSize)
 	})
 	pi := &s3.PutObjectInput{
 		Bucket:      &b.name,
@@ -139,4 +132,14 @@ func (b s3Bucket) List(ctx context.Context, prefix string) ([]string, error) {
 	}
 
 	return keys, nil
+}
+
+func decidePartSize(objectSize int64) int64 {
+	var partSize int64
+	if objectSize <= DefaultPartSize {
+		return DefaultPartSize
+	}
+	partSize = objectSize / UploadParts
+	partSize = (100 << 20) * ((partSize / 100 << 20) + 1) // Round up to the nearest 100 MiB.
+	return partSize
 }
