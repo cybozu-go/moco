@@ -326,7 +326,7 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 
 	bw := &ByteCountWriter{}
 	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.DumpFilename, bm.startTime)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr, bw)); err != nil {
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr, bw), usage); err != nil {
 		return fmt.Errorf("failed to put dump.tar: %w", err)
 	}
 	if err := tarCmd.Wait(); err != nil {
@@ -419,7 +419,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 
 	bw := &ByteCountWriter{}
 	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.BinlogFilename, lastBackup.Time.Time)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw)); err != nil {
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw), usage); err != nil {
 		return fmt.Errorf("failed to put binlog.tar.zst: %w", err)
 	}
 	if err := tarCmd.Wait(); err != nil {

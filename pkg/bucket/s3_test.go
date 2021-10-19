@@ -70,10 +70,10 @@ var _ = Describe("S3Bucket", func() {
 		os.Setenv("AWS_ACCESS_KEY_ID", "minioadmin")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 
-		b, err := NewS3Bucket("test", 0, WithEndpointURL("http://localhost:9000"), WithPathStyle())
+		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
 
-		err = b.Put(ctx, "foo/bar", strings.NewReader("01234567890123456789"))
+		err = b.Put(ctx, "foo/bar", strings.NewReader("01234567890123456789"), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
 
 		r, err := b.Get(ctx, "foo/bar")
@@ -86,7 +86,7 @@ var _ = Describe("S3Bucket", func() {
 		Expect(data).To(Equal([]byte("01234567890123456789")))
 
 		for i := 0; i < 1100; i++ {
-			err = b.Put(ctx, fmt.Sprintf("foo/baz%d", i), strings.NewReader("01234567890123456789"))
+			err = b.Put(ctx, fmt.Sprintf("foo/baz%d", i), strings.NewReader("01234567890123456789"), 128<<20)
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -103,7 +103,7 @@ var _ = Describe("S3Bucket", func() {
 		os.Setenv("AWS_ACCESS_KEY_ID", "minioadmin")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 
-		b, err := NewS3Bucket("test", 0, WithEndpointURL("http://localhost:9000"), WithPathStyle())
+		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
 
 		dateCmd := exec.Command("date")
@@ -123,7 +123,7 @@ var _ = Describe("S3Bucket", func() {
 		pw.Close()
 		pw = nil
 
-		err = b.Put(ctx, "date", io.TeeReader(pr, io.Discard))
+		err = b.Put(ctx, "date", io.TeeReader(pr, io.Discard), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
 
 		dateCmd.Wait()

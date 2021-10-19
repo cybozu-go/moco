@@ -12,8 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// DefaultPartSize is the default part size used for Bucket.Put method.
-const DefaultPartSize = 128 << 20
+const (
+	// DefaultPartSize is the default part size used for Bucket.Put method.
+	DefaultPartSize = 128 << 20
+
+	// UploadParts is the number of parts in a multi-part upload on Amazon S3.
+	UploadParts = 5000
+)
 
 // WithCredentials specifies a credential provider.
 func WithCredentials(cred aws.CredentialsProvider) func(*s3.Options) {
@@ -51,32 +56,24 @@ func WithHTTPClient(c *http.Client) func(*s3.Options) {
 }
 
 type s3Bucket struct {
-	name     string
-	partSize int64
-	client   *s3.Client
+	name   string
+	client *s3.Client
 }
 
 // NewS3Bucket creates a Bucket that manage object in S3.
-// PartSize is used to put objects with the upload manager.
-// If the size is less than the minimum (5 MiB), DefaultPartSize will be used.
-func NewS3Bucket(name string, partSize int64, optFns ...func(*s3.Options)) (Bucket, error) {
+func NewS3Bucket(name string, optFns ...func(*s3.Options)) (Bucket, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	if partSize < (5 << 20) {
-		partSize = DefaultPartSize
-	}
-
 	return s3Bucket{
-		name:     name,
-		partSize: partSize,
-		client:   s3.NewFromConfig(cfg, optFns...),
+		name:   name,
+		client: s3.NewFromConfig(cfg, optFns...),
 	}, nil
 }
 
-func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader) error {
+func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSize int64) error {
 	mt := "application/octet-stream"
 	switch {
 	case strings.HasSuffix(key, ".tar"):
@@ -87,8 +84,8 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader) error {
 
 	uploader := manager.NewUploader(b.client, func(u *manager.Uploader) {
 		u.Concurrency = 1
-		u.PartSize = b.partSize
 		u.LeavePartsOnError = false
+		u.PartSize = decidePartSize(objectSize)
 	})
 	pi := &s3.PutObjectInput{
 		Bucket:      &b.name,
@@ -135,4 +132,14 @@ func (b s3Bucket) List(ctx context.Context, prefix string) ([]string, error) {
 	}
 
 	return keys, nil
+}
+
+func decidePartSize(objectSize int64) int64 {
+	var partSize int64
+	if objectSize <= DefaultPartSize {
+		return DefaultPartSize
+	}
+	partSize = objectSize / UploadParts
+	partSize = (100 << 20) * ((partSize / 100 << 20) + 1) // Round up to the nearest 100 MiB.
+	return partSize
 }
