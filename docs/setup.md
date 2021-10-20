@@ -3,21 +3,29 @@ Setup
 
 ## Quick setup
 
-1. Download and install the latest [cert-manager](https://cert-manager.io/).
+You can choose between two installation methods.
 
-    ```console
-    $ curl -fsLO https://github.com/jetstack/cert-manager/releases/latest/download/cert-manager.yaml
-    $ kubectl apply -f cert-manager.yaml
-    ```
+MOCO depends on cert-manager. If cert-manager is not installed on your cluster, install it as follows:
 
-2. Download and install the latest MOCO.
+```console
+$ curl -fsLO https://github.com/jetstack/cert-manager/releases/latest/download/cert-manager.yaml
+$ kubectl apply -f cert-manager.yaml
+```
 
-    ```console
-    $ curl -fsLO https://github.com/cybozu-go/moco/releases/latest/download/moco.yaml
-    $ kubectl apply -f moco.yaml
-    ```
+### Install using raw manifests:
 
-That's all!
+```console
+$ curl -fsLO https://github.com/cybozu-go/moco/releases/latest/download/moco.yaml
+$ kubectl apply -f moco.yaml
+```
+
+### Install using Helm chart:
+
+```console
+$ helm repo add moco https://cybozu-go.github.io/moco/
+$ helm repo update
+$ helm install --create-namespace --namespace moco-system moco moco/moco
+```
 
 ## Customize manifests
 
