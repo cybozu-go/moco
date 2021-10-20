@@ -64,6 +64,7 @@ MOCO Helm Chart will be released independently.
 This will prevent the MOCO version from going up just by modifying the Helm Chart.
 
 You must change the version of `Chart.yaml` when making changes to the Helm Chart.
-CI fails with lint error when creating a Pull Request without changing the version of `Chart.yaml`.
 
-When a pull request with Chart changes is merged into the main branch, [helm/chart-releaser-action](https://github.com/helm/chart-releaser-action) will automatically create a GitHub release.
+Pushing a tag like `chart-v<chart version>` will cause GitHub Actions to release chart.
+Chart versions are expected to follow [Semantic Versioning](https://semver.org/).
+If the chart version in the tag does not match the version listed in `Chart.yaml`, the release will fail.

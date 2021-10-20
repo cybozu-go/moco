@@ -24,8 +24,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         ref: gh-pages
-      # ignore helm chart index file
-    - run: ls | grep -v 'index.yaml' | xargs rm -rf
+      # ignore helm chart index file and chart archive file.
+    - run: ls | grep -v -E 'index.yaml|moco-.*\.tgz' | xargs rm -rf
     - uses: actions/download-artifact@v2
       with:
         name: book

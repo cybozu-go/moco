@@ -2,14 +2,11 @@ name: Release Charts
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'charts/**'
-      - '!**.md'
+    tags:
+      - 'chart-v*'
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -17,13 +14,65 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.2.1
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
         with:
-          config: .cr.yaml
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          version: v3.6.3
+
+      - name: Check chart version
+        run: |
+          tag_version=${GITHUB_REF##*/chart-v}
+          chart_version=$(cat charts/moco/Chart.yaml | grep 'version:' | sed 's/version:\s//')
+          if [ "$tag_version" != "$chart_version" ]; then
+            echo "Different versions: tag \"$tag_version\", chart \"$chart_version\""
+            exit 1
+          fi
+      - name: Packaging the chart
+        run: helm package ./charts/moco/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: helm-charts
+          path: ./moco-*.tgz
+          retention-days: 1
+
+  publish:
+    name: Publish charts on GitHub Pages
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.6.3
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: helm-charts
+
+      - name: Update charts index
+        run: helm repo index --url https://cybozu-go.github.io/moco/ --merge index.yaml .
+
+      - run: git add .
+
+      - name: Check diffs
+        run: |
+          diffs=$(git status -s)
+          if [ "$diffs" = "" ]; then
+            echo "NO_DIFF=1" >> $GITHUB_ENV
+          else
+            printf "%s\n" "$diffs"
+          fi
+      - name: Commit changes
+        if: env.NO_DIFF != '1'
+        run: |
+          git config --global user.name 'Cybozu Neco'
+          git config --global user.email 'cybozu-neco@users.noreply.github.com'
+          git commit -m 'update'
+      - name: Push to gh-pages
+        if: env.NO_DIFF != '1'
+        run: git push origin gh-pages
