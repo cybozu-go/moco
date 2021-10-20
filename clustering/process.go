@@ -263,10 +263,6 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		case StateFailed:
 		case StateLost:
 		case StateIncomplete:
-			idx := ss.Cluster.Status.CurrentPrimaryIndex
-			if ss.MySQLStatus[idx] != nil && isPodReady(ss.Pods[idx]) {
-				available = corev1.ConditionTrue
-			}
 		}
 		conditions := []mocov1beta1.MySQLClusterCondition{
 			updateCond(mocov1beta1.ConditionInitialized, initialized, cluster.Status.Conditions),
