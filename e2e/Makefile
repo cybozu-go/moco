@@ -1,7 +1,7 @@
 KIND_VERSION = 0.11.1
 KUBERNETES_VERSION = 1.21.2
 CERT_MANAGER_VERSION = 1.5.3
-MYSQL_VERSION = 8.0.26
+MYSQL_VERSION = 8.0.27
 
 KIND := $(dir $(shell pwd))/bin/kind
 KUBECTL := $(dir $(shell pwd))/bin/kubectl
