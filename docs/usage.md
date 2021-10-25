@@ -78,6 +78,10 @@ spec:
   replicas: 3
   podTemplate:
     spec:
+      # Make the data directory writable. If moco-init fails with "Permission denied", uncomment the following settings.
+      # securityContext:
+      #   fsGroup: 10000
+      #   fsGroupChangePolicy: "OnRootMismatch"  # available since k8s 1.20
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
