@@ -4,6 +4,9 @@ import (
 	"flag"
 	"os"
 
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"github.com/cybozu-go/moco"
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	"github.com/spf13/cobra"
