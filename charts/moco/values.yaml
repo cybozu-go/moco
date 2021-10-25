@@ -1,0 +1,7 @@
+image:
+  # image.repository -- MOCO image repository to use.
+  repository: ghcr.io/cybozu-go/moco
+
+  # image.tag -- MOCO image tag to use.
+  # @default -- `{{ .Chart.AppVersion }}`
+  tag:  # 0.10.6

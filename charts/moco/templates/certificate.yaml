@@ -1,0 +1,50 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ template "moco.fullname" . }}-controller-grpc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  commonName: moco-controller
+  issuerRef:
+    kind: Issuer
+    name: {{ template "moco.fullname" . }}-grpc-issuer
+  secretName: moco-controller-grpc
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ template "moco.fullname" . }}-grpc-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  commonName: MOCO gRPC CA
+  duration: 87600h
+  isCA: true
+  issuerRef:
+    kind: Issuer
+    name: {{ template "moco.fullname" . }}-selfsigned-issuer
+  renewBefore: 720h
+  secretName: moco-grpc-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ template "moco.fullname" . }}-serving-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+    - {{ template "moco.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc
+    - {{ template "moco.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ template "moco.fullname" . }}-selfsigned-issuer
+  secretName: moco-controller-cert

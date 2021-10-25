@@ -1,0 +1,16 @@
+resources:
+  - ../../../rbac
+  - ../../../webhook
+
+namespace: '{{ .Release.Namespace }}'
+
+namePrefix: '{{ template "moco.fullname" . }}-'
+
+commonLabels:
+  app.kubernetes.io/name: '{{ include "moco.name" . }}'
+
+patchesStrategicMerge:
+  - webhookcainjection-patch.yaml
+
+transformers:
+  - label-transformer.yaml

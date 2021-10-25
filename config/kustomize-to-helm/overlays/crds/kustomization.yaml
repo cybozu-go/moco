@@ -1,0 +1,5 @@
+resources:
+  - ../../../crd
+
+commonLabels:
+  app.kubernetes.io/name: moco
