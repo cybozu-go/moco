@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/cmd/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,7 +23,6 @@ var (
 	kubeConfigFlags *genericclioptions.ConfigFlags
 	kubeClient      client.Client
 	factory         util.Factory
-	restConfig      *rest.Config
 	namespace       string
 )
 
@@ -44,9 +42,8 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		var err error
 		factory = util.NewFactory(util.NewMatchVersionFlags(kubeConfigFlags))
-		restConfig, err = factory.ToRESTConfig()
+		restConfig, err := factory.ToRESTConfig()
 		if err != nil {
 			return err
 		}
@@ -67,20 +64,8 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		rawConfig, err := kubeConfigFlags.ToRawKubeConfigLoader().RawConfig()
-		if err != nil {
-			return err
-		}
-
-		namespace = rawConfig.Contexts[rawConfig.CurrentContext].Namespace
-		if kubeConfigFlags.Namespace != nil {
-			namespace = *kubeConfigFlags.Namespace
-		}
-		if len(namespace) == 0 {
-			namespace = "default"
-		}
-
-		return nil
+		namespace, _, err = kubeConfigFlags.ToRawKubeConfigLoader().Namespace()
+		return err
 	},
 }
 
