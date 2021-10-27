@@ -43,10 +43,10 @@ jobs:
     - run: make test-bkop MYSQL_VERSION=${{ matrix.mysql-version }}
     - run: make test-dbop MYSQL_VERSION=${{ matrix.mysql-version }}
   e2e:
-    name: End-to-End Tests
+    name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27"]
+        mysql-version: ["8.0.27"]
         k8s-version: ["1.19.11", "1.20.7", "1.21.1"]
     runs-on: ubuntu-20.04
     steps:
@@ -71,6 +71,35 @@ jobs:
       with:
         name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
         path: e2e/logs.tar.gz
+  e2e-mysql:
+    name: Supported MySQL versions End-to-End Tests
+    strategy:
+      matrix:
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27"]
+        k8s-version: ["1.21.1"]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.go-version }}
+      - run: |
+          swapon > swapon.txt
+          sudo swapoff -a
+          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+      - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
+      - run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
+        working-directory: e2e
+      - run: make test
+        working-directory: e2e
+      - run: make logs
+        working-directory: e2e
+        if: always()
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
+          path: e2e-mysql/logs.tar.gz
   upgrade:
     name: Upgrade Test
     runs-on: ubuntu-20.04
