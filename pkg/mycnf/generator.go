@@ -121,7 +121,6 @@ var ConstMycnf = map[string]map[string]string{
 		"skip_slave_start": "ON",
 
 		// These are available from 8.0.23 to optimize locks for semisync replication
-		"loose_replication_sender_observe_commit_only":        "ON",
 		"loose_replication_optimize_for_static_plugin_config": "ON",
 	},
 	"client": {
