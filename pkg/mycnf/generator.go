@@ -120,9 +120,13 @@ var ConstMycnf = map[string]map[string]string{
 		"super_read_only":  "ON",
 		"skip_slave_start": "ON",
 
-		// These are available from 8.0.23 to optimize locks for semisync replication
-		"loose_replication_sender_observe_commit_only":        "ON",
+		// Optimizing locks for semisync replication. Available from 8.0.23.
 		"loose_replication_optimize_for_static_plugin_config": "ON",
+
+		// Turn off performance tuning for semisync replication. Available from 8.0.23.
+		// When this option is enabled, a replica recovered from a crash cannot restart replication.
+		// So must be OFF this option. See https://github.com/cybozu-go/moco/issues/325
+		"loose_replication_sender_observe_commit_only": "OFF",
 	},
 	"client": {
 		"port":   strconv.Itoa(constants.MySQLPort),
