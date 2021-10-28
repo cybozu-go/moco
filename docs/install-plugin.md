@@ -27,7 +27,7 @@ $ kubectl krew install moco
     $ OS=$(go env GOOS)
     ```
 
-2. Set `ARCH` to the operating system name
+2. Set `ARCH` to the architecture name
 
    ARCH is one of `amd64` or `arm64`.
 
