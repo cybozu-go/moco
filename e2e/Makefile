@@ -42,7 +42,7 @@ endif
 	$(KUSTOMIZE) build . | $(KUBECTL) apply -f -
 	$(KUBECTL) -n moco-system wait --for=condition=available --timeout=180s --all deployments
 	$(KUBECTL) apply -f minio.yaml
-	$(KUBECTL) wait --for=condition=Ready --all pods
+	$(KUBECTL) wait --timeout=60s --for=condition=Ready --all pods
 
 .PHONY: test
 test:
