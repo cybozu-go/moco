@@ -77,7 +77,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     ```console
     $ sed -r -i "s/^appVersion: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/appVersion: ${APPVERSION}/g" charts/moco/Chart.yaml
     $ sed -r -i "s/^version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/version: ${CHARTVERSION}/g" charts/moco/Chart.yaml
-    $ sed -r -i "s/tag: # [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/tag: # ${APPVERSION}/g" charts/moco/values.yaml
+    $ sed -r -i "s/\(tag: +# \)[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${APPVERSION}/g" charts/moco/values.yaml
     ```
 
 4. Edit `charts/moco/CHANGELOG.md` for the new version ([example][]).
