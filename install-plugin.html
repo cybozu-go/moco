@@ -176,10 +176,42 @@
                         <h1 id="installing-kubectl-moco"><a class="header" href="#installing-kubectl-moco">Installing kubectl-moco</a></h1>
 <p><a href="kubectl-moco.html">kubectl-moco</a> is a plugin for <code>kubectl</code> to control MySQL clusters of MOCO.</p>
 <p>Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/releases">GitHub releases</a> for Windows, Linux, and MacOS.</p>
-<p>Download one of the binaries for your OS and place it in a directory of <code>PATH</code>.</p>
-<pre><code class="language-console">$ curl -fsL -o /path/to/bin/kubectl-moco https://github.com/cybozu-go/moco/releases/latest/download/kubectl-moco-linux-amd64
-$ chmod a+x /path/to/bin/kubectl-moco
+<h2 id="installing-using-krew"><a class="header" href="#installing-using-krew">Installing using Krew</a></h2>
+<p><a href="https://krew.sigs.k8s.io/">Krew</a> is the plugin manager for kubectl command-line tool.</p>
+<p>See the <a href="https://krew.sigs.k8s.io/docs/user-guide/setup/install/">documentation</a> for how to install Krew.</p>
+<pre><code class="language-console">$ kubectl krew update
+$ kubectl krew install moco
 </code></pre>
+<h2 id="installing-manually"><a class="header" href="#installing-manually">Installing manually</a></h2>
+<ol>
+<li>
+<p>Set <code>OS</code> to the operating system name</p>
+<p>OS is one of <code>linux</code>, <code>windows</code>, or <code>darwin</code> (MacOS).</p>
+<p>If Go is available, <code>OS</code> can be set automatically as follows:</p>
+<pre><code class="language-console">$ OS=$(go env GOOS)
+</code></pre>
+</li>
+<li>
+<p>Set <code>ARCH</code> to the architecture name</p>
+<p>ARCH is one of <code>amd64</code> or <code>arm64</code>.</p>
+<p>If Go is available, <code>ARCH</code> can be set automatically as follows:</p>
+<pre><code class="language-console">$ ARCH=$(go env GOARCH)
+</code></pre>
+</li>
+<li>
+<p>Set <code>VERSION</code> to the MOCO version</p>
+<p>See the MOCO release page: https://github.com/cybozu-go/moco/releases</p>
+<pre><code class="language-console">$ VERSION=&lt; The version you want to install &gt;
+</code></pre>
+</li>
+<li>
+<p>Download the binary and put it in a directory of your <code>PATH</code>.</p>
+<p>The following is an example to install the plugin in <code>/usr/local/bin</code>.</p>
+<pre><code class="language-console">$ curl -L -sS https://github.com/cybozu-go/moco/releases/download/$(VERSION)/kubectl-moco_$(VERSION)_$(OS)_$(ARCH).tar.gz \
+  | tar xz -C /usr/local/bin kubectl-moco
+</code></pre>
+</li>
+<li>
 <p>Check the installation by running <code>kubectl moco -h</code>.</p>
 <pre><code class="language-console">$ kubectl moco -h
 the utility command for MOCO.
@@ -195,6 +227,8 @@ Available Commands:
 
 ...
 </code></pre>
+</li>
+</ol>
 
                     </main>
 
