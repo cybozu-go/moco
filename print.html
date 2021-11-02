@@ -232,12 +232,7 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 Users must manually upgrade the CRD if there is a change in the CRD used by MOCO.</p>
 <p>https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#install-a-crd-declaration-before-using-the-resource</p>
 <h2 id="release-chart"><a class="header" href="#release-chart">Release Chart</a></h2>
-<p>MOCO Helm Chart will be released independently.
-This will prevent the MOCO version from going up just by modifying the Helm Chart.</p>
-<p>You must change the version of <code>Chart.yaml</code> when making changes to the Helm Chart.</p>
-<p>Pushing a tag like <code>chart-v&lt;chart version&gt;</code> will cause GitHub Actions to release chart.
-Chart versions are expected to follow <a href="https://semver.org/">Semantic Versioning</a>.
-If the chart version in the tag does not match the version listed in <code>Chart.yaml</code>, the release will fail.</p>
+<p>See <a href="../../RELEASE.html#bump-chart-version">RELEASE.md</a>.</p>
 <div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="installing-kubectl-moco"><a class="header" href="#installing-kubectl-moco">Installing kubectl-moco</a></h1>
 <p><a href="kubectl-moco.html">kubectl-moco</a> is a plugin for <code>kubectl</code> to control MySQL clusters of MOCO.</p>
 <p>Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/releases">GitHub releases</a> for Windows, Linux, and MacOS.</p>
