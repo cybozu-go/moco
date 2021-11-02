@@ -56,7 +56,7 @@ It should look like:
     $ git push origin v$VERSION
     ```
 
-8. (Option) Edit GitHub release page
+8. (Option) Edit GitHub release page  
     You may edit [the GitHub release page](https://github.com/cybozu-go/moco/releases/latest) to add further details.
 
 ## Bump Chart Version
