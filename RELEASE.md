@@ -56,6 +56,9 @@ It should look like:
     $ git push origin v$VERSION
     ```
 
+8. (Option) Edit GitHub release page
+    You may edit [the GitHub release page](https://github.com/cybozu-go/moco/releases/latest) to add further details.
+
 ## Bump Chart Version
 
 MOCO Helm Chart will be released independently.
@@ -94,10 +97,6 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ git tag -a -m "Release chart-v$CHARTVERSION" chart-v$CHARTVERSION
     $ git push origin chart-v$CHARTVERSION
     ```
-
-## (Option) Edit GitHub release page
-
-You may edit [the GitHub release page](https://github.com/cybozu-go/moco/releases/latest) to add further details.
 
 [semver]: https://semver.org/spec/v2.0.0.html
 [example]: https://github.com/cybozu-go/etcdpasswd/commit/77d95384ac6c97e7f48281eaf23cb94f68867f79

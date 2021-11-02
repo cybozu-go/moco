@@ -60,4 +60,4 @@ https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#install-a
 
 ## Release Chart
 
-See [RELEASE.md](../../RELEASE.md)
+See [RELEASE.md](../../RELEASE.md#bump-chart-version).
