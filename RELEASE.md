@@ -61,7 +61,7 @@ It should look like:
 MOCO Helm Chart will be released independently.
 This will prevent the MOCO version from going up just by modifying the Helm Chart.
 
-1. Determine a new version number.  Export it as an environment variable:
+1. Determine a new version number:
 
     ```console
     $ APPVERSION=1.2.3 # MOCO version
