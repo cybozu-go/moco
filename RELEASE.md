@@ -36,14 +36,7 @@ It should look like:
     $ VERSION=1.2.3
     ```
 
-2. Make a new branch from the latest `main` branch as follows:
-
-    ```console
-    $ git checkout main
-    $ git pull
-    $ git checkout -b bump-v$VERSION
-    ```
-
+2. Make a new branch from the latest `main` with `git neco dev bump-v$VERSION`.
 3. Update version strings in `kustomization.yaml` and `version.go`.
 4. Edit `CHANGELOG.md` for the new version ([example][]).
 5. Commit the change and create a pull request:
@@ -75,14 +68,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ CHARTVERSION=4.5.6
     ```
 
-2. Make a new branch from the latest `main` branch as follows:
-
-    ```console
-    $ git checkout main
-    $ git pull
-    $ git checkout -b bump-chart-v$CHARTVERSION
-    ```
-
+2. Make a new branch from the latest `main` with `git neco dev bump-chart-v$CHARTVERSION`.
 3. Update version strings:
 
     ```console
