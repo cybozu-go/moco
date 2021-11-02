@@ -33,13 +33,14 @@ jobs:
     - uses: actions/setup-go@v2
       with:
         go-version: ${{ env.go-version }}
-    - run: make release-build
-    - name: Create Release
+    - name: GoReleaser
+      uses: goreleaser/goreleaser-action@v2
+      with:
+        distribution: goreleaser
+        version: v0.180.3
+        args: release --rm-dist
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        tagname="${GITHUB_REF#refs/tags/}"
-        if echo ${{ github.ref }} | grep -q -e '-'; then prerelease=-p; fi
-        gh release create -t "Release $tagname" $prerelease \
-          -n "See [CHANGELOG.md](./CHANGELOG.md) for details." \
-          "$tagname" build/*
+    - name: Update new version in krew-index
+      # v0.0.40 https://github.com/rajatjindal/krew-release-bot/releases/tag/v0.0.40
+      uses: rajatjindal/krew-release-bot@56925b62bacc2c652114d66a8256faaf0bf89fa9

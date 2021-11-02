@@ -6,6 +6,7 @@ HELM_VERSION = 3.6.3
 CRD_TO_MARKDOWN_VERSION = 0.0.3
 MYSQLSH_VERSION = 8.0.27-1
 MDBOOK_VERSION = 0.4.9
+GORELEASER_VERSION = 0.180.3
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
@@ -115,20 +116,14 @@ build:
 	GOBIN=$(shell pwd)/bin go install ./cmd/...
 
 .PHONY: release-build
-release-build: kustomize
+release-build: goreleaser
+	$(GORELEASER) build --snapshot --rm-dist
+
+.PHONY: release-manifests-build
+release-manifests-build: kustomize
+	rm -rf build
 	mkdir -p build
-	$(MAKE) kubectl-moco GOOS=windows GOARCH=amd64 SUFFIX=.exe
-	$(MAKE) kubectl-moco GOOS=darwin GOARCH=amd64
-	$(MAKE) kubectl-moco GOOS=darwin GOARCH=arm64
-	$(MAKE) kubectl-moco GOOS=linux GOARCH=amd64
-	$(MAKE) kubectl-moco GOOS=linux GOARCH=arm64
 	$(KUSTOMIZE) build . > build/moco.yaml
-
-.PHONY: kubectl-moco
-kubectl-moco: build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX)
-
-build/kubectl-moco-$(GOOS)-$(GOARCH)$(SUFFIX):
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $@ ./cmd/kubectl-moco
 
 ##@ Tools
 
@@ -170,6 +165,15 @@ MDBOOK := $(shell pwd)/bin/mdbook
 mdbook: ## Donwload mdbook locally if necessary
 	mkdir -p bin
 	curl -fsL https://github.com/rust-lang/mdBook/releases/download/v$(MDBOOK_VERSION)/mdbook-v$(MDBOOK_VERSION)-x86_64-unknown-linux-gnu.tar.gz | tar -C bin -xzf -
+
+GORELEASER := $(shell pwd)/bin/goreleaser
+.PHONY: goreleaser
+goreleaser: $(GORELEASER) ## Download goreleaser locally if necessary.
+
+$(GORELEASER):
+	mkdir -p $(BIN_DIR)
+	curl -L -sS https://github.com/goreleaser/goreleaser/releases/download/v$(GORELEASER_VERSION)/goreleaser_Linux_x86_64.tar.gz \
+	  | tar xz -C $(BIN_DIR) goreleaser
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
