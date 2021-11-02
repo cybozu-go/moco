@@ -38,10 +38,10 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 
 ## Values
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
+| Key              | Type   | Default                    | Description                   |
+| ---------------- | ------ | -------------------------- | ----------------------------- |
 | image.repository | string | `"ghcr.io/cybozu-go/moco"` | MOCO image repository to use. |
-| image.tag | string | `{{ .Chart.AppVersion }}` | MOCO image tag to use. |
+| image.tag        | string | `{{ .Chart.AppVersion }}`  | MOCO image tag to use.        |
 
 ## Generate Manifests
 
@@ -60,11 +60,4 @@ https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#install-a
 
 ## Release Chart
 
-MOCO Helm Chart will be released independently.
-This will prevent the MOCO version from going up just by modifying the Helm Chart.
-
-You must change the version of `Chart.yaml` when making changes to the Helm Chart.
-
-Pushing a tag like `chart-v<chart version>` will cause GitHub Actions to release chart.
-Chart versions are expected to follow [Semantic Versioning](https://semver.org/).
-If the chart version in the tag does not match the version listed in `Chart.yaml`, the release will fail.
+See [RELEASE.md](../../RELEASE.md#bump-chart-version).
