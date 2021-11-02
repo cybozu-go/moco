@@ -5,6 +5,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.7] - 2021-11-02
+
+### Added
+- Add MySQL 8.0.27 Support (#330)
+- Add Helm charts (#317)
+- Support krew release (#312)
+
+### Fixed
+- Fix available status when all replicas are not ready (#323)
+- Dynamically adjust part size when uploading backup files (#319) 
+- Disable replication_sender_observe_commit_only (#333)
+- kubectl-moco: Fix crash bug when kubeconfig file does not exist (#327)
+- kubeclt-moco: Import auth plugin (#328)
+- kubectl-moco: Remove redundant error message (#329)
+
 ## [0.10.6] - 2021-10-05
 
 ### Added
@@ -252,7 +267,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.6...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.7...HEAD
+[0.10.7]: https://github.com/cybozu-go/moco/compare/v0.10.6...v0.10.7
 [0.10.6]: https://github.com/cybozu-go/moco/compare/v0.10.5...v0.10.6
 [0.10.5]: https://github.com/cybozu-go/moco/compare/v0.10.4...v0.10.5
 [0.10.4]: https://github.com/cybozu-go/moco/compare/v0.10.3...v0.10.4
