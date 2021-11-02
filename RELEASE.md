@@ -36,7 +36,14 @@ It should look like:
     $ VERSION=1.2.3
     ```
 
-2. Make a new branch from the latest `main` with `git neco dev bump-v$VERSION`
+2. Make a new branch from the latest `main` branch as follows:
+
+    ```console
+    $ git checkout main
+    $ git pull
+    $ git checkout -b bump-v$VERSION
+    ```
+
 3. Update version strings in `kustomization.yaml` and `version.go`.
 4. Edit `CHANGELOG.md` for the new version ([example][]).
 5. Commit the change and create a pull request:
@@ -54,6 +61,52 @@ It should look like:
     $ git pull
     $ git tag -a -m "Release v$VERSION" v$VERSION
     $ git push origin v$VERSION
+    ```
+
+## Bump Chart Version
+
+MOCO Helm Chart will be released independently.
+This will prevent the MOCO version from going up just by modifying the Helm Chart.
+
+1. Determine a new version number.  Export it as an environment variable:
+
+    ```console
+    $ APPVERSION=1.2.3 # MOCO version
+    $ CHARTVERSION=4.5.6
+    ```
+
+2. Make a new branch from the latest `main` branch as follows:
+
+    ```console
+    $ git checkout main
+    $ git pull
+    $ git checkout -b bump-chart-v$CHARTVERSION
+    ```
+
+3. Update version strings:
+
+    ```console
+    $ sed -r -i "s/^appVersion: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/appVersion: ${APPVERSION}/g" charts/moco/Chart.yaml
+    $ sed -r -i "s/^version: [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/version: ${CHARTVERSION}/g" charts/moco/Chart.yaml
+    $ sed -r -i "s/tag:  # [[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/tag:  # ${APPVERSION}/g" charts/moco/values.yaml
+    ```
+
+4. Edit `charts/moco/CHANGELOG.md` for the new version ([example][]).
+5. Commit the change and create a pull request:
+
+    ```console
+    $ git commit -a -m "Bump chart version to $CHARTVERSION"
+    $ git neco review
+    ```
+
+6. Merge the new pull request.
+7. Add a new tag and push it as follows:
+
+    ```console
+    $ git checkout main
+    $ git pull
+    $ git tag -a -m "Release chart-v$CHARTVERSION" chart-v$CHARTVERSION
+    $ git push origin chart-v$CHARTVERSION
     ```
 
 ## (Option) Edit GitHub release page
