@@ -426,7 +426,6 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1
-  - v1beta1
   clientConfig:
     service:
       name: '{{ template "moco.fullname" . }}-webhook-service'
@@ -460,7 +459,6 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1
-  - v1beta1
   clientConfig:
     service:
       name: '{{ template "moco.fullname" . }}-webhook-service'
@@ -482,7 +480,6 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
-  - v1beta1
   clientConfig:
     service:
       name: '{{ template "moco.fullname" . }}-webhook-service'

@@ -22,7 +22,7 @@ func (r *MySQLCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-//+kubebuilder:webhook:path=/mutate-moco-cybozu-com-v1beta1-mysqlcluster,mutating=true,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create,versions=v1beta1,name=mmysqlcluster.kb.io,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/mutate-moco-cybozu-com-v1beta1-mysqlcluster,mutating=true,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create,versions=v1beta1,name=mmysqlcluster.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Defaulter = &MySQLCluster{}
 
@@ -41,7 +41,7 @@ func (r *MySQLCluster) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta1-mysqlcluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create;update,versions=v1beta1,name=vmysqlcluster.kb.io,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta1-mysqlcluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create;update,versions=v1beta1,name=vmysqlcluster.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &MySQLCluster{}
 
