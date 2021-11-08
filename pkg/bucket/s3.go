@@ -136,10 +136,10 @@ func (b s3Bucket) List(ctx context.Context, prefix string) ([]string, error) {
 
 func decidePartSize(objectSize int64) int64 {
 	var partSize int64
-	if objectSize <= DefaultPartSize {
+	if objectSize <= DefaultPartSize*UploadParts {
 		return DefaultPartSize
 	}
 	partSize = objectSize / UploadParts
-	partSize = (100 << 20) * ((partSize / 100 << 20) + 1) // Round up to the nearest 100 MiB.
+	partSize = (100 << 20) * ((partSize / (100 << 20)) + 1) // Round up to the nearest 100 MiB.
 	return partSize
 }

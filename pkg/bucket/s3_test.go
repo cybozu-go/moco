@@ -137,4 +137,12 @@ var _ = Describe("S3Bucket", func() {
 
 		fmt.Println(string(data))
 	})
+
+	It("should calculate the partSize correctly", func() {
+		partSize := decidePartSize(600 << 30)
+		Expect(partSize).Should(BeNumerically("==", DefaultPartSize))
+
+		partSize = decidePartSize(700 << 30)
+		Expect(partSize).Should(BeNumerically("==", 200<<20))
+	})
 })
