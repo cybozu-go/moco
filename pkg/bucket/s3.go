@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	// DefaultPartSize is the default part size used for Bucket.Put method.
-	DefaultPartSize = 128 << 20
+	// PartSizeUnit is the unit of part size used for Bucket.Put method.
+	PartSizeUnit = 128 << 20
 
 	// UploadParts is the number of parts in a multi-part upload on Amazon S3.
-	UploadParts = 5000
+	UploadParts = 4 << 10
 )
 
 // WithCredentials specifies a credential provider.
@@ -136,10 +136,7 @@ func (b s3Bucket) List(ctx context.Context, prefix string) ([]string, error) {
 
 func decidePartSize(objectSize int64) int64 {
 	var partSize int64
-	if objectSize <= DefaultPartSize*UploadParts {
-		return DefaultPartSize
-	}
-	partSize = objectSize / UploadParts
-	partSize = (100 << 20) * ((partSize / (100 << 20)) + 1) // Round up to the nearest 100 MiB.
+	partSize = (objectSize + UploadParts - 1) / UploadParts                  // Round up the result of dividing objectSize by uploadPart.
+	partSize = ((partSize + PartSizeUnit - 1) / PartSizeUnit) * PartSizeUnit // Round up to the nearest PartSizeUnit.
 	return partSize
 }
