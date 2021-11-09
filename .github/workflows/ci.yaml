@@ -47,7 +47,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.27"]
-        k8s-version: ["1.20.7", "1.21.1", "1.22.2"]
+        k8s-version: ["1.20.7", "1.21.2", "1.22.2"]
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
