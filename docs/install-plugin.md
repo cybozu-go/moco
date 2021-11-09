@@ -50,7 +50,7 @@ $ kubectl krew install moco
    The following is an example to install the plugin in `/usr/local/bin`.
 
     ```console
-    $ curl -L -sS https://github.com/cybozu-go/moco/releases/download/$(VERSION)/kubectl-moco_$(VERSION)_$(OS)_$(ARCH).tar.gz \
+    $ curl -L -sS https://github.com/cybozu-go/moco/releases/download/${VERSION}/kubectl-moco_${VERSION}_${OS}_${ARCH}.tar.gz \
       | tar xz -C /usr/local/bin kubectl-moco
     ```
 
