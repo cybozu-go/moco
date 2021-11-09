@@ -17,6 +17,8 @@ spec:
   replicas: 2
   template:
     metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: moco-controller
       labels:
         app.kubernetes.io/component: moco-controller
     spec:
