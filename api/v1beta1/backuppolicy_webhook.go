@@ -23,7 +23,7 @@ func (r *BackupPolicy) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta1-backuppolicy,mutating=false,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=backuppolicies,verbs=create;update;delete,versions=v1beta1,name=vbackuppolicy.kb.io,admissionReviewVersions={v1,v1beta1}
+//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta1-backuppolicy,mutating=false,failurePolicy=fail,sideEffects=None,groups=moco.cybozu.com,resources=backuppolicies,verbs=create;update;delete,versions=v1beta1,name=vbackuppolicy.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &BackupPolicy{}
 

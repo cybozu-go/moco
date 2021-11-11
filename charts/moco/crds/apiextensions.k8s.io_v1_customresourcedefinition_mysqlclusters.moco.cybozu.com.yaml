@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.0
+    controller-gen.kubebuilder.io/version: v0.7.0
   labels:
     app.kubernetes.io/name: moco
   name: mysqlclusters.moco.cybozu.com
@@ -901,7 +901,7 @@ spec:
                                     type: string
                                   value:
                                     description: Variable references $(VAR_NAME) are
-                                      expanded using the previous defined environment
+                                      expanded using the previously defined environment
                                       variables in the container and any service environment
                                       variables.
                                     type: string
@@ -1559,9 +1559,10 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'Security options the pod should run with.
-                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
-                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'SecurityContext defines the security options
+                                the container should be run with. If set, the fields
+                                of SecurityContext override the equivalent fields
+                                of PodSecurityContext. More info: https://kubernetes.'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: AllowPrivilegeEscalation controls whether
@@ -1683,6 +1684,13 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
+                                    hostProcess:
+                                      description: HostProcess determines if a container
+                                        should be run as a 'Host Process' container.
+                                        This field is alpha-level and will only be
+                                        honored by components that enable the WindowsHostProcessContainers
+                                        feature flag.
+                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -1998,7 +2006,7 @@ spec:
                                     type: string
                                   value:
                                     description: Variable references $(VAR_NAME) are
-                                      expanded using the previous defined environment
+                                      expanded using the previously defined environment
                                       variables in the container and any service environment
                                       variables.
                                     type: string
@@ -2645,8 +2653,10 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: SecurityContext is not allowed for ephemeral
-                                containers.
+                              description: 'Optional: SecurityContext defines the
+                                security options the ephemeral container should be
+                                run with. If set, the fields of SecurityContext override
+                                the equivalent fields of PodSecurityContext.'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: AllowPrivilegeEscalation controls whether
@@ -2768,6 +2778,13 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
+                                    hostProcess:
+                                      description: HostProcess determines if a container
+                                        should be run as a 'Host Process' container.
+                                        This field is alpha-level and will only be
+                                        honored by components that enable the WindowsHostProcessContainers
+                                        feature flag.
+                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -3090,7 +3107,7 @@ spec:
                                     type: string
                                   value:
                                     description: Variable references $(VAR_NAME) are
-                                      expanded using the previous defined environment
+                                      expanded using the previously defined environment
                                       variables in the container and any service environment
                                       variables.
                                     type: string
@@ -3748,9 +3765,10 @@ spec:
                                   type: object
                               type: object
                             securityContext:
-                              description: 'Security options the pod should run with.
-                                More info: https://kubernetes.io/docs/concepts/policy/security-context/
-                                More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/'
+                              description: 'SecurityContext defines the security options
+                                the container should be run with. If set, the fields
+                                of SecurityContext override the equivalent fields
+                                of PodSecurityContext. More info: https://kubernetes.'
                               properties:
                                 allowPrivilegeEscalation:
                                   description: AllowPrivilegeEscalation controls whether
@@ -3872,6 +3890,13 @@ spec:
                                       description: GMSACredentialSpecName is the name
                                         of the GMSA credential spec to use.
                                       type: string
+                                    hostProcess:
+                                      description: HostProcess determines if a container
+                                        should be run as a 'Host Process' container.
+                                        This field is alpha-level and will only be
+                                        honored by components that enable the WindowsHostProcessContainers
+                                        feature flag.
+                                      type: boolean
                                     runAsUserName:
                                       description: The UserName in Windows to run
                                         the entrypoint of the container process. Defaults
@@ -4116,6 +4141,7 @@ spec:
                           a node''s labels for the pod to be scheduled on that node.
                           More info: https://kubernetes.'
                         type: object
+                        x-kubernetes-map-type: atomic
                       overhead:
                         additionalProperties:
                           anyOf:
@@ -4299,6 +4325,13 @@ spec:
                                 description: GMSACredentialSpecName is the name of
                                   the GMSA credential spec to use.
                                 type: string
+                              hostProcess:
+                                description: HostProcess determines if a container
+                                  should be run as a 'Host Process' container. This
+                                  field is alpha-level and will only be honored by
+                                  components that enable the WindowsHostProcessContainers
+                                  feature flag.
+                                type: boolean
                               runAsUserName:
                                 description: The UserName in Windows to run the entrypoint
                                   of the container process. Defaults to the user specified
@@ -4856,6 +4889,34 @@ spec:
                                           description: 'This field can be used to
                                             specify either: * An existing VolumeSnapshot
                                             object (snapshot.storage.k8s.'
+                                          properties:
+                                            apiGroup:
+                                              description: APIGroup is the group for
+                                                the resource being referenced. If
+                                                APIGroup is not specified, the specified
+                                                Kind must be in the core API group.
+                                                For any other third-party types, APIGroup
+                                                is required.
+                                              type: string
+                                            kind:
+                                              description: Kind is the type of resource
+                                                being referenced
+                                              type: string
+                                            name:
+                                              description: Name is the name of resource
+                                                being referenced
+                                              type: string
+                                          required:
+                                          - kind
+                                          - name
+                                          type: object
+                                        dataSourceRef:
+                                          description: Specifies the object from which
+                                            to populate the volume with data, if a
+                                            non-empty volume is desired. This may
+                                            be any local object from a non-empty API
+                                            group (non core object) or a PersistentVolumeClaim
+                                            object.
                                           properties:
                                             apiGroup:
                                               description: APIGroup is the group for
@@ -5870,8 +5931,8 @@ spec:
                               type: string
                             value:
                               description: Variable references $(VAR_NAME) are expanded
-                                using the previous defined environment variables in
-                                the container and any service environment variables.
+                                using the previously defined environment variables
+                                in the container and any service environment variables.
                               type: string
                             valueFrom:
                               description: Source for the environment variable's value.
@@ -6436,6 +6497,33 @@ spec:
                                         description: 'This field can be used to specify
                                           either: * An existing VolumeSnapshot object
                                           (snapshot.storage.k8s.'
+                                        properties:
+                                          apiGroup:
+                                            description: APIGroup is the group for
+                                              the resource being referenced. If APIGroup
+                                              is not specified, the specified Kind
+                                              must be in the core API group. For any
+                                              other third-party types, APIGroup is
+                                              required.
+                                            type: string
+                                          kind:
+                                            description: Kind is the type of resource
+                                              being referenced
+                                            type: string
+                                          name:
+                                            description: Name is the name of resource
+                                              being referenced
+                                            type: string
+                                        required:
+                                        - kind
+                                        - name
+                                        type: object
+                                      dataSourceRef:
+                                        description: Specifies the object from which
+                                          to populate the volume with data, if a non-empty
+                                          volume is desired. This may be any local
+                                          object from a non-empty API group (non core
+                                          object) or a PersistentVolumeClaim object.
                                         properties:
                                           apiGroup:
                                             description: APIGroup is the group for
@@ -7558,6 +7646,7 @@ spec:
                           the service is assumed to have an external process managing
                           its endpoints, which Kubernetes will not modify.
                         type: object
+                        x-kubernetes-map-type: atomic
                       sessionAffinity:
                         description: 'Supports "ClientIP" and "None". Used to maintain
                           session affinity. Enable client IP based session affinity.
@@ -7580,14 +7669,6 @@ spec:
                                 type: integer
                             type: object
                         type: object
-                      topologyKeys:
-                        description: topologyKeys is a preference-order list of topology
-                          keys which implementations of services should use to preferentially
-                          sort endpoints when accessing this Service, it can not be
-                          used at the same time as externalTrafficPo
-                        items:
-                          type: string
-                        type: array
                       type:
                         description: type determines how the Service is exposed. Defaults
                           to ClusterIP. Valid options are ExternalName, ClusterIP,
@@ -7640,6 +7721,28 @@ spec:
                         dataSource:
                           description: 'This field can be used to specify either:
                             * An existing VolumeSnapshot object (snapshot.storage.k8s.'
+                          properties:
+                            apiGroup:
+                              description: APIGroup is the group for the resource
+                                being referenced. If APIGroup is not specified, the
+                                specified Kind must be in the core API group. For
+                                any other third-party types, APIGroup is required.
+                              type: string
+                            kind:
+                              description: Kind is the type of resource being referenced
+                              type: string
+                            name:
+                              description: Name is the name of resource being referenced
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        dataSourceRef:
+                          description: Specifies the object from which to populate
+                            the volume with data, if a non-empty volume is desired.
+                            This may be any local object from a non-empty API group
+                            (non core object) or a PersistentVolumeClaim object.
                           properties:
                             apiGroup:
                               description: APIGroup is the group for the resource

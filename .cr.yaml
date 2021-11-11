@@ -1,4 +1,0 @@
-# This file is the config file for helm/chart-releaser
-owner: cybozu-go
-git-repo: moco
-release-name-template: "{{ .Name }}-chart-v{{ .Version }}"
