@@ -137,4 +137,33 @@ var _ = Describe("S3Bucket", func() {
 
 		fmt.Println(string(data))
 	})
+
+	It("should calculate the partSize correctly", func() {
+		partSize := decidePartSize(0)
+		Expect(partSize).Should(BeNumerically("==", 0))
+
+		partSize = decidePartSize(1)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit))
+
+		partSize = decidePartSize(50)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit))
+
+		partSize = decidePartSize(PartSizeUnit*UploadParts - 1)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit))
+
+		partSize = decidePartSize(PartSizeUnit * UploadParts)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit))
+
+		partSize = decidePartSize(PartSizeUnit*UploadParts + 1)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit*2))
+
+		partSize = decidePartSize(PartSizeUnit*2*UploadParts - 1)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit*2))
+
+		partSize = decidePartSize(PartSizeUnit * 2 * UploadParts)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit*2))
+
+		partSize = decidePartSize(PartSizeUnit*2*UploadParts + 1)
+		Expect(partSize).Should(BeNumerically("==", PartSizeUnit*3))
+	})
 })
