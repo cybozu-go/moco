@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.8] - 2021-11-12
+
+### Added
+- Add Kubernetes 1.22 Support (#338)
+
+### Fixed
+- Fix backup failure due to incorrect port size calculation (#339)
+- Fix installation procedure of kubectl-moco (#341)
+
 ## [0.10.7] - 2021-11-02
 
 ### Added
@@ -267,7 +276,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.7...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.8...HEAD
+[0.10.8]: https://github.com/cybozu-go/moco/compare/v0.10.7...v0.10.8
 [0.10.7]: https://github.com/cybozu-go/moco/compare/v0.10.6...v0.10.7
 [0.10.6]: https://github.com/cybozu-go/moco/compare/v0.10.5...v0.10.6
 [0.10.5]: https://github.com/cybozu-go/moco/compare/v0.10.4...v0.10.5
