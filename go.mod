@@ -30,6 +30,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.19.1
 	google.golang.org/grpc v1.42.0
+	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.22.3
 	k8s.io/apimachinery v0.22.3
 	k8s.io/cli-runtime v0.22.3
@@ -122,7 +123,6 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211112145013-271947fe86fd // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

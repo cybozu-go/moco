@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/event"
+	"google.golang.org/protobuf/types/known/durationpb"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -94,6 +95,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	} else {
 		req.InitPassword = string(val)
 	}
+	req.BootTimeout = durationpb.New(time.Duration(ss.Cluster.Spec.StartupWaitSeconds) * time.Second)
 
 	ag, err := p.agentf.New(ctx, ss.Cluster, ss.Primary)
 	if err != nil {
