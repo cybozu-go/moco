@@ -6,6 +6,7 @@ go 1.17
 replace (
 	github.com/go-logr/logr => github.com/go-logr/logr v0.4.0
 	github.com/go-logr/stdr => github.com/go-logr/stdr v0.4.0
+	github.com/go-logr/zapr => github.com/go-logr/zapr v0.4.0
 )
 
 require (
