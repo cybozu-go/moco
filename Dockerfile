@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM quay.io/cybozu/golang:1.16-focal as builder
+FROM quay.io/cybozu/golang:1.17-focal as builder
 
 # Copy the go source
 COPY ./ .

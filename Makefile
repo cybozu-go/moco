@@ -1,12 +1,12 @@
 # Tool versions
 CTRL_TOOLS_VERSION=0.7.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-KUSTOMIZE_VERSION = 4.1.3
-HELM_VERSION = 3.6.3
+KUSTOMIZE_VERSION = 4.4.1
+HELM_VERSION = 3.7.1
 CRD_TO_MARKDOWN_VERSION = 0.0.3
 MYSQLSH_VERSION = 8.0.27-1
-MDBOOK_VERSION = 0.4.9
-GORELEASER_VERSION = 0.180.3
+MDBOOK_VERSION = 0.4.13
+GORELEASER_VERSION = 1.0.0
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
@@ -106,7 +106,9 @@ test: test-tools
 	go vet ./...
 	test -z $$(gofmt -s -l . | tee /dev/stderr)
 	$(STATICCHECK) ./...
-	$(NILERR) ./...
+	# Disabled temporary due to a false positive with nilerr 0.1.1 built with Go 1.17
+	# https://github.com/cybozu-go/moco/runs/4221024784?check_suite_focus=true
+	# $(NILERR) ./...
 
 ##@ Build
 
