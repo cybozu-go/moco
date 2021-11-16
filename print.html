@@ -4,49 +4,28 @@
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
         <title>MOCO Documentation</title>
-        
         <meta name="robots" content="noindex" />
-        
-        
-
-
         <!-- Custom HTML head -->
-        
-
-
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        
         <link rel="icon" href="favicon.svg">
-        
-        
         <link rel="shortcut icon" href="favicon.png">
-        
         <link rel="stylesheet" href="css/variables.css">
         <link rel="stylesheet" href="css/general.css">
         <link rel="stylesheet" href="css/chrome.css">
-        
         <link rel="stylesheet" href="css/print.css" media="print">
-        
-
         <!-- Fonts -->
         <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        
         <link rel="stylesheet" href="fonts/fonts.css">
-        
-
         <!-- Highlight.js Stylesheets -->
         <link rel="stylesheet" href="highlight.css">
         <link rel="stylesheet" href="tomorrow-night.css">
         <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
-        
-
-        
     </head>
     <body>
         <!-- Provide site root to javascript -->
@@ -105,7 +84,6 @@
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                
                 <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky bordered">
                     <div class="left-buttons">
@@ -122,32 +100,23 @@
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        
                         <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
-                        
                     </div>
 
                     <h1 class="menu-title">MOCO Documentation</h1>
 
                     <div class="right-buttons">
-                        
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        
-                        
                         <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        
-                        
-
                     </div>
                 </div>
 
-                
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
                         <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
@@ -158,8 +127,6 @@
                         </ul>
                     </div>
                 </div>
-                
-
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
                 <script type="text/javascript">
                     document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
@@ -175,8 +142,8 @@
 <img src="./logo.svg" width="160" alt="moco logo" />
 <p>This is the documentation site for <a href="https://github.com/cybozu-go/moco">MOCO</a>.
 MOCO is a Kubernetes operator for MySQL created and maintained by Cybozu.</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="setup"><a class="header" href="#setup">Setup</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="setup"><a class="header" href="#setup">Setup</a></h1>
 <h2 id="quick-setup"><a class="header" href="#quick-setup">Quick setup</a></h2>
 <p>You can choose between two installation methods.</p>
 <p>MOCO depends on cert-manager. If cert-manager is not installed on your cluster, install it as follows:</p>
@@ -196,7 +163,7 @@ $ helm install --create-namespace --namespace moco-system moco moco/moco
 <p>If you want to edit the manifest, <a href="https://github.com/cybozu-go/moco/tree/main/config"><code>config/</code></a> directory contains the source YAML for <a href="https://kustomize.io/">kustomize</a>.</p>
 <h2 id="next-step"><a class="header" href="#next-step">Next step</a></h2>
 <p>Read <a href="usage.html"><code>usage.md</code></a> and create your first MySQL cluster!</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-helm-chart"><a class="header" href="#moco-helm-chart">MOCO Helm Chart</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="moco-helm-chart"><a class="header" href="#moco-helm-chart">MOCO Helm Chart</a></h1>
 <h2 id="how-to-use-moco-helm-repository"><a class="header" href="#how-to-use-moco-helm-repository">How to use MOCO Helm repository</a></h2>
 <p>You need to add this repository to your Helm repositories:</p>
 <pre><code class="language-console">$ helm repo add moco https://cybozu-go.github.io/moco/
@@ -233,7 +200,7 @@ Users must manually upgrade the CRD if there is a change in the CRD used by MOCO
 <p>https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#install-a-crd-declaration-before-using-the-resource</p>
 <h2 id="release-chart"><a class="header" href="#release-chart">Release Chart</a></h2>
 <p>See <a href="../../RELEASE.html#bump-chart-version">RELEASE.md</a>.</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="installing-kubectl-moco"><a class="header" href="#installing-kubectl-moco">Installing kubectl-moco</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installing-kubectl-moco"><a class="header" href="#installing-kubectl-moco">Installing kubectl-moco</a></h1>
 <p><a href="kubectl-moco.html">kubectl-moco</a> is a plugin for <code>kubectl</code> to control MySQL clusters of MOCO.</p>
 <p>Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/releases">GitHub releases</a> for Windows, Linux, and MacOS.</p>
 <h2 id="installing-using-krew"><a class="header" href="#installing-using-krew">Installing using Krew</a></h2>
@@ -289,7 +256,7 @@ Available Commands:
 </code></pre>
 </li>
 </ol>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-to-use-moco"><a class="header" href="#how-to-use-moco">How to use MOCO</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="how-to-use-moco"><a class="header" href="#how-to-use-moco">How to use MOCO</a></h1>
 <p>After <a href="setup.html">setting up MOCO</a>, you can create MySQL clusters with a custom resource called <a href="crd_mysqlcluster.html">MySQLCluster</a>.</p>
 <ul>
 <li><a href="usage.html#basics">Basics</a></li>
@@ -802,8 +769,8 @@ $ kubectl delete --grace-period=1 pods moco-test-0
 </code></pre>
 <p>Depending on your Kubernetes version, StatefulSet controller may create a pending Pod before PVC gets deleted.
 Delete such pending Pods until PVC is actually removed.</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
 <p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/mysql</code></a>.
 Users can use one of these images to supply <code>mysqld</code> container in <a href="crd_mysqlcluster.html">MySQLCluster</a> like:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
@@ -842,7 +809,7 @@ $ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
 $ make -j $(nproc)
 $ make install
 </code></pre>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="trouble-shooting"><a class="header" href="#trouble-shooting">Trouble shooting</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="trouble-shooting"><a class="header" href="#trouble-shooting">Trouble shooting</a></h1>
 <h2 id="failed-to-initialize-data-directory-for-mysqld"><a class="header" href="#failed-to-initialize-data-directory-for-mysqld">Failed to initialize data directory for <code>mysqld</code></a></h2>
 <p>If you see the following error message from an init container of <code>mysqld</code> Pod,</p>
 <pre><code>mysqld: Can't create directory '/var/lib/mysql/data/' (OS errno 13 - Permission denied)
@@ -866,8 +833,8 @@ spec:
         fsGroupChangePolicy: &quot;OnRootMismatch&quot;  # available since k8s 1.20
 ...
 </code></pre>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="custom-resources"><a class="header" href="#custom-resources">Custom resources</a></h1>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-1"><a class="header" href="#custom-resources-1">Custom Resources</a></h3>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="custom-resources"><a class="header" href="#custom-resources">Custom resources</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-1"><a class="header" href="#custom-resources-1">Custom Resources</a></h3>
 <ul>
 <li><a href="crd_mysqlcluster.html#mysqlcluster">MySQLCluster</a></li>
 </ul>
@@ -1027,7 +994,7 @@ spec:
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">corev1.EnvVar</a></td><td>false</td></tr>
 </tbody></table>
 <p><a href="crd_mysqlcluster.html#custom-resources">Back to Custom Resources</a></p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-2"><a class="header" href="#custom-resources-2">Custom Resources</a></h3>
+<div style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-2"><a class="header" href="#custom-resources-2">Custom Resources</a></h3>
 <ul>
 <li><a href="crd_backuppolicy.html#backuppolicy">BackupPolicy</a></li>
 </ul>
@@ -1087,8 +1054,8 @@ spec:
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">corev1.EnvVar</a></td><td>false</td></tr>
 </tbody></table>
 <p><a href="crd_backuppolicy.html#custom-resources">Back to Custom Resources</a></p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="kubectl-moco-plugin"><a class="header" href="#kubectl-moco-plugin">kubectl moco plugin</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="kubectl-moco-plugin"><a class="header" href="#kubectl-moco-plugin">kubectl moco plugin</a></h1>
 <p><code>kubectl-moco</code> is a kubectl plugin for MOCO.</p>
 <pre><code>kubectl moco [global options] &lt;subcommand&gt; [sub options] args...
 </code></pre>
@@ -1132,7 +1099,7 @@ For example, the following options are available.</p>
 </tbody></table>
 <h2 id="kubectl-moco-switchover-cluster_name"><a class="header" href="#kubectl-moco-switchover-cluster_name"><code>kubectl moco switchover CLUSTER_NAME</code></a></h2>
 <p>Switch the primary instance to one of the replicas.</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-controller"><a class="header" href="#moco-controller"><code>moco-controller</code></a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="moco-controller"><a class="header" href="#moco-controller"><code>moco-controller</code></a></h1>
 <p><code>moco-controller</code> controls MySQL clusters on Kubernetes.</p>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h2>
 <table><thead><tr><th>Name</th><th>Required</th><th>Description</th></tr></thead><tbody>
@@ -1170,7 +1137,7 @@ For example, the following options are available.</p>
       --zap-log-level level              Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value &gt; 0 which corresponds to custom debug levels of increasing verbosity
       --zap-stacktrace-level level       Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
 </code></pre>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="moco-backup"><a class="header" href="#moco-backup"><code>moco-backup</code></a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="moco-backup"><a class="header" href="#moco-backup"><code>moco-backup</code></a></h1>
 <p><code>moco-backup</code> command is used in <code>ghcr.io/cybozu-go/moco-backup</code> container.
 Normally, users need not take care of this command.</p>
 <h2 id="environment-variables-1"><a class="header" href="#environment-variables-1">Environment variables</a></h2>
@@ -1203,7 +1170,7 @@ For details, read documentation of <a href="https://pkg.go.dev/github.com/aws/aw
 <li><code>NAME</code>: The target MySQLCluster's name.</li>
 <li><code>YYYYMMDD-hhmmss</code>: The point-in-time to restore data.  e.g. <code>20210523-150423</code></li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="metrics-1"><a class="header" href="#metrics-1">Metrics</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="metrics-1"><a class="header" href="#metrics-1">Metrics</a></h1>
 <ul>
 <li><a href="metrics.html#moco-controller">moco-controller</a>
 <ul>
@@ -1293,8 +1260,8 @@ Read <a href="https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md"
 <li><code>name</code>: MySQLCluster's <code>metadata.name</code></li>
 <li><code>index</code>: The ordinal of MySQL instance Pod</li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="design-notes"><a class="header" href="#design-notes">Design notes</a></h1>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="design-notes-1"><a class="header" href="#design-notes-1">Design notes</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="design-notes"><a class="header" href="#design-notes">Design notes</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="design-notes-1"><a class="header" href="#design-notes-1">Design notes</a></h1>
 <p>The purpose of this document is to describe the backgrounds and the goals of MOCO.
 Implementation details are described in other documents.</p>
 <h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
@@ -1349,7 +1316,7 @@ MOCO does not rely on Node fencing as it should be done externally.</p>
 <p>We can still implement failover in a safe way by configuring semi-sync parameters appropriately.</p>
 </li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-reconciles-mysqlcluster"><a class="header" href="#how-moco-reconciles-mysqlcluster">How MOCO reconciles MySQLCluster</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-reconciles-mysqlcluster"><a class="header" href="#how-moco-reconciles-mysqlcluster">How MOCO reconciles MySQLCluster</a></h1>
 <p>MOCO creates and updates a StatefulSet and related resources for each MySQLCluster custom resource.
 This document describes how and when MOCO updates them.</p>
 <ul>
@@ -1453,7 +1420,7 @@ The ServiceAccount is not bound to any Roles/ClusterRoles.</p>
 <p>To restore data from a backup, MOCO creates a Job.
 MOCO deletes the Job after the Job finishes successfully.</p>
 <p>If the Job fails, MOCO leaves the Job.</p>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-maintains-mysql-clusters"><a class="header" href="#how-moco-maintains-mysql-clusters">How MOCO maintains MySQL clusters</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-maintains-mysql-clusters"><a class="header" href="#how-moco-maintains-mysql-clusters">How MOCO maintains MySQL clusters</a></h1>
 <p>For each <a href="crd_mysqlcluster.html">MySQLCluster</a>, MOCO creates and maintains a set of <code>mysqld</code> instances.
 The set contains one <em>primary</em> instance and may contain <em>multiple</em> replica instances depending on the <code>spec.replicas</code> value of MySQLCluster.</p>
 <p>This document describes how MOCO does this job safely.</p>
@@ -1700,7 +1667,7 @@ The most advanced means that its retrieved GTID set is the superset of all other
 </li>
 <li>Finally, make the primary <code>mysqld</code> writable if the primary is not an intermediate primary.</li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="backup-and-restore-1"><a class="header" href="#backup-and-restore-1">Backup and restore</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="backup-and-restore-1"><a class="header" href="#backup-and-restore-1">Backup and restore</a></h1>
 <p>This document describes how MOCO takes a backup of MySQLCluster data and restores a cluster from a backup.</p>
 <ul>
 <li><a href="backup.html#overview">Overview</a></li>
@@ -1888,7 +1855,7 @@ For MySQL, this can be done with <code>mysqlbinlog --stop-never</code>.  This co
 If we do so, the entire backup process should be a persistent workload, not a (Cron)Job.</p>
 </li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="upgrading-mysqld"><a class="header" href="#upgrading-mysqld">Upgrading mysqld</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="upgrading-mysqld"><a class="header" href="#upgrading-mysqld">Upgrading mysqld</a></h1>
 <p>This document describes how mysqld upgrades its data and what MOCO has to do about it.</p>
 <ul>
 <li><a href="upgrading.html#preconditions">Preconditions</a>
@@ -1987,7 +1954,7 @@ re-initialize the replica to restore the cluster health.</p>
 <li>Check and <a href="https://dev.mysql.com/doc/refman/8.0/en/upgrade-prerequisites.html">prepare your installation for upgrade</a></li>
 <li>Do not attempt to downgrade MySQL</li>
 </ul>
-<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="security-considerations"><a class="header" href="#security-considerations">Security considerations</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="security-considerations"><a class="header" href="#security-considerations">Security considerations</a></h1>
 <h2 id="grpc-api"><a class="header" href="#grpc-api">gRPC API</a></h2>
 <p><a href="https://github.com/cybozu-go/moco-agent">moco-agent</a>, a sidecar container in mysqld Pod, provides gRPC API to
 execute <code>CLONE INSTANCE</code> and required operations after CLONE.
@@ -2017,59 +1984,31 @@ That said, the password is encrypted anyway thanks to <a href="https://dev.mysql
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                        
-
-                        
-
                         <div style="clear: both"></div>
                     </nav>
                 </div>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                
-
-                
             </nav>
 
         </div>
 
-        
-
-        
-
-        
-
-        
         <script type="text/javascript">
             window.playground_copyable = true;
         </script>
-        
-
-        
-
-        
         <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
-        
-
         <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
         <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
         <script src="book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
-        
-
-        
-        
         <script type="text/javascript">
         window.addEventListener('load', function() {
             window.setTimeout(window.print, 100);
         });
         </script>
-        
-        
-
     </body>
 </html>
