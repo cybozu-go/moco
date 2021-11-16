@@ -60,8 +60,8 @@ func (f defaultAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQL
 		Time: 1 * time.Minute,
 	}
 	cred := credentials.NewTLS(f.reloader.TLSClientConfig())
-	cred.OverrideServerName(cluster.PodHostname(index))
 	conn, err := grpc.DialContext(ctx, addr,
+		grpc.WithAuthority(cluster.PodHostname(index)),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(cred),
 		grpc.WithKeepaliveParams(kp))
