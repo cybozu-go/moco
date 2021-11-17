@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add Kubernetes 1.22 Support (#338)
 
 ### Fixed
-- Fix backup failure due to incorrect port size calculation (#339)
+- Fix backup failure due to incorrect part size calculation (#339)
 - Fix installation procedure of kubectl-moco (#341)
 
 ## [0.10.7] - 2021-11-02
