@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.9] - 2021-11-18
+
+### Fixed
+- Pass spec.startupWaitSeconds for Clone request (#345)
+- Update moco-agent to v0.7.1 (#345)
+
 ## [0.10.8] - 2021-11-12
 
 ### Added
@@ -276,7 +282,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.8...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.9...HEAD
+[0.10.9]: https://github.com/cybozu-go/moco/compare/v0.10.8...v0.10.9
 [0.10.8]: https://github.com/cybozu-go/moco/compare/v0.10.7...v0.10.8
 [0.10.7]: https://github.com/cybozu-go/moco/compare/v0.10.6...v0.10.7
 [0.10.6]: https://github.com/cybozu-go/moco/compare/v0.10.5...v0.10.6
