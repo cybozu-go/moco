@@ -1,4 +1,4 @@
-package v1beta1
+package v1beta2
 
 import (
 	"fmt"
@@ -32,9 +32,13 @@ type MySQLClusterSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates"`
 
-	// ServiceTemplate is a `Service` template for both primary and replicas.
+	// PrimaryServiceTemplate is a `Service` template for primary.
 	// +optional
-	ServiceTemplate *ServiceTemplate `json:"serviceTemplate,omitempty"`
+	PrimaryServiceTemplate *ServiceTemplate `json:"primaryServiceTemplate,omitempty"`
+
+	// ReplicaServiceTemplate is a `Service` template for replica.
+	// +optional
+	ReplicaServiceTemplate *ServiceTemplate `json:"replicaServiceTemplate,omitempty"`
 
 	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
 	// +nullable
@@ -434,7 +438,6 @@ type ReconcileInfo struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-//+kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Available",type="string",JSONPath=".status.conditions[?(@.type=='Available')].status"
 // +kubebuilder:printcolumn:name="Healthy",type="string",JSONPath=".status.conditions[?(@.type=='Healthy')].status"
 // +kubebuilder:printcolumn:name="Primary",type="integer",JSONPath=".status.currentPrimaryIndex"
