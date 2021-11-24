@@ -61,7 +61,10 @@ spec:
           to: .
         - from: LICENSE
           to: .
-  shortDescription: kubectl-moco is a plugin for kubectl to control MySQL clusters of MOCO.
+  shortDescription: Interact with MySQL operator MOCO.
   description: |
-    kubectl-moco is a plugin for kubectl to control MySQL clusters of MOCO.
-    Read more documentation at: https://cybozu-go.github.io/moco/kubectl-moco.html
+    kubectl-moco is a kubectl plugin for controlling MySQL clusters created by the MySQL operator MOCO.
+    MOCO is a MySQL operator on Kubernetes.
+    Its primary function is to manage MySQL clusters using GTID-based semi-synchronous replication.
+    It does not manage group replication clusters.
+    Read more documentation at: https://cybozu-go.github.io/moco/index.html
