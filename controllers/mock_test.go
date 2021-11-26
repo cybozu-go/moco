@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"sync"
 
 	"github.com/cybozu-go/moco/clustering"
@@ -16,14 +15,14 @@ type mockManager struct {
 
 var _ clustering.ClusterManager = &mockManager{}
 
-func (m *mockManager) Update(ctx context.Context, key types.NamespacedName) {
+func (m *mockManager) Update(key types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.clusters[key.String()] = struct{}{}
 }
 
-func (m *mockManager) UpdateNoStart(ctx context.Context, key types.NamespacedName) {
+func (m *mockManager) UpdateNoStart(key types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

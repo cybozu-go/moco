@@ -239,7 +239,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	r.ClusterManager.Update(ctx, client.ObjectKeyFromObject(cluster))
+	r.ClusterManager.Update(client.ObjectKeyFromObject(cluster))
 	return ctrl.Result{}, nil
 }
 

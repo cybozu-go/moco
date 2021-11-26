@@ -72,7 +72,7 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	log.Info("detected mysql pod deletion", "name", pod.Name)
-	r.ClusterManager.UpdateNoStart(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: ref.Name})
+	r.ClusterManager.UpdateNoStart(types.NamespacedName{Namespace: pod.Namespace, Name: ref.Name})
 	return ctrl.Result{}, nil
 }
 
