@@ -55,6 +55,7 @@ type clusterManager struct {
 
 	mu        sync.Mutex
 	processes map[string]*managerProcess
+	stopped   bool
 
 	wg sync.WaitGroup
 }
@@ -70,6 +71,10 @@ func (m *clusterManager) UpdateNoStart(name types.NamespacedName) {
 func (m *clusterManager) update(name types.NamespacedName, noStart bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if m.stopped {
+		return
+	}
 
 	key := name.String()
 	p, ok := m.processes[key]
@@ -115,4 +120,5 @@ func (m *clusterManager) StopAll() {
 	m.processes = nil
 
 	m.wg.Wait()
+	m.stopped = true
 }
