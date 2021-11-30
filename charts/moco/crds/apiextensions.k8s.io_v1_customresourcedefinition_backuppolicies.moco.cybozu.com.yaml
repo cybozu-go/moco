@@ -18,102 +18,80 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: BackupPolicy is a namespaced resource that should be referenced
-          from MySQLCluster.
+        description: BackupPolicy is a namespaced r
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.'
+            description: APIVersion defines the version
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.'
+            description: Kind is a string value represe
             type: string
           metadata:
             type: object
           spec:
-            description: "BackupPolicySpec defines the configuration items for MySQLCluster
-              backup. \n The following fields will be copied to CronJob."
+            description: BackupPolicySpec defines the c
             properties:
               activeDeadlineSeconds:
-                description: Specifies the duration in seconds relative to the startTime
-                  that the job may be continuously active before the system tries
-                  to terminate it; value must be positive integer.
+                description: Specifies the duration in seco
                 format: int64
                 nullable: true
                 type: integer
               backoffLimit:
-                description: Specifies the number of retries before marking this job
-                  failed. Defaults to 6
+                description: Specifies the number of retrie
                 format: int32
                 minimum: 0
                 nullable: true
                 type: integer
               concurrencyPolicy:
                 default: Allow
-                description: Specifies how to treat concurrent executions of a Job.
+                description: Specifies how to treat concurr
                 enum:
                 - Allow
                 - Forbid
                 - Replace
                 type: string
               failedJobsHistoryLimit:
-                description: The number of failed finished jobs to retain. This is
-                  a pointer to distinguish between explicit zero and not specified.
-                  Defaults to 1.
+                description: 'The number of failed finished '
                 format: int32
                 minimum: 0
                 nullable: true
                 type: integer
               jobConfig:
-                description: Specifies parameters for backup Pod.
+                description: Specifies parameters for backu
                 properties:
                   bucketConfig:
-                    description: Specifies how to access an object storage bucket.
+                    description: Specifies how to access an obj
                     properties:
                       bucketName:
                         description: The name of the bucket
                         minLength: 1
                         type: string
                       endpointURL:
-                        description: The API endpoint URL.  Set this for non-S3 object
-                          storages.
+                        description: The API endpoint URL.
                         pattern: ^https?://.*
                         type: string
                       region:
-                        description: The region of the bucket. This can also be set
-                          through `AWS_REGION` environment variable.
+                        description: The region of the bucket.
                         type: string
                       usePathStyle:
-                        description: Allows you to enable the client to use path-style
-                          addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default,
-                          a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).
+                        description: Allows you to enable the clien
                         type: boolean
                     required:
                     - bucketName
                     type: object
                   env:
-                    description: "List of environment variables to set in the container.
-                      \n You can configure S3 bucket access parameters through environment
-                      variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig"
+                    description: 'List of environment variables '
                     items:
-                      description: EnvVar represents an environment variable present
-                        in a Container.
+                      description: EnvVar represents an environme
                       properties:
                         name:
-                          description: Name of the environment variable. Must be a
-                            C_IDENTIFIER.
+                          description: Name of the environment variab
                           type: string
                         value:
-                          description: Variable references $(VAR_NAME) are expanded
-                            using the previously defined environment variables in
-                            the container and any service environment variables.
+                          description: Variable references $(VAR_NAME
                           type: string
                         valueFrom:
-                          description: Source for the environment variable's value.
-                            Cannot be used if value is not empty.
+                          description: Source for the environment var
                           properties:
                             configMapKeyRef:
                               description: Selects a key of a ConfigMap.
@@ -122,51 +100,37 @@ spec:
                                   description: The key to select.
                                   type: string
                                 name:
-                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    TODO: Add other useful fields. apiVersion, kind,
-                                    uid?'
+                                  description: Name of the referent.
                                   type: string
                                 optional:
-                                  description: Specify whether the ConfigMap or its
-                                    key must be defined
+                                  description: 'Specify whether the ConfigMap '
                                   type: boolean
                               required:
                               - key
                               type: object
                             fieldRef:
-                              description: 'Selects a field of the pod: supports metadata.name,
-                                metadata.namespace, `metadata.labels[''<KEY>'']`,
-                                `metadata.annotations[''<KEY>'']`, spec.nodeName,
-                                spec.serviceAccountName, status.hostIP, status.podIP,
-                                status.podIPs.'
+                              description: 'Selects a field of the pod: su'
                               properties:
                                 apiVersion:
-                                  description: Version of the schema the FieldPath
-                                    is written in terms of, defaults to "v1".
+                                  description: Version of the schema the Fiel
                                   type: string
                                 fieldPath:
-                                  description: Path of the field to select in the
-                                    specified API version.
+                                  description: Path of the field to select in
                                   type: string
                               required:
                               - fieldPath
                               type: object
                             resourceFieldRef:
-                              description: 'Selects a resource of the container: only
-                                resources limits and requests (limits.cpu, limits.memory,
-                                limits.ephemeral-storage, requests.cpu, requests.memory
-                                and requests.ephemeral-storage) are currently supported.'
+                              description: Selects a resource of the cont
                               properties:
                                 containerName:
-                                  description: 'Container name: required for volumes,
-                                    optional for env vars'
+                                  description: 'Container name: required for v'
                                   type: string
                                 divisor:
                                   anyOf:
                                   - type: integer
                                   - type: string
-                                  description: Specifies the output format of the
-                                    exposed resources, defaults to "1"
+                                  description: Specifies the output format of
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
                                 resource:
@@ -176,21 +140,16 @@ spec:
                               - resource
                               type: object
                             secretKeyRef:
-                              description: Selects a key of a secret in the pod's
-                                namespace
+                              description: Selects a key of a secret in t
                               properties:
                                 key:
-                                  description: The key of the secret to select from.  Must
-                                    be a valid secret key.
+                                  description: The key of the secret to selec
                                   type: string
                                 name:
-                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    TODO: Add other useful fields. apiVersion, kind,
-                                    uid?'
+                                  description: Name of the referent.
                                   type: string
                                 optional:
-                                  description: Specify whether the Secret or its key
-                                    must be defined
+                                  description: 'Specify whether the Secret or '
                                   type: boolean
                               required:
                               - key
@@ -204,38 +163,31 @@ spec:
                     - name
                     x-kubernetes-list-type: map
                   envFrom:
-                    description: List of sources to populate environment variables
-                      in the container. The keys defined within a source must be a
-                      C_IDENTIFIER. All invalid keys will be reported as an event
-                      when the container is starting.
+                    description: List of sources to populate en
                     items:
-                      description: EnvFromSource represents the source of a set of
-                        ConfigMaps
+                      description: EnvFromSource represents the s
                       properties:
                         configMapRef:
                           description: The ConfigMap to select from
                           properties:
                             name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              description: Name of the referent.
                               type: string
                             optional:
-                              description: Specify whether the ConfigMap must be defined
+                              description: 'Specify whether the ConfigMap '
                               type: boolean
                           type: object
                         prefix:
-                          description: An optional identifier to prepend to each key
-                            in the ConfigMap. Must be a C_IDENTIFIER.
+                          description: An optional identifier to prep
                           type: string
                         secretRef:
                           description: The Secret to select from
                           properties:
                             name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              description: Name of the referent.
                               type: string
                             optional:
-                              description: Specify whether the Secret must be defined
+                              description: Specify whether the Secret mus
                               type: boolean
                           type: object
                       type: object
@@ -244,8 +196,7 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: MaxMemory is the amount of maximum memory for the
-                      Pod.
+                    description: MaxMemory is the amount of max
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
@@ -254,102 +205,74 @@ spec:
                     - type: integer
                     - type: string
                     default: 4Gi
-                    description: Memory is the amount of memory requested for the
-                      Pod.
+                    description: Memory is the amount of memory
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   serviceAccountName:
-                    description: ServiceAccountName specifies the ServiceAccount to
-                      run the Pod.
+                    description: ServiceAccountName specifies t
                     minLength: 1
                     type: string
                   threads:
                     default: 4
-                    description: Threads is the number of threads used for backup
-                      or restoration.
+                    description: Threads is the number of threa
                     minimum: 1
                     type: integer
                   workVolume:
-                    description: WorkVolume is the volume source for the working directory.
-                      Since the backup or restore task can use a lot of bytes in the
-                      working directory, You should always give a volume with enough
-                      capacity.
+                    description: WorkVolume is the volume sourc
                     properties:
                       awsElasticBlockStore:
-                        description: 'AWSElasticBlockStore represents an AWS Disk
-                          resource that is attached to a kubelet''s host machine and
-                          then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore'
+                        description: AWSElasticBlockStore represent
                         properties:
                           fsType:
-                            description: 'Filesystem type of the volume that you want
-                              to mount. Tip: Ensure that the filesystem type is supported
-                              by the host operating system. Examples: "ext4", "xfs",
-                              "ntfs". Implicitly inferred to be "ext4" if unspecified.'
+                            description: 'Filesystem type of the volume '
                             type: string
                           partition:
-                            description: 'The partition in the volume that you want
-                              to mount. If omitted, the default is to mount by volume
-                              name. Examples: For volume /dev/sda1, you specify the
-                              partition as "1".'
+                            description: The partition in the volume th
                             format: int32
                             type: integer
                           readOnly:
-                            description: 'Specify "true" to force and set the ReadOnly
-                              property in VolumeMounts to "true". If omitted, the
-                              default is "false". More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore'
+                            description: Specify "true" to force and se
                             type: boolean
                           volumeID:
-                            description: 'Unique ID of the persistent disk resource
-                              in AWS (Amazon EBS volume). More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore'
+                            description: Unique ID of the persistent di
                             type: string
                         required:
                         - volumeID
                         type: object
                       azureDisk:
-                        description: AzureDisk represents an Azure Data Disk mount
-                          on the host and bind mount to the pod.
+                        description: 'AzureDisk represents an Azure '
                         properties:
                           cachingMode:
-                            description: 'Host Caching mode: None, Read Only, Read
-                              Write.'
+                            description: 'Host Caching mode: None, Read '
                             type: string
                           diskName:
-                            description: The Name of the data disk in the blob storage
+                            description: The Name of the data disk in t
                             type: string
                           diskURI:
-                            description: The URI the data disk in the blob storage
+                            description: The URI the data disk in the b
                             type: string
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+                            description: Filesystem type to mount.
                             type: string
                           kind:
-                            description: 'Expected values Shared: multiple blob disks
-                              per storage account  Dedicated: single blob disk per
-                              storage account  Managed: azure managed data disk (only
-                              in managed availability set). defaults to shared'
+                            description: 'Expected values Shared: multip'
                             type: string
                           readOnly:
-                            description: Defaults to false (read/write). ReadOnly
-                              here will force the ReadOnly setting in VolumeMounts.
+                            description: Defaults to false (read/write)
                             type: boolean
                         required:
                         - diskName
                         - diskURI
                         type: object
                       azureFile:
-                        description: AzureFile represents an Azure File Service mount
-                          on the host and bind mount to the pod.
+                        description: 'AzureFile represents an Azure '
                         properties:
                           readOnly:
-                            description: Defaults to false (read/write). ReadOnly
-                              here will force the ReadOnly setting in VolumeMounts.
+                            description: Defaults to false (read/write)
                             type: boolean
                           secretName:
-                            description: the name of secret that contains Azure Storage
-                              Account Name and Key
+                            description: the name of secret that contai
                             type: string
                           shareName:
                             description: Share Name
@@ -359,112 +282,78 @@ spec:
                         - shareName
                         type: object
                       cephfs:
-                        description: CephFS represents a Ceph FS mount on the host
-                          that shares a pod's lifetime
+                        description: CephFS represents a Ceph FS mo
                         properties:
                           monitors:
-                            description: 'Required: Monitors is a collection of Ceph
-                              monitors More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it'
+                            description: 'Required: Monitors is a collec'
                             items:
                               type: string
                             type: array
                           path:
-                            description: 'Optional: Used as the mounted root, rather
-                              than the full Ceph tree, default is /'
+                            description: 'Optional: Used as the mounted '
                             type: string
                           readOnly:
-                            description: 'Optional: Defaults to false (read/write).
-                              ReadOnly here will force the ReadOnly setting in VolumeMounts.
-                              More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it'
+                            description: 'Optional: Defaults to false (r'
                             type: boolean
                           secretFile:
-                            description: 'Optional: SecretFile is the path to key
-                              ring for User, default is /etc/ceph/user.secret More
-                              info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it'
+                            description: 'Optional: SecretFile is the pa'
                             type: string
                           secretRef:
-                            description: 'Optional: SecretRef is reference to the
-                              authentication secret for User, default is empty. More
-                              info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it'
+                            description: 'Optional: SecretRef is referen'
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           user:
-                            description: 'Optional: User is the rados user name, default
-                              is admin More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it'
+                            description: 'Optional: User is the rados us'
                             type: string
                         required:
                         - monitors
                         type: object
                       cinder:
-                        description: 'Cinder represents a cinder volume attached and
-                          mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md'
+                        description: Cinder represents a cinder vol
                         properties:
                           fsType:
-                            description: 'Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Examples:
-                              "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4"
-                              if unspecified. More info: https://examples.k8s.'
+                            description: Filesystem type to mount.
                             type: string
                           readOnly:
-                            description: 'Optional: Defaults to false (read/write).
-                              ReadOnly here will force the ReadOnly setting in VolumeMounts.
-                              More info: https://examples.k8s.io/mysql-cinder-pd/README.md'
+                            description: 'Optional: Defaults to false (r'
                             type: boolean
                           secretRef:
-                            description: 'Optional: points to a secret object containing
-                              parameters used to connect to OpenStack.'
+                            description: 'Optional: points to a secret o'
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           volumeID:
-                            description: 'volume id used to identify the volume in
-                              cinder. More info: https://examples.k8s.io/mysql-cinder-pd/README.md'
+                            description: volume id used to identify the
                             type: string
                         required:
                         - volumeID
                         type: object
                       configMap:
-                        description: ConfigMap represents a configMap that should
-                          populate this volume
+                        description: ConfigMap represents a configM
                         properties:
                           defaultMode:
-                            description: 'Optional: mode bits used to set permissions
-                              on created files by default. Must be an octal value
-                              between 0000 and 0777 or a decimal value between 0 and
-                              511.'
+                            description: 'Optional: mode bits used to se'
                             format: int32
                             type: integer
                           items:
-                            description: If unspecified, each key-value pair in the
-                              Data field of the referenced ConfigMap will be projected
-                              into the volume as a file whose name is the key and
-                              content is the value.
+                            description: If unspecified, each key-value
                             items:
-                              description: Maps a string key to a path within a volume.
+                              description: Maps a string key to a path wi
                               properties:
                                 key:
                                   description: The key to project.
                                   type: string
                                 mode:
-                                  description: 'Optional: mode bits used to set permissions
-                                    on this file. Must be an octal value between 0000
-                                    and 0777 or a decimal value between 0 and 511.'
+                                  description: 'Optional: mode bits used to se'
                                   format: int32
                                   type: integer
                                 path:
-                                  description: The relative path of the file to map
-                                    the key to. May not be an absolute path. May not
-                                    contain the path element '..'. May not start with
-                                    the string '..'.
+                                  description: 'The relative path of the file '
                                   type: string
                               required:
                               - key
@@ -472,117 +361,81 @@ spec:
                               type: object
                             type: array
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: Name of the referent.
                             type: string
                           optional:
-                            description: Specify whether the ConfigMap or its keys
-                              must be defined
+                            description: 'Specify whether the ConfigMap '
                             type: boolean
                         type: object
                       csi:
-                        description: CSI (Container Storage Interface) represents
-                          ephemeral storage that is handled by certain external CSI
-                          drivers (Beta feature).
+                        description: CSI (Container Storage Interfa
                         properties:
                           driver:
-                            description: Driver is the name of the CSI driver that
-                              handles this volume. Consult with your admin for the
-                              correct name as registered in the cluster.
+                            description: 'Driver is the name of the CSI '
                             type: string
                           fsType:
-                            description: Filesystem type to mount. Ex. "ext4", "xfs",
-                              "ntfs". If not provided, the empty value is passed to
-                              the associated CSI driver which will determine the default
-                              filesystem to apply.
+                            description: Filesystem type to mount. Ex.
                             type: string
                           nodePublishSecretRef:
-                            description: NodePublishSecretRef is a reference to the
-                              secret object containing sensitive information to pass
-                              to the CSI driver to complete the CSI NodePublishVolume
-                              and NodeUnpublishVolume calls.
+                            description: NodePublishSecretRef is a refe
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           readOnly:
-                            description: Specifies a read-only configuration for the
-                              volume. Defaults to false (read/write).
+                            description: Specifies a read-only configur
                             type: boolean
                           volumeAttributes:
                             additionalProperties:
                               type: string
-                            description: VolumeAttributes stores driver-specific properties
-                              that are passed to the CSI driver. Consult your driver's
-                              documentation for supported values.
+                            description: VolumeAttributes stores driver
                             type: object
                         required:
                         - driver
                         type: object
                       downwardAPI:
-                        description: DownwardAPI represents downward API about the
-                          pod that should populate this volume
+                        description: DownwardAPI represents downwar
                         properties:
                           defaultMode:
-                            description: 'Optional: mode bits to use on created files
-                              by default. Must be a Optional: mode bits used to set
-                              permissions on created files by default.'
+                            description: 'Optional: mode bits to use on '
                             format: int32
                             type: integer
                           items:
-                            description: Items is a list of downward API volume file
+                            description: Items is a list of downward AP
                             items:
-                              description: DownwardAPIVolumeFile represents information
-                                to create the file containing the pod field
+                              description: DownwardAPIVolumeFile represen
                               properties:
                                 fieldRef:
-                                  description: 'Required: Selects a field of the pod:
-                                    only annotations, labels, name and namespace are
-                                    supported.'
+                                  description: 'Required: Selects a field of t'
                                   properties:
                                     apiVersion:
-                                      description: Version of the schema the FieldPath
-                                        is written in terms of, defaults to "v1".
+                                      description: Version of the schema the Fiel
                                       type: string
                                     fieldPath:
                                       description: Path of the field to select in
-                                        the specified API version.
                                       type: string
                                   required:
                                   - fieldPath
                                   type: object
                                 mode:
-                                  description: 'Optional: mode bits used to set permissions
-                                    on this file, must be an octal value between 0000
-                                    and 0777 or a decimal value between 0 and 511.'
+                                  description: 'Optional: mode bits used to se'
                                   format: int32
                                   type: integer
                                 path:
-                                  description: 'Required: Path is  the relative path
-                                    name of the file to be created. Must not be absolute
-                                    or contain the ''..'' path. Must be utf-8 encoded.
-                                    The first item of the relative path must not start
-                                    with ''..'''
+                                  description: 'Required: Path is  the relativ'
                                   type: string
                                 resourceFieldRef:
-                                  description: 'Selects a resource of the container:
-                                    only resources limits and requests (limits.cpu,
-                                    limits.memory, requests.cpu and requests.memory)
-                                    are currently supported.'
+                                  description: Selects a resource of the cont
                                   properties:
                                     containerName:
-                                      description: 'Container name: required for volumes,
-                                        optional for env vars'
+                                      description: 'Container name: required for v'
                                       type: string
                                     divisor:
                                       anyOf:
                                       - type: integer
                                       - type: string
                                       description: Specifies the output format of
-                                        the exposed resources, defaults to "1"
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
                                     resource:
@@ -597,111 +450,74 @@ spec:
                             type: array
                         type: object
                       emptyDir:
-                        description: 'EmptyDir represents a temporary directory that
-                          shares a pod''s lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir'
+                        description: EmptyDir represents a temporar
                         properties:
                           medium:
-                            description: 'What type of storage medium should back
-                              this directory. The default is "" which means to use
-                              the node''s default medium. Must be an empty string
-                              (default) or Memory. More info: https://kubernetes.'
+                            description: What type of storage medium sh
                             type: string
                           sizeLimit:
                             anyOf:
                             - type: integer
                             - type: string
-                            description: Total amount of local storage required for
-                              this EmptyDir volume. The size limit is also applicable
-                              for memory medium.
+                            description: 'Total amount of local storage '
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
                       ephemeral:
-                        description: Ephemeral represents a volume that is handled
-                          by a cluster storage driver. The volume's lifecycle is tied
-                          to the pod that defines it - it will be created before the
-                          pod starts, and deleted when the pod is removed.
+                        description: 'Ephemeral represents a volume '
                         properties:
                           volumeClaimTemplate:
-                            description: Will be used to create a stand-alone PVC
-                              to provision the volume. The pod in which this EphemeralVolumeSource
-                              is embedded will be the owner of the PVC, i.e. the PVC
-                              will be deleted together with the pod.
+                            description: Will be used to create a stand
                             properties:
                               metadata:
-                                description: May contain labels and annotations that
-                                  will be copied into the PVC when creating it. No
-                                  other fields are allowed and will be rejected during
-                                  validation.
+                                description: May contain labels and annotat
                                 type: object
                               spec:
-                                description: The specification for the PersistentVolumeClaim.
-                                  The entire content is copied unchanged into the
-                                  PVC that gets created from this template. The same
-                                  fields as in a PersistentVolumeClaim are also valid
-                                  here.
+                                description: The specification for the Pers
                                 properties:
                                   accessModes:
-                                    description: 'AccessModes contains the desired
-                                      access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                                    description: AccessModes contains the desir
                                     items:
                                       type: string
                                     type: array
                                   dataSource:
-                                    description: 'This field can be used to specify
-                                      either: * An existing VolumeSnapshot object
-                                      (snapshot.storage.k8s.'
+                                    description: This field can be used to spec
                                     properties:
                                       apiGroup:
-                                        description: APIGroup is the group for the
-                                          resource being referenced. If APIGroup is
-                                          not specified, the specified Kind must be
-                                          in the core API group. For any other third-party
-                                          types, APIGroup is required.
+                                        description: 'APIGroup is the group for the '
                                         type: string
                                       kind:
                                         description: Kind is the type of resource
-                                          being referenced
+                                          b
                                         type: string
                                       name:
                                         description: Name is the name of resource
-                                          being referenced
+                                          b
                                         type: string
                                     required:
                                     - kind
                                     - name
                                     type: object
                                   dataSourceRef:
-                                    description: Specifies the object from which to
-                                      populate the volume with data, if a non-empty
-                                      volume is desired. This may be any local object
-                                      from a non-empty API group (non core object)
-                                      or a PersistentVolumeClaim object.
+                                    description: Specifies the object from whic
                                     properties:
                                       apiGroup:
-                                        description: APIGroup is the group for the
-                                          resource being referenced. If APIGroup is
-                                          not specified, the specified Kind must be
-                                          in the core API group. For any other third-party
-                                          types, APIGroup is required.
+                                        description: 'APIGroup is the group for the '
                                         type: string
                                       kind:
                                         description: Kind is the type of resource
-                                          being referenced
+                                          b
                                         type: string
                                       name:
                                         description: Name is the name of resource
-                                          being referenced
+                                          b
                                         type: string
                                     required:
                                     - kind
                                     - name
                                     type: object
                                   resources:
-                                    description: 'Resources represents the minimum
-                                      resources the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                                    description: Resources represents the minim
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -710,9 +526,8 @@ spec:
                                           - type: string
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
-                                        description: 'Limits describes the maximum
-                                          amount of compute resources allowed. More
-                                          info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                                        description: Limits describes the maximum
+                                          a
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -722,43 +537,28 @@ spec:
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
                                         description: Requests describes the minimum
-                                          amount of compute resources required. If
-                                          Requests is omitted for a container, it
-                                          defaults to Limits if that is explicitly
-                                          specified, otherwise to an implementation-defined
-                                          value.
                                         type: object
                                     type: object
                                   selector:
-                                    description: A label query over volumes to consider
-                                      for binding.
+                                    description: 'A label query over volumes to '
                                     properties:
                                       matchExpressions:
-                                        description: matchExpressions is a list of
-                                          label selector requirements. The requirements
-                                          are ANDed.
+                                        description: 'matchExpressions is a list of '
                                         items:
                                           description: A label selector requirement
-                                            is a selector that contains values, a
-                                            key, and an operator that relates the
-                                            key and values.
+                                            i
                                           properties:
                                             key:
-                                              description: key is the label key that
-                                                the selector applies to.
+                                              description: 'key is the label key that
+                                                the '
                                               type: string
                                             operator:
                                               description: operator represents a key's
-                                                relationship to a set of values. Valid
-                                                operators are In, NotIn, Exists and
-                                                DoesNotExist.
+                                                re
                                               type: string
                                             values:
                                               description: values is an array of string
-                                                values. If the operator is In or NotIn,
-                                                the values array must be non-empty.
-                                                If the operator is Exists or DoesNotExist,
-                                                the values array must be empty.
+                                                v
                                               items:
                                                 type: string
                                               type: array
@@ -770,22 +570,17 @@ spec:
                                       matchLabels:
                                         additionalProperties:
                                           type: string
-                                        description: matchLabels is a map of {key,value}
-                                          pairs.
+                                        description: matchLabels is a map of {key,v
                                         type: object
                                     type: object
                                   storageClassName:
-                                    description: 'Name of the StorageClass required
-                                      by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                                    description: Name of the StorageClass requi
                                     type: string
                                   volumeMode:
-                                    description: volumeMode defines what type of volume
-                                      is required by the claim. Value of Filesystem
-                                      is implied when not included in claim spec.
+                                    description: volumeMode defines what type o
                                     type: string
                                   volumeName:
-                                    description: VolumeName is the binding reference
-                                      to the PersistentVolume backing this claim.
+                                    description: VolumeName is the binding refe
                                     type: string
                                 type: object
                             required:
@@ -793,232 +588,170 @@ spec:
                             type: object
                         type: object
                       fc:
-                        description: FC represents a Fibre Channel resource that is
-                          attached to a kubelet's host machine and then exposed to
-                          the pod.
+                        description: 'FC represents a Fibre Channel '
                         properties:
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+                            description: Filesystem type to mount.
                             type: string
                           lun:
                             description: 'Optional: FC target lun number'
                             format: int32
                             type: integer
                           readOnly:
-                            description: 'Optional: Defaults to false (read/write).
-                              ReadOnly here will force the ReadOnly setting in VolumeMounts.'
+                            description: 'Optional: Defaults to false (r'
                             type: boolean
                           targetWWNs:
-                            description: 'Optional: FC target worldwide names (WWNs)'
+                            description: 'Optional: FC target worldwide '
                             items:
                               type: string
                             type: array
                           wwids:
-                            description: 'Optional: FC volume world wide identifiers
-                              (wwids) Either wwids or combination of targetWWNs and
-                              lun must be set, but not both simultaneously.'
+                            description: 'Optional: FC volume world wide'
                             items:
                               type: string
                             type: array
                         type: object
                       flexVolume:
-                        description: FlexVolume represents a generic volume resource
-                          that is provisioned/attached using an exec based plugin.
+                        description: FlexVolume represents a generi
                         properties:
                           driver:
-                            description: Driver is the name of the driver to use for
-                              this volume.
+                            description: Driver is the name of the driv
                             type: string
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". The default filesystem depends on FlexVolume
-                              script.
+                            description: Filesystem type to mount.
                             type: string
                           options:
                             additionalProperties:
                               type: string
-                            description: 'Optional: Extra command options if any.'
+                            description: 'Optional: Extra command option'
                             type: object
                           readOnly:
-                            description: 'Optional: Defaults to false (read/write).
-                              ReadOnly here will force the ReadOnly setting in VolumeMounts.'
+                            description: 'Optional: Defaults to false (r'
                             type: boolean
                           secretRef:
-                            description: 'Optional: SecretRef is reference to the
-                              secret object containing sensitive information to pass
-                              to the plugin scripts. This may be empty if no secret
-                              object is specified.'
+                            description: 'Optional: SecretRef is referen'
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                         required:
                         - driver
                         type: object
                       flocker:
-                        description: Flocker represents a Flocker volume attached
-                          to a kubelet's host machine. This depends on the Flocker
-                          control service being running
+                        description: Flocker represents a Flocker v
                         properties:
                           datasetName:
-                            description: Name of the dataset stored as metadata ->
-                              name on the dataset for Flocker should be considered
-                              as deprecated
+                            description: 'Name of the dataset stored as '
                             type: string
                           datasetUUID:
-                            description: UUID of the dataset. This is unique identifier
-                              of a Flocker dataset
+                            description: UUID of the dataset.
                             type: string
                         type: object
                       gcePersistentDisk:
-                        description: 'GCEPersistentDisk represents a GCE Disk resource
-                          that is attached to a kubelet''s host machine and then exposed
-                          to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk'
+                        description: GCEPersistentDisk represents a
                         properties:
                           fsType:
-                            description: 'Filesystem type of the volume that you want
-                              to mount. Tip: Ensure that the filesystem type is supported
-                              by the host operating system. Examples: "ext4", "xfs",
-                              "ntfs". Implicitly inferred to be "ext4" if unspecified.'
+                            description: 'Filesystem type of the volume '
                             type: string
                           partition:
-                            description: 'The partition in the volume that you want
-                              to mount. If omitted, the default is to mount by volume
-                              name. Examples: For volume /dev/sda1, you specify the
-                              partition as "1".'
+                            description: The partition in the volume th
                             format: int32
                             type: integer
                           pdName:
-                            description: 'Unique name of the PD resource in GCE. Used
-                              to identify the disk in GCE. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk'
+                            description: Unique name of the PD resource
                             type: string
                           readOnly:
-                            description: 'ReadOnly here will force the ReadOnly setting
-                              in VolumeMounts. Defaults to false. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk'
+                            description: ReadOnly here will force the R
                             type: boolean
                         required:
                         - pdName
                         type: object
                       gitRepo:
-                        description: 'GitRepo represents a git repository at a particular
-                          revision. DEPRECATED: GitRepo is deprecated.'
+                        description: GitRepo represents a git repos
                         properties:
                           directory:
-                            description: Target directory name. Must not contain or
-                              start with '..'.  If '.' is supplied, the volume directory
-                              will be the git repository.
+                            description: Target directory name.
                             type: string
                           repository:
                             description: Repository URL
                             type: string
                           revision:
-                            description: Commit hash for the specified revision.
+                            description: 'Commit hash for the specified '
                             type: string
                         required:
                         - repository
                         type: object
                       glusterfs:
-                        description: 'Glusterfs represents a Glusterfs mount on the
-                          host that shares a pod''s lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md'
+                        description: Glusterfs represents a Gluster
                         properties:
                           endpoints:
-                            description: 'EndpointsName is the endpoint name that
-                              details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod'
+                            description: 'EndpointsName is the endpoint '
                             type: string
                           path:
-                            description: 'Path is the Glusterfs volume path. More
-                              info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod'
+                            description: Path is the Glusterfs volume p
                             type: string
                           readOnly:
-                            description: 'ReadOnly here will force the Glusterfs volume
-                              to be mounted with read-only permissions. Defaults to
-                              false. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod'
+                            description: ReadOnly here will force the G
                             type: boolean
                         required:
                         - endpoints
                         - path
                         type: object
                       hostPath:
-                        description: HostPath represents a pre-existing file or directory
-                          on the host machine that is directly exposed to the container.
+                        description: HostPath represents a pre-exis
                         properties:
                           path:
-                            description: 'Path of the directory on the host. If the
-                              path is a symlink, it will follow the link to the real
-                              path. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath'
+                            description: Path of the directory on the h
                             type: string
                           type:
-                            description: 'Type for HostPath Volume Defaults to ""
-                              More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath'
+                            description: Type for HostPath Volume Defau
                             type: string
                         required:
                         - path
                         type: object
                       iscsi:
-                        description: 'ISCSI represents an ISCSI Disk resource that
-                          is attached to a kubelet''s host machine and then exposed
-                          to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md'
+                        description: ISCSI represents an ISCSI Disk
                         properties:
                           chapAuthDiscovery:
-                            description: whether support iSCSI Discovery CHAP authentication
+                            description: whether support iSCSI Discover
                             type: boolean
                           chapAuthSession:
-                            description: whether support iSCSI Session CHAP authentication
+                            description: 'whether support iSCSI Session '
                             type: boolean
                           fsType:
-                            description: 'Filesystem type of the volume that you want
-                              to mount. Tip: Ensure that the filesystem type is supported
-                              by the host operating system. Examples: "ext4", "xfs",
-                              "ntfs". Implicitly inferred to be "ext4" if unspecified.'
+                            description: 'Filesystem type of the volume '
                             type: string
                           initiatorName:
-                            description: Custom iSCSI Initiator Name. If initiatorName
-                              is specified with iscsiInterface simultaneously, new
-                              iSCSI interface <target portal>:<volume name> will be
-                              created for the connection.
+                            description: Custom iSCSI Initiator Name.
                             type: string
                           iqn:
                             description: Target iSCSI Qualified Name.
                             type: string
                           iscsiInterface:
-                            description: iSCSI Interface Name that uses an iSCSI transport.
-                              Defaults to 'default' (tcp).
+                            description: iSCSI Interface Name that uses
                             type: string
                           lun:
                             description: iSCSI Target Lun number.
                             format: int32
                             type: integer
                           portals:
-                            description: iSCSI Target Portal List. The portal is either
-                              an IP or ip_addr:port if the port is other than default
-                              (typically TCP ports 860 and 3260).
+                            description: iSCSI Target Portal List.
                             items:
                               type: string
                             type: array
                           readOnly:
-                            description: ReadOnly here will force the ReadOnly setting
-                              in VolumeMounts. Defaults to false.
+                            description: ReadOnly here will force the R
                             type: boolean
                           secretRef:
-                            description: CHAP Secret for iSCSI target and initiator
-                              authentication
+                            description: CHAP Secret for iSCSI target a
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           targetPortal:
-                            description: iSCSI Target Portal. The Portal is either
-                              an IP or ip_addr:port if the port is other than default
-                              (typically TCP ports 860 and 3260).
+                            description: iSCSI Target Portal.
                             type: string
                         required:
                         - iqn
@@ -1026,124 +759,91 @@ spec:
                         - targetPortal
                         type: object
                       nfs:
-                        description: 'NFS represents an NFS mount on the host that
-                          shares a pod''s lifetime More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
+                        description: NFS represents an NFS mount on
                         properties:
                           path:
-                            description: 'Path that is exported by the NFS server.
-                              More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
+                            description: Path that is exported by the N
                             type: string
                           readOnly:
-                            description: 'ReadOnly here will force the NFS export
-                              to be mounted with read-only permissions. Defaults to
-                              false. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
+                            description: ReadOnly here will force the N
                             type: boolean
                           server:
-                            description: 'Server is the hostname or IP address of
-                              the NFS server. More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs'
+                            description: Server is the hostname or IP a
                             type: string
                         required:
                         - path
                         - server
                         type: object
                       persistentVolumeClaim:
-                        description: 'PersistentVolumeClaimVolumeSource represents
-                          a reference to a PersistentVolumeClaim in the same namespace.
-                          More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims'
+                        description: PersistentVolumeClaimVolumeSou
                         properties:
                           claimName:
-                            description: 'ClaimName is the name of a PersistentVolumeClaim
-                              in the same namespace as the pod using this volume.
-                              More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims'
+                            description: ClaimName is the name of a Per
                             type: string
                           readOnly:
-                            description: Will force the ReadOnly setting in VolumeMounts.
-                              Default false.
+                            description: Will force the ReadOnly settin
                             type: boolean
                         required:
                         - claimName
                         type: object
                       photonPersistentDisk:
-                        description: PhotonPersistentDisk represents a PhotonController
-                          persistent disk attached and mounted on kubelets host machine
+                        description: PhotonPersistentDisk represent
                         properties:
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+                            description: Filesystem type to mount.
                             type: string
                           pdID:
-                            description: ID that identifies Photon Controller persistent
-                              disk
+                            description: ID that identifies Photon Cont
                             type: string
                         required:
                         - pdID
                         type: object
                       portworxVolume:
-                        description: PortworxVolume represents a portworx volume attached
-                          and mounted on kubelets host machine
+                        description: PortworxVolume represents a po
                         properties:
                           fsType:
-                            description: FSType represents the filesystem type to
-                              mount Must be a filesystem type supported by the host
-                              operating system. Ex. "ext4", "xfs". Implicitly inferred
-                              to be "ext4" if unspecified.
+                            description: FSType represents the filesyst
                             type: string
                           readOnly:
-                            description: Defaults to false (read/write). ReadOnly
-                              here will force the ReadOnly setting in VolumeMounts.
+                            description: Defaults to false (read/write)
                             type: boolean
                           volumeID:
-                            description: VolumeID uniquely identifies a Portworx volume
+                            description: VolumeID uniquely identifies a
                             type: string
                         required:
                         - volumeID
                         type: object
                       projected:
-                        description: Items for all in one resources secrets, configmaps,
-                          and downward API
+                        description: Items for all in one resources
                         properties:
                           defaultMode:
-                            description: Mode bits used to set permissions on created
-                              files by default. Must be an octal value between 0000
-                              and 0777 or a decimal value between 0 and 511.
+                            description: Mode bits used to set permissi
                             format: int32
                             type: integer
                           sources:
                             description: list of volume projections
                             items:
-                              description: Projection that may be projected along
-                                with other supported volume types
+                              description: Projection that may be project
                               properties:
                                 configMap:
-                                  description: information about the configMap data
-                                    to project
+                                  description: information about the configMa
                                   properties:
                                     items:
                                       description: If unspecified, each key-value
-                                        pair in the Data field of the referenced ConfigMap
-                                        will be projected into the volume as a file
-                                        whose name is the key and content is the value.
                                       items:
-                                        description: Maps a string key to a path within
-                                          a volume.
+                                        description: Maps a string key to a path wi
                                         properties:
                                           key:
                                             description: The key to project.
                                             type: string
                                           mode:
                                             description: 'Optional: mode bits used
-                                              to set permissions on this file. Must
-                                              be an octal value between 0000 and 0777
-                                              or a decimal value between 0 and 511.'
+                                              to se'
                                             format: int32
                                             type: integer
                                           path:
-                                            description: The relative path of the
-                                              file to map the key to. May not be an
-                                              absolute path. May not contain the path
-                                              element '..'. May not start with the
-                                              string '..'.
+                                            description: 'The relative path of the
+                                              file '
                                             type: string
                                         required:
                                         - key
@@ -1151,78 +851,57 @@ spec:
                                         type: object
                                       type: array
                                     name:
-                                      description: 'Name of the referent. More info:
-                                        https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                        TODO: Add other useful fields. apiVersion,
-                                        kind, uid?'
+                                      description: Name of the referent.
                                       type: string
                                     optional:
-                                      description: Specify whether the ConfigMap or
-                                        its keys must be defined
+                                      description: 'Specify whether the ConfigMap '
                                       type: boolean
                                   type: object
                                 downwardAPI:
-                                  description: information about the downwardAPI data
-                                    to project
+                                  description: information about the downward
                                   properties:
                                     items:
-                                      description: Items is a list of DownwardAPIVolume
-                                        file
+                                      description: Items is a list of DownwardAPI
                                       items:
-                                        description: DownwardAPIVolumeFile represents
-                                          information to create the file containing
-                                          the pod field
+                                        description: DownwardAPIVolumeFile represen
                                         properties:
                                           fieldRef:
                                             description: 'Required: Selects a field
-                                              of the pod: only annotations, labels,
-                                              name and namespace are supported.'
+                                              of t'
                                             properties:
                                               apiVersion:
                                                 description: Version of the schema
-                                                  the FieldPath is written in terms
-                                                  of, defaults to "v1".
+                                                  the Fiel
                                                 type: string
                                               fieldPath:
                                                 description: Path of the field to
-                                                  select in the specified API version.
+                                                  select in
                                                 type: string
                                             required:
                                             - fieldPath
                                             type: object
                                           mode:
                                             description: 'Optional: mode bits used
-                                              to set permissions on this file, must
-                                              be an octal value between 0000 and 0777
-                                              or a decimal value between 0 and 511.'
+                                              to se'
                                             format: int32
                                             type: integer
                                           path:
-                                            description: 'Required: Path is  the relative
-                                              path name of the file to be created.
-                                              Must not be absolute or contain the
-                                              ''..'' path. Must be utf-8 encoded.
-                                              The first item of the relative path
-                                              must not start with ''..'''
+                                            description: 'Required: Path is  the relativ'
                                             type: string
                                           resourceFieldRef:
-                                            description: 'Selects a resource of the
-                                              container: only resources limits and
-                                              requests (limits.cpu, limits.memory,
-                                              requests.cpu and requests.memory) are
-                                              currently supported.'
+                                            description: Selects a resource of the
+                                              cont
                                             properties:
                                               containerName:
                                                 description: 'Container name: required
-                                                  for volumes, optional for env vars'
+                                                  for v'
                                                 type: string
                                               divisor:
                                                 anyOf:
                                                 - type: integer
                                                 - type: string
                                                 description: Specifies the output
-                                                  format of the exposed resources,
-                                                  defaults to "1"
+                                                  format of
                                                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                                 x-kubernetes-int-or-string: true
                                               resource:
@@ -1238,34 +917,24 @@ spec:
                                       type: array
                                   type: object
                                 secret:
-                                  description: information about the secret data to
-                                    project
+                                  description: information about the secret d
                                   properties:
                                     items:
                                       description: If unspecified, each key-value
-                                        pair in the Data field of the referenced Secret
-                                        will be projected into the volume as a file
-                                        whose name is the key and content is the value.
                                       items:
-                                        description: Maps a string key to a path within
-                                          a volume.
+                                        description: Maps a string key to a path wi
                                         properties:
                                           key:
                                             description: The key to project.
                                             type: string
                                           mode:
                                             description: 'Optional: mode bits used
-                                              to set permissions on this file. Must
-                                              be an octal value between 0000 and 0777
-                                              or a decimal value between 0 and 511.'
+                                              to se'
                                             format: int32
                                             type: integer
                                           path:
-                                            description: The relative path of the
-                                              file to map the key to. May not be an
-                                              absolute path. May not contain the path
-                                              element '..'. May not start with the
-                                              string '..'.
+                                            description: 'The relative path of the
+                                              file '
                                             type: string
                                         required:
                                         - key
@@ -1273,39 +942,24 @@ spec:
                                         type: object
                                       type: array
                                     name:
-                                      description: 'Name of the referent. More info:
-                                        https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                        TODO: Add other useful fields. apiVersion,
-                                        kind, uid?'
+                                      description: Name of the referent.
                                       type: string
                                     optional:
-                                      description: Specify whether the Secret or its
-                                        key must be defined
+                                      description: 'Specify whether the Secret or '
                                       type: boolean
                                   type: object
                                 serviceAccountToken:
-                                  description: information about the serviceAccountToken
-                                    data to project
+                                  description: information about the serviceA
                                   properties:
                                     audience:
-                                      description: Audience is the intended audience
-                                        of the token. A recipient of a token must
-                                        identify itself with an identifier specified
-                                        in the audience of the token, and otherwise
-                                        should reject the token.
+                                      description: Audience is the intended audie
                                       type: string
                                     expirationSeconds:
-                                      description: ExpirationSeconds is the requested
-                                        duration of validity of the service account
-                                        token. As the token approaches expiration,
-                                        the kubelet volume plugin will proactively
-                                        rotate the service account token.
+                                      description: ExpirationSeconds is the reque
                                       format: int64
                                       type: integer
                                     path:
-                                      description: Path is the path relative to the
-                                        mount point of the file to project the token
-                                        into.
+                                      description: Path is the path relative to t
                                       type: string
                                   required:
                                   - path
@@ -1314,142 +968,103 @@ spec:
                             type: array
                         type: object
                       quobyte:
-                        description: Quobyte represents a Quobyte mount on the host
-                          that shares a pod's lifetime
+                        description: Quobyte represents a Quobyte m
                         properties:
                           group:
-                            description: Group to map volume access to Default is
-                              no group
+                            description: 'Group to map volume access to '
                             type: string
                           readOnly:
-                            description: ReadOnly here will force the Quobyte volume
-                              to be mounted with read-only permissions. Defaults to
-                              false.
+                            description: ReadOnly here will force the Q
                             type: boolean
                           registry:
-                            description: Registry represents a single or multiple
-                              Quobyte Registry services specified as a string as host:port
-                              pair (multiple entries are separated with commas) which
-                              acts as the central registry for volumes
+                            description: Registry represents a single o
                             type: string
                           tenant:
-                            description: Tenant owning the given Quobyte volume in
-                              the Backend Used with dynamically provisioned Quobyte
-                              volumes, value is set by the plugin
+                            description: Tenant owning the given Quobyt
                             type: string
                           user:
-                            description: User to map volume access to Defaults to
-                              serivceaccount user
+                            description: User to map volume access to D
                             type: string
                           volume:
-                            description: Volume is a string that references an already
-                              created Quobyte volume by name.
+                            description: Volume is a string that refere
                             type: string
                         required:
                         - registry
                         - volume
                         type: object
                       rbd:
-                        description: 'RBD represents a Rados Block Device mount on
-                          the host that shares a pod''s lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md'
+                        description: RBD represents a Rados Block D
                         properties:
                           fsType:
-                            description: 'Filesystem type of the volume that you want
-                              to mount. Tip: Ensure that the filesystem type is supported
-                              by the host operating system. Examples: "ext4", "xfs",
-                              "ntfs". Implicitly inferred to be "ext4" if unspecified.'
+                            description: 'Filesystem type of the volume '
                             type: string
                           image:
-                            description: 'The rados image name. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: The rados image name.
                             type: string
                           keyring:
-                            description: 'Keyring is the path to key ring for RBDUser.
-                              Default is /etc/ceph/keyring. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: Keyring is the path to key rin
                             type: string
                           monitors:
-                            description: 'A collection of Ceph monitors. More info:
-                              https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: A collection of Ceph monitors.
                             items:
                               type: string
                             type: array
                           pool:
-                            description: 'The rados pool name. Default is rbd. More
-                              info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: The rados pool name.
                             type: string
                           readOnly:
-                            description: 'ReadOnly here will force the ReadOnly setting
-                              in VolumeMounts. Defaults to false. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: ReadOnly here will force the R
                             type: boolean
                           secretRef:
-                            description: 'SecretRef is name of the authentication
-                              secret for RBDUser. If provided overrides keyring. Default
-                              is nil. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: SecretRef is name of the authe
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           user:
-                            description: 'The rados user name. Default is admin. More
-                              info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it'
+                            description: The rados user name.
                             type: string
                         required:
                         - image
                         - monitors
                         type: object
                       scaleIO:
-                        description: ScaleIO represents a ScaleIO persistent volume
-                          attached and mounted on Kubernetes nodes.
+                        description: ScaleIO represents a ScaleIO p
                         properties:
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Default is "xfs".
+                            description: Filesystem type to mount.
                             type: string
                           gateway:
-                            description: The host address of the ScaleIO API Gateway.
+                            description: The host address of the ScaleI
                             type: string
                           protectionDomain:
-                            description: The name of the ScaleIO Protection Domain
-                              for the configured storage.
+                            description: The name of the ScaleIO Protec
                             type: string
                           readOnly:
-                            description: Defaults to false (read/write). ReadOnly
-                              here will force the ReadOnly setting in VolumeMounts.
+                            description: Defaults to false (read/write)
                             type: boolean
                           secretRef:
-                            description: SecretRef references to the secret for ScaleIO
-                              user and other sensitive information. If this is not
-                              provided, Login operation will fail.
+                            description: SecretRef references to the se
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           sslEnabled:
-                            description: Flag to enable/disable SSL communication
-                              with Gateway, default false
+                            description: Flag to enable/disable SSL com
                             type: boolean
                           storageMode:
-                            description: Indicates whether the storage for a volume
-                              should be ThickProvisioned or ThinProvisioned. Default
-                              is ThinProvisioned.
+                            description: 'Indicates whether the storage '
                             type: string
                           storagePool:
-                            description: The ScaleIO Storage Pool associated with
-                              the protection domain.
+                            description: The ScaleIO Storage Pool assoc
                             type: string
                           system:
-                            description: The name of the storage system as configured
-                              in ScaleIO.
+                            description: The name of the storage system
                             type: string
                           volumeName:
-                            description: The name of a volume already created in the
-                              ScaleIO system that is associated with this volume source.
+                            description: The name of a volume already c
                             type: string
                         required:
                         - gateway
@@ -1457,38 +1072,26 @@ spec:
                         - system
                         type: object
                       secret:
-                        description: 'Secret represents a secret that should populate
-                          this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                        description: Secret represents a secret tha
                         properties:
                           defaultMode:
-                            description: 'Optional: mode bits used to set permissions
-                              on created files by default. Must be an octal value
-                              between 0000 and 0777 or a decimal value between 0 and
-                              511.'
+                            description: 'Optional: mode bits used to se'
                             format: int32
                             type: integer
                           items:
-                            description: If unspecified, each key-value pair in the
-                              Data field of the referenced Secret will be projected
-                              into the volume as a file whose name is the key and
-                              content is the value.
+                            description: If unspecified, each key-value
                             items:
-                              description: Maps a string key to a path within a volume.
+                              description: Maps a string key to a path wi
                               properties:
                                 key:
                                   description: The key to project.
                                   type: string
                                 mode:
-                                  description: 'Optional: mode bits used to set permissions
-                                    on this file. Must be an octal value between 0000
-                                    and 0777 or a decimal value between 0 and 511.'
+                                  description: 'Optional: mode bits used to se'
                                   format: int32
                                   type: integer
                                 path:
-                                  description: The relative path of the file to map
-                                    the key to. May not be an absolute path. May not
-                                    contain the path element '..'. May not start with
-                                    the string '..'.
+                                  description: 'The relative path of the file '
                                   type: string
                               required:
                               - key
@@ -1496,68 +1099,49 @@ spec:
                               type: object
                             type: array
                           optional:
-                            description: Specify whether the Secret or its keys must
-                              be defined
+                            description: 'Specify whether the Secret or '
                             type: boolean
                           secretName:
-                            description: 'Name of the secret in the pod''s namespace
-                              to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                            description: Name of the secret in the pod'
                             type: string
                         type: object
                       storageos:
-                        description: StorageOS represents a StorageOS volume attached
-                          and mounted on Kubernetes nodes.
+                        description: StorageOS represents a Storage
                         properties:
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+                            description: Filesystem type to mount.
                             type: string
                           readOnly:
-                            description: Defaults to false (read/write). ReadOnly
-                              here will force the ReadOnly setting in VolumeMounts.
+                            description: Defaults to false (read/write)
                             type: boolean
                           secretRef:
-                            description: SecretRef specifies the secret to use for
-                              obtaining the StorageOS API credentials.  If not specified,
-                              default values will be attempted.
+                            description: SecretRef specifies the secret
                             properties:
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: Name of the referent.
                                 type: string
                             type: object
                           volumeName:
-                            description: VolumeName is the human-readable name of
-                              the StorageOS volume.  Volume names are only unique
-                              within a namespace.
+                            description: VolumeName is the human-readab
                             type: string
                           volumeNamespace:
-                            description: VolumeNamespace specifies the scope of the
-                              volume within StorageOS.  If no namespace is specified
-                              then the Pod's namespace will be used.
+                            description: 'VolumeNamespace specifies the '
                             type: string
                         type: object
                       vsphereVolume:
-                        description: VsphereVolume represents a vSphere volume attached
-                          and mounted on kubelets host machine
+                        description: VsphereVolume represents a vSp
                         properties:
                           fsType:
-                            description: Filesystem type to mount. Must be a filesystem
-                              type supported by the host operating system. Ex. "ext4",
-                              "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.
+                            description: Filesystem type to mount.
                             type: string
                           storagePolicyID:
-                            description: Storage Policy Based Management (SPBM) profile
-                              ID associated with the StoragePolicyName.
+                            description: Storage Policy Based Managemen
                             type: string
                           storagePolicyName:
-                            description: Storage Policy Based Management (SPBM) profile
-                              name.
+                            description: Storage Policy Based Managemen
                             type: string
                           volumePath:
-                            description: Path that identifies vSphere volume vmdk
+                            description: Path that identifies vSphere v
                             type: string
                         required:
                         - volumePath
@@ -1569,20 +1153,15 @@ spec:
                 - workVolume
                 type: object
               schedule:
-                description: The schedule in Cron format for periodic backups. See
-                  https://en.wikipedia.org/wiki/Cron
+                description: The schedule in Cron format fo
                 type: string
               startingDeadlineSeconds:
-                description: Optional deadline in seconds for starting the job if
-                  it misses scheduled time for any reason.  Missed jobs executions
-                  will be counted as failed ones.
+                description: Optional deadline in seconds f
                 format: int64
                 nullable: true
                 type: integer
               successfulJobsHistoryLimit:
-                description: The number of successful finished jobs to retain. This
-                  is a pointer to distinguish between explicit zero and not specified.
-                  Defaults to 3.
+                description: The number of successful finis
                 format: int32
                 minimum: 0
                 nullable: true
