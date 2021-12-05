@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
@@ -79,7 +79,7 @@ func (s ClusterState) String() string {
 // and later operations.
 type StatusSet struct {
 	Primary      int
-	Cluster      *mocov1beta1.MySQLCluster
+	Cluster      *mocov1beta2.MySQLCluster
 	Password     *password.MySQLPassword
 	Pods         []*corev1.Pod
 	DBOps        []dbop.Operator
@@ -134,7 +134,7 @@ func (ss *StatusSet) DecideState() {
 func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	ss := &StatusSet{}
 
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	if err := p.reader.Get(ctx, p.name, cluster); err != nil {
 		return nil, fmt.Errorf("failed to get MySQLCluster: %w", err)
 	}
@@ -265,7 +265,7 @@ func isPodReady(pod *corev1.Pod) bool {
 	return false
 }
 
-func replicasInCluster(cluster *mocov1beta1.MySQLCluster, replicas []dbop.ReplicaHost) int32 {
+func replicasInCluster(cluster *mocov1beta2.MySQLCluster, replicas []dbop.ReplicaHost) int32 {
 	var n int32
 	for _, r := range replicas {
 		if r.ServerID >= cluster.Spec.ServerIDBase && r.ServerID < (cluster.Spec.ServerIDBase+cluster.Spec.Replicas) {

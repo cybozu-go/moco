@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
 	. "github.com/onsi/ginkgo"
@@ -26,7 +26,7 @@ var _ = Describe("replication", func() {
 
 	It("should configure replication", func() {
 		By("preparing 3 node cluster")
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
 		cluster.Name = "cluster"
 		cluster.Spec.Replicas = 3

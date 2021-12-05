@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +22,7 @@ var switchoverCmd = &cobra.Command{
 }
 
 func switchover(ctx context.Context, name string) error {
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	if err := kubeClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, cluster); err != nil {
 		return err
 	}

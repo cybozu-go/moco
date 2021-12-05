@@ -3,12 +3,9 @@ package v1beta2
 import (
 	"fmt"
 
-	"github.com/cybozu-go/moco/pkg/constants"
-	cron "github.com/robfig/cron/v3"
+	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -108,122 +105,6 @@ type MySQLClusterSpec struct {
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
 }
 
-func (s MySQLClusterSpec) validateCreate() field.ErrorList {
-	var allErrs field.ErrorList
-	p := field.NewPath("spec")
-	pp := p.Child("volumeClaimTemplates")
-	ok := false
-	for _, vc := range s.VolumeClaimTemplates {
-		if vc.Name == constants.MySQLDataVolumeName {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s is missing", constants.MySQLDataVolumeName)))
-	}
-
-	pp = p.Child("serverIDBase")
-	if s.ServerIDBase <= 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.ServerIDBase, "serverIDBase must be a positive integer"))
-	}
-
-	pp = p.Child("logRotationSchedule")
-	if s.LogRotationSchedule != "" {
-		_, err := cron.ParseStandard(s.LogRotationSchedule)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSchedule, err.Error()))
-		}
-	}
-
-	pp = p.Child("replicas")
-	if s.Replicas%2 == 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive odd number"))
-	}
-	if s.Replicas <= 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive integer"))
-	}
-
-	p = p.Child("podTemplate", "spec")
-
-	pp = p.Child("containers")
-	mysqldIndex := -1
-	for i, container := range s.PodTemplate.Spec.Containers {
-		if container.Name == constants.MysqldContainerName {
-			mysqldIndex = i
-		}
-		if container.Name == constants.AgentContainerName {
-			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
-		}
-		if container.Name == constants.SlowQueryLogAgentContainerName && !s.DisableSlowQueryLogContainer {
-			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
-		}
-		if container.Name == constants.ExporterContainerName && len(s.Collectors) > 0 {
-			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "reserved container name"))
-		}
-	}
-	if mysqldIndex == -1 {
-		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required container %s is missing", constants.MysqldContainerName)))
-	} else {
-		pp := p.Child("containers").Index(mysqldIndex).Child("ports")
-		for i, port := range s.PodTemplate.Spec.Containers[mysqldIndex].Ports {
-			switch port.ContainerPort {
-			case constants.MySQLPort, constants.MySQLXPort, constants.MySQLAdminPort, constants.MySQLHealthPort:
-				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.ContainerPort, "reserved port"))
-			}
-			switch port.Name {
-			case constants.MySQLPortName, constants.MySQLXPortName, constants.MySQLAdminPortName, constants.MySQLHealthPortName:
-				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.Name, "reserved port name"))
-			}
-		}
-	}
-
-	pp = p.Child("initContainers")
-	for i, container := range s.PodTemplate.Spec.InitContainers {
-		switch container.Name {
-		case constants.InitContainerName:
-			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved init container name"))
-		}
-	}
-
-	pp = p.Child("volumes")
-	for i, vol := range s.PodTemplate.Spec.Volumes {
-		switch vol.Name {
-		case constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
-			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
-			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName:
-
-			allErrs = append(allErrs, field.Invalid(pp.Index(i), vol.Name, "reserved volume name"))
-		}
-	}
-
-	return allErrs
-}
-
-func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
-	var allErrs field.ErrorList
-	p := field.NewPath("spec")
-
-	if s.Replicas < old.Replicas {
-		p := p.Child("replicas")
-		allErrs = append(allErrs, field.Forbidden(p, "decreasing replicas is not supported yet"))
-	}
-	if s.ReplicationSourceSecretName != nil {
-		p := p.Child("replicationSourceSecretName")
-		if old.ReplicationSourceSecretName == nil {
-			allErrs = append(allErrs, field.Forbidden(p, "replication can be initiated only with new clusters"))
-		} else if *s.ReplicationSourceSecretName != *old.ReplicationSourceSecretName {
-			allErrs = append(allErrs, field.Forbidden(p, "replication source secret name cannot be modified"))
-		}
-	}
-	if !equality.Semantic.DeepEqual(s.Restore, old.Restore) {
-		p := p.Child("restore")
-		allErrs = append(allErrs, field.Forbidden(p, "not editable"))
-	}
-
-	return append(allErrs, s.validateCreate()...)
-}
-
 // ObjectMeta is metadata of objects.
 // This is partially copied from metav1.ObjectMeta.
 type ObjectMeta struct {
@@ -312,7 +193,7 @@ type RestoreSpec struct {
 	RestorePoint metav1.Time `json:"restorePoint"`
 
 	// Specifies parameters for restore Pod.
-	JobConfig JobConfig `json:"jobConfig"`
+	JobConfig mocov1beta1.JobConfig `json:"jobConfig"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster

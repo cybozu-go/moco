@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,7 +12,7 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQLCluster, desired, current []corev1.Container) (corev1.Container, error) {
+func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQLCluster, desired, current []corev1.Container) (corev1.Container, error) {
 	var source *corev1.Container
 	for i, c := range desired {
 		if c.Name == constants.MysqldContainerName {
@@ -106,7 +106,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta1.MySQ
 	return *c, nil
 }
 
-func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta1.MySQLCluster, current []corev1.Container) corev1.Container {
+func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQLCluster, current []corev1.Container) corev1.Container {
 	c := corev1.Container{}
 	c.Name = constants.AgentContainerName
 	c.Image = r.AgentImage
@@ -220,7 +220,7 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, cu
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.MySQLCluster, current []corev1.Container) []corev1.Container {
+func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.MySQLCluster, current []corev1.Container) []corev1.Container {
 	var containers []corev1.Container
 	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
 		switch c.Name {
@@ -247,7 +247,7 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta1.M
 	return containers
 }
 
-func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta1.MySQLCluster, image string, current []corev1.Container) []corev1.Container {
+func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLCluster, image string, current []corev1.Container) []corev1.Container {
 	c := corev1.Container{
 		Name:  constants.InitContainerName,
 		Image: image,

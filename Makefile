@@ -59,6 +59,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(KUSTOMIZE) build config/crd -o config/crd/tests
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/crds
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates > charts/moco/templates/generated/generated.yaml
 
@@ -68,7 +69,8 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta1.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
 
 .PHONY: book

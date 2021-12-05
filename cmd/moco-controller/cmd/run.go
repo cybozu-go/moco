@@ -42,7 +42,7 @@ type resolver struct {
 
 var _ dbop.Resolver = resolver{}
 
-func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
+func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (string, error) {
 	pod := &corev1.Pod{}
 	err := r.reader.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PodName(index)}, pod)
 	if err != nil {

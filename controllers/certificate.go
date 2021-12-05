@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"text/template"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -43,7 +43,7 @@ type certTmplVal struct {
 	TargetNamespace string
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req ctrl.Request, cluster *mocov1beta1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	obj := certificateObj.DeepCopy()
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
 	if err == nil {
@@ -76,7 +76,7 @@ func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta1.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	controllerSecret := &corev1.Secret{}

@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"text/template"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -39,12 +39,12 @@ func runInPod(args ...string) ([]byte, error) {
 	return kubectl(nil, a...)
 }
 
-func getCluster(ns, name string) (*mocov1beta1.MySQLCluster, error) {
+func getCluster(ns, name string) (*mocov1beta2.MySQLCluster, error) {
 	out, err := kubectl(nil, "get", "-n", ns, "mysqlcluster", name, "-o", "json")
 	if err != nil {
 		return nil, err
 	}
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	err = json.Unmarshal(out, cluster)
 	if err != nil {
 		return nil, err

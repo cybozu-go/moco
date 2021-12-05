@@ -16,7 +16,8 @@
 # References
 
 - [Custom resources](crd.md)
-    - [MySQLCluster](crd_mysqlcluster.md)
+    - [MySQLCluster v1beta1](crd_mysqlcluster_v1beta1.md)
+    - [MySQLCluster v1beta2](crd_mysqlcluster_v1beta2.md)
     - [BackupPolicy](crd_backuppolicy.md)
 - [Commands](commands.md)
     - [kubectl-moco](kubectl-moco.md)

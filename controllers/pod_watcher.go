@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,7 +67,7 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		//lint:ignore nilerr intentional
 		return ctrl.Result{}, nil
 	}
-	if ref.Kind != "MySQLCluster" || refGV.Group != mocov1beta1.GroupVersion.Group {
+	if ref.Kind != "MySQLCluster" || refGV.Group != mocov1beta2.GroupVersion.Group {
 		return ctrl.Result{}, nil
 	}
 

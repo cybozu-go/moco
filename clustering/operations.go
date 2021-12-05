@@ -8,7 +8,7 @@ import (
 	"time"
 
 	agent "github.com/cybozu-go/moco-agent/proto"
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/event"
@@ -151,7 +151,7 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		if err := p.reader.Get(ctx, p.name, cluster); err != nil {
 			return err
 		}
@@ -228,7 +228,7 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		if err := p.reader.Get(ctx, p.name, cluster); err != nil {
 			return err
 		}

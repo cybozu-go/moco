@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
 	corev1 "k8s.io/api/core/v1"
@@ -13,7 +13,7 @@ import (
 )
 
 func getPassword(ctx context.Context, clusterName, user string) (string, error) {
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Name = clusterName
 	cluster.Namespace = namespace
 	name := cluster.UserSecretName()
@@ -39,7 +39,7 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	return "", fmt.Errorf("invalid user: %s", user)
 }
 
-func getPodName(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
+func getPodName(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (string, error) {
 	if index >= int(cluster.Spec.Replicas) {
 		return "", errors.New("index should be smaller than replicas")
 	}

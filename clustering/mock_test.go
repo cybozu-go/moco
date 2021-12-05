@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	agent "github.com/cybozu-go/moco-agent/proto"
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
 	"google.golang.org/grpc"
@@ -120,7 +120,7 @@ type mockAgentFactory struct {
 
 var _ AgentFactory = &mockAgentFactory{}
 
-func (af *mockAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (AgentConn, error) {
+func (af *mockAgentFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (AgentConn, error) {
 	a := &mockAgentConn{
 		orphaned: &af.orphaned,
 		hostname: cluster.PodHostname(index),
@@ -134,7 +134,7 @@ func (af *mockAgentFactory) allClosed() bool {
 }
 
 type mockOperator struct {
-	cluster *mocov1beta1.MySQLCluster
+	cluster *mocov1beta2.MySQLCluster
 	passwd  *password.MySQLPassword
 	index   int
 
@@ -492,7 +492,7 @@ func newMockOpFactory() *mockOpFactory {
 
 var _ dbop.OperatorFactory = &mockOpFactory{}
 
-func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, passwd *password.MySQLPassword, index int) (dbop.Operator, error) {
+func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword, index int) (dbop.Operator, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
