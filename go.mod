@@ -7,6 +7,7 @@ replace (
 	github.com/go-logr/logr => github.com/go-logr/logr v0.4.0
 	github.com/go-logr/stdr => github.com/go-logr/stdr v0.4.0
 	github.com/go-logr/zapr => github.com/go-logr/zapr v0.4.0
+	k8s.io/klog/v2 => k8s.io/klog/v2 v2.10.0
 )
 
 require (
@@ -16,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.7.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.19.0
 	github.com/cybozu-go/moco-agent v0.7.1
-	github.com/go-logr/logr v1.2.0
+	github.com/go-logr/logr v1.2.1
 	github.com/go-logr/stdr v1.2.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/go-cmp v0.5.6
@@ -36,7 +37,7 @@ require (
 	k8s.io/apimachinery v0.22.3
 	k8s.io/cli-runtime v0.22.3
 	k8s.io/client-go v0.22.3
-	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubectl v0.22.3
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
 	sigs.k8s.io/controller-runtime v0.10.3
@@ -130,7 +131,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiextensions-apiserver v0.22.2 // indirect
 	k8s.io/component-base v0.22.3 // indirect
-	k8s.io/klog/v2 v2.9.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/kustomize/api v0.8.11 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.11.0 // indirect
