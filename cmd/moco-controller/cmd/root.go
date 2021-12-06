@@ -13,7 +13,7 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
