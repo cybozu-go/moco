@@ -509,7 +509,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		}
 
 		saSpec := &corev1.ServiceSpec{}
-		tmpl := template
+		tmpl := template.DeepCopy()
 		if !headless && tmpl != nil {
 			svc.Annotations = mergeMap(svc.Annotations, tmpl.Annotations)
 			svc.Labels = mergeMap(svc.Labels, tmpl.Labels)
@@ -578,7 +578,6 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		}
 
 		saSpec.DeepCopyInto(&svc.Spec)
-
 		if debugController {
 			updated = svc.Spec.DeepCopy()
 		}

@@ -537,6 +537,12 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					Labels:      map[string]string{"foo": "baz"},
 				},
 			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
+					Annotations: map[string]string{"qux": "quux"},
+					Labels:      map[string]string{"qux": "corge"},
+				},
+			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
@@ -551,6 +557,18 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if primary.Labels["foo"] != "baz" {
 				return errors.New("no label")
 			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Annotations["qux"] != "quux" {
+				return errors.New("no annotation")
+			}
+			if replica.Labels["qux"] != "corge" {
+				return errors.New("no label")
+			}
+
 			return nil
 		}).Should(Succeed())
 
@@ -561,6 +579,12 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
 				Spec: &corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
@@ -577,6 +601,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if primary.Spec.Type != corev1.ServiceTypeLoadBalancer {
 				return errors.New("service type is not updated")
 			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Spec.Type != corev1.ServiceTypeLoadBalancer {
+				return errors.New("service type is not updated")
+			}
+
 			return nil
 		}).Should(Succeed())
 
@@ -601,6 +634,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 				},
 			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
+					Annotations: map[string]string{"qux": "quux"},
+				},
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
@@ -610,6 +652,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 			if primary.Annotations["foo"] != "bar" {
+				return errors.New("service does not have annotation foo")
+			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Annotations["qux"] != "quux" {
 				return errors.New("service does not have annotation foo")
 			}
 			return nil
