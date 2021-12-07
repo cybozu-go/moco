@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
@@ -454,7 +455,13 @@ func dirUsage(dir string) (int64, error) {
 		if err != nil {
 			return err
 		}
-		usage += info.Size()
+
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			usage += info.Size()
+		} else {
+			usage += st.Blocks * 512
+		}
 		return nil
 	}
 	if err := filepath.WalkDir(dir, fn); err != nil {
