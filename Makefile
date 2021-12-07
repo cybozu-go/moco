@@ -61,7 +61,7 @@ help: ## Display this help.
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd -o config/crd/tests
-	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/crds
+	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/templates/generated/crds
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates > charts/moco/templates/generated/generated.yaml
 
 .PHONY: generate

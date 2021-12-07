@@ -4,7 +4,10 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.7.0
   labels:
-    app.kubernetes.io/name: moco
+    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+    app.kubernetes.io/name: '{{ include "moco.name" . }}'
+    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+    helm.sh/chart: '{{ include "moco.chart" . }}'
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
