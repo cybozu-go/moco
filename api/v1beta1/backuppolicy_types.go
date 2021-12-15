@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	cron "github.com/robfig/cron/v3"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +34,7 @@ type BackupPolicySpec struct {
 	Schedule string `json:"schedule"`
 
 	// Specifies parameters for backup Pod.
-	JobConfig JobConfig `json:"jobConfig"`
+	JobConfig mocov1beta2.JobConfig `json:"jobConfig"`
 
 	// Optional deadline in seconds for starting the job if it misses scheduled
 	// time for any reason.  Missed jobs executions will be counted as failed ones.

@@ -67,7 +67,7 @@ manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRol
 .PHONY: generate
 generate: controller-gen conversion-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	$(CONVERSION_GEN) -i ./api/v1beta2/ -o . -O zz_generated.conversion --go-header-file hack/boilerplate.go.txt
+	$(CONVERSION_GEN) -i ./api/v1beta1/ -o . -O zz_generated.conversion --go-header-file hack/boilerplate.go.txt
 
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)

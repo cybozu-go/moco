@@ -3,7 +3,6 @@ package v1beta2
 import (
 	"fmt"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -193,7 +192,7 @@ type RestoreSpec struct {
 	RestorePoint metav1.Time `json:"restorePoint"`
 
 	// Specifies parameters for restore Pod.
-	JobConfig mocov1beta1.JobConfig `json:"jobConfig"`
+	JobConfig `json:"jobConfig"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster

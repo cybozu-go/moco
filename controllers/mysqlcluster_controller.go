@@ -784,7 +784,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	return nil
 }
 
-func bucketArgs(bc mocov1beta1.BucketConfig) []string {
+func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	var args []string
 	if bc.Region != "" {
 		args = append(args, "--region="+bc.Region)

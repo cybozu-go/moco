@@ -1,4 +1,4 @@
-package v1beta2_test
+package v1beta1_test
 
 import (
 	"testing"
@@ -19,13 +19,13 @@ func TestCompatibility(t *testing.T) {
 	f := roundtrip.CompatibilityTestFuzzer(scheme, nil)
 	f.NilChance(0.5).NumElements(0, 3)
 
-	t.Run("v1beta2 => v1beta1 => v1beta2", func(t *testing.T) {
+	t.Run("v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
 		for i := 0; i < 10000; i++ {
-			var oldCluster1, oldCluster2 mocov1beta2.MySQLCluster
-			var cluster mocov1beta1.MySQLCluster
+			var oldCluster1, oldCluster2 mocov1beta1.MySQLCluster
+			var cluster mocov1beta2.MySQLCluster
 			f.Fuzz(&oldCluster1)
 
-			var tmp1, tmp2 mocov1beta1.MySQLCluster
+			var tmp1, tmp2 mocov1beta2.MySQLCluster
 
 			if err := scheme.Convert(oldCluster1.DeepCopy(), &tmp1, nil); err != nil {
 				t.Fatal(err)
@@ -40,11 +40,7 @@ func TestCompatibility(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			opts := []cmp.Option{
-				cmpopts.EquateEmpty(),
-			}
-
-			if diff := cmp.Diff(oldCluster1, oldCluster2, opts...); diff != "" {
+			if diff := cmp.Diff(oldCluster1, oldCluster2, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("compatibility error case #%d (-want +got):\n%s", i, diff)
 			}
 		}
