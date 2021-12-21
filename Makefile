@@ -15,6 +15,13 @@ STATICCHECK := $(BIN_DIR)/staticcheck
 NILERR := $(BIN_DIR)/nilerr
 SUDO = sudo
 
+PKG_LIST := zstd python3 libpython3.8
+ifneq ($(CI),true)
+  # Don't install the mysql packages in GitHub Actions.
+  # refs: https://github.com/actions/virtual-environments/pull/4674
+  PKG_LIST := $(PKG_LIST) mysql-client mysql-server-core-8.0
+endif
+
 # Set the shell used to bash for better error handling.
 SHELL = /bin/bash
 .SHELLFLAGS = -e -o pipefail -c
@@ -201,7 +208,7 @@ $(NILERR):
 .PHONY: setup
 setup:
 	$(SUDO) apt-get update
-	$(SUDO) apt-get install -y --no-install-recommends mysql-client zstd python3 libpython3.8 mysql-server-core-8.0
+	$(SUDO) apt-get install -y --no-install-recommends $(PKG_LIST)
 	curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_$(MYSQLSH_VERSION)ubuntu$(OS_VERSION)_amd64.deb
 	$(SUDO) dpkg -i /tmp/mysqlsh.deb
 	rm -f /tmp/mysqlsh.deb
