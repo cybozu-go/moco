@@ -39,7 +39,7 @@ BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | schedule | The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron | string | true |
-| jobConfig | Specifies parameters for backup Pod. | [JobConfig](#jobconfig) | true |
+| jobConfig | Specifies parameters for backup Pod. | mocov1beta2.JobConfig | true |
 | startingDeadlineSeconds | Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones. | *int64 | false |
 | concurrencyPolicy | Specifies how to treat concurrent executions of a Job. Valid values are: - \"Allow\" (default): allows CronJobs to run concurrently; - \"Forbid\": forbids concurrent runs, skipping next run if previous run hasn't finished yet; - \"Replace\": cancels currently running job and replaces it with a new one | [batchv1beta1.ConcurrencyPolicy](https://pkg.go.dev/k8s.io/api/batch/v1beta1#ConcurrencyPolicy) | false |
 | activeDeadlineSeconds | Specifies the duration in seconds relative to the startTime that the job may be continuously active before the system tries to terminate it; value must be positive integer. If a Job is suspended (at creation or through an update), this timer will effectively be stopped and reset when the Job is resumed again. | *int64 | false |

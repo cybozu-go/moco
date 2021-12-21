@@ -171,7 +171,7 @@ RestoreSpec represents a set of parameters for Point-in-Time Recovery.
 | sourceName | SourceName is the name of the source `MySQLCluster`. | string | true |
 | sourceNamespace | SourceNamespace is the namespace of the source `MySQLCluster`. | string | true |
 | restorePoint | RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. \"2006-01-02T15:04:05Z\" | [metav1.Time](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time) | true |
-| jobConfig | Specifies parameters for restore Pod. | mocov1beta1.JobConfig | true |
+| jobConfig | Specifies parameters for restore Pod. | [JobConfig](#jobconfig) | true |
 
 [Back to Custom Resources](#custom-resources)
 
