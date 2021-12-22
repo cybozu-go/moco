@@ -8216,7 +8216,7 @@ spec:
               serverIDBase:
                 format: int32
                 type: integer
-              startupDelaySeconds:
+              startupWaitSeconds:
                 default: 3600
                 format: int32
                 minimum: 0
