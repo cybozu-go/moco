@@ -12,14 +12,15 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-moco-cybozu-com-v1beta1-mysqlcluster
+      path: /mutate-moco-cybozu-com-v1beta2-mysqlcluster
   failurePolicy: Fail
+  matchPolicy: Equivalent
   name: mmysqlcluster.kb.io
   rules:
   - apiGroups:
     - moco.cybozu.com
     apiVersions:
-    - v1beta1
+    - v1beta2
     operations:
     - CREATE
     resources:
@@ -33,6 +34,27 @@ metadata:
   creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-moco-cybozu-com-v1beta2-mysqlcluster
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: vmysqlcluster.kb.io
+  rules:
+  - apiGroups:
+    - moco.cybozu.com
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - mysqlclusters
+  sideEffects: None
 - admissionReviewVersions:
   - v1
   clientConfig:
@@ -53,24 +75,4 @@ webhooks:
     - DELETE
     resources:
     - backuppolicies
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-moco-cybozu-com-v1beta1-mysqlcluster
-  failurePolicy: Fail
-  name: vmysqlcluster.kb.io
-  rules:
-  - apiGroups:
-    - moco.cybozu.com
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - mysqlclusters
   sideEffects: None
