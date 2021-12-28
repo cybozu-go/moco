@@ -871,8 +871,14 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 			VolumeSource: *jc.WorkVolume.DeepCopy(),
 		}}
 
+		var bucketConfig mocov1beta2.BucketConfig
+
+		if err := mocov1beta1.Convert__BucketConfig_To_v1beta2_BucketConfig(&jc.BucketConfig, &bucketConfig, nil); err != nil {
+			return fmt.Errorf("failed to convert bucket config from v1beta1 to v1beta2: %w", err)
+		}
+
 		args := []string{constants.BackupSubcommand, fmt.Sprintf("--threads=%d", jc.Threads)}
-		args = append(args, bucketArgs(jc.BucketConfig)...)
+		args = append(args, bucketArgs(bucketConfig)...)
 		args = append(args, cluster.Namespace, cluster.Name)
 		env := []corev1.EnvVar{
 			{Name: "MYSQL_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
