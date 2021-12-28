@@ -15,6 +15,8 @@ const (
 	SpecReplicaServiceTemplateAnnotation = "mysqlcluster.v1beta2.moco.cybozu.com/spec.replicaServiceTemplate"
 )
 
+var _ conversion.Convertible = &MySQLCluster{}
+
 // ConvertTo converts this MySQLCluster to the Hub version (v1beta2).
 func (src *MySQLCluster) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta2.MySQLCluster)

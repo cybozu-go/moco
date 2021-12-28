@@ -14,7 +14,7 @@ resources:
   path: github.com/cybozu-go/moco/api/v1beta1
   version: v1beta1
   webhooks:
-    validation: true
+    conversion: true
     webhookVersion: v1
 - api:
     crdVersion: v1
@@ -26,7 +26,7 @@ resources:
   path: github.com/cybozu-go/moco/api/v1beta2
   version: v1beta2
   webhooks:
-    conversion: true
+    validation: true
     webhookVersion: v1
 - api:
     crdVersion: v1
