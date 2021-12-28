@@ -1,7 +1,7 @@
 # Tool versions
 CTRL_TOOLS_VERSION=0.7.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
-CODE_GENERATOR_VERSION = $(shell awk '/k8s.io\/client-go/ {print substr($$2, 2)}' go.mod)
+CODE_GENERATOR_VERSION := $(shell awk '/k8s.io\/client-go/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.4.1
 HELM_VERSION = 3.7.1
 CRD_TO_MARKDOWN_VERSION = 0.0.3
