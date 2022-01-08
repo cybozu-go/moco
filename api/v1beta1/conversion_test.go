@@ -19,7 +19,7 @@ func TestCompatibility(t *testing.T) {
 	f := roundtrip.CompatibilityTestFuzzer(scheme, nil)
 	f.NilChance(0.5).NumElements(0, 3)
 
-	t.Run("v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+	t.Run("MySQLCluster v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
 		for i := 0; i < 10000; i++ {
 			var oldCluster1, oldCluster2 mocov1beta1.MySQLCluster
 			var cluster mocov1beta2.MySQLCluster
@@ -41,6 +41,33 @@ func TestCompatibility(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(oldCluster1, oldCluster2, cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("compatibility error case #%d (-want +got):\n%s", i, diff)
+			}
+		}
+	})
+
+	t.Run("BackupPolicy v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+		for i := 0; i < 10000; i++ {
+			var oldPolicy1, oldPolicy2 mocov1beta1.BackupPolicy
+			var policy mocov1beta2.BackupPolicy
+			f.Fuzz(&oldPolicy1)
+
+			var tmp1, tmp2 mocov1beta2.BackupPolicy
+
+			if err := scheme.Convert(oldPolicy1.DeepCopy(), &tmp1, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&tmp1, &policy, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&policy, &tmp2, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&tmp2, &oldPolicy2, nil); err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(oldPolicy1, oldPolicy2, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("compatibility error case #%d (-want +got):\n%s", i, diff)
 			}
 		}

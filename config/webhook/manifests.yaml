@@ -40,6 +40,28 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-moco-cybozu-com-v1beta2-backuppolicy
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: vbackuppolicy.kb.io
+  rules:
+  - apiGroups:
+    - moco.cybozu.com
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    - DELETE
+    resources:
+    - backuppolicies
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-moco-cybozu-com-v1beta2-mysqlcluster
   failurePolicy: Fail
   matchPolicy: Equivalent
@@ -54,25 +76,4 @@ webhooks:
     - UPDATE
     resources:
     - mysqlclusters
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-moco-cybozu-com-v1beta1-backuppolicy
-  failurePolicy: Fail
-  name: vbackuppolicy.kb.io
-  rules:
-  - apiGroups:
-    - moco.cybozu.com
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    - DELETE
-    resources:
-    - backuppolicies
   sideEffects: None

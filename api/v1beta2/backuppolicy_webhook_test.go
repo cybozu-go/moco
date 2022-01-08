@@ -1,4 +1,4 @@
-package v1beta1_test
+package v1beta2_test
 
 import (
 	"context"
@@ -7,63 +7,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func makeMySQLCluster() *mocov1beta1.MySQLCluster {
-	return &mocov1beta1.MySQLCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
-		},
-		Spec: mocov1beta1.MySQLClusterSpec{
-			Replicas: 1,
-			PodTemplate: mocov1beta1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: "mysqld",
-						},
-					},
-				},
-			},
-			VolumeClaimTemplates: []mocov1beta1.PersistentVolumeClaim{
-				{
-					ObjectMeta: mocov1beta1.ObjectMeta{
-						Name: "mysql-data",
-					},
-				},
-			},
-		},
-	}
-}
-
-func deleteMySQLCluster() error {
-	r := &mocov1beta1.MySQLCluster{}
-	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-
-	if err != nil {
-		return err
-	}
-
-	r.Finalizers = nil
-	if err := k8sClient.Update(ctx, r); err != nil {
-		return err
-	}
-
-	if err := k8sClient.Delete(ctx, r); err != nil {
-		return err
-	}
-
-	return nil
-}
 func makeBackupPolicy() *mocov1beta1.BackupPolicy {
 	r := &mocov1beta1.BackupPolicy{}
 	r.Namespace = "default"

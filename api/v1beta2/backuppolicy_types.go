@@ -1,4 +1,4 @@
-package v1beta1
+package v1beta2
 
 import (
 	cron "github.com/robfig/cron/v3"
@@ -96,7 +96,6 @@ func (s *BackupPolicySpec) validate() field.ErrorList {
 }
 
 //+kubebuilder:object:root=true
-//+kubebuilder:storageversion
 
 // BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.
 type BackupPolicy struct {

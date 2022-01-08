@@ -120,7 +120,7 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
-	if err = (&mocov1beta1.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&mocov1beta2.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
 		return err
 	}

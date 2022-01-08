@@ -92,9 +92,6 @@ var _ = BeforeSuite(func() {
 	err = (&mocov1beta2.MySQLCluster{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&mocov1beta1.BackupPolicy{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
 	//+kubebuilder:scaffold:webhook
 
 	go func() {
