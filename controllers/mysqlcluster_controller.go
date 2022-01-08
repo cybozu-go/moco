@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -838,7 +837,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	}
 
 	bpName := *cluster.Spec.BackupPolicyName
-	bp := &mocov1beta1.BackupPolicy{}
+	bp := &mocov1beta2.BackupPolicy{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: bpName}, bp); err != nil {
 		return fmt.Errorf("failed to get backup policy %s/%s: %w", cluster.Namespace, bpName, err)
 	}
@@ -871,14 +870,8 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 			VolumeSource: *jc.WorkVolume.DeepCopy(),
 		}}
 
-		var bucketConfig mocov1beta2.BucketConfig
-
-		if err := mocov1beta1.Convert__BucketConfig_To_v1beta2_BucketConfig(&jc.BucketConfig, &bucketConfig, nil); err != nil {
-			return fmt.Errorf("failed to convert bucket config from v1beta1 to v1beta2: %w", err)
-		}
-
 		args := []string{constants.BackupSubcommand, fmt.Sprintf("--threads=%d", jc.Threads)}
-		args = append(args, bucketArgs(bucketConfig)...)
+		args = append(args, bucketArgs(jc.BucketConfig)...)
 		args = append(args, cluster.Namespace, cluster.Name)
 		env := []corev1.EnvVar{
 			{Name: "MYSQL_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
@@ -1229,7 +1222,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&batchv1.Job{}).
 		Watches(&source.Kind{Type: certificateObj}, certHandler).
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, configMapHandler).
-		Watches(&source.Kind{Type: &mocov1beta1.BackupPolicy{}}, backupPolicyHandler).
+		Watches(&source.Kind{Type: &mocov1beta2.BackupPolicy{}}, backupPolicyHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: 8},
 		).

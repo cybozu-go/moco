@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
@@ -938,7 +937,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating a backup policy")
-		bp := &mocov1beta1.BackupPolicy{}
+		bp := &mocov1beta2.BackupPolicy{}
 		bp.Namespace = "test"
 		bp.Name = "test-policy"
 		bp.Spec.ActiveDeadlineSeconds = pointer.Int64(100)
@@ -1036,7 +1035,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(roleBinding.Subjects[0].Name).To(Equal("foo"))
 
 		By("updating a backup policy")
-		bp = &mocov1beta1.BackupPolicy{}
+		bp = &mocov1beta2.BackupPolicy{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, bp)
 		Expect(err).NotTo(HaveOccurred())
 		bp.Spec.ActiveDeadlineSeconds = nil
