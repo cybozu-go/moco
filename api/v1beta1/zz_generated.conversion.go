@@ -15,6 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	applyconfigurationsmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 func init() {
@@ -134,6 +136,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*PersistentVolumeClaimSpecApplyConfiguration)(nil), (*v1beta2.PersistentVolumeClaimSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration(a.(*PersistentVolumeClaimSpecApplyConfiguration), b.(*v1beta2.PersistentVolumeClaimSpecApplyConfiguration), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1beta2.PersistentVolumeClaimSpecApplyConfiguration)(nil), (*PersistentVolumeClaimSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration(a.(*v1beta2.PersistentVolumeClaimSpecApplyConfiguration), b.(*PersistentVolumeClaimSpecApplyConfiguration), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*PodSpecApplyConfiguration)(nil), (*v1beta2.PodSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration(a.(*PodSpecApplyConfiguration), b.(*v1beta2.PodSpecApplyConfiguration), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1beta2.PodSpecApplyConfiguration)(nil), (*PodSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration(a.(*v1beta2.PodSpecApplyConfiguration), b.(*PodSpecApplyConfiguration), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*PodTemplateSpec)(nil), (*v1beta2.PodTemplateSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert__PodTemplateSpec_To_v1beta2_PodTemplateSpec(a.(*PodTemplateSpec), b.(*v1beta2.PodTemplateSpec), scope)
 	}); err != nil {
@@ -161,6 +183,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*v1beta2.RestoreSpec)(nil), (*RestoreSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_RestoreSpec_To__RestoreSpec(a.(*v1beta2.RestoreSpec), b.(*RestoreSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ServiceSpecApplyConfiguration)(nil), (*v1beta2.ServiceSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfiguration(a.(*ServiceSpecApplyConfiguration), b.(*v1beta2.ServiceSpecApplyConfiguration), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1beta2.ServiceSpecApplyConfiguration)(nil), (*ServiceSpecApplyConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfiguration(a.(*v1beta2.ServiceSpecApplyConfiguration), b.(*ServiceSpecApplyConfiguration), scope)
 	}); err != nil {
 		return err
 	}
@@ -590,7 +622,9 @@ func autoConvert__PersistentVolumeClaim_To_v1beta2_PersistentVolumeClaim(in *Per
 	if err := Convert__ObjectMeta_To_v1beta2_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = in.Spec
+	if err := Convert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -603,7 +637,9 @@ func autoConvert_v1beta2_PersistentVolumeClaim_To__PersistentVolumeClaim(in *v1b
 	if err := Convert_v1beta2_ObjectMeta_To__ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = in.Spec
+	if err := Convert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -612,11 +648,135 @@ func Convert_v1beta2_PersistentVolumeClaim_To__PersistentVolumeClaim(in *v1beta2
 	return autoConvert_v1beta2_PersistentVolumeClaim_To__PersistentVolumeClaim(in, out, s)
 }
 
+func autoConvert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration(in *PersistentVolumeClaimSpecApplyConfiguration, out *v1beta2.PersistentVolumeClaimSpecApplyConfiguration, s conversion.Scope) error {
+	out.AccessModes = *(*[]v1.PersistentVolumeAccessMode)(unsafe.Pointer(&in.AccessModes))
+	out.Selector = (*applyconfigurationsmetav1.LabelSelectorApplyConfiguration)(unsafe.Pointer(in.Selector))
+	out.Resources = (*corev1.ResourceRequirementsApplyConfiguration)(unsafe.Pointer(in.Resources))
+	out.VolumeName = (*string)(unsafe.Pointer(in.VolumeName))
+	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
+	out.VolumeMode = (*v1.PersistentVolumeMode)(unsafe.Pointer(in.VolumeMode))
+	out.DataSource = (*corev1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSource))
+	out.DataSourceRef = (*corev1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
+	return nil
+}
+
+// Convert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration is an autogenerated conversion function.
+func Convert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration(in *PersistentVolumeClaimSpecApplyConfiguration, out *v1beta2.PersistentVolumeClaimSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_PersistentVolumeClaimSpecApplyConfiguration(in, out, s)
+}
+
+func autoConvert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration(in *v1beta2.PersistentVolumeClaimSpecApplyConfiguration, out *PersistentVolumeClaimSpecApplyConfiguration, s conversion.Scope) error {
+	out.AccessModes = *(*[]v1.PersistentVolumeAccessMode)(unsafe.Pointer(&in.AccessModes))
+	out.Selector = (*applyconfigurationsmetav1.LabelSelectorApplyConfiguration)(unsafe.Pointer(in.Selector))
+	out.Resources = (*corev1.ResourceRequirementsApplyConfiguration)(unsafe.Pointer(in.Resources))
+	out.VolumeName = (*string)(unsafe.Pointer(in.VolumeName))
+	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
+	out.VolumeMode = (*v1.PersistentVolumeMode)(unsafe.Pointer(in.VolumeMode))
+	out.DataSource = (*corev1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSource))
+	out.DataSourceRef = (*corev1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
+	return nil
+}
+
+// Convert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration is an autogenerated conversion function.
+func Convert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration(in *v1beta2.PersistentVolumeClaimSpecApplyConfiguration, out *PersistentVolumeClaimSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__PersistentVolumeClaimSpecApplyConfiguration(in, out, s)
+}
+
+func autoConvert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration(in *PodSpecApplyConfiguration, out *v1beta2.PodSpecApplyConfiguration, s conversion.Scope) error {
+	out.Volumes = *(*[]corev1.VolumeApplyConfiguration)(unsafe.Pointer(&in.Volumes))
+	out.InitContainers = *(*[]corev1.ContainerApplyConfiguration)(unsafe.Pointer(&in.InitContainers))
+	out.Containers = *(*[]corev1.ContainerApplyConfiguration)(unsafe.Pointer(&in.Containers))
+	out.EphemeralContainers = *(*[]corev1.EphemeralContainerApplyConfiguration)(unsafe.Pointer(&in.EphemeralContainers))
+	out.RestartPolicy = (*v1.RestartPolicy)(unsafe.Pointer(in.RestartPolicy))
+	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
+	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
+	out.DNSPolicy = (*v1.DNSPolicy)(unsafe.Pointer(in.DNSPolicy))
+	out.NodeSelector = *(*map[string]string)(unsafe.Pointer(&in.NodeSelector))
+	out.ServiceAccountName = (*string)(unsafe.Pointer(in.ServiceAccountName))
+	out.DeprecatedServiceAccount = (*string)(unsafe.Pointer(in.DeprecatedServiceAccount))
+	out.AutomountServiceAccountToken = (*bool)(unsafe.Pointer(in.AutomountServiceAccountToken))
+	out.NodeName = (*string)(unsafe.Pointer(in.NodeName))
+	out.HostNetwork = (*bool)(unsafe.Pointer(in.HostNetwork))
+	out.HostPID = (*bool)(unsafe.Pointer(in.HostPID))
+	out.HostIPC = (*bool)(unsafe.Pointer(in.HostIPC))
+	out.ShareProcessNamespace = (*bool)(unsafe.Pointer(in.ShareProcessNamespace))
+	out.SecurityContext = (*corev1.PodSecurityContextApplyConfiguration)(unsafe.Pointer(in.SecurityContext))
+	out.ImagePullSecrets = *(*[]corev1.LocalObjectReferenceApplyConfiguration)(unsafe.Pointer(&in.ImagePullSecrets))
+	out.Hostname = (*string)(unsafe.Pointer(in.Hostname))
+	out.Subdomain = (*string)(unsafe.Pointer(in.Subdomain))
+	out.Affinity = (*corev1.AffinityApplyConfiguration)(unsafe.Pointer(in.Affinity))
+	out.SchedulerName = (*string)(unsafe.Pointer(in.SchedulerName))
+	out.Tolerations = *(*[]corev1.TolerationApplyConfiguration)(unsafe.Pointer(&in.Tolerations))
+	out.HostAliases = *(*[]corev1.HostAliasApplyConfiguration)(unsafe.Pointer(&in.HostAliases))
+	out.PriorityClassName = (*string)(unsafe.Pointer(in.PriorityClassName))
+	out.Priority = (*int32)(unsafe.Pointer(in.Priority))
+	out.DNSConfig = (*corev1.PodDNSConfigApplyConfiguration)(unsafe.Pointer(in.DNSConfig))
+	out.ReadinessGates = *(*[]corev1.PodReadinessGateApplyConfiguration)(unsafe.Pointer(&in.ReadinessGates))
+	out.RuntimeClassName = (*string)(unsafe.Pointer(in.RuntimeClassName))
+	out.EnableServiceLinks = (*bool)(unsafe.Pointer(in.EnableServiceLinks))
+	out.PreemptionPolicy = (*v1.PreemptionPolicy)(unsafe.Pointer(in.PreemptionPolicy))
+	out.Overhead = (*v1.ResourceList)(unsafe.Pointer(in.Overhead))
+	out.TopologySpreadConstraints = *(*[]corev1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
+	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
+	return nil
+}
+
+// Convert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration is an autogenerated conversion function.
+func Convert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration(in *PodSpecApplyConfiguration, out *v1beta2.PodSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration(in, out, s)
+}
+
+func autoConvert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration(in *v1beta2.PodSpecApplyConfiguration, out *PodSpecApplyConfiguration, s conversion.Scope) error {
+	out.Volumes = *(*[]corev1.VolumeApplyConfiguration)(unsafe.Pointer(&in.Volumes))
+	out.InitContainers = *(*[]corev1.ContainerApplyConfiguration)(unsafe.Pointer(&in.InitContainers))
+	out.Containers = *(*[]corev1.ContainerApplyConfiguration)(unsafe.Pointer(&in.Containers))
+	out.EphemeralContainers = *(*[]corev1.EphemeralContainerApplyConfiguration)(unsafe.Pointer(&in.EphemeralContainers))
+	out.RestartPolicy = (*v1.RestartPolicy)(unsafe.Pointer(in.RestartPolicy))
+	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
+	out.ActiveDeadlineSeconds = (*int64)(unsafe.Pointer(in.ActiveDeadlineSeconds))
+	out.DNSPolicy = (*v1.DNSPolicy)(unsafe.Pointer(in.DNSPolicy))
+	out.NodeSelector = *(*map[string]string)(unsafe.Pointer(&in.NodeSelector))
+	out.ServiceAccountName = (*string)(unsafe.Pointer(in.ServiceAccountName))
+	out.DeprecatedServiceAccount = (*string)(unsafe.Pointer(in.DeprecatedServiceAccount))
+	out.AutomountServiceAccountToken = (*bool)(unsafe.Pointer(in.AutomountServiceAccountToken))
+	out.NodeName = (*string)(unsafe.Pointer(in.NodeName))
+	out.HostNetwork = (*bool)(unsafe.Pointer(in.HostNetwork))
+	out.HostPID = (*bool)(unsafe.Pointer(in.HostPID))
+	out.HostIPC = (*bool)(unsafe.Pointer(in.HostIPC))
+	out.ShareProcessNamespace = (*bool)(unsafe.Pointer(in.ShareProcessNamespace))
+	out.SecurityContext = (*corev1.PodSecurityContextApplyConfiguration)(unsafe.Pointer(in.SecurityContext))
+	out.ImagePullSecrets = *(*[]corev1.LocalObjectReferenceApplyConfiguration)(unsafe.Pointer(&in.ImagePullSecrets))
+	out.Hostname = (*string)(unsafe.Pointer(in.Hostname))
+	out.Subdomain = (*string)(unsafe.Pointer(in.Subdomain))
+	out.Affinity = (*corev1.AffinityApplyConfiguration)(unsafe.Pointer(in.Affinity))
+	out.SchedulerName = (*string)(unsafe.Pointer(in.SchedulerName))
+	out.Tolerations = *(*[]corev1.TolerationApplyConfiguration)(unsafe.Pointer(&in.Tolerations))
+	out.HostAliases = *(*[]corev1.HostAliasApplyConfiguration)(unsafe.Pointer(&in.HostAliases))
+	out.PriorityClassName = (*string)(unsafe.Pointer(in.PriorityClassName))
+	out.Priority = (*int32)(unsafe.Pointer(in.Priority))
+	out.DNSConfig = (*corev1.PodDNSConfigApplyConfiguration)(unsafe.Pointer(in.DNSConfig))
+	out.ReadinessGates = *(*[]corev1.PodReadinessGateApplyConfiguration)(unsafe.Pointer(&in.ReadinessGates))
+	out.RuntimeClassName = (*string)(unsafe.Pointer(in.RuntimeClassName))
+	out.EnableServiceLinks = (*bool)(unsafe.Pointer(in.EnableServiceLinks))
+	out.PreemptionPolicy = (*v1.PreemptionPolicy)(unsafe.Pointer(in.PreemptionPolicy))
+	out.Overhead = (*v1.ResourceList)(unsafe.Pointer(in.Overhead))
+	out.TopologySpreadConstraints = *(*[]corev1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
+	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
+	return nil
+}
+
+// Convert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration is an autogenerated conversion function.
+func Convert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration(in *v1beta2.PodSpecApplyConfiguration, out *PodSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration(in, out, s)
+}
+
 func autoConvert__PodTemplateSpec_To_v1beta2_PodTemplateSpec(in *PodTemplateSpec, out *v1beta2.PodTemplateSpec, s conversion.Scope) error {
 	if err := Convert__ObjectMeta_To_v1beta2_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = in.Spec
+	if err := Convert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -629,7 +789,9 @@ func autoConvert_v1beta2_PodTemplateSpec_To__PodTemplateSpec(in *v1beta2.PodTemp
 	if err := Convert_v1beta2_ObjectMeta_To__ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = in.Spec
+	if err := Convert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -690,11 +852,67 @@ func Convert_v1beta2_RestoreSpec_To__RestoreSpec(in *v1beta2.RestoreSpec, out *R
 	return autoConvert_v1beta2_RestoreSpec_To__RestoreSpec(in, out, s)
 }
 
+func autoConvert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfiguration(in *ServiceSpecApplyConfiguration, out *v1beta2.ServiceSpecApplyConfiguration, s conversion.Scope) error {
+	out.Ports = *(*[]corev1.ServicePortApplyConfiguration)(unsafe.Pointer(&in.Ports))
+	out.Selector = *(*map[string]string)(unsafe.Pointer(&in.Selector))
+	out.ClusterIP = (*string)(unsafe.Pointer(in.ClusterIP))
+	out.ClusterIPs = *(*[]string)(unsafe.Pointer(&in.ClusterIPs))
+	out.Type = (*v1.ServiceType)(unsafe.Pointer(in.Type))
+	out.ExternalIPs = *(*[]string)(unsafe.Pointer(&in.ExternalIPs))
+	out.SessionAffinity = (*v1.ServiceAffinity)(unsafe.Pointer(in.SessionAffinity))
+	out.LoadBalancerIP = (*string)(unsafe.Pointer(in.LoadBalancerIP))
+	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))
+	out.ExternalName = (*string)(unsafe.Pointer(in.ExternalName))
+	out.ExternalTrafficPolicy = (*v1.ServiceExternalTrafficPolicyType)(unsafe.Pointer(in.ExternalTrafficPolicy))
+	out.HealthCheckNodePort = (*int32)(unsafe.Pointer(in.HealthCheckNodePort))
+	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
+	out.SessionAffinityConfig = (*corev1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
+	out.IPFamilies = *(*[]v1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
+	out.IPFamilyPolicy = (*v1.IPFamilyPolicyType)(unsafe.Pointer(in.IPFamilyPolicy))
+	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
+	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
+	out.InternalTrafficPolicy = (*v1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))
+	return nil
+}
+
+// Convert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfiguration is an autogenerated conversion function.
+func Convert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfiguration(in *ServiceSpecApplyConfiguration, out *v1beta2.ServiceSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfiguration(in, out, s)
+}
+
+func autoConvert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfiguration(in *v1beta2.ServiceSpecApplyConfiguration, out *ServiceSpecApplyConfiguration, s conversion.Scope) error {
+	out.Ports = *(*[]corev1.ServicePortApplyConfiguration)(unsafe.Pointer(&in.Ports))
+	out.Selector = *(*map[string]string)(unsafe.Pointer(&in.Selector))
+	out.ClusterIP = (*string)(unsafe.Pointer(in.ClusterIP))
+	out.ClusterIPs = *(*[]string)(unsafe.Pointer(&in.ClusterIPs))
+	out.Type = (*v1.ServiceType)(unsafe.Pointer(in.Type))
+	out.ExternalIPs = *(*[]string)(unsafe.Pointer(&in.ExternalIPs))
+	out.SessionAffinity = (*v1.ServiceAffinity)(unsafe.Pointer(in.SessionAffinity))
+	out.LoadBalancerIP = (*string)(unsafe.Pointer(in.LoadBalancerIP))
+	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))
+	out.ExternalName = (*string)(unsafe.Pointer(in.ExternalName))
+	out.ExternalTrafficPolicy = (*v1.ServiceExternalTrafficPolicyType)(unsafe.Pointer(in.ExternalTrafficPolicy))
+	out.HealthCheckNodePort = (*int32)(unsafe.Pointer(in.HealthCheckNodePort))
+	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
+	out.SessionAffinityConfig = (*corev1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
+	out.IPFamilies = *(*[]v1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
+	out.IPFamilyPolicy = (*v1.IPFamilyPolicyType)(unsafe.Pointer(in.IPFamilyPolicy))
+	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
+	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
+	out.InternalTrafficPolicy = (*v1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))
+	return nil
+}
+
+// Convert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfiguration is an autogenerated conversion function.
+func Convert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfiguration(in *v1beta2.ServiceSpecApplyConfiguration, out *ServiceSpecApplyConfiguration, s conversion.Scope) error {
+	return autoConvert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfiguration(in, out, s)
+}
+
 func autoConvert__ServiceTemplate_To_v1beta2_ServiceTemplate(in *ServiceTemplate, out *v1beta2.ServiceTemplate, s conversion.Scope) error {
 	if err := Convert__ObjectMeta_To_v1beta2_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = (*v1.ServiceSpec)(unsafe.Pointer(in.Spec))
+	out.Spec = (*v1beta2.ServiceSpecApplyConfiguration)(unsafe.Pointer(in.Spec))
 	return nil
 }
 
@@ -707,7 +925,7 @@ func autoConvert_v1beta2_ServiceTemplate_To__ServiceTemplate(in *v1beta2.Service
 	if err := Convert_v1beta2_ObjectMeta_To__ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
 		return err
 	}
-	out.Spec = (*v1.ServiceSpec)(unsafe.Pointer(in.Spec))
+	out.Spec = (*ServiceSpecApplyConfiguration)(unsafe.Pointer(in.Spec))
 	return nil
 }
 
