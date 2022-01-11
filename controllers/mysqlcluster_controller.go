@@ -21,16 +21,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -39,7 +44,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const defaultTerminationGracePeriodSeconds = 300
+const (
+	defaultTerminationGracePeriodSeconds = 300
+	fieldManager                         = "moco-controller"
+)
 
 // debug and test variables
 var (
@@ -335,9 +343,9 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1.ConfigMap, error) {
 	log := crlog.FromContext(ctx)
 
-	var mysqldContainer *corev1.Container
+	var mysqldContainer *corev1ac.ContainerApplyConfiguration
 	for i, c := range cluster.Spec.PodTemplate.Spec.Containers {
-		if c.Name == constants.MysqldContainerName {
+		if *c.Name == constants.MysqldContainerName {
 			mysqldContainer = &cluster.Spec.PodTemplate.Spec.Containers[i]
 			break
 		}
@@ -498,100 +506,124 @@ func (r *MySQLClusterReconciler) reconcileV1Service(ctx context.Context, req ctr
 func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluster *mocov1beta2.MySQLCluster, template *mocov1beta2.ServiceTemplate, name string, headless bool, selector map[string]string) error {
 	log := crlog.FromContext(ctx)
 
-	svc := &corev1.Service{}
-	svc.Namespace = cluster.Namespace
-	svc.Name = name
-	var orig, updated *corev1.ServiceSpec
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		if debugController {
-			orig = svc.Spec.DeepCopy()
-		}
+	svc := corev1ac.Service(name, cluster.Namespace)
+	spec := corev1ac.ServiceSpec()
 
-		saSpec := &corev1.ServiceSpec{}
-		tmpl := template.DeepCopy()
-		if !headless && tmpl != nil {
-			svc.Annotations = mergeMap(svc.Annotations, tmpl.Annotations)
-			svc.Labels = mergeMap(svc.Labels, tmpl.Labels)
-			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
+	tmpl := template.DeepCopy()
 
-			if tmpl.Spec != nil {
-				tmpl.Spec.DeepCopyInto(saSpec)
-			}
-		} else {
-			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
-		}
+	if !headless && tmpl != nil {
+		svc.WithAnnotations(mergeMap(svc.Annotations, tmpl.Annotations)).
+			WithLabels(mergeMap(svc.Labels, tmpl.Labels)).
+			WithLabels(mergeMap(svc.Labels, labelSet(cluster, false)))
 
-		if headless {
-			saSpec.ClusterIP = corev1.ClusterIPNone
-			saSpec.ClusterIPs = svc.Spec.ClusterIPs
-			saSpec.Type = corev1.ServiceTypeClusterIP
-			saSpec.PublishNotReadyAddresses = true
-		} else {
-			saSpec.ClusterIP = svc.Spec.ClusterIP
-			saSpec.ClusterIPs = svc.Spec.ClusterIPs
-			if len(saSpec.Type) == 0 {
-				saSpec.Type = svc.Spec.Type
-			}
+		if tmpl.Spec != nil {
+			s := mocov1beta2.ServiceSpecApplyConfiguration(*spec)
+			tmpl.Spec.DeepCopyInto(&s)
 		}
-		if len(saSpec.SessionAffinity) == 0 {
-			saSpec.SessionAffinity = svc.Spec.SessionAffinity
-		}
-		if len(saSpec.ExternalTrafficPolicy) == 0 {
-			saSpec.ExternalTrafficPolicy = svc.Spec.ExternalTrafficPolicy
-		}
-		if saSpec.HealthCheckNodePort == 0 {
-			saSpec.HealthCheckNodePort = svc.Spec.HealthCheckNodePort
-		}
-		if saSpec.IPFamilies == nil {
-			saSpec.IPFamilies = svc.Spec.IPFamilies
-		}
-		if saSpec.IPFamilyPolicy == nil {
-			saSpec.IPFamilyPolicy = svc.Spec.IPFamilyPolicy
-		}
-		saSpec.Selector = selector
+	} else {
+		svc.WithLabels(mergeMap(svc.Labels, labelSet(cluster, false)))
+	}
 
-		var mysqlNodePort, mysqlXNodePort int32
-		for _, p := range svc.Spec.Ports {
-			switch p.Name {
-			case constants.MySQLPortName:
-				mysqlNodePort = p.NodePort
-			case constants.MySQLXPortName:
-				mysqlXNodePort = p.NodePort
-			}
-		}
-		saSpec.Ports = []corev1.ServicePort{
-			{
-				Name:       constants.MySQLPortName,
-				Protocol:   corev1.ProtocolTCP,
-				Port:       constants.MySQLPort,
-				TargetPort: intstr.FromString(constants.MySQLPortName),
-				NodePort:   mysqlNodePort,
-			},
-			{
-				Name:       constants.MySQLXPortName,
-				Protocol:   corev1.ProtocolTCP,
-				Port:       constants.MySQLXPort,
-				TargetPort: intstr.FromString(constants.MySQLXPortName),
-				NodePort:   mysqlXNodePort,
-			},
-		}
+	if headless {
+		spec.WithClusterIP(corev1.ClusterIPNone).
+			WithClusterIPs(svc.Spec.ClusterIPs...).
+			WithType(corev1.ServiceTypeClusterIP).
+			WithPublishNotReadyAddresses(true)
+	} else {
+		spec.WithClusterIP(*svc.Spec.ClusterIP).
+			WithClusterIPs(svc.Spec.ClusterIPs...)
 
-		saSpec.DeepCopyInto(&svc.Spec)
-		if debugController {
-			updated = svc.Spec.DeepCopy()
+		if spec.Type == nil {
+			spec.WithType(*svc.Spec.Type)
 		}
+	}
 
-		return ctrl.SetControllerReference(cluster, svc, r.Scheme)
-	})
+	if spec.SessionAffinity == nil {
+		spec.WithSessionAffinity(*svc.Spec.SessionAffinity)
+	}
+	if spec.ExternalTrafficPolicy == nil {
+		spec.WithExternalTrafficPolicy(*svc.Spec.ExternalTrafficPolicy)
+	}
+	if spec.HealthCheckNodePort == nil {
+		spec.WithHealthCheckNodePort(*svc.Spec.HealthCheckNodePort)
+	}
+	if spec.IPFamilies == nil {
+		spec.WithIPFamilies(svc.Spec.IPFamilies...)
+	}
+	if spec.IPFamilyPolicy == nil {
+		spec.WithIPFamilyPolicy(*svc.Spec.IPFamilyPolicy)
+	}
+
+	spec.WithSelector(selector)
+
+	var mysqlNodePort, mysqlXNodePort int32
+	for _, p := range svc.Spec.Ports {
+		switch *p.Name {
+		case constants.MySQLPortName:
+			mysqlNodePort = *p.NodePort
+		case constants.MySQLXPortName:
+			mysqlXNodePort = *p.NodePort
+		}
+	}
+
+	spec.WithPorts(
+		corev1ac.ServicePort().
+			WithName(constants.MySQLPortName).
+			WithProtocol(corev1.ProtocolTCP).
+			WithPort(constants.MySQLPort).
+			WithTargetPort(intstr.FromString(constants.MySQLPortName)).
+			WithNodePort(mysqlNodePort),
+		corev1ac.ServicePort().
+			WithName(constants.MySQLXPortName).
+			WithProtocol(corev1.ProtocolTCP).
+			WithPort(constants.MySQLXPort).
+			WithTargetPort(intstr.FromString(constants.MySQLXPortName)).
+			WithNodePort(mysqlXNodePort),
+	)
+
+	svc.WithSpec(spec)
+
+	if err := setControllerReferenceWithService(cluster, svc, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(svc)
 	if err != nil {
-		return fmt.Errorf("failed to reconcile %s service: %w", name, err)
+		return fmt.Errorf("failed to convert Service %s/%s to unstructured: %w", cluster.Namespace, name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled service", "name", name, "operation", string(result))
+	patch := &unstructured.Unstructured{
+		Object: obj,
 	}
-	if result == controllerutil.OperationResultUpdated && debugController {
-		fmt.Println(cmp.Diff(orig, updated))
+
+	var orig, updated corev1.Service
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
 	}
+
+	origApplyConfig, err := corev1ac.ExtractService(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(svc, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+
+	if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
+		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		fmt.Println(diff)
+	}
+
+	log.Info("reconciled service", "name", name)
 
 	return nil
 }
@@ -1150,6 +1182,21 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
+	return nil
+}
+
+func setControllerReferenceWithService(cluster *mocov1beta2.MySQLCluster, svc *corev1ac.ServiceApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	svc.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
 	return nil
 }
 
