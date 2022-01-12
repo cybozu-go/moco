@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,20 +42,16 @@ func testNewMySQLCluster(ns string) *mocov1beta2.MySQLCluster {
 	cluster.Name = "test"
 	cluster.Finalizers = []string{constants.MySQLClusterFinalizer}
 	cluster.Spec.Replicas = 3
-	cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{
-		{Name: "mysqld", Image: "moco-mysql:latest"},
+	cluster.Spec.PodTemplate.Spec.Containers = []corev1ac.ContainerApplyConfiguration{
+		*corev1ac.Container().WithName("mysqld").WithImage("moco-mysql:latest"),
 	}
 	cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{
 		{
 			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: pointer.String("hoge"),
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI),
-					},
-				},
-			},
+			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
+				WithStorageClassName("hoge").WithResources(corev1ac.ResourceRequirements().
+				WithRequests(corev1.ResourceList{corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI)}),
+			)),
 		},
 	}
 	return cluster
@@ -348,8 +345,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should create config maps for my.cnf", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Limits = make(corev1.ResourceList)
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("1000Mi")
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithLimits(corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse("1000Mi"),
+		})
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -404,8 +402,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Requests = make(corev1.ResourceList)
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory] = resource.MustParse("500Mi")
+		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithRequests(corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+		})
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -577,17 +576,16 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if err != nil {
 				return err
 			}
+
+			svcSpec := mocov1beta2.ServiceSpecApplyConfiguration(*corev1ac.ServiceSpec().
+				WithType(corev1.ServiceTypeLoadBalancer).
+				WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyTypeLocal))
+
 			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
-				Spec: &corev1.ServiceSpec{
-					Type:                  corev1.ServiceTypeLoadBalancer,
-					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-				},
+				Spec: &svcSpec,
 			}
 			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
-				Spec: &corev1.ServiceSpec{
-					Type:                  corev1.ServiceTypeLoadBalancer,
-					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-				},
+				Spec: &svcSpec,
 			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
@@ -624,23 +622,22 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if err != nil {
 				return err
 			}
+
+			svcSpec := mocov1beta2.ServiceSpecApplyConfiguration(*corev1ac.ServiceSpec().
+				WithType(corev1.ServiceTypeLoadBalancer).
+				WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyTypeLocal))
+
 			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
 				ObjectMeta: mocov1beta2.ObjectMeta{
 					Annotations: map[string]string{"foo": "bar"},
 				},
-				Spec: &corev1.ServiceSpec{
-					Type:                  corev1.ServiceTypeLoadBalancer,
-					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-				},
+				Spec: &svcSpec,
 			}
 			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
 				ObjectMeta: mocov1beta2.ObjectMeta{
 					Annotations: map[string]string{"qux": "quux"},
 				},
-				Spec: &corev1.ServiceSpec{
-					Type:                  corev1.ServiceTypeLoadBalancer,
-					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
-				},
+				Spec: &svcSpec,
 			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
@@ -810,16 +807,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
-		cluster.Spec.PodTemplate.Spec.TerminationGracePeriodSeconds = pointer.Int64(512)
-		cluster.Spec.PodTemplate.Spec.PriorityClassName = "hoge"
-		cluster.Spec.PodTemplate.Spec.Containers = append(cluster.Spec.PodTemplate.Spec.Containers,
-			corev1.Container{Name: "dummy", Image: "dummy:latest"})
-		cluster.Spec.PodTemplate.Spec.InitContainers = append(cluster.Spec.PodTemplate.Spec.InitContainers,
-			corev1.Container{Name: "init-dummy", Image: "init-dummy:latest"})
-		cluster.Spec.PodTemplate.Spec.Volumes = append(cluster.Spec.PodTemplate.Spec.Volumes,
-			corev1.Volume{Name: "dummy-vol", VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			}})
+
+		podSpec := mocov1beta2.PodSpecApplyConfiguration(*corev1ac.PodSpec().
+			WithTerminationGracePeriodSeconds(512).
+			WithPriorityClassName("hoge").
+			WithContainers(corev1ac.Container().WithName("dummy").WithImage("dummy:latest")).
+			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest")).
+			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource())))
+
+		cluster.Spec.PodTemplate.Spec = podSpec
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
