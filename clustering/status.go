@@ -199,6 +199,9 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 
 			for j := 0; j < statusCheckRetryMax; j++ {
 				ist, err := ss.DBOps[index].GetStatus(ctx)
+				if err == dbop.ErrNop {
+					return
+				}
 				if err != nil {
 					p.log.Error(err, "failed to get mysqld status")
 					time.Sleep(statusCheckRetryInterval)

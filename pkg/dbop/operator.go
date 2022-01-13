@@ -80,6 +80,8 @@ type defaultFactory struct {
 
 var _ OperatorFactory = defaultFactory{}
 
+// NewFactory returns a new OperatorFactory that resolves instance IP address using `r`.
+// If `r.Resolve` returns an error, the `New` method will return a NopOperator.
 func NewFactory(r Resolver) OperatorFactory {
 	return defaultFactory{r: r}
 }
@@ -87,7 +89,7 @@ func NewFactory(r Resolver) OperatorFactory {
 func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
 	addr, err := f.r.Resolve(ctx, cluster, index)
 	if err != nil {
-		return nil, err
+		return NopOperator{name: fmt.Sprintf("%s/%s", cluster.Namespace, cluster.PodName(index))}, nil
 	}
 
 	cfg := mysql.NewConfig()
