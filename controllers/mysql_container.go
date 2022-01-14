@@ -13,11 +13,13 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQLCluster, desired, current []corev1ac.ContainerApplyConfiguration) (*corev1ac.ContainerApplyConfiguration, error) {
+func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQLCluster) (*corev1ac.ContainerApplyConfiguration, error) {
 	var source *corev1ac.ContainerApplyConfiguration
-	for i, c := range desired {
+
+	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
+	for _, c := range spec.Containers {
 		if *c.Name == constants.MysqldContainerName {
-			source = &desired[i]
+			source = &c
 			break
 		}
 	}
@@ -99,12 +101,12 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithMountPath(constants.MySQLDataPath),
 	)
 
-	updateContainerWithSupplementsWithApply(source, current)
+	updateContainerWithSecurityContext(source)
 
 	return source, nil
 }
 
-func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQLCluster, current []corev1ac.ContainerApplyConfiguration) *corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQLCluster) *corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.AgentContainerName).
 		WithImage(r.AgentImage)
@@ -153,7 +155,8 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 			WithProtocol(corev1.ProtocolTCP),
 	)
 
-	updateContainerWithSupplementsWithApply(c, current)
+	updateContainerWithSecurityContext(c)
+
 	return c
 }
 
@@ -179,11 +182,12 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1ac.State
 				WithMountPath(constants.LogDirPath),
 		)
 
-	updateContainerWithSupplementsWithApply(c, sts.Spec.Template.Spec.Containers)
+	updateContainerWithSecurityContext(c)
+
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, current []corev1ac.ContainerApplyConfiguration) *corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string) *corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.ExporterContainerName).
 		WithImage(r.ExporterImage).
@@ -207,36 +211,36 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string, cu
 		c.WithArgs("--collect." + cl)
 	}
 
-	updateContainerWithSupplementsWithApply(c, current)
+	updateContainerWithSecurityContext(c)
+
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.MySQLCluster, current []corev1ac.ContainerApplyConfiguration) []*corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.MySQLCluster) []*corev1ac.ContainerApplyConfiguration {
 	var containers []*corev1ac.ContainerApplyConfiguration
-	for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+
+	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
+	for _, c := range spec.Containers {
 		c := c
 		switch *c.Name {
 		case constants.MysqldContainerName:
 		case constants.AgentContainerName:
 		case constants.SlowQueryLogAgentContainerName:
 			if cluster.Spec.DisableSlowQueryLogContainer {
-				updateContainerWithSupplementsWithApply(&c, current)
 				containers = append(containers, &c)
 			}
 		case constants.ExporterContainerName:
 			if len(cluster.Spec.Collectors) == 0 {
-				updateContainerWithSupplementsWithApply(&c, current)
 				containers = append(containers, &c)
 			}
 		default:
-			updateContainerWithSupplementsWithApply(&c, current)
 			containers = append(containers, &c)
 		}
 	}
 	return containers
 }
 
-func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLCluster, image string, current []corev1ac.ContainerApplyConfiguration) []*corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLCluster, image string) []*corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.InitContainerName).
 		WithImage(image).
@@ -262,12 +266,14 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 			WithMountPath(constants.MySQLInitConfPath),
 	)
 
+	updateContainerWithSecurityContext(c)
+
 	var initContainers []*corev1ac.ContainerApplyConfiguration
-	updateContainerWithSupplementsWithApply(c, current)
 	initContainers = append(initContainers, c)
-	for _, given := range cluster.Spec.PodTemplate.Spec.InitContainers {
+
+	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
+	for _, given := range spec.InitContainers {
 		ic := given
-		updateContainerWithSupplementsWithApply(&ic, current)
 		initContainers = append(initContainers, &ic)
 	}
 	return initContainers
@@ -324,54 +330,11 @@ func updateProbeWithSupplements(probe, current *corev1.Probe) {
 	}
 }
 
-func updateContainerWithSupplementsWithApply(container *corev1ac.ContainerApplyConfiguration, currentContainers []corev1ac.ContainerApplyConfiguration) {
+func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
 	if container.SecurityContext == nil {
 		container.WithSecurityContext(corev1ac.SecurityContext().
 			WithRunAsUser(constants.ContainerUID).
 			WithRunAsGroup(constants.ContainerGID),
 		)
-	}
-
-	var current *corev1ac.ContainerApplyConfiguration
-	for i, c := range currentContainers {
-		if *c.Name == *container.Name {
-			current = &currentContainers[i]
-			break
-		}
-	}
-	if current == nil {
-		return
-	}
-
-	if current.ImagePullPolicy == nil {
-		container.WithImagePullPolicy(*current.ImagePullPolicy)
-	}
-	if current.TerminationMessagePath == nil {
-		container.WithTerminationMessagePath(*current.TerminationMessagePath)
-	}
-	if current.TerminationMessagePolicy == nil {
-		container.WithTerminationMessagePolicy(*current.TerminationMessagePolicy)
-	}
-	updateProbeWithSupplementsWithApply(container.StartupProbe, current.StartupProbe)
-	updateProbeWithSupplementsWithApply(container.LivenessProbe, current.LivenessProbe)
-	updateProbeWithSupplementsWithApply(container.ReadinessProbe, current.ReadinessProbe)
-}
-
-func updateProbeWithSupplementsWithApply(probe, current *corev1ac.ProbeApplyConfiguration) {
-	if probe == nil || current == nil {
-		return
-	}
-
-	if probe.FailureThreshold == nil {
-		probe.WithFailureThreshold(*current.FailureThreshold)
-	}
-	if probe.PeriodSeconds == nil {
-		probe.WithPeriodSeconds(*current.PeriodSeconds)
-	}
-	if probe.SuccessThreshold == nil {
-		probe.WithSuccessThreshold(*current.SuccessThreshold)
-	}
-	if probe.TimeoutSeconds == nil {
-		probe.WithTimeoutSeconds(*current.TimeoutSeconds)
 	}
 }

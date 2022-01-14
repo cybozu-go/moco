@@ -151,6 +151,10 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 	pp = p.Child("containers")
 	mysqldIndex := -1
 	for i, container := range s.PodTemplate.Spec.Containers {
+		if container.Name == nil {
+			continue
+		}
+
 		if *container.Name == constants.MysqldContainerName {
 			mysqldIndex = i
 		}
@@ -169,19 +173,28 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 	} else {
 		pp := p.Child("containers").Index(mysqldIndex).Child("ports")
 		for i, port := range s.PodTemplate.Spec.Containers[mysqldIndex].Ports {
-			switch *port.ContainerPort {
-			case constants.MySQLPort, constants.MySQLXPort, constants.MySQLAdminPort, constants.MySQLHealthPort:
-				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.ContainerPort, "reserved port"))
+			if port.ContainerPort != nil {
+				switch *port.ContainerPort {
+				case constants.MySQLPort, constants.MySQLXPort, constants.MySQLAdminPort, constants.MySQLHealthPort:
+					allErrs = append(allErrs, field.Invalid(pp.Index(i), port.ContainerPort, "reserved port"))
+				}
 			}
-			switch *port.Name {
-			case constants.MySQLPortName, constants.MySQLXPortName, constants.MySQLAdminPortName, constants.MySQLHealthPortName:
-				allErrs = append(allErrs, field.Invalid(pp.Index(i), port.Name, "reserved port name"))
+
+			if port.Name != nil {
+				switch *port.Name {
+				case constants.MySQLPortName, constants.MySQLXPortName, constants.MySQLAdminPortName, constants.MySQLHealthPortName:
+					allErrs = append(allErrs, field.Invalid(pp.Index(i), port.Name, "reserved port name"))
+				}
 			}
 		}
 	}
 
 	pp = p.Child("initContainers")
 	for i, container := range s.PodTemplate.Spec.InitContainers {
+		if container.Name == nil {
+			continue
+		}
+
 		switch *container.Name {
 		case constants.InitContainerName:
 			allErrs = append(allErrs, field.Invalid(pp.Index(i), container.Name, "reserved init container name"))
@@ -190,6 +203,10 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 
 	pp = p.Child("volumes")
 	for i, vol := range s.PodTemplate.Spec.Volumes {
+		if vol.Name == nil {
+			continue
+		}
+
 		switch *vol.Name {
 		case constants.TmpVolumeName, constants.RunVolumeName, constants.VarLogVolumeName,
 			constants.MySQLConfVolumeName, constants.MySQLInitConfVolumeName,
@@ -300,9 +317,14 @@ type PersistentVolumeClaim struct {
 
 // ToCoreV1 converts the PersistentVolumeClaim to a PersistentVolumeClaimApplyConfiguration.
 func (in PersistentVolumeClaim) ToCoreV1() *corev1ac.PersistentVolumeClaimApplyConfiguration {
-	claim := corev1ac.PersistentVolumeClaim(in.Name, "").
+	// If you use this, the namespace will not be nil and will not match for "equality.Semantic.DeepEqual".
+	// claim := corev1ac.PersistentVolumeClaim(in.Name, "").
+	claim := &corev1ac.PersistentVolumeClaimApplyConfiguration{}
+
+	claim.WithName(in.Name).
 		WithLabels(in.Labels).
-		WithAnnotations(in.Annotations)
+		WithAnnotations(in.Annotations).
+		WithStatus(corev1ac.PersistentVolumeClaimStatus())
 
 	spec := corev1ac.PersistentVolumeClaimSpecApplyConfiguration(*in.Spec.DeepCopy())
 	claim.WithSpec(&spec)

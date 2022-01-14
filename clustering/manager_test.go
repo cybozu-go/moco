@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -39,7 +40,9 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 	cluster.Spec.Replicas = replicas
 	cluster.Spec.ServerIDBase = 10
 	cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{}}
-	cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld"}}
+	cluster.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(*corev1ac.PodSpec().WithContainers(
+		corev1ac.Container().WithName("mysqld")),
+	)
 	if sourceSecret != "" {
 		cluster.Spec.ReplicationSourceSecretName = &sourceSecret
 	}

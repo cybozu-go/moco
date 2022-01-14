@@ -345,9 +345,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should create config maps for my.cnf", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithLimits(corev1.ResourceList{
-			corev1.ResourceMemory: resource.MustParse("1000Mi"),
-		})
+		cluster.Spec.PodTemplate.Spec.Containers[0].WithResources(
+			corev1ac.ResourceRequirements().WithLimits(corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("1000Mi"),
+			}))
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -808,14 +809,18 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
 
-		podSpec := mocov1beta2.PodSpecApplyConfiguration(*corev1ac.PodSpec().
+		podSpec := corev1ac.PodSpec().
 			WithTerminationGracePeriodSeconds(512).
 			WithPriorityClassName("hoge").
 			WithContainers(corev1ac.Container().WithName("dummy").WithImage("dummy:latest")).
 			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest")).
-			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource())))
+			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource()))
 
-		cluster.Spec.PodTemplate.Spec = podSpec
+		for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+			podSpec.WithContainers(&c)
+		}
+
+		cluster.Spec.PodTemplate.Spec = mocov1beta2.PodSpecApplyConfiguration(*podSpec)
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 

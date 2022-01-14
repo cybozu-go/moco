@@ -176,9 +176,14 @@ type PersistentVolumeClaim struct {
 
 // ToCoreV1 converts the PersistentVolumeClaim to a PersistentVolumeClaimApplyConfiguration.
 func (in PersistentVolumeClaim) ToCoreV1() *corev1ac.PersistentVolumeClaimApplyConfiguration {
-	claim := corev1ac.PersistentVolumeClaim(in.Name, "").
+	// If you use this, the namespace will not be nil and will not match for "equality.Semantic.DeepEqual".
+	// claim := corev1ac.PersistentVolumeClaim(in.Name, "").
+	claim := &corev1ac.PersistentVolumeClaimApplyConfiguration{}
+
+	claim.WithName(in.Name).
 		WithLabels(in.Labels).
-		WithAnnotations(in.Annotations)
+		WithAnnotations(in.Annotations).
+		WithStatus(corev1ac.PersistentVolumeClaimStatus())
 
 	spec := corev1ac.PersistentVolumeClaimSpecApplyConfiguration(*in.Spec.DeepCopy())
 	claim.WithSpec(&spec)
