@@ -1,9 +1,8 @@
-package v1beta1_test
+package v1beta1
 
 import (
 	"testing"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -13,7 +12,7 @@ import (
 
 func TestCompatibility(t *testing.T) {
 	scheme := runtime.NewScheme()
-	_ = mocov1beta1.AddToScheme(scheme)
+	_ = AddToScheme(scheme)
 	_ = mocov1beta2.AddToScheme(scheme)
 
 	f := roundtrip.CompatibilityTestFuzzer(scheme, nil)
@@ -21,7 +20,7 @@ func TestCompatibility(t *testing.T) {
 
 	t.Run("MySQLCluster v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
 		for i := 0; i < 10000; i++ {
-			var oldCluster1, oldCluster2 mocov1beta1.MySQLCluster
+			var oldCluster1, oldCluster2 MySQLCluster
 			var cluster mocov1beta2.MySQLCluster
 			f.Fuzz(&oldCluster1)
 
@@ -48,7 +47,7 @@ func TestCompatibility(t *testing.T) {
 
 	t.Run("BackupPolicy v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
 		for i := 0; i < 10000; i++ {
-			var oldPolicy1, oldPolicy2 mocov1beta1.BackupPolicy
+			var oldPolicy1, oldPolicy2 BackupPolicy
 			var policy mocov1beta2.BackupPolicy
 			f.Fuzz(&oldPolicy1)
 
