@@ -1,5 +1,5 @@
 # This example shows how to assign Guaranteed QoS class to Pods.
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default

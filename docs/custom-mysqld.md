@@ -4,7 +4,7 @@ There are pre-built `mysqld` container images for MOCO on [`quay.io/cybozu/mysql
 Users can use one of these images to supply `mysqld` container in [MySQLCluster](crd_mysqlcluster.md) like:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 spec:
   podTemplate:

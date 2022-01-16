@@ -11,7 +11,7 @@ data:
   long_query_time: "5"
   innodb_buffer_pool_size: "70G"
 ---
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default
