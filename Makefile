@@ -72,8 +72,9 @@ generate: controller-gen conversion-gen ## Generate code containing DeepCopy, De
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta1.md
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta2/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta1.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/backuppolicy_types.go -f api/v1beta2/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta2.md
 
 .PHONY: book
 book: mdbook
