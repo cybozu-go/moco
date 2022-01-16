@@ -338,7 +338,7 @@ metadata:
   namespace: foo
   name: test
 spec:
-  serviceTemplate:
+  primaryServiceTemplate:
     metadata:
       annotations:
         metallb.universe.tf/address-pool: production-public-ips

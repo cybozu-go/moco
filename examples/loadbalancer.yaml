@@ -6,9 +6,9 @@ metadata:
   name: test
 spec:
   replicas: 3
-  # serviceTemplate allows you to specify annotations, labels, and spec
+  # primaryServiceTemplate and replicaServiceTemplate allows you to specify annotations, labels, and spec
   # of Services to be generated for this MySQLCluster.
-  serviceTemplate:
+  primaryServiceTemplate:
     metadata:
       annotations:
         metallb.universe.tf/address-pool: production-public-ips
