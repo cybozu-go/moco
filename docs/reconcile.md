@@ -85,7 +85,7 @@ MOCO creates three Services for each MySQLCluster, that is:
 
 The Services' labels, annotations, and `spec` fields can be customized with MySQLCluster's `spec.primaryServiceTemplate` and `spec.replicaServiceTemplate` field.
 The `spec.primaryServiceTemplate` configures the Service for the primary mysqld instance
-and the `spec.replicaServiceTemplate` configures the Service for the replica mysql instance.
+and the `spec.replicaServiceTemplate` configures the Service for the replica mysqld instances.
 
 The following fields in Service `spec` may not be customized, though.
 
