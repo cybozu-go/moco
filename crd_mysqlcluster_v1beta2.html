@@ -1,0 +1,343 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>MySQLCluster v1beta2 - MOCO Documentation</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">MOCO</a></li><li class="chapter-item expanded affix "><li class="part-title">User manual</li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">1.</strong> Getting started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">1.1.</strong> Deploying MOCO</a></li><li class="chapter-item expanded "><a href="helm.html"><strong aria-hidden="true">1.2.</strong> Helm Chart</a></li><li class="chapter-item expanded "><a href="install-plugin.html"><strong aria-hidden="true">1.3.</strong> Installing kubectl-moco</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li class="chapter-item expanded "><a href="advanced.html"><strong aria-hidden="true">3.</strong> Advanced topics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="custom-mysqld.html"><strong aria-hidden="true">3.1.</strong> Building your own imge</a></li></ol></li><li class="chapter-item expanded "><a href="troubles.html"><strong aria-hidden="true">4.</strong> Troubleshooting</a></li><li class="chapter-item expanded affix "><li class="part-title">References</li><li class="chapter-item expanded "><a href="crd.html"><strong aria-hidden="true">5.</strong> Custom resources</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="crd_mysqlcluster_v1beta1.html"><strong aria-hidden="true">5.1.</strong> MySQLCluster v1beta1</a></li><li class="chapter-item expanded "><a href="crd_mysqlcluster_v1beta2.html" class="active"><strong aria-hidden="true">5.2.</strong> MySQLCluster v1beta2</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy_v1beta1.html"><strong aria-hidden="true">5.3.</strong> BackupPolicy v1beta1</a></li><li class="chapter-item expanded "><a href="crd_backuppolicy_v1beta2.html"><strong aria-hidden="true">5.4.</strong> BackupPolicy v1beta2</a></li></ol></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">6.</strong> Commands</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="kubectl-moco.html"><strong aria-hidden="true">6.1.</strong> kubectl-moco</a></li><li class="chapter-item expanded "><a href="moco-controller.html"><strong aria-hidden="true">6.2.</strong> moco-controller</a></li><li class="chapter-item expanded "><a href="moco-backup.html"><strong aria-hidden="true">6.3.</strong> moco-backup</a></li></ol></li><li class="chapter-item expanded "><a href="metrics.html"><strong aria-hidden="true">7.</strong> Metrics</a></li><li class="chapter-item expanded affix "><li class="part-title">Developer documents</li><li class="chapter-item expanded "><a href="notes.html"><strong aria-hidden="true">8.</strong> Design notes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="design.html"><strong aria-hidden="true">8.1.</strong> Goals</a></li><li class="chapter-item expanded "><a href="reconcile.html"><strong aria-hidden="true">8.2.</strong> Reconciliation</a></li><li class="chapter-item expanded "><a href="clustering.html"><strong aria-hidden="true">8.3.</strong> Clustering</a></li><li class="chapter-item expanded "><a href="backup.html"><strong aria-hidden="true">8.4.</strong> Backup and restore</a></li><li class="chapter-item expanded "><a href="upgrading.html"><strong aria-hidden="true">8.5.</strong> Upgrading mysqld</a></li><li class="chapter-item expanded "><a href="security.html"><strong aria-hidden="true">8.6.</strong> Security</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">MOCO Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/cybozu-go/moco" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/cybozu-go/moco/edit/main/docs/./crd_mysqlcluster_v1beta2.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h3 id="custom-resources"><a class="header" href="#custom-resources">Custom Resources</a></h3>
+<ul>
+<li><a href="#mysqlcluster">MySQLCluster</a></li>
+</ul>
+<h3 id="sub-resources"><a class="header" href="#sub-resources">Sub Resources</a></h3>
+<ul>
+<li><a href="#backupstatus">BackupStatus</a></li>
+<li><a href="#mysqlclustercondition">MySQLClusterCondition</a></li>
+<li><a href="#mysqlclusterlist">MySQLClusterList</a></li>
+<li><a href="#mysqlclusterspec">MySQLClusterSpec</a></li>
+<li><a href="#mysqlclusterstatus">MySQLClusterStatus</a></li>
+<li><a href="#objectmeta">ObjectMeta</a></li>
+<li><a href="#persistentvolumeclaim">PersistentVolumeClaim</a></li>
+<li><a href="#podtemplatespec">PodTemplateSpec</a></li>
+<li><a href="#reconcileinfo">ReconcileInfo</a></li>
+<li><a href="#restorespec">RestoreSpec</a></li>
+<li><a href="#servicetemplate">ServiceTemplate</a></li>
+<li><a href="#bucketconfig">BucketConfig</a></li>
+<li><a href="#jobconfig">JobConfig</a></li>
+</ul>
+<h4 id="backupstatus"><a class="header" href="#backupstatus">BackupStatus</a></h4>
+<p>BackupStatus represents the status of the last successful backup.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>time</td><td>The time of the backup.  This is used to generate object keys of backup files in a bucket.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+<tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">metav1.Duration</a></td><td>true</td></tr>
+<tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
+<tr><td>sourceUUID</td><td>SourceUUID is the <code>server_uuid</code> of the backup source instance.</td><td>string</td><td>true</td></tr>
+<tr><td>binlogFilename</td><td>BinlogFilename is the binlog filename that the backup source instance was writing to at the backup.</td><td>string</td><td>true</td></tr>
+<tr><td>gtidSet</td><td>GTIDSet is the GTID set of the full dump of database.</td><td>string</td><td>true</td></tr>
+<tr><td>dumpSize</td><td>DumpSize is the size in bytes of a full dump of database stored in an object storage bucket.</td><td>int64</td><td>true</td></tr>
+<tr><td>binlogSize</td><td>BinlogSize is the size in bytes of a tarball of binlog files stored in an object storage bucket.</td><td>int64</td><td>true</td></tr>
+<tr><td>workDirUsage</td><td>WorkDirUsage is the max usage in bytes of the woking directory.</td><td>int64</td><td>true</td></tr>
+<tr><td>warnings</td><td>Warnings are list of warnings from the last backup, if any.</td><td>[]string</td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlcluster"><a class="header" href="#mysqlcluster">MySQLCluster</a></h4>
+<p>MySQLCluster is the Schema for the mysqlclusters API</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td></td><td><a href="#mysqlclusterspec">MySQLClusterSpec</a></td><td>false</td></tr>
+<tr><td>status</td><td></td><td><a href="#mysqlclusterstatus">MySQLClusterStatus</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclustercondition"><a class="header" href="#mysqlclustercondition">MySQLClusterCondition</a></h4>
+<p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
+<tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
+<tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
+<tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
+<tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterlist"><a class="header" href="#mysqlclusterlist">MySQLClusterList</a></h4>
+<p>MySQLClusterList contains a list of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
+<tr><td>items</td><td></td><td>[]<a href="#mysqlcluster">MySQLCluster</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterspec"><a class="header" href="#mysqlclusterspec">MySQLClusterSpec</a></h4>
+<p>MySQLClusterSpec defines the desired state of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>replicas</td><td>Replicas is the number of instances. Available values are positive odd numbers.</td><td>int32</td><td>false</td></tr>
+<tr><td>podTemplate</td><td>PodTemplate is a <code>Pod</code> template for MySQL server container.</td><td><a href="#podtemplatespec">PodTemplateSpec</a></td><td>true</td></tr>
+<tr><td>volumeClaimTemplates</td><td>VolumeClaimTemplates is a list of <code>PersistentVolumeClaim</code> templates for MySQL server container. A claim named &quot;mysql-data&quot; must be included in the list.</td><td>[]<a href="#persistentvolumeclaim">PersistentVolumeClaim</a></td><td>true</td></tr>
+<tr><td>primaryServiceTemplate</td><td>PrimaryServiceTemplate is a <code>Service</code> template for primary.</td><td>*<a href="#servicetemplate">ServiceTemplate</a></td><td>false</td></tr>
+<tr><td>replicaServiceTemplate</td><td>ReplicaServiceTemplate is a <code>Service</code> template for replica.</td><td>*<a href="#servicetemplate">ServiceTemplate</a></td><td>false</td></tr>
+<tr><td>mysqlConfigMapName</td><td>MySQLConfigMapName is a <code>ConfigMap</code> name of MySQL config.</td><td>*string</td><td>false</td></tr>
+<tr><td>replicationSourceSecretName</td><td>ReplicationSourceSecretName is a <code>Secret</code> name which contains replication source info. If this field is given, the <code>MySQLCluster</code> works as an intermediate primary.</td><td>*string</td><td>false</td></tr>
+<tr><td>collectors</td><td>Collectors is the list of collector flag names of mysqld_exporter. If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect and export mysqld metrics in Prometheus format.\n\nSee https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.\n\nExample: [&quot;engine_innodb_status&quot;, &quot;info_schema.innodb_metrics&quot;]</td><td>[]string</td><td>false</td></tr>
+<tr><td>serverIDBase</td><td>ServerIDBase, if set, will become the base number of server-id of each MySQL instance of this cluster.  For example, if this is 100, the server-ids will be 100, 101, 102, and so on. If the field is not given or zero, MOCO automatically sets a random positive integer.</td><td>int32</td><td>false</td></tr>
+<tr><td>maxDelaySeconds</td><td>MaxDelaySeconds, if set, configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds.</td><td>int</td><td>false</td></tr>
+<tr><td>startupDelaySeconds</td><td>StartupWaitSeconds is the maximum duration to wait for <code>mysqld</code> container to start working. The default is 3600 seconds.</td><td>int32</td><td>false</td></tr>
+<tr><td>logRotationSchedule</td><td>LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format.</td><td>string</td><td>false</td></tr>
+<tr><td>backupPolicyName</td><td>The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.</td><td>*string</td><td>true</td></tr>
+<tr><td>restore</td><td>Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable.</td><td>*<a href="#restorespec">RestoreSpec</a></td><td>false</td></tr>
+<tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named &quot;slow-log&quot; to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.</td><td>bool</td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="mysqlclusterstatus"><a class="header" href="#mysqlclusterstatus">MySQLClusterStatus</a></h4>
+<p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
+<tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
+<tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
+<tr><td>errantReplicas</td><td>ErrantReplicas is the number of instances that have errant transactions.</td><td>int</td><td>false</td></tr>
+<tr><td>errantReplicaList</td><td>ErrantReplicaList is the list of indices of errant replicas.</td><td>[]int</td><td>false</td></tr>
+<tr><td>backup</td><td>Backup is the status of the last successful backup.</td><td><a href="#backupstatus">BackupStatus</a></td><td>true</td></tr>
+<tr><td>restoredTime</td><td>RestoredTime is the time when the cluster data is restored.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>false</td></tr>
+<tr><td>cloned</td><td>Cloned indicates if the initial cloning from an external source has been completed.</td><td>bool</td><td>false</td></tr>
+<tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="objectmeta"><a class="header" href="#objectmeta">ObjectMeta</a></h4>
+<p>ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMeta.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>name</td><td>Name is the name of the object.</td><td>string</td><td>false</td></tr>
+<tr><td>labels</td><td>Labels is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
+<tr><td>annotations</td><td>Annotations is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="persistentvolumeclaim"><a class="header" href="#persistentvolumeclaim">PersistentVolumeClaim</a></h4>
+<p>PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>true</td></tr>
+<tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PersistentVolumeClaimSpec">corev1.PersistentVolumeClaimSpec</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="podtemplatespec"><a class="header" href="#podtemplatespec">PodTemplateSpec</a></h4>
+<p>PodTemplateSpec describes the data a pod should have when created from a template. This is slightly modified from corev1.PodTemplateSpec.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.  The name in this metadata is ignored.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PodSpec">corev1.PodSpec</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="reconcileinfo"><a class="header" href="#reconcileinfo">ReconcileInfo</a></h4>
+<p>ReconcileInfo is the type to record the last reconciliation information.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>generation</td><td>Generation is the <code>metadata.generation</code> value of the last reconciliation. See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource</td><td>int64</td><td>false</td></tr>
+<tr><td>reconcileVersion</td><td>ReconcileVersion is the version of the operator reconciler.</td><td>int</td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="restorespec"><a class="header" href="#restorespec">RestoreSpec</a></h4>
+<p>RestoreSpec represents a set of parameters for Point-in-Time Recovery.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>sourceName</td><td>SourceName is the name of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
+<tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
+<tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. &quot;2006-01-02T15:04:05Z&quot;</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
+<tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="#jobconfig">JobConfig</a></td><td>true</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="servicetemplate"><a class="header" href="#servicetemplate">ServiceTemplate</a></h4>
+<p>ServiceTemplate defines the desired spec and annotations of Service</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>metadata</td><td>Standard object's metadata.  Only <code>annotations</code> and <code>labels</code> are valid.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>false</td></tr>
+<tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec">corev1.ServiceSpec</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
+<p>BucketConfig is a set of parameter to access an object storage bucket.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
+<tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
+<tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
+<tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+<h4 id="jobconfig"><a class="header" href="#jobconfig">JobConfig</a></h4>
+<p>JobConfig is a set of parameters for backup and restore job Pods.</p>
+<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
+<tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="#bucketconfig">BucketConfig</a></td><td>true</td></tr>
+<tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#VolumeSource">corev1.VolumeSource</a></td><td>true</td></tr>
+<tr><td>threads</td><td>Threads is the number of threads used for backup or restoration.</td><td>int</td><td>false</td></tr>
+<tr><td>memory</td><td>Memory is the amount of memory requested for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
+<tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvFromSource">corev1.EnvFromSource</a></td><td>false</td></tr>
+<tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">corev1.EnvVar</a></td><td>false</td></tr>
+</tbody></table>
+<p><a href="#custom-resources">Back to Custom Resources</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="crd_mysqlcluster_v1beta1.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="crd_backuppolicy_v1beta1.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="crd_mysqlcluster_v1beta1.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="crd_backuppolicy_v1beta1.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
