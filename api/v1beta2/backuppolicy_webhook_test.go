@@ -1,8 +1,9 @@
-package v1beta1
+package v1beta2_test
 
 import (
 	"context"
 
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -11,8 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func makeBackupPolicy() *BackupPolicy {
-	r := &BackupPolicy{}
+func makeBackupPolicy() *mocov1beta2.BackupPolicy {
+	r := &mocov1beta2.BackupPolicy{}
 	r.Namespace = "default"
 	r.Name = "test"
 	r.Spec.Schedule = "*/5 * * * *"
@@ -28,7 +29,7 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		err := deleteMySQLCluster()
 		Expect(err).NotTo(HaveOccurred())
 
-		r := &BackupPolicy{}
+		r := &mocov1beta2.BackupPolicy{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
 		if apierrors.IsNotFound(err) {
 			return

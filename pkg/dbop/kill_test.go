@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/password"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +13,7 @@ import (
 var _ = Describe("kill", func() {
 	It("should kill non-system processes only", func() {
 		By("preparing a single node cluster")
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
 		cluster.Name = "kill"
 		cluster.Spec.Replicas = 1

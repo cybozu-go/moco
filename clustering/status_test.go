@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +34,7 @@ func (b *ssBuilder) build() *StatusSet {
 		panic(fmt.Errorf("mysql status and replicas mismatch: %d, %d", len(b.mysqlStatus), b.replicas))
 	}
 
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Name = "test"
 	cluster.Namespace = "ns"
 	cluster.Spec.Replicas = b.replicas
@@ -44,10 +44,10 @@ func (b *ssBuilder) build() *StatusSet {
 		cluster.Spec.ReplicationSourceSecretName = pointer.String("hoge")
 	}
 	if b.toRestore {
-		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{}
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{}
 	}
 	if b.isRestored {
-		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{}
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{}
 		t := metav1.Now()
 		cluster.Status.RestoredTime = &t
 	}

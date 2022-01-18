@@ -8,7 +8,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/cybozu-go/moco"
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		err = mocov1beta1.AddToScheme(scheme)
+		err = mocov1beta2.AddToScheme(scheme)
 		if err != nil {
 			return err
 		}

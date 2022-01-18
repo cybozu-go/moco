@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/metrics"
@@ -221,8 +221,8 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 
 	now := metav1.Now()
 	ststr := ss.State.String()
-	updateCond := func(typ mocov1beta1.MySQLClusterConditionType, val corev1.ConditionStatus, current []mocov1beta1.MySQLClusterCondition) mocov1beta1.MySQLClusterCondition {
-		updated := mocov1beta1.MySQLClusterCondition{
+	updateCond := func(typ mocov1beta2.MySQLClusterConditionType, val corev1.ConditionStatus, current []mocov1beta2.MySQLClusterCondition) mocov1beta2.MySQLClusterCondition {
+		updated := mocov1beta2.MySQLClusterCondition{
 			Type:               typ,
 			Status:             val,
 			Reason:             ststr,
@@ -243,7 +243,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 	}
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		if err := p.reader.Get(ctx, p.name, cluster); err != nil {
 			return err
 		}
@@ -264,10 +264,10 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		case StateLost:
 		case StateIncomplete:
 		}
-		conditions := []mocov1beta1.MySQLClusterCondition{
-			updateCond(mocov1beta1.ConditionInitialized, initialized, cluster.Status.Conditions),
-			updateCond(mocov1beta1.ConditionAvailable, available, cluster.Status.Conditions),
-			updateCond(mocov1beta1.ConditionHealthy, healthy, cluster.Status.Conditions),
+		conditions := []mocov1beta2.MySQLClusterCondition{
+			updateCond(mocov1beta2.ConditionInitialized, initialized, cluster.Status.Conditions),
+			updateCond(mocov1beta2.ConditionAvailable, available, cluster.Status.Conditions),
+			updateCond(mocov1beta2.ConditionHealthy, healthy, cluster.Status.Conditions),
 		}
 		cluster.Status.Conditions = conditions
 		if available == corev1.ConditionTrue {

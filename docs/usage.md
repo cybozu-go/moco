@@ -68,7 +68,7 @@ An empty cluster always has a writable instance called _the primary_.  All other
 The following YAML is to create a three-instance cluster.  It has an anti-affinity for Pods so that all instances will be scheduled to different Nodes.  It also sets the limits for memory and CPU to make the Pod [Guaranteed](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/).
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default
@@ -158,7 +158,7 @@ Finally, create MySQLCluster with `spec.replicationSourceSecretName` set to the 
 The mysql image must be the same version as the donor's.
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -204,7 +204,7 @@ data:
   long_query_time: "5"
   innodb_buffer_pool_size: "10G"
 ---
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -332,13 +332,13 @@ The type of these Services is usually ClusterIP.
 The following is an example to change Service type to LoadBalancer and add an annotation for [MetalLB][].
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
   name: test
 spec:
-  serviceTemplate:
+  primaryServiceTemplate:
     metadata:
       annotations:
         metallb.universe.tf/address-pool: production-public-ips
@@ -373,7 +373,7 @@ Object keys are prefixed with `moco/`.
 The following is an example BackupPolicy to take a backup every day and store data in [MinIO][]:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: BackupPolicy
 metadata:
   namespace: backup
@@ -409,7 +409,7 @@ spec:
 To enable backup for a MySQLCluster, reference the BackupPolicy name like this:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default
@@ -447,7 +447,7 @@ $ kubectl create job --from=cronjob/moco-backup-foo emergency-backup
 To restore data from a backup, create a new MyQLCluster with `spec.restore` field as follows:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: backup
@@ -518,7 +518,7 @@ A replica Pod is _ready_ only when it is replicating data from the primary witho
 The default threshold of the delay is 60 seconds.  The threshold can be configured as follows.
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -538,7 +538,7 @@ This is an example YAML to enable `mysqld_exporter`.
 `spec.collectors` is a list of `mysqld_exporter` flag names without `collect.` prefix.
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -574,7 +574,7 @@ $ kubectl logs moco-test-0 slow-log
 Edit `spec.replicas` field of MySQLCluster:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -615,7 +615,7 @@ You can upgrade the MySQL version of a MySQL cluster as follows:
 3. Edit the Pod template of the MySQLCluster and update `mysqld` container image:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default

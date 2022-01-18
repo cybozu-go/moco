@@ -1,5 +1,5 @@
 # This example shows how to collect and export mysqld metrics using mysqld_exporter.
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default

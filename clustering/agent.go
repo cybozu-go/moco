@@ -8,7 +8,7 @@ import (
 	"time"
 
 	agent "github.com/cybozu-go/moco-agent/proto"
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
@@ -32,7 +32,7 @@ var _ AgentConn = agentConn{}
 
 // AgentFactory represents the interface of a factory to create AgentConn
 type AgentFactory interface {
-	New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (AgentConn, error)
+	New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (AgentConn, error)
 }
 
 // NewAgentFactory returns a new AgentFactory.
@@ -47,7 +47,7 @@ type defaultAgentFactory struct {
 
 var _ AgentFactory = defaultAgentFactory{}
 
-func (f defaultAgentFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (AgentConn, error) {
+func (f defaultAgentFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (AgentConn, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

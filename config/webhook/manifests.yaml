@@ -12,14 +12,15 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-moco-cybozu-com-v1beta1-mysqlcluster
+      path: /mutate-moco-cybozu-com-v1beta2-mysqlcluster
   failurePolicy: Fail
+  matchPolicy: Equivalent
   name: mmysqlcluster.kb.io
   rules:
   - apiGroups:
     - moco.cybozu.com
     apiVersions:
-    - v1beta1
+    - v1beta2
     operations:
     - CREATE
     resources:
@@ -39,14 +40,15 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-moco-cybozu-com-v1beta1-backuppolicy
+      path: /validate-moco-cybozu-com-v1beta2-backuppolicy
   failurePolicy: Fail
+  matchPolicy: Equivalent
   name: vbackuppolicy.kb.io
   rules:
   - apiGroups:
     - moco.cybozu.com
     apiVersions:
-    - v1beta1
+    - v1beta2
     operations:
     - CREATE
     - UPDATE
@@ -60,14 +62,15 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-moco-cybozu-com-v1beta1-mysqlcluster
+      path: /validate-moco-cybozu-com-v1beta2-mysqlcluster
   failurePolicy: Fail
+  matchPolicy: Equivalent
   name: vmysqlcluster.kb.io
   rules:
   - apiGroups:
     - moco.cybozu.com
     apiVersions:
-    - v1beta1
+    - v1beta2
     operations:
     - CREATE
     - UPDATE

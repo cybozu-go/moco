@@ -14,6 +14,18 @@ resources:
   path: github.com/cybozu-go/moco/api/v1beta1
   version: v1beta1
   webhooks:
+    conversion: true
+    webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: false
+  domain: cybozu.com
+  group: moco
+  kind: MySQLCluster
+  path: github.com/cybozu-go/moco/api/v1beta2
+  version: v1beta2
+  webhooks:
     validation: true
     webhookVersion: v1
 - api:

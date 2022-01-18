@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +33,7 @@ var _ = Context("replication", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -81,7 +81,7 @@ var _ = Context("replication", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -129,7 +129,7 @@ var _ = Context("replication", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -162,7 +162,7 @@ var _ = Context("replication", func() {
 				return fmt.Errorf("synced replicas is not 5: %d", cluster.Status.SyncedReplicas)
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -241,7 +241,7 @@ var _ = Context("replication", func() {
 				return fmt.Errorf("primary is not changed from %d", primary)
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionAvailable {
+				if cond.Type != mocov1beta2.ConditionAvailable {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -295,7 +295,7 @@ var _ = Context("replication", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {

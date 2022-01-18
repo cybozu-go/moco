@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/bucket"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -34,7 +34,7 @@ import (
 type BackupManager struct {
 	log           logr.Logger
 	client        client.Client
-	cluster       *mocov1beta1.MySQLCluster
+	cluster       *mocov1beta2.MySQLCluster
 	clusterRef    *corev1.ObjectReference
 	mysqlPassword string
 	workDir       string
@@ -58,7 +58,7 @@ func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, passwor
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
-	if err := mocov1beta1.AddToScheme(scheme); err != nil {
+	if err := mocov1beta2.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, passwor
 		return nil, fmt.Errorf("failed to create controller-runtime client: %w", err)
 	}
 
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	if err := k8sClient.Get(context.Background(), client.ObjectKey{Namespace: ns, Name: name}, cluster); err != nil {
 		return nil, fmt.Errorf("failed to get MySQLCluster %s/%s: %w", ns, name, err)
 	}
@@ -162,7 +162,7 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 	elapsed := time.Since(bm.startTime)
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		if err := bm.client.Get(ctx, client.ObjectKeyFromObject(bm.cluster), cluster); err != nil {
 			return err
 		}

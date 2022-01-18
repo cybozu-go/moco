@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -35,8 +35,8 @@ const (
 	testExporterImage       = "mysqld_exporter:111"
 )
 
-func testNewMySQLCluster(ns string) *mocov1beta1.MySQLCluster {
-	cluster := &mocov1beta1.MySQLCluster{}
+func testNewMySQLCluster(ns string) *mocov1beta2.MySQLCluster {
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Namespace = ns
 	cluster.Name = "test"
 	cluster.Finalizers = []string{constants.MySQLClusterFinalizer}
@@ -44,9 +44,9 @@ func testNewMySQLCluster(ns string) *mocov1beta1.MySQLCluster {
 	cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{
 		{Name: "mysqld", Image: "moco-mysql:latest"},
 	}
-	cluster.Spec.VolumeClaimTemplates = []mocov1beta1.PersistentVolumeClaim{
+	cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{
 		{
-			ObjectMeta: mocov1beta1.ObjectMeta{Name: "mysql-data"},
+			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				StorageClassName: pointer.String("hoge"),
 				Resources: corev1.ResourceRequirements{
@@ -61,7 +61,7 @@ func testNewMySQLCluster(ns string) *mocov1beta1.MySQLCluster {
 }
 
 func testDeleteMySQLCluster(ctx context.Context, ns, name string) {
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Namespace = ns
 	cluster.Name = name
 	err := k8sClient.Delete(ctx, cluster)
@@ -74,7 +74,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 	var mockMgr *mockManager
 
 	BeforeEach(func() {
-		cs := &mocov1beta1.MySQLClusterList{}
+		cs := &mocov1beta2.MySQLClusterList{}
 		err := k8sClient.List(ctx, cs, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		for _, cluster := range cs.Items {
@@ -89,7 +89,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			err := k8sClient.Delete(ctx, &svc)
 			Expect(err).NotTo(HaveOccurred())
 		}
-		err = k8sClient.DeleteAllOf(ctx, &mocov1beta1.MySQLCluster{}, client.InNamespace("test"))
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
@@ -331,7 +331,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		cluster.Spec.DisableSlowQueryLogContainer = true
@@ -354,7 +354,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			c := &mocov1beta1.MySQLCluster{}
+			c := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
 				return err
 			}
@@ -400,7 +400,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Create(ctx, userCM)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
@@ -525,15 +525,21 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(headless.Spec.PublishNotReadyAddresses).To(BeTrue())
 
 		Eventually(func() error {
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 			if err != nil {
 				return err
 			}
-			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
-				ObjectMeta: mocov1beta1.ObjectMeta{
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
 					Annotations: map[string]string{"foo": "bar"},
 					Labels:      map[string]string{"foo": "baz"},
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
+					Annotations: map[string]string{"qux": "quux"},
+					Labels:      map[string]string{"qux": "corge"},
 				},
 			}
 			return k8sClient.Update(ctx, cluster)
@@ -550,16 +556,34 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if primary.Labels["foo"] != "baz" {
 				return errors.New("no label")
 			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Annotations["qux"] != "quux" {
+				return errors.New("no annotation")
+			}
+			if replica.Labels["qux"] != "corge" {
+				return errors.New("no label")
+			}
+
 			return nil
 		}).Should(Succeed())
 
 		Eventually(func() error {
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 			if err != nil {
 				return err
 			}
-			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
 				Spec: &corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
 					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
@@ -576,6 +600,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if primary.Spec.Type != corev1.ServiceTypeLoadBalancer {
 				return errors.New("service type is not updated")
 			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Spec.Type != corev1.ServiceTypeLoadBalancer {
+				return errors.New("service type is not updated")
+			}
+
 			return nil
 		}).Should(Succeed())
 
@@ -586,14 +619,23 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		// Edit Service again should succeed
 		Eventually(func() error {
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 			if err != nil {
 				return err
 			}
-			cluster.Spec.ServiceTemplate = &mocov1beta1.ServiceTemplate{
-				ObjectMeta: mocov1beta1.ObjectMeta{
+			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
 					Annotations: map[string]string{"foo": "bar"},
+				},
+				Spec: &corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			}
+			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
+				ObjectMeta: mocov1beta2.ObjectMeta{
+					Annotations: map[string]string{"qux": "quux"},
 				},
 				Spec: &corev1.ServiceSpec{
 					Type:                  corev1.ServiceTypeLoadBalancer,
@@ -609,6 +651,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 			if primary.Annotations["foo"] != "bar" {
+				return errors.New("service does not have annotation foo")
+			}
+
+			replica = &corev1.Service{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-replica"}, replica); err != nil {
+				return err
+			}
+			if replica.Annotations["qux"] != "quux" {
 				return errors.New("service does not have annotation foo")
 			}
 			return nil
@@ -630,7 +680,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
@@ -749,7 +799,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 
 		By("updating MySQLCluster")
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -774,7 +824,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			c := &mocov1beta1.MySQLCluster{}
+			c := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
 				return err
 			}
@@ -840,7 +890,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
@@ -860,7 +910,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(pdb.Spec.MaxUnavailable.IntVal).To(Equal(int32(1)))
 
 		Eventually(func() error {
-			cluster = &mocov1beta1.MySQLCluster{}
+			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
@@ -887,7 +937,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating a backup policy")
-		bp := &mocov1beta1.BackupPolicy{}
+		bp := &mocov1beta2.BackupPolicy{}
 		bp.Namespace = "test"
 		bp.Name = "test-policy"
 		bp.Spec.ActiveDeadlineSeconds = pointer.Int64(100)
@@ -985,7 +1035,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(roleBinding.Subjects[0].Name).To(Equal("foo"))
 
 		By("updating a backup policy")
-		bp = &mocov1beta1.BackupPolicy{}
+		bp = &mocov1beta2.BackupPolicy{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, bp)
 		Expect(err).NotTo(HaveOccurred())
 		bp.Spec.ActiveDeadlineSeconds = nil
@@ -1064,7 +1114,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 
 		By("disabling backup")
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		cluster.Spec.BackupPolicyName = nil
@@ -1094,7 +1144,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		By("creating a MySQLCluster with restore spec")
 		now := metav1.Now()
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.Restore = &mocov1beta1.RestoreSpec{
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "single",
 			SourceNamespace: "ns",
 			RestorePoint:    now,
@@ -1184,7 +1234,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		By("changing cluster status")
 		Eventually(func() error {
-			cluster := &mocov1beta1.MySQLCluster{}
+			cluster := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
@@ -1231,7 +1281,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			cluster2 := &mocov1beta1.MySQLCluster{}
+			cluster2 := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
 				return err
 			}
@@ -1244,7 +1294,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1253,7 +1303,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Consistently(func() error {
-			cluster2 := &mocov1beta1.MySQLCluster{}
+			cluster2 := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
 				return err
 			}
@@ -1266,7 +1316,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1275,7 +1325,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			cluster2 := &mocov1beta1.MySQLCluster{}
+			cluster2 := &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
 				return err
 			}

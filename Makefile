@@ -1,6 +1,7 @@
 # Tool versions
 CTRL_TOOLS_VERSION=0.7.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
+CODE_GENERATOR_VERSION := $(shell awk '/k8s.io\/client-go/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 4.4.1
 HELM_VERSION = 3.7.1
 CRD_TO_MARKDOWN_VERSION = 0.0.3
@@ -27,7 +28,7 @@ SHELL = /bin/bash
 .SHELLFLAGS = -e -o pipefail -c
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS = "crd:crdVersions=v1,maxDescLen=220"
+CRD_OPTIONS = "crd:crdVersions=v1,maxDescLen=0"
 
 # for Go
 GOOS = $(shell go env GOOS)
@@ -59,17 +60,21 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/crds
+	$(KUSTOMIZE) build config/crd -o config/crd/tests # Outputs static CRDs with conversion webhook enabled for use with Envtest.
+	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/templates/generated/crds
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates > charts/moco/templates/generated/generated.yaml
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen conversion-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONVERSION_GEN) -i ./api/v1beta1/ -o . -O zz_generated.conversion --go-header-file hack/boilerplate.go.txt
 
 .PHONY: apidoc
 apidoc: crd-to-markdown $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster.md
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/mysqlcluster_types.go -f api/v1beta1/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta1.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta2/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta1/backuppolicy_types.go -f api/v1beta1/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta1.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/backuppolicy_types.go -f api/v1beta2/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta2.md
 
 .PHONY: book
 book: mdbook
@@ -139,6 +144,10 @@ release-manifests-build: kustomize
 CONTROLLER_GEN := $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CTRL_TOOLS_VERSION))
+
+CONVERSION_GEN := $(shell pwd)/bin/conversion-gen
+conversion-gen: ## Donwload conversion-gen locally if necessary.
+	$(call go-get-tool,$(CONVERSION_GEN),k8s.io/code-generator/cmd/conversion-gen@v$(CODE_GENERATOR_VERSION))
 
 SETUP_ENVTEST := $(shell pwd)/bin/setup-envtest
 .PHONY: setup-envtest

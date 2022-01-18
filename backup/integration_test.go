@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
@@ -33,24 +33,24 @@ var _ = Describe("Backup/Restore", func() {
 		bc = &mockBucket{contents: map[string][]byte{}}
 		ops = nil
 
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
 		cluster.Name = "single"
 		cluster.Spec.Replicas = 3
 		cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
-		cluster.Spec.VolumeClaimTemplates = []mocov1beta1.PersistentVolumeClaim{{
-			ObjectMeta: mocov1beta1.ObjectMeta{Name: "mysql-data"},
+		cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{
+			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 		}}
 		err = k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		target := &mocov1beta1.MySQLCluster{}
+		target := &mocov1beta2.MySQLCluster{}
 		target.Namespace = "restore"
 		target.Name = "target"
 		target.Spec.Replicas = 1
 		target.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
-		target.Spec.VolumeClaimTemplates = []mocov1beta1.PersistentVolumeClaim{{
-			ObjectMeta: mocov1beta1.ObjectMeta{Name: "mysql-data"},
+		target.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{
+			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 		}}
 		err = k8sClient.Create(ctx, target)
 		Expect(err).NotTo(HaveOccurred())
@@ -95,10 +95,10 @@ var _ = Describe("Backup/Restore", func() {
 			Expect(op.closed).To(BeTrue())
 			Expect(op.prepared).To(Equal(op.finished))
 		}
-		k8sClient.DeleteAllOf(ctx, &mocov1beta1.MySQLCluster{}, client.InNamespace("test"))
+		k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
 		k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("test"))
 		k8sClient.DeleteAllOf(ctx, &corev1.Event{}, client.InNamespace("test"))
-		k8sClient.DeleteAllOf(ctx, &mocov1beta1.MySQLCluster{}, client.InNamespace("restore"))
+		k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("restore"))
 		k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("restore"))
 		k8sClient.DeleteAllOf(ctx, &corev1.Event{}, client.InNamespace("restore"))
 	})
@@ -129,7 +129,7 @@ var _ = Describe("Backup/Restore", func() {
 
 		Expect(bc.contents).To(HaveLen(1))
 
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		bs := &cluster.Status.Backup
@@ -169,7 +169,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(events.Items).To(HaveLen(1))
 
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "restore", Name: "target"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cluster.Status.RestoredTime).NotTo(BeNil())
@@ -217,7 +217,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(bc.contents).To(HaveLen(3))
 
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		bs := &cluster.Status.Backup
@@ -256,7 +256,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(bc.contents).To(HaveLen(1))
 
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		bt := cluster.Status.Backup.Time.Time
@@ -337,7 +337,7 @@ var _ = Describe("Backup/Restore", func() {
 			fmt.Println(ev.Reason)
 		}
 
-		cluster := &mocov1beta1.MySQLCluster{}
+		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		bs := &cluster.Status.Backup

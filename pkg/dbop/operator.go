@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/go-sql-driver/mysql"
@@ -66,12 +67,12 @@ type Operator interface {
 
 // OperatorFactory represents the factory for Operators.
 type OperatorFactory interface {
-	New(context.Context, *mocov1beta1.MySQLCluster, *password.MySQLPassword, int) (Operator, error)
+	New(context.Context, *mocov1beta2.MySQLCluster, *password.MySQLPassword, int) (Operator, error)
 	Cleanup()
 }
 
 type Resolver interface {
-	Resolve(context.Context, *mocov1beta1.MySQLCluster, int) (string, error)
+	Resolve(context.Context, *mocov1beta2.MySQLCluster, int) (string, error)
 }
 
 type defaultFactory struct {
@@ -86,7 +87,7 @@ func NewFactory(r Resolver) OperatorFactory {
 	return defaultFactory{r: r}
 }
 
-func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
+func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
 	addr, err := f.r.Resolve(ctx, cluster, index)
 	if err != nil {
 		return NopOperator{name: fmt.Sprintf("%s/%s", cluster.Namespace, cluster.PodName(index))}, nil

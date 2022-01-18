@@ -1,8 +1,9 @@
-package v1beta1
+package v1beta2_test
 
 import (
 	"context"
 
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,15 +14,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func makeMySQLCluster() *MySQLCluster {
-	return &MySQLCluster{
+func makeMySQLCluster() *mocov1beta2.MySQLCluster {
+	return &mocov1beta2.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 		},
-		Spec: MySQLClusterSpec{
+		Spec: mocov1beta2.MySQLClusterSpec{
 			Replicas: 1,
-			PodTemplate: PodTemplateSpec{
+			PodTemplate: mocov1beta2.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
@@ -30,9 +31,9 @@ func makeMySQLCluster() *MySQLCluster {
 					},
 				},
 			},
-			VolumeClaimTemplates: []PersistentVolumeClaim{
+			VolumeClaimTemplates: []mocov1beta2.PersistentVolumeClaim{
 				{
-					ObjectMeta: ObjectMeta{
+					ObjectMeta: mocov1beta2.ObjectMeta{
 						Name: "mysql-data",
 					},
 				},
@@ -42,7 +43,7 @@ func makeMySQLCluster() *MySQLCluster {
 }
 
 func deleteMySQLCluster() error {
-	r := &MySQLCluster{}
+	r := &mocov1beta2.MySQLCluster{}
 	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test"}, r)
 	if apierrors.IsNotFound(err) {
 		return nil
@@ -267,12 +268,12 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should deny invalid restore spec", func() {
 		r := makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName: "mybucket",
 				},
 			},
@@ -281,12 +282,12 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 
 		r = makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:   "test",
 			RestorePoint: metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName: "mybucket",
 				},
 			},
@@ -295,12 +296,12 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 
 		r = makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName: "mybucket",
 				},
 			},
@@ -309,12 +310,12 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 
 		r = makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
-				BucketConfig: BucketConfig{
+			JobConfig: mocov1beta2.JobConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName: "mybucket",
 				},
 			},
@@ -323,11 +324,11 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 
 		r = makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
 			},
 		}
@@ -335,13 +336,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 
 		r = makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName:  "mybucket",
 					EndpointURL: "hoge",
 				},
@@ -353,13 +354,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should allow valid restore spec", func() {
 		r := makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName:  "mybucket",
 					EndpointURL: "https://foo.bar.svc:9000",
 				},
@@ -371,13 +372,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should deny editing restore spec", func() {
 		r := makeMySQLCluster()
-		r.Spec.Restore = &RestoreSpec{
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "test",
 			SourceNamespace: "test",
 			RestorePoint:    metav1.Now(),
-			JobConfig: JobConfig{
+			JobConfig: mocov1beta2.JobConfig{
 				ServiceAccountName: "foo",
-				BucketConfig: BucketConfig{
+				BucketConfig: mocov1beta2.BucketConfig{
 					BucketName: "mybucket",
 				},
 			},

@@ -17,7 +17,7 @@ the data directory is probably only writable for the `root` user.
 To resolve the problem, add `fsGroup: 10000` to MySQLCluster as follows:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default

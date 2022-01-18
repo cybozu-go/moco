@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/go-sql-driver/mysql"
@@ -143,11 +143,11 @@ func waitTestMySQL(port int) (*sqlx.DB, error) {
 	}
 }
 
-func testContainerName(cluster *mocov1beta1.MySQLCluster, index int) string {
+func testContainerName(cluster *mocov1beta2.MySQLCluster, index int) string {
 	return fmt.Sprintf("moco-%s-%d.%s", cluster.Name, index, cluster.Namespace)
 }
 
-func (f *testFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
+func (f *testFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
 	mapKey := fmt.Sprintf("%s_%s", cluster.Namespace, cluster.Name)
 	instances, ok := f.instanceMap[mapKey]
 	if !ok {
@@ -173,7 +173,7 @@ func (f *testFactory) New(ctx context.Context, cluster *mocov1beta1.MySQLCluster
 	return newTestOperator(cluster, pwd, index, instances[index])
 }
 
-func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassword, index, port int) (Operator, error) {
+func newTestOperator(cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassword, index, port int) (Operator, error) {
 	cfg := mysql.NewConfig()
 	cfg.User = constants.AdminUser
 	cfg.Passwd = pwd.Admin()
@@ -199,7 +199,7 @@ func newTestOperator(cluster *mocov1beta1.MySQLCluster, pwd *password.MySQLPassw
 	}, nil
 }
 
-func (f *testFactory) newConn(ctx context.Context, cluster *mocov1beta1.MySQLCluster, user, passwd string, index int) (*sqlx.DB, error) {
+func (f *testFactory) newConn(ctx context.Context, cluster *mocov1beta2.MySQLCluster, user, passwd string, index int) (*sqlx.DB, error) {
 	mapKey := fmt.Sprintf("%s_%s", cluster.Namespace, cluster.Name)
 	instances, ok := f.instanceMap[mapKey]
 	if !ok {

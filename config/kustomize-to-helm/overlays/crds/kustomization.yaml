@@ -1,5 +1,11 @@
 resources:
   - ../../../crd
 
+patchesStrategicMerge:
+  - conversion-patch.yaml
+
 commonLabels:
   app.kubernetes.io/name: moco
+
+transformers:
+  - label-transformer.yaml

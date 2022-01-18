@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/bucket"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -52,7 +52,7 @@ func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, 
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
-	if err := mocov1beta1.AddToScheme(scheme); err != nil {
+	if err := mocov1beta2.AddToScheme(scheme); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, 
 }
 
 func (rm *RestoreManager) Restore(ctx context.Context) error {
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Namespace = rm.namespace
 	cluster.Name = rm.name
 	podName := cluster.PodName(0)
@@ -169,7 +169,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		cluster = &mocov1beta1.MySQLCluster{}
+		cluster = &mocov1beta2.MySQLCluster{}
 		if err := rm.client.Get(ctx, client.ObjectKey{Namespace: rm.namespace, Name: rm.name}, cluster); err != nil {
 			return err
 		}

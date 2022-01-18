@@ -1,14 +1,14 @@
 # This example shows how to change Service type to LoadBalancer
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default
   name: test
 spec:
   replicas: 3
-  # serviceTemplate allows you to specify annotations, labels, and spec
+  # primaryServiceTemplate and replicaServiceTemplate allows you to specify annotations, labels, and spec
   # of Services to be generated for this MySQLCluster.
-  serviceTemplate:
+  primaryServiceTemplate:
     metadata:
       annotations:
         metallb.universe.tf/address-pool: production-public-ips

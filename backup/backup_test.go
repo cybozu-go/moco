@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -84,8 +84,8 @@ func TestChoosePod(t *testing.T) {
 		return lastOp, nil
 	}
 
-	makeBM := func(replicas, current int, bkup mocov1beta1.BackupStatus) *BackupManager {
-		cluster := &mocov1beta1.MySQLCluster{}
+	makeBM := func(replicas, current int, bkup mocov1beta2.BackupStatus) *BackupManager {
+		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Spec.Replicas = int32(replicas)
 		cluster.Status.CurrentPrimaryIndex = current
 		cluster.Status.Backup = bkup
@@ -95,8 +95,8 @@ func TestChoosePod(t *testing.T) {
 		}
 	}
 
-	makeBS := func(idx int, uuid string) mocov1beta1.BackupStatus {
-		return mocov1beta1.BackupStatus{
+	makeBS := func(idx int, uuid string) mocov1beta2.BackupStatus {
+		return mocov1beta2.BackupStatus{
 			Time:        metav1.Now(),
 			SourceIndex: idx,
 			SourceUUID:  uuid,
@@ -107,15 +107,15 @@ func TestChoosePod(t *testing.T) {
 		name     string
 		replicas int
 		current  int
-		bkup     mocov1beta1.BackupStatus
+		bkup     mocov1beta2.BackupStatus
 		pods     []*corev1.Pod
 
 		expectIdx int
 	}{
-		{"single", 1, 0, mocov1beta1.BackupStatus{}, makePod1(true), 0},
-		{"single-not-ready", 1, 0, mocov1beta1.BackupStatus{}, makePod1(false), 0},
-		{"triple-ready", 3, 0, mocov1beta1.BackupStatus{}, makePod3(true, false, true), 2},
-		{"triple-not-ready", 3, 1, mocov1beta1.BackupStatus{}, makePod3(false, true, false), 1},
+		{"single", 1, 0, mocov1beta2.BackupStatus{}, makePod1(true), 0},
+		{"single-not-ready", 1, 0, mocov1beta2.BackupStatus{}, makePod1(false), 0},
+		{"triple-ready", 3, 0, mocov1beta2.BackupStatus{}, makePod3(true, false, true), 2},
+		{"triple-not-ready", 3, 1, mocov1beta2.BackupStatus{}, makePod3(false, true, false), 1},
 		{"single-2nd", 1, 0, makeBS(0, "123"), makePod1(true), 0},
 		{"single-2nd-uuid-changed", 1, 0, makeBS(0, "abc"), makePod1(true), 0},
 		{"single-2nd-not-ready", 1, 0, makeBS(0, "123"), makePod1(false), 0},

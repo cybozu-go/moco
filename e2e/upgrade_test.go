@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +35,7 @@ var _ = Context("upgrade", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -54,7 +54,7 @@ var _ = Context("upgrade", func() {
 		kubectlSafe(nil, "moco", "-n", "upgrade", "mysql", "-u", "moco-writable", "test", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa'), ('bbb'), ('ccc')")
 		kubectlSafe(nil, "delete", "-n", "upgrade", "--wait=false", "--grace-period=1", "pod", "moco-test-0")
-		var cluster *mocov1beta1.MySQLCluster
+		var cluster *mocov1beta2.MySQLCluster
 		Eventually(func() error {
 			var err error
 			cluster, err = getCluster("upgrade", "test")
@@ -90,7 +90,7 @@ var _ = Context("upgrade", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -137,7 +137,7 @@ var _ = Context("upgrade", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {

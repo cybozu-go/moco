@@ -6,6 +6,7 @@ import (
 	"time"
 
 	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/pkg/cert"
@@ -31,6 +32,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(mocov1beta1.AddToScheme(scheme))
+	utilruntime.Must(mocov1beta2.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -40,7 +42,7 @@ type resolver struct {
 
 var _ dbop.Resolver = resolver{}
 
-func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta1.MySQLCluster, index int) (string, error) {
+func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (string, error) {
 	pod := &corev1.Pod{}
 	err := r.reader.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PodName(index)}, pod)
 	if err != nil {
@@ -113,7 +115,12 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
-	if err = (&mocov1beta1.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&mocov1beta2.MySQLCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
+		return err
+	}
+
+	if err = (&mocov1beta2.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
 		return err
 	}

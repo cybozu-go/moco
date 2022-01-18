@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/metrics"
@@ -24,7 +24,7 @@ import (
 )
 
 func testSetupResources(ctx context.Context, replicas int32, sourceSecret string) {
-	err := k8sClient.DeleteAllOf(ctx, &mocov1beta1.MySQLCluster{}, client.InNamespace("test"))
+	err := k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
 	err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
@@ -33,12 +33,12 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 	err = k8sClient.DeleteAllOf(ctx, &corev1.Event{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
 
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Namespace = "test"
 	cluster.Name = "test"
 	cluster.Spec.Replicas = replicas
 	cluster.Spec.ServerIDBase = 10
-	cluster.Spec.VolumeClaimTemplates = []mocov1beta1.PersistentVolumeClaim{{}}
+	cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{}}
 	cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld"}}
 	if sourceSecret != "" {
 		cluster.Spec.ReplicationSourceSecretName = &sourceSecret
@@ -69,8 +69,8 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func testGetCluster(ctx context.Context) (*mocov1beta1.MySQLCluster, error) {
-	c := &mocov1beta1.MySQLCluster{}
+func testGetCluster(ctx context.Context) (*mocov1beta2.MySQLCluster, error) {
+	c := &mocov1beta2.MySQLCluster{}
 	err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c)
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -184,9 +184,9 @@ var _ = Describe("manager", func() {
 		var isAvailable, isInitialized bool
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
-			case mocov1beta1.ConditionAvailable:
+			case mocov1beta2.ConditionAvailable:
 				isAvailable = cond.Status == corev1.ConditionTrue
-			case mocov1beta1.ConditionInitialized:
+			case mocov1beta2.ConditionInitialized:
 				isInitialized = cond.Status == corev1.ConditionTrue
 			}
 		}
@@ -227,7 +227,7 @@ var _ = Describe("manager", func() {
 				return err
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionFalse {
@@ -240,9 +240,9 @@ var _ = Describe("manager", func() {
 
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
-			case mocov1beta1.ConditionAvailable:
+			case mocov1beta2.ConditionAvailable:
 				isAvailable = cond.Status == corev1.ConditionTrue
-			case mocov1beta1.ConditionInitialized:
+			case mocov1beta2.ConditionInitialized:
 				isInitialized = cond.Status == corev1.ConditionTrue
 			}
 		}
@@ -268,7 +268,7 @@ var _ = Describe("manager", func() {
 		cluster, err = testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		for _, cond := range cluster.Status.Conditions {
-			if cond.Type != mocov1beta1.ConditionHealthy {
+			if cond.Type != mocov1beta2.ConditionHealthy {
 				continue
 			}
 			Expect(cond.Status).To(Equal(corev1.ConditionFalse))
@@ -307,7 +307,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionInitialized {
+				if cond.Type != mocov1beta2.ConditionInitialized {
 					continue
 				}
 				if cond.Reason == StateCloning.String() {
@@ -329,7 +329,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionInitialized {
+				if cond.Type != mocov1beta2.ConditionInitialized {
 					continue
 				}
 				if cond.Reason == StateCloning.String() {
@@ -343,9 +343,9 @@ var _ = Describe("manager", func() {
 		var isAvailable, isHealthy bool
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
-			case mocov1beta1.ConditionAvailable:
+			case mocov1beta2.ConditionAvailable:
 				isAvailable = cond.Status == corev1.ConditionTrue
-			case mocov1beta1.ConditionHealthy:
+			case mocov1beta2.ConditionHealthy:
 				isHealthy = cond.Status == corev1.ConditionTrue
 			}
 		}
@@ -382,7 +382,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -446,7 +446,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -543,7 +543,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -655,7 +655,7 @@ var _ = Describe("manager", func() {
 			}
 
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionHealthy {
+				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
 				if cond.Status == corev1.ConditionTrue {
@@ -683,9 +683,9 @@ var _ = Describe("manager", func() {
 		var isHealthy, isAvailable bool
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
-			case mocov1beta1.ConditionHealthy:
+			case mocov1beta2.ConditionHealthy:
 				isHealthy = cond.Status == corev1.ConditionTrue
-			case mocov1beta1.ConditionAvailable:
+			case mocov1beta2.ConditionAvailable:
 				isAvailable = cond.Status == corev1.ConditionTrue
 			}
 		}
@@ -737,9 +737,9 @@ var _ = Describe("manager", func() {
 			}
 			for _, cond := range cluster.Status.Conditions {
 				switch cond.Type {
-				case mocov1beta1.ConditionHealthy:
+				case mocov1beta2.ConditionHealthy:
 					isHealthy = cond.Status == corev1.ConditionTrue
-				case mocov1beta1.ConditionAvailable:
+				case mocov1beta2.ConditionAvailable:
 					if cond.Status == corev1.ConditionTrue {
 						return true
 					}
@@ -804,7 +804,7 @@ var _ = Describe("manager", func() {
 				return false
 			}
 			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta1.ConditionAvailable {
+				if cond.Type != mocov1beta2.ConditionAvailable {
 					continue
 				}
 				if cond.Status != corev1.ConditionFalse {
@@ -822,7 +822,7 @@ var _ = Describe("manager", func() {
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 		defer cm.StopAll()
 
-		var cluster *mocov1beta1.MySQLCluster
+		var cluster *mocov1beta2.MySQLCluster
 		Eventually(func() error {
 			var err error
 			cluster, err = testGetCluster(ctx)

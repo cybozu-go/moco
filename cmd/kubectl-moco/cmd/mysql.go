@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +42,7 @@ func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command
 	if len(args) > 0 && args[0] == "--" {
 		args = args[1:]
 	}
-	cluster := &mocov1beta1.MySQLCluster{}
+	cluster := &mocov1beta2.MySQLCluster{}
 	err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      clusterName,
