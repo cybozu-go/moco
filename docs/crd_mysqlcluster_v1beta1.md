@@ -135,7 +135,7 @@ PersistentVolumeClaim is a user's request for and claim to a persistent volume. 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata. | [ObjectMeta](#objectmeta) | true |
-| spec | Spec defines the desired characteristics of a volume requested by a pod author. | [corev1.PersistentVolumeClaimSpec](https://pkg.go.dev/k8s.io/api/core/v1#PersistentVolumeClaimSpec) | true |
+| spec | Spec defines the desired characteristics of a volume requested by a pod author. | PersistentVolumeClaimSpecApplyConfiguration | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -146,7 +146,7 @@ PodTemplateSpec describes the data a pod should have when created from a templat
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  The name in this metadata is ignored. | [ObjectMeta](#objectmeta) | false |
-| spec | Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be `mysqld`. | [corev1.PodSpec](https://pkg.go.dev/k8s.io/api/core/v1#PodSpec) | true |
+| spec | Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be `mysqld`. | PodSpecApplyConfiguration | true |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -181,7 +181,7 @@ ServiceTemplate defines the desired spec and annotations of Service
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  Only `annotations` and `labels` are valid. | [ObjectMeta](#objectmeta) | false |
-| spec | Spec is the ServiceSpec | *[corev1.ServiceSpec](https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec) | false |
+| spec | Spec is the ServiceSpec | *ServiceSpecApplyConfiguration | false |
 
 [Back to Custom Resources](#custom-resources)
 
