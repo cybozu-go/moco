@@ -247,7 +247,9 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		// restore errant replica status from information stored in MySQLCluster
 		// when the primary is down or possibly lost data.
 		for _, index := range cluster.Status.ErrantReplicaList {
-			ss.MySQLStatus[index].IsErrant = true
+			if ss.MySQLStatus[index] != nil {
+				ss.MySQLStatus[index].IsErrant = true
+			}
 			ss.Errants = append(ss.Errants, index)
 		}
 	}
