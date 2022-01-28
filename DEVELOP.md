@@ -54,10 +54,10 @@ Edit the following lines in `Dockerfile`:
 
 ```
 # The tag should be the latest one
-FROM quay.io/cybozu/mysql:8.0.27.1 as mysql
+FROM quay.io/cybozu/mysql:8.0.28.1 as mysql
 
 # See the below description for how to get the version string.
-ARG MYSQLSH_VERSION=8.0.27-1
+ARG MYSQLSH_VERSION=8.0.28-1
 ```
 
 The MySQL shell debian package can be found in https://dev.mysql.com/downloads/shell/ .
@@ -84,14 +84,14 @@ MySQL versions appear twice:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28"]
 ...
   # Matrix tests for the latest MySQL version on different Kubernetes versions.
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.27"]
+        mysql-version: ["8.0.28"]
         k8s-version: ["1.19.11", "1.20.7", "1.21.1"]
 ...
   # Matrix tests for different MySQL versions on the latest supported Kubernetes version.
@@ -99,7 +99,7 @@ MySQL versions appear twice:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28"]
         k8s-version: ["1.21.1"]
 ```
 
