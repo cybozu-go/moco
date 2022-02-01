@@ -599,11 +599,11 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		return fmt.Errorf("failed to reconcile %s service: %w", name, err)
 	}
 
-	if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
-		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
-	}
-
 	if debugController {
+		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
+			return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
+		}
+
 		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
@@ -760,12 +760,12 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return fmt.Errorf("failed to reconcile stateful set: %w", err)
 	}
 
-	var updated appsv1.StatefulSet
-	if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &updated); err != nil {
-		return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
-	}
-
 	if debugController {
+		var updated appsv1.StatefulSet
+		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &updated); err != nil {
+			return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
+		}
+
 		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
