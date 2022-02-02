@@ -519,16 +519,16 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	tmpl := template.DeepCopy()
 
 	if !headless && tmpl != nil {
-		svc.WithAnnotations(mergeMap(svc.Annotations, tmpl.Annotations)).
-			WithLabels(mergeMap(svc.Labels, tmpl.Labels)).
-			WithLabels(mergeMap(svc.Labels, labelSet(cluster, false)))
+		svc.WithAnnotations(tmpl.Annotations).
+			WithLabels(tmpl.Labels).
+			WithLabels(labelSet(cluster, false))
 
 		if tmpl.Spec != nil {
 			s := (*corev1ac.ServiceSpecApplyConfiguration)(tmpl.Spec)
 			svc.WithSpec(s)
 		}
 	} else {
-		svc.WithLabels(mergeMap(svc.Labels, labelSet(cluster, false)))
+		svc.WithLabels(labelSet(cluster, false))
 	}
 
 	if headless {
