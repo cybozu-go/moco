@@ -541,6 +541,10 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 	var mysqlNodePort, mysqlXNodePort int32
 	for _, p := range svc.Spec.Ports {
+		if p.Name == nil {
+			continue
+		}
+
 		switch *p.Name {
 		case constants.MySQLPortName:
 			mysqlNodePort = *p.NodePort
