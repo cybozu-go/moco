@@ -222,6 +222,11 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, c := range spec.Containers {
 		c := c
+
+		if c.Name == nil {
+			continue
+		}
+
 		switch *c.Name {
 		case constants.MysqldContainerName:
 		case constants.AgentContainerName:
