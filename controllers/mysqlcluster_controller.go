@@ -541,7 +541,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 	var mysqlNodePort, mysqlXNodePort int32
 	for _, p := range svc.Spec.Ports {
-		if p.Name == nil {
+		if p.Name == nil && p.NodePort == nil {
 			continue
 		}
 
@@ -728,6 +728,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	}
 	containers = append(containers, r.makeV1OptionalContainers(cluster)...)
 
+	if mysqldContainer.Image == nil {
+		return fmt.Errorf("unexpected mysqld container definition with MySQLCluster %s/%s: image is nil", cluster.Namespace, cluster.Name)
+	}
 	initContainers := r.makeV1InitContainer(cluster, *mysqldContainer.Image)
 
 	podSpec.Containers = nil
