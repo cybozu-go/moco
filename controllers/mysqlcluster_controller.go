@@ -580,7 +580,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		Object: obj,
 	}
 
-	var orig, updated corev1.Service
+	var orig corev1.Service
 	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
@@ -604,6 +604,8 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	}
 
 	if debugController {
+		var updated corev1.Service
+
 		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
 			return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
 		}
