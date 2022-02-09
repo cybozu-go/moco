@@ -21,16 +21,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -39,7 +45,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const defaultTerminationGracePeriodSeconds = 300
+const (
+	defaultTerminationGracePeriodSeconds = 300
+	fieldManager                         = "moco-controller"
+)
 
 // debug and test variables
 var (
@@ -335,9 +344,9 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1.ConfigMap, error) {
 	log := crlog.FromContext(ctx)
 
-	var mysqldContainer *corev1.Container
+	var mysqldContainer *corev1ac.ContainerApplyConfiguration
 	for i, c := range cluster.Spec.PodTemplate.Spec.Containers {
-		if c.Name == constants.MysqldContainerName {
+		if *c.Name == constants.MysqldContainerName {
 			mysqldContainer = &cluster.Spec.PodTemplate.Spec.Containers[i]
 			break
 		}
@@ -348,11 +357,18 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 
 	// resources.requests.memory takes precedence over resources.limits.memory.
 	var totalMem int64
-	if res := mysqldContainer.Resources.Limits.Memory(); !res.IsZero() {
-		totalMem = res.Value()
-	}
-	if res := mysqldContainer.Resources.Requests.Memory(); !res.IsZero() {
-		totalMem = res.Value()
+	if mysqldContainer.Resources != nil {
+		if mysqldContainer.Resources.Limits != nil {
+			if res := mysqldContainer.Resources.Limits.Memory(); !res.IsZero() {
+				totalMem = res.Value()
+			}
+		}
+
+		if mysqldContainer.Resources.Requests != nil {
+			if res := mysqldContainer.Resources.Requests.Memory(); !res.IsZero() {
+				totalMem = res.Value()
+			}
+		}
 	}
 
 	var userConf map[string]string
@@ -498,100 +514,108 @@ func (r *MySQLClusterReconciler) reconcileV1Service(ctx context.Context, req ctr
 func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluster *mocov1beta2.MySQLCluster, template *mocov1beta2.ServiceTemplate, name string, headless bool, selector map[string]string) error {
 	log := crlog.FromContext(ctx)
 
-	svc := &corev1.Service{}
-	svc.Namespace = cluster.Namespace
-	svc.Name = name
-	var orig, updated *corev1.ServiceSpec
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		if debugController {
-			orig = svc.Spec.DeepCopy()
+	svc := corev1ac.Service(name, cluster.Namespace).WithSpec(corev1ac.ServiceSpec())
+
+	tmpl := template.DeepCopy()
+
+	if !headless && tmpl != nil {
+		svc.WithAnnotations(tmpl.Annotations).
+			WithLabels(tmpl.Labels).
+			WithLabels(labelSet(cluster, false))
+
+		if tmpl.Spec != nil {
+			s := (*corev1ac.ServiceSpecApplyConfiguration)(tmpl.Spec)
+			svc.WithSpec(s)
+		}
+	} else {
+		svc.WithLabels(labelSet(cluster, false))
+	}
+
+	if headless {
+		svc.Spec.WithClusterIP(corev1.ClusterIPNone).
+			WithType(corev1.ServiceTypeClusterIP).
+			WithPublishNotReadyAddresses(true)
+	}
+
+	svc.Spec.WithSelector(selector)
+
+	var mysqlNodePort, mysqlXNodePort int32
+	for _, p := range svc.Spec.Ports {
+		if p.Name == nil && p.NodePort == nil {
+			continue
 		}
 
-		saSpec := &corev1.ServiceSpec{}
-		tmpl := template.DeepCopy()
-		if !headless && tmpl != nil {
-			svc.Annotations = mergeMap(svc.Annotations, tmpl.Annotations)
-			svc.Labels = mergeMap(svc.Labels, tmpl.Labels)
-			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
+		switch *p.Name {
+		case constants.MySQLPortName:
+			mysqlNodePort = *p.NodePort
+		case constants.MySQLXPortName:
+			mysqlXNodePort = *p.NodePort
+		}
+	}
 
-			if tmpl.Spec != nil {
-				tmpl.Spec.DeepCopyInto(saSpec)
-			}
-		} else {
-			svc.Labels = mergeMap(svc.Labels, labelSet(cluster, false))
-		}
+	svc.Spec.WithPorts(
+		corev1ac.ServicePort().
+			WithName(constants.MySQLPortName).
+			WithProtocol(corev1.ProtocolTCP).
+			WithPort(constants.MySQLPort).
+			WithTargetPort(intstr.FromString(constants.MySQLPortName)).
+			WithNodePort(mysqlNodePort),
+		corev1ac.ServicePort().
+			WithName(constants.MySQLXPortName).
+			WithProtocol(corev1.ProtocolTCP).
+			WithPort(constants.MySQLXPort).
+			WithTargetPort(intstr.FromString(constants.MySQLXPortName)).
+			WithNodePort(mysqlXNodePort),
+	)
 
-		if headless {
-			saSpec.ClusterIP = corev1.ClusterIPNone
-			saSpec.ClusterIPs = svc.Spec.ClusterIPs
-			saSpec.Type = corev1.ServiceTypeClusterIP
-			saSpec.PublishNotReadyAddresses = true
-		} else {
-			saSpec.ClusterIP = svc.Spec.ClusterIP
-			saSpec.ClusterIPs = svc.Spec.ClusterIPs
-			if len(saSpec.Type) == 0 {
-				saSpec.Type = svc.Spec.Type
-			}
-		}
-		if len(saSpec.SessionAffinity) == 0 {
-			saSpec.SessionAffinity = svc.Spec.SessionAffinity
-		}
-		if len(saSpec.ExternalTrafficPolicy) == 0 {
-			saSpec.ExternalTrafficPolicy = svc.Spec.ExternalTrafficPolicy
-		}
-		if saSpec.HealthCheckNodePort == 0 {
-			saSpec.HealthCheckNodePort = svc.Spec.HealthCheckNodePort
-		}
-		if saSpec.IPFamilies == nil {
-			saSpec.IPFamilies = svc.Spec.IPFamilies
-		}
-		if saSpec.IPFamilyPolicy == nil {
-			saSpec.IPFamilyPolicy = svc.Spec.IPFamilyPolicy
-		}
-		saSpec.Selector = selector
+	if err := setControllerReferenceWithService(cluster, svc, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
+	}
 
-		var mysqlNodePort, mysqlXNodePort int32
-		for _, p := range svc.Spec.Ports {
-			switch p.Name {
-			case constants.MySQLPortName:
-				mysqlNodePort = p.NodePort
-			case constants.MySQLXPortName:
-				mysqlXNodePort = p.NodePort
-			}
-		}
-		saSpec.Ports = []corev1.ServicePort{
-			{
-				Name:       constants.MySQLPortName,
-				Protocol:   corev1.ProtocolTCP,
-				Port:       constants.MySQLPort,
-				TargetPort: intstr.FromString(constants.MySQLPortName),
-				NodePort:   mysqlNodePort,
-			},
-			{
-				Name:       constants.MySQLXPortName,
-				Protocol:   corev1.ProtocolTCP,
-				Port:       constants.MySQLXPort,
-				TargetPort: intstr.FromString(constants.MySQLXPortName),
-				NodePort:   mysqlXNodePort,
-			},
-		}
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(svc)
+	if err != nil {
+		return fmt.Errorf("failed to convert Service %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
 
-		saSpec.DeepCopyInto(&svc.Spec)
-		if debugController {
-			updated = svc.Spec.DeepCopy()
-		}
+	var orig corev1.Service
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
+	}
 
-		return ctrl.SetControllerReference(cluster, svc, r.Scheme)
+	origApplyConfig, err := corev1ac.ExtractService(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(svc, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to reconcile %s service: %w", name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled service", "name", name, "operation", string(result))
+
+	if debugController {
+		var updated corev1.Service
+
+		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
+			return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
 	}
-	if result == controllerutil.OperationResultUpdated && debugController {
-		fmt.Println(cmp.Diff(orig, updated))
-	}
+
+	log.Info("reconciled service", "name", name)
 
 	return nil
 }
@@ -599,153 +623,165 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1.ConfigMap) error {
 	log := crlog.FromContext(ctx)
 
-	sts := &appsv1.StatefulSet{}
-	sts.Namespace = cluster.Namespace
-	sts.Name = cluster.PrefixedName()
+	var orig appsv1.StatefulSet
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
+	}
 
-	var orig, updated *appsv1.StatefulSetSpec
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		if debugController {
-			orig = sts.Spec.DeepCopy()
-		}
+	sts := appsv1ac.StatefulSet(cluster.PrefixedName(), cluster.Namespace).
+		WithLabels(labelSet(cluster, false)).
+		WithSpec(appsv1ac.StatefulSetSpec().
+			WithReplicas(cluster.Spec.Replicas).
+			WithSelector(metav1ac.LabelSelector().
+				WithMatchLabels(labelSet(cluster, false))).
+			WithPodManagementPolicy(appsv1.ParallelPodManagement).
+			WithUpdateStrategy(appsv1ac.StatefulSetUpdateStrategy().
+				WithType(appsv1.RollingUpdateStatefulSetStrategyType)).
+			WithServiceName(cluster.HeadlessServiceName()))
 
-		sts.Labels = mergeMap(sts.Labels, labelSet(cluster, false))
+	volumeClaimTemplates := make([]*corev1ac.PersistentVolumeClaimApplyConfiguration, 0, len(cluster.Spec.VolumeClaimTemplates))
+	for _, v := range cluster.Spec.VolumeClaimTemplates {
+		pvc := v.ToCoreV1()
 
-		sts.Spec.Replicas = pointer.Int32(cluster.Spec.Replicas)
-		sts.Spec.Selector = &metav1.LabelSelector{
-			MatchLabels: labelSet(cluster, false),
-		}
-		sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
-		sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
-			Type: appsv1.RollingUpdateStatefulSetStrategyType,
-		}
-		sts.Spec.ServiceName = cluster.HeadlessServiceName()
-
-		sts.Spec.VolumeClaimTemplates = make([]corev1.PersistentVolumeClaim, len(cluster.Spec.VolumeClaimTemplates))
-		for i, v := range cluster.Spec.VolumeClaimTemplates {
-			pvc := v.ToCoreV1()
-			pvc.Namespace = cluster.Namespace
-			if err := ctrl.SetControllerReference(cluster, &pvc, r.Scheme); err != nil {
-				panic(err)
-			}
-			pvc.Namespace = ""
-			sts.Spec.VolumeClaimTemplates[i] = pvc
+		if err := setControllerReferenceWithPVC(cluster, pvc, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ownerReference to PVC %s/%s: %w", cluster.Namespace, *pvc.Name, err)
 		}
 
-		sts.Spec.Template.Annotations = mergeMap(sts.Spec.Template.Annotations, cluster.Spec.PodTemplate.Annotations)
-		sts.Spec.Template.Labels = mergeMap(sts.Spec.Template.Labels, cluster.Spec.PodTemplate.Labels)
-		sts.Spec.Template.Labels = mergeMap(sts.Spec.Template.Labels, labelSet(cluster, false))
+		volumeClaimTemplates = append(volumeClaimTemplates, pvc)
+	}
+	sts.Spec.WithVolumeClaimTemplates(volumeClaimTemplates...)
 
-		podSpec := cluster.Spec.PodTemplate.Spec.DeepCopy()
-		podSpec.ServiceAccountName = cluster.PrefixedName()
+	sts.Spec.WithTemplate(corev1ac.PodTemplateSpec().
+		WithAnnotations(cluster.Spec.PodTemplate.Annotations).
+		WithLabels(cluster.Spec.PodTemplate.Labels).
+		WithLabels(labelSet(cluster, false)))
 
-		podSpec.DeprecatedServiceAccount = sts.Spec.Template.Spec.DeprecatedServiceAccount
-		if len(podSpec.RestartPolicy) == 0 {
-			podSpec.RestartPolicy = sts.Spec.Template.Spec.RestartPolicy
-		}
-		if podSpec.TerminationGracePeriodSeconds == nil {
-			podSpec.TerminationGracePeriodSeconds = pointer.Int64(defaultTerminationGracePeriodSeconds)
-		}
-		if len(podSpec.DNSPolicy) == 0 {
-			podSpec.DNSPolicy = sts.Spec.Template.Spec.DNSPolicy
-		}
-		if podSpec.SecurityContext == nil {
-			podSpec.SecurityContext = sts.Spec.Template.Spec.SecurityContext
-		}
-		if len(podSpec.SchedulerName) == 0 {
-			podSpec.SchedulerName = sts.Spec.Template.Spec.SchedulerName
-		}
+	podSpec := corev1ac.PodSpecApplyConfiguration(*cluster.Spec.PodTemplate.Spec.DeepCopy())
+	podSpec.WithServiceAccountName(cluster.PrefixedName())
 
-		podSpec.Volumes = append(podSpec.Volumes,
-			corev1.Volume{
-				Name: constants.TmpVolumeName, VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				}},
-			corev1.Volume{
-				Name: constants.RunVolumeName, VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				}},
-			corev1.Volume{
-				Name: constants.VarLogVolumeName, VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				}},
-			corev1.Volume{
-				Name: constants.MySQLInitConfVolumeName, VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				}},
-			corev1.Volume{
-				Name: constants.MySQLConfVolumeName, VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: mycnf.Name,
-						},
-						DefaultMode: pointer.Int32(0644),
-					},
-				}},
-			corev1.Volume{
-				Name: constants.MySQLConfSecretVolumeName, VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  cluster.MyCnfSecretName(),
-						DefaultMode: pointer.Int32(0644),
-					},
-				}},
-			corev1.Volume{
-				Name: constants.GRPCSecretVolumeName, VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName:  cluster.GRPCSecretName(),
-						DefaultMode: pointer.Int32(0644),
-					},
-				}},
+	if podSpec.TerminationGracePeriodSeconds == nil {
+		podSpec.WithTerminationGracePeriodSeconds(defaultTerminationGracePeriodSeconds)
+	}
+
+	podSpec.WithVolumes(
+		corev1ac.Volume().
+			WithName(constants.TmpVolumeName).
+			// If you use this, the EmptyDir will not be nil and will not match for "equality.Semantic.DeepEqual".
+			// WithEmptyDir(corev1ac.EmptyDirVolumeSource()),
+			WithEmptyDir(nil),
+		corev1ac.Volume().
+			WithName(constants.RunVolumeName).
+			WithEmptyDir(nil),
+		corev1ac.Volume().
+			WithName(constants.VarLogVolumeName).
+			WithEmptyDir(nil),
+		corev1ac.Volume().
+			WithName(constants.MySQLInitConfVolumeName).
+			WithEmptyDir(nil),
+		corev1ac.Volume().
+			WithName(constants.MySQLConfVolumeName).
+			WithConfigMap(corev1ac.ConfigMapVolumeSource().
+				WithName(mycnf.Name).WithDefaultMode(0644)),
+		corev1ac.Volume().
+			WithName(constants.MySQLConfSecretVolumeName).
+			WithSecret(corev1ac.SecretVolumeSource().
+				WithSecretName(cluster.MyCnfSecretName()).
+				WithDefaultMode(0644)),
+		corev1ac.Volume().
+			WithName(constants.GRPCSecretVolumeName).
+			WithSecret(corev1ac.SecretVolumeSource().
+				WithSecretName(cluster.GRPCSecretName()).
+				WithDefaultMode(0644)),
+	)
+
+	if !cluster.Spec.DisableSlowQueryLogContainer {
+		podSpec.WithVolumes(
+			corev1ac.Volume().
+				WithName(constants.SlowQueryLogAgentConfigVolumeName).
+				WithConfigMap(corev1ac.ConfigMapVolumeSource().
+					WithName(cluster.SlowQueryLogAgentConfigMapName()).
+					WithDefaultMode(0644)),
 		)
-		if !cluster.Spec.DisableSlowQueryLogContainer {
-			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
-				Name: constants.SlowQueryLogAgentConfigVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cluster.SlowQueryLogAgentConfigMapName(),
-						},
-						DefaultMode: pointer.Int32(0644),
-					},
-				},
-			})
-		}
+	}
 
-		containers := make([]corev1.Container, 0, 4)
-		mysqldContainer, err := r.makeV1MySQLDContainer(cluster, podSpec.Containers, sts.Spec.Template.Spec.Containers)
-		if err != nil {
-			return err
-		}
-		containers = append(containers, mysqldContainer)
-		containers = append(containers, r.makeV1AgentContainer(cluster, sts.Spec.Template.Spec.Containers))
-		if !cluster.Spec.DisableSlowQueryLogContainer {
-			force := cluster.Status.ReconcileInfo.Generation != cluster.Generation
-			containers = append(containers, r.makeV1SlowQueryLogContainer(sts, force))
-		}
-		if len(cluster.Spec.Collectors) > 0 {
-			containers = append(containers, r.makeV1ExporterContainer(cluster.Spec.Collectors, sts.Spec.Template.Spec.Containers))
-		}
-		containers = append(containers, r.makeV1OptionalContainers(cluster, sts.Spec.Template.Spec.Containers)...)
-		podSpec.Containers = containers
-		podSpec.InitContainers = r.makeV1InitContainer(cluster, mysqldContainer.Image, sts.Spec.Template.Spec.InitContainers)
+	containers := make([]*corev1ac.ContainerApplyConfiguration, 0, 4)
 
-		podSpec.DeepCopyInto(&sts.Spec.Template.Spec)
-
-		if debugController {
-			updated = sts.Spec.DeepCopy()
-		}
-		return ctrl.SetControllerReference(cluster, sts, r.Scheme)
-	})
+	mysqldContainer, err := r.makeV1MySQLDContainer(cluster)
 	if err != nil {
-		log.Error(err, "failed to reconcile stateful set")
 		return err
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled stateful set", "operation", string(result))
+	containers = append(containers, mysqldContainer)
+	containers = append(containers, r.makeV1AgentContainer(cluster))
+
+	if !cluster.Spec.DisableSlowQueryLogContainer {
+		force := cluster.Status.ReconcileInfo.Generation != cluster.Generation
+		sts, err := appsv1ac.ExtractStatefulSet(&orig, fieldManager)
+		if err != nil {
+			return fmt.Errorf("failed to extract StatefulSet: %w", err)
+		}
+
+		containers = append(containers, r.makeV1SlowQueryLogContainer(sts, force))
 	}
-	if result == controllerutil.OperationResultUpdated && debugController {
-		fmt.Println(cmp.Diff(orig, updated))
+	if len(cluster.Spec.Collectors) > 0 {
+		containers = append(containers, r.makeV1ExporterContainer(cluster.Spec.Collectors))
 	}
+	containers = append(containers, r.makeV1OptionalContainers(cluster)...)
+
+	if mysqldContainer.Image == nil {
+		return fmt.Errorf("unexpected mysqld container definition with MySQLCluster %s/%s: image is nil", cluster.Namespace, cluster.Name)
+	}
+	initContainers := r.makeV1InitContainer(cluster, *mysqldContainer.Image)
+
+	podSpec.Containers = nil
+	podSpec.InitContainers = nil
+	podSpec.WithContainers(containers...)
+	podSpec.WithInitContainers(initContainers...)
+
+	sts.Spec.Template.WithSpec(&podSpec)
+
+	if err := setControllerReferenceWithStatefulSet(cluster, sts, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+	if err != nil {
+		return fmt.Errorf("failed to convert StatefulSet %s/%s to unstructured: %w", cluster.Namespace, cluster.PrefixedName(), err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	origApplyConfig, err := appsv1ac.ExtractStatefulSet(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
+	}
+
+	if equality.Semantic.DeepEqual(sts, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile stateful set: %w", err)
+	}
+
+	if debugController {
+		var updated appsv1.StatefulSet
+		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &updated); err != nil {
+			return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+
+	log.Info("reconciled stateful set", "name", cluster.PrefixedName())
+
 	return nil
 }
 
@@ -1150,6 +1186,51 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
+	return nil
+}
+
+func setControllerReferenceWithService(cluster *mocov1beta2.MySQLCluster, svc *corev1ac.ServiceApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	svc.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithStatefulSet(cluster *mocov1beta2.MySQLCluster, sts *appsv1ac.StatefulSetApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	sts.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev1ac.PersistentVolumeClaimApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	pvc.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
 	return nil
 }
 

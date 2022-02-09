@@ -6,6 +6,8 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	fuzz "github.com/google/gofuzz"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/apitesting/roundtrip"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -15,7 +17,14 @@ func TestCompatibility(t *testing.T) {
 	_ = AddToScheme(scheme)
 	_ = mocov1beta2.AddToScheme(scheme)
 
-	f := roundtrip.CompatibilityTestFuzzer(scheme, nil)
+	// Suppress typed nil.
+	fn := func(l **corev1.ResourceList, c fuzz.Continue) {
+		if l != nil && *l == nil || **l == nil {
+			*l = nil
+		}
+	}
+
+	f := roundtrip.CompatibilityTestFuzzer(scheme, []interface{}{fn})
 	f.NilChance(0.5).NumElements(0, 3)
 
 	t.Run("MySQLCluster v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {

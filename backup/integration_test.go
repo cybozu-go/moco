@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,7 +38,9 @@ var _ = Describe("Backup/Restore", func() {
 		cluster.Namespace = "test"
 		cluster.Name = "single"
 		cluster.Spec.Replicas = 3
-		cluster.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
+		cluster.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(*corev1ac.PodSpec().WithContainers(
+			corev1ac.Container().WithName("mysqld").WithImage("mysql")),
+		)
 		cluster.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{
 			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 		}}
@@ -48,7 +51,9 @@ var _ = Describe("Backup/Restore", func() {
 		target.Namespace = "restore"
 		target.Name = "target"
 		target.Spec.Replicas = 1
-		target.Spec.PodTemplate.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
+		target.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(*corev1ac.PodSpec().WithContainers(
+			corev1ac.Container().WithName("mysqld").WithImage("mysql")),
+		)
 		target.Spec.VolumeClaimTemplates = []mocov1beta2.PersistentVolumeClaim{{
 			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 		}}

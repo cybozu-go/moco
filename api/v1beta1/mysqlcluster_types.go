@@ -1,10 +1,12 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -116,6 +118,23 @@ type ObjectMeta struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
+// PodSpecApplyConfiguration is the type defined to implement the DeepCopy method.
+type PodSpecApplyConfiguration corev1ac.PodSpecApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new PodSpecApplyConfiguration.
+func (in *PodSpecApplyConfiguration) DeepCopy() *PodSpecApplyConfiguration {
+	out := new(PodSpecApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
 // PodTemplateSpec describes the data a pod should have when created from a template.
 // This is slightly modified from corev1.PodTemplateSpec.
 type PodTemplateSpec struct {
@@ -125,7 +144,24 @@ type PodTemplateSpec struct {
 
 	// Specification of the desired behavior of the pod.
 	// The name of the MySQL server container in this spec must be `mysqld`.
-	Spec corev1.PodSpec `json:"spec"`
+	Spec PodSpecApplyConfiguration `json:"spec"`
+}
+
+// PersistentVolumeClaimSpecApplyConfiguration is the type defined to implement the DeepCopy method.
+type PersistentVolumeClaimSpecApplyConfiguration corev1ac.PersistentVolumeClaimSpecApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new PersistentVolumeClaimSpecApplyConfiguration.
+func (in *PersistentVolumeClaimSpecApplyConfiguration) DeepCopy() *PersistentVolumeClaimSpecApplyConfiguration {
+	out := new(PersistentVolumeClaimSpecApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
 }
 
 // PersistentVolumeClaim is a user's request for and claim to a persistent volume.
@@ -135,31 +171,47 @@ type PersistentVolumeClaim struct {
 	ObjectMeta `json:"metadata"`
 
 	// Spec defines the desired characteristics of a volume requested by a pod author.
-	Spec corev1.PersistentVolumeClaimSpec `json:"spec"`
+	Spec PersistentVolumeClaimSpecApplyConfiguration `json:"spec"`
 }
 
-func (p PersistentVolumeClaim) ToCoreV1() corev1.PersistentVolumeClaim {
-	claim := corev1.PersistentVolumeClaim{}
-	claim.Name = p.Name
-	if len(p.Labels) > 0 {
-		claim.Labels = make(map[string]string)
-		for k, v := range p.Labels {
-			claim.Labels[k] = v
-		}
-	}
-	if len(p.Annotations) > 0 {
-		claim.Annotations = make(map[string]string)
-		for k, v := range p.Annotations {
-			claim.Annotations[k] = v
-		}
-	}
-	claim.Spec = *p.Spec.DeepCopy()
+// ToCoreV1 converts the PersistentVolumeClaim to a PersistentVolumeClaimApplyConfiguration.
+func (in PersistentVolumeClaim) ToCoreV1() *corev1ac.PersistentVolumeClaimApplyConfiguration {
+	// If you use this, the namespace will not be nil and will not match for "equality.Semantic.DeepEqual".
+	// claim := corev1ac.PersistentVolumeClaim(in.Name, "").
+	claim := &corev1ac.PersistentVolumeClaimApplyConfiguration{}
+
+	claim.WithName(in.Name).
+		WithLabels(in.Labels).
+		WithAnnotations(in.Annotations).
+		WithStatus(corev1ac.PersistentVolumeClaimStatus())
+
+	spec := corev1ac.PersistentVolumeClaimSpecApplyConfiguration(*in.Spec.DeepCopy())
+	claim.WithSpec(&spec)
+
 	if claim.Spec.VolumeMode == nil {
-		modeFilesystem := corev1.PersistentVolumeFilesystem
-		claim.Spec.VolumeMode = &modeFilesystem
+		claim.Spec.WithVolumeMode(corev1.PersistentVolumeFilesystem)
 	}
-	claim.Status.Phase = corev1.ClaimPending
+
+	claim.Status.WithPhase(corev1.ClaimPending)
+
 	return claim
+}
+
+// ServiceSpecApplyConfiguration is the type defined to implement the DeepCopy method.
+type ServiceSpecApplyConfiguration corev1ac.ServiceSpecApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new ServiceSpecApplyConfiguration.
+func (in *ServiceSpecApplyConfiguration) DeepCopy() *ServiceSpecApplyConfiguration {
+	out := new(ServiceSpecApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
 }
 
 // ServiceTemplate defines the desired spec and annotations of Service
@@ -170,7 +222,7 @@ type ServiceTemplate struct {
 
 	// Spec is the ServiceSpec
 	// +optional
-	Spec *corev1.ServiceSpec `json:"spec,omitempty"`
+	Spec *ServiceSpecApplyConfiguration `json:"spec,omitempty"`
 }
 
 // RestoreSpec represents a set of parameters for Point-in-Time Recovery.

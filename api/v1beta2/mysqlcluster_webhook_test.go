@@ -7,9 +7,9 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,13 +23,7 @@ func makeMySQLCluster() *mocov1beta2.MySQLCluster {
 		Spec: mocov1beta2.MySQLClusterSpec{
 			Replicas: 1,
 			PodTemplate: mocov1beta2.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: "mysqld",
-						},
-					},
-				},
+				Spec: (mocov1beta2.PodSpecApplyConfiguration)(*corev1ac.PodSpec().WithContainers(corev1ac.Container().WithName("mysqld"))),
 			},
 			VolumeClaimTemplates: []mocov1beta2.PersistentVolumeClaim{
 				{
@@ -124,18 +118,18 @@ var _ = Describe("MySQLCluster Webhook", func() {
 	})
 
 	It("should deny mysqld container using reserved port", func() {
-		for _, port := range []corev1.ContainerPort{
-			{ContainerPort: constants.MySQLPort},
-			{Name: constants.MySQLPortName},
-			{ContainerPort: constants.MySQLAdminPort},
-			{Name: constants.MySQLAdminPortName},
-			{ContainerPort: constants.MySQLXPort},
-			{Name: constants.MySQLXPortName},
-			{ContainerPort: constants.MySQLHealthPort},
-			{Name: constants.MySQLHealthPortName},
+		for _, port := range []*corev1ac.ContainerPortApplyConfiguration{
+			corev1ac.ContainerPort().WithContainerPort(constants.MySQLPort),
+			corev1ac.ContainerPort().WithName(constants.MySQLPortName),
+			corev1ac.ContainerPort().WithContainerPort(constants.MySQLAdminPort),
+			corev1ac.ContainerPort().WithName(constants.MySQLAdminPortName),
+			corev1ac.ContainerPort().WithContainerPort(constants.MySQLXPort),
+			corev1ac.ContainerPort().WithName(constants.MySQLXPortName),
+			corev1ac.ContainerPort().WithContainerPort(constants.MySQLHealthPort),
+			corev1ac.ContainerPort().WithName(constants.MySQLHealthPortName),
 		} {
 			r := makeMySQLCluster()
-			r.Spec.PodTemplate.Spec.Containers[0].Ports = []corev1.ContainerPort{port}
+			r.Spec.PodTemplate.Spec.Containers[0].WithPorts(port)
 			err := k8sClient.Create(ctx, r)
 			Expect(err).To(HaveOccurred())
 		}
@@ -148,7 +142,9 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			constants.MySQLConfSecretVolumeName, constants.SlowQueryLogAgentConfigVolumeName,
 		} {
 			r := makeMySQLCluster()
-			r.Spec.PodTemplate.Spec.Volumes = []corev1.Volume{{Name: volname}}
+			spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+			spec.WithVolumes(corev1ac.Volume().WithName(volname))
+			r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 			err := k8sClient.Create(ctx, r)
 			Expect(err).To(HaveOccurred())
 		}
@@ -156,27 +152,27 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should deny agent container", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: "agent",
-		})
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithName("agent"))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny slow query log container if not disabled", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.SlowQueryLogAgentContainerName,
-		})
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithName(constants.SlowQueryLogAgentContainerName))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should allow slow log container if disabled", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.SlowQueryLogAgentContainerName,
-		})
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithName(constants.SlowQueryLogAgentContainerName))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		r.Spec.DisableSlowQueryLogContainer = true
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
@@ -185,40 +181,36 @@ var _ = Describe("MySQLCluster Webhook", func() {
 	It("should deny mysqld_exporter container if enabled", func() {
 		r := makeMySQLCluster()
 		r.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.ExporterContainerName,
-		})
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithName(constants.ExporterContainerName))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should allow mysqld_exporter container if not enabled", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.Containers = append(r.Spec.PodTemplate.Spec.Containers, corev1.Container{
-			Name: constants.ExporterContainerName,
-		})
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithName(constants.ExporterContainerName))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should allow non-reserved init containers", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.InitContainers = []corev1.Container{
-			{
-				Name: "foobar",
-			},
-		}
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithInitContainers(corev1ac.Container().WithName("foobar"))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should deny moco-init init containers", func() {
 		r := makeMySQLCluster()
-		r.Spec.PodTemplate.Spec.InitContainers = []corev1.Container{
-			{
-				Name: "moco-init",
-			},
-		}
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithInitContainers(corev1ac.Container().WithName("moco-init"))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
