@@ -5,6 +5,25 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2022-03-07
+
+### Added
+- Add MySQLCluster v1beta2 (#350, #359, #376)
+- Support MySQL 8.0.28 (#369)
+
+### Changed
+- Using SSA with moco-controller (#364, #372, #373, #374, #379)
+- Update krew description (#351)
+- Update klog to v2 (#355)
+- Update Fluent Bit container image to v1.8.11 (#357)
+
+### Fixed
+- Stop using Reconcile's context for ClusterManager (#353)
+- backup: calculate disk usage accurately (#356)
+- Do not stop gathering cluster status if one or more Pods are pending (#366)
+- Add nil check when restoring errant replica status (#367)
+- Update how-to doc to grant PROXY when replicating cluster from outside (#381)
+
 ## [0.10.9] - 2021-11-18
 
 ### Fixed
@@ -282,7 +301,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.10.9...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/cybozu-go/moco/compare/v0.10.9...v0.11.0
 [0.10.9]: https://github.com/cybozu-go/moco/compare/v0.10.8...v0.10.9
 [0.10.8]: https://github.com/cybozu-go/moco/compare/v0.10.7...v0.10.8
 [0.10.7]: https://github.com/cybozu-go/moco/compare/v0.10.6...v0.10.7
