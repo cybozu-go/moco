@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -341,7 +342,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1.ConfigMap, error) {
+func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
 	log := crlog.FromContext(ctx)
 
 	var mysqldContainer *corev1ac.ContainerApplyConfiguration
@@ -390,29 +391,57 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 
 	prefix := cluster.PrefixedName() + "."
 
-	cm := &corev1.ConfigMap{}
-	cm.Namespace = cluster.Namespace
-	cm.Name = prefix + suffix
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-		cm.Labels = mergeMap(cm.Labels, labelSet(cluster, false))
-		cm.Data = map[string]string{
-			constants.MySQLConfName: conf,
-		}
-		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
-	})
+	cmName := prefix + suffix
+	cmData := map[string]string{
+		constants.MySQLConfName: conf,
+	}
+
+	cm := corev1ac.ConfigMap(cmName, cluster.Namespace).
+		WithLabels(labelSet(cluster, false)).
+		WithData(cmData)
+
+	if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+		return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	var orig corev1.ConfigMap
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled my.cnf configmap", "operation", string(result))
+
+	if equality.Semantic.DeepEqual(cm, origApplyConfig) {
+		return cm, nil
 	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, cmName, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to reconcile my.cnf configmap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	log.Info("reconciled my.cnf configmap", "name", cmName)
 
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, old := range cms.Items {
-		if strings.HasPrefix(old.Name, prefix) && old.Name != cm.Name {
+		if strings.HasPrefix(old.Name, prefix) && old.Name != cmName {
 			if err := r.Delete(ctx, &old); err != nil {
 				return nil, fmt.Errorf("failed to delete old my.cnf configmap %s/%s: %w", old.Namespace, old.Name, err)
 			}
@@ -620,7 +649,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1.ConfigMap) error {
+func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration) error {
 	log := crlog.FromContext(ctx)
 
 	var orig appsv1.StatefulSet
@@ -664,6 +693,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		podSpec.WithTerminationGracePeriodSeconds(defaultTerminationGracePeriodSeconds)
 	}
 
+	if mycnf.Name == nil {
+		return errors.New("unexpected error: my.conf ConfigMap name is nil")
+	}
+
 	podSpec.WithVolumes(
 		corev1ac.Volume().
 			WithName(constants.TmpVolumeName).
@@ -682,7 +715,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		corev1ac.Volume().
 			WithName(constants.MySQLConfVolumeName).
 			WithConfigMap(corev1ac.ConfigMapVolumeSource().
-				WithName(mycnf.Name).WithDefaultMode(0644)),
+				WithName(*mycnf.Name).WithDefaultMode(0644)),
 		corev1ac.Volume().
 			WithName(constants.MySQLConfSecretVolumeName).
 			WithSecret(corev1ac.SecretVolumeSource().
@@ -1186,6 +1219,21 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
+	return nil
+}
+
+func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *corev1ac.ConfigMapApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	cm.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
 	return nil
 }
 
