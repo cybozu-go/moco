@@ -12,3 +12,6 @@ metav1.ObjectMeta,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Object
 metav1.Time,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time
 MySQLClusterConditionType,https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType
 resource.Quantity,https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity
+PersistentVolumeClaimSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration
+PodSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration
+ServiceSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration

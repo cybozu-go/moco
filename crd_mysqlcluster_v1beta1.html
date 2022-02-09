@@ -245,14 +245,14 @@
 <p>PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.</p>
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>true</td></tr>
-<tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PersistentVolumeClaimSpec">corev1.PersistentVolumeClaimSpec</a></td><td>true</td></tr>
+<tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration">PersistentVolumeClaimSpecApplyConfiguration</a></td><td>true</td></tr>
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="podtemplatespec"><a class="header" href="#podtemplatespec">PodTemplateSpec</a></h4>
 <p>PodTemplateSpec describes the data a pod should have when created from a template. This is slightly modified from corev1.PodTemplateSpec.</p>
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  The name in this metadata is ignored.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>false</td></tr>
-<tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#PodSpec">corev1.PodSpec</a></td><td>true</td></tr>
+<tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration">PodSpecApplyConfiguration</a></td><td>true</td></tr>
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="reconcileinfo"><a class="header" href="#reconcileinfo">ReconcileInfo</a></h4>
@@ -275,7 +275,7 @@
 <p>ServiceTemplate defines the desired spec and annotations of Service</p>
 <table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  Only <code>annotations</code> and <code>labels</code> are valid.</td><td><a href="#objectmeta">ObjectMeta</a></td><td>false</td></tr>
-<tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec">corev1.ServiceSpec</a></td><td>false</td></tr>
+<tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration">ServiceSpecApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
