@@ -470,23 +470,51 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 `
 
 	if !cluster.Spec.DisableSlowQueryLogContainer {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.SlowQueryLogAgentConfigMapName()
-		result, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-			cm.Labels = mergeMap(cm.Labels, labelSet(cluster, false))
-			confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
-			cm.Data = map[string]string{
-				constants.FluentBitConfigName: confVal,
-			}
-			return ctrl.SetControllerReference(cluster, cm, r.Scheme)
-		})
+		name := cluster.SlowQueryLogAgentConfigMapName()
+		confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
+		data := map[string]string{
+			constants.FluentBitConfigName: confVal,
+		}
+
+		cm := corev1ac.ConfigMap(name, cluster.Namespace).
+			WithLabels(labelSet(cluster, false)).
+			WithData(data)
+
+		if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		var orig corev1.ConfigMap
+		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
 		if err != nil {
-			return fmt.Errorf("failed to reconcile configmap for slow logs: %w", err)
+			return fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, name, err)
 		}
-		if result != controllerutil.OperationResultNone {
-			log.Info("reconciled configmap for slow logs", "operation", string(result))
+
+		if equality.Semantic.DeepEqual(cm, origApplyConfig) {
+			return nil
 		}
+
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, name, err)
+		}
+		patch := &unstructured.Unstructured{
+			Object: obj,
+		}
+
+		if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			FieldManager: fieldManager,
+			Force:        pointer.Bool(true),
+		}); err != nil {
+			return fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, name, err)
+		}
+
+		log.Info("reconciled configmap for slow logs", "name", name)
 	} else {
 		cm := &corev1.ConfigMap{}
 		cm.Namespace = cluster.Namespace
