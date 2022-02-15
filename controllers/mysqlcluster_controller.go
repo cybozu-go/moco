@@ -531,20 +531,45 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	sa := &corev1.ServiceAccount{}
-	sa.Namespace = cluster.Namespace
-	sa.Name = cluster.PrefixedName()
+	name := cluster.PrefixedName()
+	sa := corev1ac.ServiceAccount(name, cluster.Namespace).
+		WithLabels(labelSet(cluster, false))
 
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		sa.Labels = mergeMap(sa.Labels, labelSet(cluster, false))
-		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
-	})
+	if err := setControllerReferenceWithServiceAccount(cluster, sa, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	var orig corev1.ServiceAccount
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := corev1ac.ExtractServiceAccount(&orig, fieldManager)
 	if err != nil {
-		return fmt.Errorf("failed to reconcile service account: %w", err)
+		return fmt.Errorf("failed to extract ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled service account", "operation", string(result))
+
+	if equality.Semantic.DeepEqual(sa, origApplyConfig) {
+		return nil
 	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sa)
+	if err != nil {
+		return fmt.Errorf("failed to convert ServiceAccount %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("failed to reconcile service account %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	log.Info("reconciled service account", "name", name)
 
 	return nil
 }
@@ -1301,6 +1326,21 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 		return err
 	}
 	pvc.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithServiceAccount(cluster *mocov1beta2.MySQLCluster, sa *corev1ac.ServiceAccountApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	sa.WithOwnerReferences(metav1ac.OwnerReference().
 		WithAPIVersion(gvk.GroupVersion().String()).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
