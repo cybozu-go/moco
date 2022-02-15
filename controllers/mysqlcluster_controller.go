@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +32,7 @@ import (
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	policyv1beta1ac "k8s.io/client-go/applyconfigurations/policy/v1beta1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -877,6 +877,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	pdb := &policyv1beta1.PodDisruptionBudget{}
 	pdb.Namespace = cluster.Namespace
 	pdb.Name = cluster.PrefixedName()
+
 	if cluster.Spec.Replicas < 3 {
 		err := r.Delete(ctx, pdb)
 		if err == nil {
@@ -885,22 +886,65 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		return client.IgnoreNotFound(err)
 	}
 
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, pdb, func() error {
-		pdb.Labels = mergeMap(pdb.Labels, labelSet(cluster, false))
-		maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
-		pdb.Spec.MaxUnavailable = &maxUnavailable
-		pdb.Spec.Selector = &metav1.LabelSelector{
-			MatchLabels: labelSet(cluster, false),
-		}
-		return ctrl.SetControllerReference(cluster, pdb, r.Scheme)
+	maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
+
+	pdbApplyConfig := policyv1beta1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
+		WithLabels(labelSet(cluster, false)).
+		WithSpec(policyv1beta1ac.PodDisruptionBudgetSpec().
+			WithMaxUnavailable(maxUnavailable).
+			WithSelector(metav1ac.LabelSelector().
+				WithMatchLabels(labelSet(cluster, false)),
+			),
+		)
+
+	if err := setControllerReferenceWithPDB(cluster, pdbApplyConfig, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pdbApplyConfig)
+	if err != nil {
+		return fmt.Errorf("failed to convert PDB %s/%s to unstructured: %w", pdb.Namespace, pdb.Name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig policyv1beta1.PodDisruptionBudget
+	err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	origApplyConfig, err := policyv1beta1ac.ExtractPodDisruptionBudget(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	if equality.Semantic.DeepEqual(pdbApplyConfig, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
 	})
 	if err != nil {
-		log.Error(err, "failed to reconcile pod disruption budget")
-		return err
+		return fmt.Errorf("failed to reconcile %s PDB: %w", pdb.Name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled pod disruption budget", "operation", string(result))
+
+	if debugController {
+		var updated policyv1beta1.PodDisruptionBudget
+
+		if err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &updated); err != nil {
+			return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
 	}
+
+	log.Info("reconciled PDB", "name", pdb.Name)
 
 	return nil
 }
@@ -1341,6 +1385,21 @@ func setControllerReferenceWithServiceAccount(cluster *mocov1beta2.MySQLCluster,
 		return err
 	}
 	sa.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *policyv1beta1ac.PodDisruptionBudgetApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	pdb.WithOwnerReferences(metav1ac.OwnerReference().
 		WithAPIVersion(gvk.GroupVersion().String()).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
