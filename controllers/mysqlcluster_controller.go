@@ -644,7 +644,15 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	for _, v := range cluster.Spec.VolumeClaimTemplates {
 		pvc := v.ToCoreV1()
 
-		if err := setControllerReferenceWithPVC(cluster, pvc, r.Scheme); err != nil {
+		var origPVC *corev1.PersistentVolumeClaim
+		for _, origV := range orig.Spec.VolumeClaimTemplates {
+			if pvc.Name != nil && *pvc.Name == origV.Name {
+				origPVC = origV.DeepCopy()
+				break
+			}
+		}
+
+		if err := setControllerReferenceWithPVC(cluster, pvc, origPVC, r.Scheme); err != nil {
 			return fmt.Errorf("failed to set ownerReference to PVC %s/%s: %w", cluster.Namespace, *pvc.Name, err)
 		}
 
@@ -1219,18 +1227,32 @@ func setControllerReferenceWithStatefulSet(cluster *mocov1beta2.MySQLCluster, st
 	return nil
 }
 
-func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev1ac.PersistentVolumeClaimApplyConfiguration, scheme *runtime.Scheme) error {
+func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev1ac.PersistentVolumeClaimApplyConfiguration, origPVC *corev1.PersistentVolumeClaim, scheme *runtime.Scheme) error {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
 		return err
 	}
+
+	// Apply to StatefulSet fails if API version of PVC 'ownerReferences' set in 'volumeClaimTemplates' of StatefulSet is different.
+	// This is because StatefulSet does not allow updates except for 'replicas', 'template', and 'updateStrategy'.
+	// If origPVC exists, set apiVersion to match.
+	apiVersion := gvk.GroupVersion().String()
+	if origPVC != nil {
+		for _, owner := range origPVC.OwnerReferences {
+			if owner.UID == cluster.GetUID() && apiVersion != owner.APIVersion {
+				apiVersion = owner.APIVersion
+			}
+		}
+	}
+
 	pvc.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
+		WithAPIVersion(apiVersion).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
 		WithUID(cluster.GetUID()).
 		WithBlockOwnerDeletion(true).
 		WithController(true))
+
 	return nil
 }
 
