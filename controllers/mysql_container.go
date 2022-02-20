@@ -161,7 +161,14 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 }
 
 func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1ac.StatefulSetApplyConfiguration, force bool) *corev1ac.ContainerApplyConfiguration {
-	if !force {
+	isNotNil := func(sts *appsv1ac.StatefulSetApplyConfiguration) bool {
+		if sts == nil || sts.Spec == nil || sts.Spec.Template == nil || sts.Spec.Template.Spec == nil {
+			return false
+		}
+		return true
+	}
+
+	if !force && isNotNil(sts) {
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			if *c.Name == constants.SlowQueryLogAgentContainerName {
 				return &c
