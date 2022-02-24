@@ -5,6 +5,7 @@ import (
 	"unsafe"
 
 	"github.com/cybozu-go/moco/api/v1beta2"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiconversion "k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -12,6 +13,7 @@ import (
 )
 
 const (
+	SpecPrimaryServiceTemplateAnnotation = "mysqlcluster.v1beta2.moco.cybozu.com/spec.primaryServiceTemplate"
 	SpecReplicaServiceTemplateAnnotation = "mysqlcluster.v1beta2.moco.cybozu.com/spec.replicaServiceTemplate"
 )
 
@@ -51,7 +53,7 @@ func Convert__MySQLCluster_To_v1beta2_MySQLCluster(in *MySQLCluster, out *v1beta
 		return err
 	}
 
-	if _, err := unmarshalReplicaServiceTemplate(in, out); err != nil {
+	if err := unmarshalServiceTemplate(in, out); err != nil {
 		return err
 	}
 
@@ -64,7 +66,7 @@ func Convert_v1beta2_MySQLCluster_To__MySQLCluster(in *v1beta2.MySQLCluster, out
 		return err
 	}
 
-	if err := marshalReplicaServiceTemplate(&in.Spec, out); err != nil {
+	if err := marshalServiceTemplate(&in.Spec, out); err != nil {
 		return err
 	}
 
@@ -75,8 +77,6 @@ func Convert__MySQLClusterSpec_To_v1beta2_MySQLClusterSpec(in *MySQLClusterSpec,
 	if err := autoConvert__MySQLClusterSpec_To_v1beta2_MySQLClusterSpec(in, out, s); err != nil {
 		return err
 	}
-
-	out.PrimaryServiceTemplate = (*v1beta2.ServiceTemplate)(unsafe.Pointer(in.ServiceTemplate))
 
 	return nil
 }
@@ -91,20 +91,14 @@ func Convert_v1beta2_MySQLClusterSpec_To__MySQLClusterSpec(in *v1beta2.MySQLClus
 	return nil
 }
 
-// marshalReplicaServiceTemplate stores the service template as json data in the destination object annotations.
-func marshalReplicaServiceTemplate(spec *v1beta2.MySQLClusterSpec, dst metav1.Object) error {
-	if spec.ReplicaServiceTemplate == nil {
+// marshalServiceTemplate stores the service template as json data in the destination object annotations.
+func marshalServiceTemplate(spec *v1beta2.MySQLClusterSpec, dst metav1.Object) error {
+	if spec.PrimaryServiceTemplate == nil && spec.ReplicaServiceTemplate == nil {
 		return nil
 	}
 
-	u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(spec.ReplicaServiceTemplate)
-	if err != nil {
-		return err
-	}
-
-	data, err := json.Marshal(u)
-	if err != nil {
-		return err
+	if equality.Semantic.DeepEqual(spec.PrimaryServiceTemplate, spec.ReplicaServiceTemplate) {
+		return nil
 	}
 
 	annotations := dst.GetAnnotations()
@@ -112,34 +106,81 @@ func marshalReplicaServiceTemplate(spec *v1beta2.MySQLClusterSpec, dst metav1.Ob
 		annotations = map[string]string{}
 	}
 
-	annotations[SpecReplicaServiceTemplateAnnotation] = string(data)
+	if spec.PrimaryServiceTemplate != nil {
+		u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(spec.PrimaryServiceTemplate)
+		if err != nil {
+			return err
+		}
+
+		data, err := json.Marshal(u)
+		if err != nil {
+			return err
+		}
+
+		annotations[SpecPrimaryServiceTemplateAnnotation] = string(data)
+	}
+
+	if spec.ReplicaServiceTemplate != nil {
+		u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(spec.ReplicaServiceTemplate)
+		if err != nil {
+			return err
+		}
+
+		data, err := json.Marshal(u)
+		if err != nil {
+			return err
+		}
+
+		annotations[SpecReplicaServiceTemplateAnnotation] = string(data)
+	}
+
 	dst.SetAnnotations(annotations)
 
 	return nil
 }
 
-// unmarshalReplicaServiceTemplate tries to retrieve the data from the annotation and unmarshal it into the service template passed as input.
-func unmarshalReplicaServiceTemplate(src metav1.Object, dst *v1beta2.MySQLCluster) (bool, error) {
-	data, ok := src.GetAnnotations()[SpecReplicaServiceTemplateAnnotation]
-	if !ok {
-		return false, nil
-	}
-
-	var s *v1beta2.ServiceTemplate
-
-	if err := json.Unmarshal([]byte(data), &s); err != nil {
-		return false, err
-	}
-
-	dst.Spec.ReplicaServiceTemplate = s
-
+// unmarshalServiceTemplate tries to retrieve the data from the annotation and unmarshal it into the service template passed as input.
+func unmarshalServiceTemplate(src *MySQLCluster, dst *v1beta2.MySQLCluster) error {
 	dstAnnotation := dst.GetAnnotations()
 
-	delete(dstAnnotation, SpecReplicaServiceTemplateAnnotation)
+	if hasServiceTemplateAnnotation(src) {
+		if primary, ok := src.GetAnnotations()[SpecPrimaryServiceTemplateAnnotation]; ok {
+			var s *v1beta2.ServiceTemplate
+			if err := json.Unmarshal([]byte(primary), &s); err != nil {
+				return err
+			}
+
+			dst.Spec.PrimaryServiceTemplate = s
+			delete(dstAnnotation, SpecPrimaryServiceTemplateAnnotation)
+		}
+
+		if replica, ok := src.GetAnnotations()[SpecReplicaServiceTemplateAnnotation]; ok {
+			var s *v1beta2.ServiceTemplate
+			if err := json.Unmarshal([]byte(replica), &s); err != nil {
+				return err
+			}
+
+			dst.Spec.ReplicaServiceTemplate = s
+			delete(dstAnnotation, SpecReplicaServiceTemplateAnnotation)
+		}
+	} else {
+		// If the annotation does not exist, copy the same value to primary and replica.
+		serviceTemplate := (*v1beta2.ServiceTemplate)(unsafe.Pointer(src.Spec.ServiceTemplate))
+		dst.Spec.PrimaryServiceTemplate = serviceTemplate.DeepCopy()
+		dst.Spec.ReplicaServiceTemplate = serviceTemplate.DeepCopy()
+	}
 
 	if len(dstAnnotation) == 0 {
 		dst.SetAnnotations(nil)
 	}
 
-	return true, nil
+	return nil
+}
+
+// hasServiceTemplateAnnotation checks if the given object has the service template annotation.
+func hasServiceTemplateAnnotation(obj metav1.Object) bool {
+	_, primaryFound := obj.GetAnnotations()[SpecPrimaryServiceTemplateAnnotation]
+	_, replicaFound := obj.GetAnnotations()[SpecReplicaServiceTemplateAnnotation]
+
+	return primaryFound || replicaFound
 }
