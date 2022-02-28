@@ -14,21 +14,12 @@ import (
 )
 
 func TestCompatibility(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = AddToScheme(scheme)
-	_ = mocov1beta2.AddToScheme(scheme)
-
-	// Suppress typed nil.
-	fn := func(l **corev1.ResourceList, c fuzz.Continue) {
-		if l != nil && *l == nil || **l == nil {
-			*l = nil
-		}
-	}
-
-	f := roundtrip.CompatibilityTestFuzzer(scheme, []interface{}{fn})
-	f.NilChance(0.5).NumElements(0, 3)
-
 	t.Run("MySQLCluster v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		for i := 0; i < 10000; i++ {
 			var v1beta1Cluster1, v1beta1Cluster2 MySQLCluster
 			var v1beta2Cluster mocov1beta2.MySQLCluster
@@ -56,6 +47,11 @@ func TestCompatibility(t *testing.T) {
 	})
 
 	t.Run("MySQLCluster v1beta2 => v1beta1 => v1beta2", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		for i := 0; i < 10000; i++ {
 			var v1beta2Cluster1, v1beta2Cluster2 mocov1beta2.MySQLCluster
 			var v1beta1Cluster MySQLCluster
@@ -83,6 +79,11 @@ func TestCompatibility(t *testing.T) {
 	})
 
 	t.Run("MySQLCluster v1beta1 => v1beta2 ServiceTemplate will be copied", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		var v1beta2Cluster mocov1beta2.MySQLCluster
 		var v1beta1Cluster MySQLCluster
 		f.Fuzz(&v1beta1Cluster)
@@ -108,6 +109,11 @@ func TestCompatibility(t *testing.T) {
 	})
 
 	t.Run("BackupPolicy v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		for i := 0; i < 10000; i++ {
 			var oldPolicy1, oldPolicy2 BackupPolicy
 			var policy mocov1beta2.BackupPolicy
@@ -133,4 +139,30 @@ func TestCompatibility(t *testing.T) {
 			}
 		}
 	})
+}
+
+func newScheme(t *testing.T) *runtime.Scheme {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	_ = AddToScheme(scheme)
+	_ = mocov1beta2.AddToScheme(scheme)
+
+	return scheme
+}
+
+func newCompatibilityTestFuzzer(t *testing.T, scheme *runtime.Scheme) *fuzz.Fuzzer {
+	t.Helper()
+
+	// Suppress typed nil.
+	fn := func(l **corev1.ResourceList, c fuzz.Continue) {
+		if l != nil && *l == nil || **l == nil {
+			*l = nil
+		}
+	}
+
+	f := roundtrip.CompatibilityTestFuzzer(scheme, []interface{}{fn})
+	f.NilChance(0.5).NumElements(0, 3)
+
+	return f
 }
