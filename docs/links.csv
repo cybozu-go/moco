@@ -15,3 +15,6 @@ resource.Quantity,https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quanti
 PersistentVolumeClaimSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration
 PodSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration
 ServiceSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration
+VolumeSourceApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration
+EnvFromSourceApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration
+EnvVarApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration

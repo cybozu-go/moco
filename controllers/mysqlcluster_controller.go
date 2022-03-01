@@ -30,9 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
+	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
+	batchv1beta1ac "k8s.io/client-go/applyconfigurations/batch/v1beta1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	policyv1beta1ac "k8s.io/client-go/applyconfigurations/policy/v1beta1"
+	rbacv1ac "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -688,7 +691,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	if debugController {
 		var updated corev1.Service
 
-		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
 		}
 
@@ -857,7 +860,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 	if debugController {
 		var updated appsv1.StatefulSet
-		if err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &updated); err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &updated); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
 		}
 
@@ -935,7 +938,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	if debugController {
 		var updated policyv1beta1.PodDisruptionBudget
 
-		if err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &updated); err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &updated); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 		}
 
@@ -1008,147 +1011,310 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		return fmt.Errorf("failed to get backup policy %s/%s: %w", cluster.Namespace, bpName, err)
 	}
 
-	cj := &batchv1beta1.CronJob{}
-	cj.Namespace = cluster.Namespace
-	cj.Name = cluster.BackupCronJobName()
-	var orig, updated *batchv1beta1.CronJobSpec
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, cj, func() error {
-		if debugController {
-			orig = cj.Spec.DeepCopy()
-		}
+	jc := &bp.Spec.JobConfig
 
-		cj.Labels = mergeMap(cj.Labels, labelSetForJob(cluster))
-		cj.Spec.Schedule = bp.Spec.Schedule
-		cj.Spec.StartingDeadlineSeconds = bp.Spec.StartingDeadlineSeconds
-		cj.Spec.ConcurrencyPolicy = bp.Spec.ConcurrencyPolicy
-		cj.Spec.SuccessfulJobsHistoryLimit = bp.Spec.SuccessfulJobsHistoryLimit
-		cj.Spec.FailedJobsHistoryLimit = bp.Spec.FailedJobsHistoryLimit
-		cj.Spec.JobTemplate.Labels = labelSetForJob(cluster)
-		cj.Spec.JobTemplate.Spec.ActiveDeadlineSeconds = bp.Spec.ActiveDeadlineSeconds
-		cj.Spec.JobTemplate.Spec.BackoffLimit = bp.Spec.BackoffLimit
-		cj.Spec.JobTemplate.Spec.Template.Labels = labelSetForJob(cluster)
-		podSpec := &cj.Spec.JobTemplate.Spec.Template.Spec
-		jc := &bp.Spec.JobConfig
-		podSpec.RestartPolicy = corev1.RestartPolicyNever
-		podSpec.ServiceAccountName = jc.ServiceAccountName
-		podSpec.Volumes = []corev1.Volume{{
-			Name:         "work",
-			VolumeSource: *jc.WorkVolume.DeepCopy(),
-		}}
+	args := []string{constants.BackupSubcommand, fmt.Sprintf("--threads=%d", jc.Threads)}
+	args = append(args, bucketArgs(jc.BucketConfig)...)
+	args = append(args, cluster.Namespace, cluster.Name)
 
-		args := []string{constants.BackupSubcommand, fmt.Sprintf("--threads=%d", jc.Threads)}
-		args = append(args, bucketArgs(jc.BucketConfig)...)
-		args = append(args, cluster.Namespace, cluster.Name)
-		env := []corev1.EnvVar{
-			{Name: "MYSQL_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: cluster.UserSecretName()},
-				Key:                  password.BackupPasswordKey,
-			}}},
-		}
-		res := corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
+	resources := corev1ac.ResourceRequirements()
+	if jc.Memory != nil {
+		resources.WithRequests(corev1.ResourceList{
+			corev1.ResourceCPU:    *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
+			corev1.ResourceMemory: *jc.Memory,
+		})
+	} else {
+		resources.WithRequests(
+			corev1.ResourceList{
 				corev1.ResourceCPU: *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
 			},
-		}
-		if jc.Memory != nil {
-			res.Requests[corev1.ResourceMemory] = *jc.Memory
-		} else {
-			delete(res.Requests, corev1.ResourceMemory)
-		}
-		if jc.MaxMemory != nil {
-			res.Limits = corev1.ResourceList{corev1.ResourceMemory: *jc.MaxMemory}
-		} else {
-			delete(res.Limits, corev1.ResourceMemory)
-		}
-		if noJobResource {
-			res = corev1.ResourceRequirements{}
-		}
+		)
+	}
+	if jc.MaxMemory != nil {
+		resources.WithLimits(corev1.ResourceList{
+			corev1.ResourceMemory: *jc.MaxMemory,
+		})
+	}
+	if noJobResource {
+		resources = corev1ac.ResourceRequirements()
+	}
 
-		c := corev1.Container{
-			Name:            "backup",
-			Image:           r.BackupImage,
-			Args:            args,
-			EnvFrom:         append([]corev1.EnvFromSource{}, jc.EnvFrom...),
-			Env:             append(env, jc.Env...),
-			VolumeMounts:    []corev1.VolumeMount{{Name: "work", MountPath: "/work"}},
-			SecurityContext: &corev1.SecurityContext{ReadOnlyRootFilesystem: pointer.Bool(true)},
-			Resources:       res,
-		}
-		updateContainerWithSupplements(&c, podSpec.Containers)
-		podSpec.Containers = []corev1.Container{c}
+	container := corev1ac.Container().
+		WithName("backup").
+		WithImage(r.BackupImage).
+		WithArgs(args...).
+		WithEnv(corev1ac.EnvVar().
+			WithName("MYSQL_PASSWORD").
+			WithValueFrom(corev1ac.EnvVarSource().
+				WithSecretKeyRef(corev1ac.SecretKeySelector().
+					WithKey(password.BackupPasswordKey).
+					WithName(cluster.UserSecretName()),
+				),
+			),
+		).
+		WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
+			envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
+			for _, e := range jc.Env {
+				e := e
+				envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
+			}
+			return envFrom
+		}()...).
+		WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
+			envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
+			for _, e := range jc.EnvFrom {
+				e := e
+				envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
+			}
+			return envFrom
+		}()...).
+		WithVolumeMounts(corev1ac.VolumeMount().
+			WithName("work").
+			WithMountPath("/work"),
+		).
+		WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
+		WithResources(resources)
 
-		if debugController {
-			updated = cj.Spec.DeepCopy()
-		}
+	updateContainerWithSecurityContext(container)
 
-		return ctrl.SetControllerReference(cluster, cj, r.Scheme)
+	cronJobName := cluster.BackupCronJobName()
+	cronJob := batchv1beta1ac.CronJob(cronJobName, cluster.Namespace).
+		WithLabels(labelSetForJob(cluster)).
+		WithSpec(batchv1beta1ac.CronJobSpec().
+			WithSchedule(bp.Spec.Schedule).
+			WithConcurrencyPolicy(bp.Spec.ConcurrencyPolicy).
+			WithJobTemplate(batchv1beta1ac.JobTemplateSpec().
+				WithLabels(labelSetForJob(cluster)).
+				WithSpec(batchv1ac.JobSpec().
+					WithTemplate(corev1ac.PodTemplateSpec().
+						WithLabels(labelSetForJob(cluster)).
+						WithSpec(corev1ac.PodSpec().
+							WithRestartPolicy(corev1.RestartPolicyNever).
+							WithServiceAccountName(bp.Spec.JobConfig.ServiceAccountName).
+							WithVolumes(&corev1ac.VolumeApplyConfiguration{
+								Name:                           pointer.String("work"),
+								VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*jc.WorkVolume.DeepCopy()),
+							}).
+							WithContainers(container),
+						),
+					),
+				),
+			),
+		)
+
+	if bp.Spec.StartingDeadlineSeconds != nil {
+		cronJob.Spec.WithStartingDeadlineSeconds(*bp.Spec.StartingDeadlineSeconds)
+	}
+	if bp.Spec.SuccessfulJobsHistoryLimit != nil {
+		cronJob.Spec.WithSuccessfulJobsHistoryLimit(*bp.Spec.SuccessfulJobsHistoryLimit)
+	}
+	if bp.Spec.FailedJobsHistoryLimit != nil {
+		cronJob.Spec.WithFailedJobsHistoryLimit(*bp.Spec.FailedJobsHistoryLimit)
+	}
+	if bp.Spec.ActiveDeadlineSeconds != nil {
+		cronJob.Spec.JobTemplate.Spec.WithActiveDeadlineSeconds(*bp.Spec.ActiveDeadlineSeconds)
+	}
+	if bp.Spec.BackoffLimit != nil {
+		cronJob.Spec.JobTemplate.Spec.WithBackoffLimit(*bp.Spec.BackoffLimit)
+	}
+
+	if err := setControllerReferenceWithCronJob(cluster, cronJob, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cronJob)
+	if err != nil {
+		return fmt.Errorf("failed to convert CronJob %s/%s to unstructured: %w", cluster.Namespace, cronJobName, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig batchv1beta1.CronJob
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
+	}
+
+	origApplyConfig, err := batchv1beta1ac.ExtractCronJob(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
+	}
+
+	if equality.Semantic.DeepEqual(cronJob, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
 	})
 	if err != nil {
-		log.Error(err, "failed to reconcile CronJob for backup")
-		return err
-	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled CronJob for backup", "operation", string(result))
-	}
-	if result == controllerutil.OperationResultUpdated && debugController {
-		fmt.Println(cmp.Diff(orig, updated))
+		return fmt.Errorf("failed to reconcile %s CronJob for backup: %w", cronJobName, err)
 	}
 
-	role := &rbacv1.Role{}
-	role.Namespace = cluster.Namespace
-	role.Name = cluster.BackupRoleName()
-	result, err = ctrl.CreateOrUpdate(ctx, r.Client, role, func() error {
-		role.Labels = mergeMap(role.Labels, labelSetForJob(cluster))
-		role.Rules = []rbacv1.PolicyRule{
-			{
-				APIGroups:     []string{mocov1beta2.GroupVersion.Group},
-				Resources:     []string{"mysqlclusters", "mysqlclusters/status"},
-				Verbs:         []string{"get", "update"},
-				ResourceNames: []string{cluster.Name},
-			},
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get", "list", "watch"},
-			},
-			{
-				APIGroups: []string{""},
-				Resources: []string{"events"},
-				Verbs:     []string{"create", "update", "patch"},
-			},
+	if debugController {
+		var updated batchv1beta1.CronJob
+
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}, &updated); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 		}
-		return ctrl.SetControllerReference(cluster, role, r.Scheme)
-	})
-	if err != nil {
-		log.Error(err, "failed to reconcile Role for backup")
-		return err
-	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled Role for backup", "operation", string(result))
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
 	}
 
-	rolebinding := &rbacv1.RoleBinding{}
-	rolebinding.Namespace = cluster.Namespace
-	rolebinding.Name = cluster.BackupRoleName()
-	result, err = ctrl.CreateOrUpdate(ctx, r.Client, rolebinding, func() error {
-		rolebinding.Labels = mergeMap(rolebinding.Labels, labelSetForJob(cluster))
-		rolebinding.RoleRef.APIGroup = rbacv1.SchemeGroupVersion.Group
-		rolebinding.RoleRef.Kind = "Role"
-		rolebinding.RoleRef.Name = cluster.BackupRoleName()
-		rolebinding.Subjects = []rbacv1.Subject{{
-			Kind:      "ServiceAccount",
-			Name:      bp.Spec.JobConfig.ServiceAccountName,
-			Namespace: cluster.Namespace,
-		}}
-		return ctrl.SetControllerReference(cluster, rolebinding, r.Scheme)
-	})
-	if err != nil {
-		log.Error(err, "failed to reconcile RoleBinding for backup")
+	log.Info("reconciled CronJob for backup", "name", cronJobName)
+
+	if err := r.reconcileV1BackupJobRole(ctx, req, cluster); err != nil {
 		return err
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled RoleBinding for backup", "operation", string(result))
+
+	if err := r.reconcileV1BackupJobRoleBinding(ctx, req, cluster, bp); err != nil {
+		return err
 	}
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+	log := crlog.FromContext(ctx)
+
+	name := cluster.BackupRoleName()
+	role := rbacv1ac.Role(name, cluster.Namespace).
+		WithLabels(labelSetForJob(cluster)).
+		WithRules(
+			rbacv1ac.PolicyRule().
+				WithAPIGroups(mocov1beta2.GroupVersion.Group).
+				WithResources("mysqlclusters", "mysqlclusters/status").
+				WithVerbs("get", "update").
+				WithResourceNames(cluster.Name),
+			rbacv1ac.PolicyRule().
+				WithAPIGroups("").
+				WithResources("pods").
+				WithVerbs("get", "list", "watch"),
+			rbacv1ac.PolicyRule().
+				WithAPIGroups("").
+				WithResources("events").
+				WithVerbs("create", "update", "patch"),
+		)
+
+	if err := setControllerReferenceWithRole(cluster, role, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(role)
+	if err != nil {
+		return fmt.Errorf("failed to convert Role %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig rbacv1.Role
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := rbacv1ac.ExtractRole(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Role %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(role, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile %s Role for backup: %w", name, err)
+	}
+
+	if debugController {
+		var updated rbacv1.Role
+
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+
+	log.Info("reconciled Role for backup", "name", name)
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, bp *mocov1beta2.BackupPolicy) error {
+	log := crlog.FromContext(ctx)
+
+	name := cluster.BackupRoleName()
+	roleBinding := rbacv1ac.RoleBinding(name, cluster.Namespace).
+		WithLabels(labelSetForJob(cluster)).
+		WithRoleRef(rbacv1ac.RoleRef().
+			WithAPIGroup(rbacv1.SchemeGroupVersion.Group).
+			WithKind("Role").
+			WithName(cluster.BackupRoleName())).
+		WithSubjects(rbacv1ac.Subject().
+			WithKind("ServiceAccount").
+			WithName(bp.Spec.JobConfig.ServiceAccountName).
+			WithNamespace(cluster.Namespace))
+
+	if err := setControllerReferenceWithRoleBinding(cluster, roleBinding, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(roleBinding)
+	if err != nil {
+		return fmt.Errorf("failed to convert RoleBinding %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig rbacv1.RoleBinding
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := rbacv1ac.ExtractRoleBinding(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(roleBinding, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile %s RoleBinding for backup: %w", name, err)
+	}
+
+	if debugController {
+		var updated rbacv1.RoleBinding
+
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+
+	log.Info("reconciled RoleBinding for backup", "name", name)
 
 	return nil
 }
@@ -1172,129 +1338,288 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			return err
 		}
 
-		job = &batchv1.Job{}
-		job.Namespace = cluster.Namespace
-		job.Name = cluster.RestoreJobName()
-		job.Labels = labelSetForJob(cluster)
-		if err := ctrl.SetControllerReference(cluster, job, r.Scheme); err != nil {
-			return fmt.Errorf("failed to set controller reference to restore Job: %w", err)
-		}
-		job.Spec.BackoffLimit = pointer.Int32(0)
-		job.Spec.Template.Labels = labelSetForJob(cluster)
-		podSpec := &job.Spec.Template.Spec
 		jc := &cluster.Spec.Restore.JobConfig
-		podSpec.RestartPolicy = corev1.RestartPolicyNever
-		podSpec.ServiceAccountName = jc.ServiceAccountName
-		podSpec.Volumes = []corev1.Volume{{
-			Name:         "work",
-			VolumeSource: *jc.WorkVolume.DeepCopy(),
-		}}
 
 		args := []string{constants.RestoreSubcommand, fmt.Sprintf("--threads=%d", jc.Threads)}
 		args = append(args, bucketArgs(jc.BucketConfig)...)
 		args = append(args, cluster.Spec.Restore.SourceNamespace, cluster.Spec.Restore.SourceName)
 		args = append(args, cluster.Namespace, cluster.Name)
 		args = append(args, cluster.Spec.Restore.RestorePoint.UTC().Format(constants.BackupTimeFormat))
-		env := []corev1.EnvVar{
-			{Name: "MYSQL_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: cluster.UserSecretName()},
-				Key:                  password.AdminPasswordKey,
-			}}},
-		}
-		res := corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU: *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
-			},
-		}
+
+		resources := corev1ac.ResourceRequirements()
 		if jc.Memory != nil {
-			res.Requests[corev1.ResourceMemory] = *jc.Memory
+			resources.WithRequests(corev1.ResourceList{
+				corev1.ResourceCPU:    *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
+				corev1.ResourceMemory: *jc.Memory,
+			})
 		} else {
-			delete(res.Requests, corev1.ResourceMemory)
+			resources.WithRequests(
+				corev1.ResourceList{
+					corev1.ResourceCPU: *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
+				},
+			)
 		}
 		if jc.MaxMemory != nil {
-			res.Limits = corev1.ResourceList{corev1.ResourceMemory: *jc.MaxMemory}
-		} else {
-			delete(res.Limits, corev1.ResourceMemory)
+			resources.WithLimits(corev1.ResourceList{
+				corev1.ResourceMemory: *jc.MaxMemory,
+			})
 		}
 		if noJobResource {
-			res = corev1.ResourceRequirements{}
+			resources = corev1ac.ResourceRequirements()
 		}
 
-		c := corev1.Container{
-			Name:            "restore",
-			Image:           r.BackupImage,
-			Args:            args,
-			EnvFrom:         append([]corev1.EnvFromSource{}, jc.EnvFrom...),
-			Env:             append(env, jc.Env...),
-			VolumeMounts:    []corev1.VolumeMount{{Name: "work", MountPath: "/work"}},
-			SecurityContext: &corev1.SecurityContext{ReadOnlyRootFilesystem: pointer.Bool(true)},
-			Resources:       res,
-		}
-		podSpec.Containers = []corev1.Container{c}
+		container := corev1ac.Container().
+			WithName("restore").
+			WithImage(r.BackupImage).
+			WithArgs(args...).
+			WithEnv(corev1ac.EnvVar().
+				WithName("MYSQL_PASSWORD").
+				WithValueFrom(corev1ac.EnvVarSource().
+					WithSecretKeyRef(corev1ac.SecretKeySelector().
+						WithKey(password.AdminPasswordKey).
+						WithName(cluster.UserSecretName()),
+					),
+				),
+			).
+			WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
+				envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
+				for _, e := range jc.Env {
+					e := e
+					envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
+				}
+				return envFrom
+			}()...).
+			WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
+				envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
+				for _, e := range jc.EnvFrom {
+					e := e
+					envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
+				}
+				return envFrom
+			}()...).
+			WithVolumeMounts(corev1ac.VolumeMount().
+				WithName("work").
+				WithMountPath("/work")).
+			WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
+			WithResources(resources)
 
-		if err := r.Create(ctx, job); err != nil {
-			log.Error(err, "failed to create a restore Job: %w", err)
-			return err
+		jobName := cluster.RestoreJobName()
+		job := batchv1ac.Job(jobName, cluster.Namespace).
+			WithLabels(labelSetForJob(cluster)).
+			WithSpec(batchv1ac.JobSpec().
+				WithBackoffLimit(0).
+				WithTemplate(corev1ac.PodTemplateSpec().
+					WithLabels(labelSetForJob(cluster)).
+					WithSpec(corev1ac.PodSpec().
+						WithRestartPolicy(corev1.RestartPolicyNever).
+						WithServiceAccountName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
+						WithVolumes(&corev1ac.VolumeApplyConfiguration{
+							Name:                           pointer.String("work"),
+							VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*cluster.Spec.Restore.JobConfig.WorkVolume.DeepCopy()),
+						}).
+						WithContainers(container),
+					),
+				),
+			)
+
+		if err := setControllerReferenceWithJob(cluster, job, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ownerReference to Job %s/%s: %w", cluster.Namespace, jobName, err)
 		}
 
-		log.Info("reconciled restore Job")
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(job)
+		if err != nil {
+			return fmt.Errorf("failed to convert Job %s/%s to unstructured: %w", cluster.Namespace, jobName, err)
+		}
+		patch := &unstructured.Unstructured{
+			Object: obj,
+		}
+
+		var orig batchv1.Job
+		err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: jobName}, &orig)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get Job %s/%s: %w", cluster.Namespace, jobName, err)
+		}
+
+		origApplyConfig, err := batchv1ac.ExtractJob(&orig, fieldManager)
+		if err != nil {
+			return fmt.Errorf("failed to extract Job %s/%s: %w", cluster.Namespace, jobName, err)
+		}
+
+		if equality.Semantic.DeepEqual(job, origApplyConfig) {
+			return nil
+		}
+
+		err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			FieldManager: fieldManager,
+			Force:        pointer.Bool(true),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to reconcile %s Job for backup: %w", jobName, err)
+		}
+
+		if debugController {
+			var updated batchv1.Job
+
+			if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: jobName}, &updated); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get Job %s/%s: %w", cluster.Namespace, jobName, err)
+			}
+
+			if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+				fmt.Println(diff)
+			}
+		}
+
+		log.Info("reconciled Job for restore", "name", jobName)
 	}
 
-	role := &rbacv1.Role{}
-	role.Namespace = cluster.Namespace
-	role.Name = cluster.RestoreRoleName()
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, role, func() error {
-		role.Labels = mergeMap(role.Labels, labelSetForJob(cluster))
-		role.Rules = []rbacv1.PolicyRule{
-			{
-				APIGroups:     []string{mocov1beta2.GroupVersion.Group},
-				Resources:     []string{"mysqlclusters", "mysqlclusters/status"},
-				Verbs:         []string{"get", "update"},
-				ResourceNames: []string{cluster.Name},
-			},
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-				Verbs:     []string{"get"},
-			},
-			{
-				APIGroups: []string{""},
-				Resources: []string{"events"},
-				Verbs:     []string{"create"},
-			},
-		}
-		return ctrl.SetControllerReference(job, role, r.Scheme)
-	})
-	if err != nil {
-		log.Error(err, "failed to reconcile Role for restore")
+	if err := r.reconcileV1RestoreJobRole(ctx, req, cluster); err != nil {
 		return err
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled Role for restore", "operation", string(result))
-	}
 
-	rolebinding := &rbacv1.RoleBinding{}
-	rolebinding.Namespace = cluster.Namespace
-	rolebinding.Name = cluster.RestoreRoleName()
-	result, err = ctrl.CreateOrUpdate(ctx, r.Client, rolebinding, func() error {
-		rolebinding.Labels = mergeMap(rolebinding.Labels, labelSetForJob(cluster))
-		rolebinding.RoleRef.APIGroup = rbacv1.SchemeGroupVersion.Group
-		rolebinding.RoleRef.Kind = "Role"
-		rolebinding.RoleRef.Name = cluster.RestoreRoleName()
-		rolebinding.Subjects = []rbacv1.Subject{{
-			Kind:      "ServiceAccount",
-			Name:      cluster.Spec.Restore.JobConfig.ServiceAccountName,
-			Namespace: cluster.Namespace,
-		}}
-		return ctrl.SetControllerReference(job, rolebinding, r.Scheme)
-	})
-	if err != nil {
-		log.Error(err, "failed to reconcile RoleBinding for restore")
+	if err := r.reconcileV1RestoreJobRoleBinding(ctx, req, cluster); err != nil {
 		return err
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled RoleBinding for restore", "operation", string(result))
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+	log := crlog.FromContext(ctx)
+
+	name := cluster.RestoreRoleName()
+	role := rbacv1ac.Role(name, cluster.Namespace).
+		WithLabels(labelSetForJob(cluster)).
+		WithRules(
+			rbacv1ac.PolicyRule().
+				WithAPIGroups(mocov1beta2.GroupVersion.Group).
+				WithResources("mysqlclusters", "mysqlclusters/status").
+				WithVerbs("get", "update").
+				WithResourceNames(cluster.Name),
+			rbacv1ac.PolicyRule().
+				WithAPIGroups("").
+				WithResources("pods").
+				WithVerbs("get"),
+			rbacv1ac.PolicyRule().
+				WithAPIGroups("").
+				WithResources("events").
+				WithVerbs("create"),
+		)
+
+	if err := setControllerReferenceWithRole(cluster, role, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
 	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(role)
+	if err != nil {
+		return fmt.Errorf("failed to convert Role %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig rbacv1.Role
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := rbacv1ac.ExtractRole(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Role %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(role, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile %s Role for backup: %w", name, err)
+	}
+
+	if debugController {
+		var updated rbacv1.Role
+
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+
+	log.Info("reconciled Role for backup", "name", name)
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+	log := crlog.FromContext(ctx)
+
+	name := cluster.RestoreRoleName()
+	roleBinding := rbacv1ac.RoleBinding(name, cluster.Namespace).
+		WithLabels(labelSetForJob(cluster)).
+		WithRoleRef(rbacv1ac.RoleRef().
+			WithAPIGroup(rbacv1.SchemeGroupVersion.Group).
+			WithKind("Role").
+			WithName(cluster.RestoreRoleName())).
+		WithSubjects(rbacv1ac.Subject().
+			WithKind("ServiceAccount").
+			WithName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
+			WithNamespace(cluster.Namespace))
+
+	if err := setControllerReferenceWithRoleBinding(cluster, roleBinding, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(roleBinding)
+	if err != nil {
+		return fmt.Errorf("failed to convert RoleBinding %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig rbacv1.RoleBinding
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := rbacv1ac.ExtractRoleBinding(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(roleBinding, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile %s RoleBinding for backup: %w", name, err)
+	}
+
+	if debugController {
+		var updated rbacv1.RoleBinding
+
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &updated); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
+	}
+
+	log.Info("reconciled RoleBinding for restore", "name", name)
 
 	return nil
 }
@@ -1400,6 +1725,66 @@ func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *polic
 		return err
 	}
 	pdb.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithRole(cluster *mocov1beta2.MySQLCluster, role *rbacv1ac.RoleApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	role.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithRoleBinding(cluster *mocov1beta2.MySQLCluster, roleBinding *rbacv1ac.RoleBindingApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	roleBinding.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithJob(cluster *mocov1beta2.MySQLCluster, job *batchv1ac.JobApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	job.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJob *batchv1beta1ac.CronJobApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	cronJob.WithOwnerReferences(metav1ac.OwnerReference().
 		WithAPIVersion(gvk.GroupVersion().String()).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
