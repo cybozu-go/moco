@@ -10,51 +10,110 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/apitesting/roundtrip"
 	"k8s.io/apimachinery/pkg/runtime"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 func TestCompatibility(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = AddToScheme(scheme)
-	_ = mocov1beta2.AddToScheme(scheme)
-
-	// Suppress typed nil.
-	fn := func(l **corev1.ResourceList, c fuzz.Continue) {
-		if l != nil && *l == nil || **l == nil {
-			*l = nil
-		}
-	}
-
-	f := roundtrip.CompatibilityTestFuzzer(scheme, []interface{}{fn})
-	f.NilChance(0.5).NumElements(0, 3)
-
 	t.Run("MySQLCluster v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		for i := 0; i < 10000; i++ {
-			var oldCluster1, oldCluster2 MySQLCluster
-			var cluster mocov1beta2.MySQLCluster
-			f.Fuzz(&oldCluster1)
+			var v1beta1Cluster1, v1beta1Cluster2 MySQLCluster
+			var v1beta2Cluster mocov1beta2.MySQLCluster
+			f.Fuzz(&v1beta1Cluster1)
 
 			var tmp1, tmp2 mocov1beta2.MySQLCluster
 
-			if err := scheme.Convert(oldCluster1.DeepCopy(), &tmp1, nil); err != nil {
+			if err := scheme.Convert(v1beta1Cluster1.DeepCopy(), &tmp1, nil); err != nil {
 				t.Fatal(err)
 			}
-			if err := scheme.Convert(&tmp1, &cluster, nil); err != nil {
+			if err := scheme.Convert(&tmp1, &v1beta2Cluster, nil); err != nil {
 				t.Fatal(err)
 			}
-			if err := scheme.Convert(&cluster, &tmp2, nil); err != nil {
+			if err := scheme.Convert(&v1beta2Cluster, &tmp2, nil); err != nil {
 				t.Fatal(err)
 			}
-			if err := scheme.Convert(&tmp2, &oldCluster2, nil); err != nil {
+			if err := scheme.Convert(&tmp2, &v1beta1Cluster2, nil); err != nil {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(oldCluster1, oldCluster2, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(v1beta1Cluster1, v1beta1Cluster2, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("compatibility error case #%d (-want +got):\n%s", i, diff)
 			}
 		}
 	})
 
+	t.Run("MySQLCluster v1beta2 => v1beta1 => v1beta2", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
+		for i := 0; i < 10000; i++ {
+			var v1beta2Cluster1, v1beta2Cluster2 mocov1beta2.MySQLCluster
+			var v1beta1Cluster MySQLCluster
+			f.Fuzz(&v1beta2Cluster1)
+
+			var tmp1, tmp2 MySQLCluster
+
+			if err := scheme.Convert(v1beta2Cluster1.DeepCopy(), &tmp1, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&tmp1, &v1beta1Cluster, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&v1beta1Cluster, &tmp2, nil); err != nil {
+				t.Fatal(err)
+			}
+			if err := scheme.Convert(&tmp2, &v1beta2Cluster2, nil); err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(v1beta2Cluster1, v1beta2Cluster2, cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("compatibility error case #%d (-want +got):\n%s", i, diff)
+			}
+		}
+	})
+
+	t.Run("MySQLCluster v1beta1 => v1beta2 ServiceTemplate will be copied", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
+		var v1beta2Cluster mocov1beta2.MySQLCluster
+		var v1beta1Cluster MySQLCluster
+		f.Fuzz(&v1beta1Cluster)
+
+		v1beta1Cluster.Spec.ServiceTemplate = &ServiceTemplate{
+			ObjectMeta: ObjectMeta{},
+			Spec: (*ServiceSpecApplyConfiguration)(
+				corev1ac.ServiceSpec().
+					WithPorts(corev1ac.ServicePort().
+						WithName("dummy").
+						WithPort(8080),
+					),
+			),
+		}
+
+		if err := scheme.Convert(&v1beta1Cluster, &v1beta2Cluster, nil); err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(v1beta2Cluster.Spec.PrimaryServiceTemplate, v1beta2Cluster.Spec.ReplicaServiceTemplate, cmpopts.EquateEmpty()); diff != "" {
+			t.Fatalf("compatibility error case (-want +got):\n%s", diff)
+		}
+	})
+
 	t.Run("BackupPolicy v1beta1 => v1beta2 => v1beta1", func(t *testing.T) {
+		t.Parallel()
+
+		scheme := newScheme(t)
+		f := newCompatibilityTestFuzzer(t, scheme)
+
 		for i := 0; i < 10000; i++ {
 			var oldPolicy1, oldPolicy2 BackupPolicy
 			var policy mocov1beta2.BackupPolicy
@@ -80,4 +139,30 @@ func TestCompatibility(t *testing.T) {
 			}
 		}
 	})
+}
+
+func newScheme(t *testing.T) *runtime.Scheme {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	_ = AddToScheme(scheme)
+	_ = mocov1beta2.AddToScheme(scheme)
+
+	return scheme
+}
+
+func newCompatibilityTestFuzzer(t *testing.T, scheme *runtime.Scheme) *fuzz.Fuzzer {
+	t.Helper()
+
+	// Suppress typed nil.
+	fn := func(l **corev1.ResourceList, c fuzz.Continue) {
+		if l != nil && *l == nil || **l == nil {
+			*l = nil
+		}
+	}
+
+	f := roundtrip.CompatibilityTestFuzzer(scheme, []interface{}{fn})
+	f.NilChance(0.5).NumElements(0, 3)
+
+	return f
 }
