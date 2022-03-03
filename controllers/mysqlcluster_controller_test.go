@@ -953,13 +953,19 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.ServiceAccountName = "foo"
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []corev1.EnvVar{{Name: "TEST", Value: "123"}}
-		jc.EnvFrom = []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "bucket-config",
+		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
+		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
+			{
+				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
+					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
+						Name: pointer.String("bucket-config"),
+					},
+				},
 			},
-		}}}
-		jc.WorkVolume = corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}
+		}
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
@@ -1053,7 +1059,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.MaxMemory = nil
 		jc.Env = nil
 		jc.EnvFrom = nil
-		jc.WorkVolume = corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/host"}}
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			HostPath: &corev1ac.HostPathVolumeSourceApplyConfiguration{
+				Path: pointer.String("/host"),
+			},
+		}
 		jc.BucketConfig.BucketName = "mybucket2"
 		jc.BucketConfig.EndpointURL = ""
 		jc.BucketConfig.Region = ""
@@ -1155,13 +1165,19 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.ServiceAccountName = "foo"
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []corev1.EnvVar{{Name: "TEST", Value: "123"}}
-		jc.EnvFrom = []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "bucket-config",
+		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
+		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
+			{
+				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
+					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
+						Name: pointer.String("bucket-config"),
+					},
+				},
 			},
-		}}}
-		jc.WorkVolume = corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}
+		}
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"

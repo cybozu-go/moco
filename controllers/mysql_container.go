@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
-	"k8s.io/utils/pointer"
 )
 
 func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQLCluster) (*corev1ac.ContainerApplyConfiguration, error) {
@@ -284,57 +283,6 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 		initContainers = append(initContainers, &ic)
 	}
 	return initContainers
-}
-
-func updateContainerWithSupplements(container *corev1.Container, currentContainers []corev1.Container) {
-	if container.SecurityContext == nil {
-		container.SecurityContext = &corev1.SecurityContext{}
-	}
-	container.SecurityContext.RunAsUser = pointer.Int64(constants.ContainerUID)
-	container.SecurityContext.RunAsGroup = pointer.Int64(constants.ContainerGID)
-
-	var current *corev1.Container
-	for i, c := range currentContainers {
-		if c.Name == container.Name {
-			current = &currentContainers[i]
-			break
-		}
-	}
-	if current == nil {
-		return
-	}
-
-	if len(current.ImagePullPolicy) > 0 {
-		container.ImagePullPolicy = current.ImagePullPolicy
-	}
-	if len(current.TerminationMessagePath) > 0 {
-		container.TerminationMessagePath = current.TerminationMessagePath
-	}
-	if len(current.TerminationMessagePolicy) > 0 {
-		container.TerminationMessagePolicy = current.TerminationMessagePolicy
-	}
-	updateProbeWithSupplements(container.StartupProbe, current.StartupProbe)
-	updateProbeWithSupplements(container.LivenessProbe, current.LivenessProbe)
-	updateProbeWithSupplements(container.ReadinessProbe, current.ReadinessProbe)
-}
-
-func updateProbeWithSupplements(probe, current *corev1.Probe) {
-	if probe == nil || current == nil {
-		return
-	}
-
-	if probe.FailureThreshold == 0 {
-		probe.FailureThreshold = current.FailureThreshold
-	}
-	if probe.PeriodSeconds == 0 {
-		probe.PeriodSeconds = current.PeriodSeconds
-	}
-	if probe.SuccessThreshold == 0 {
-		probe.SuccessThreshold = current.SuccessThreshold
-	}
-	if probe.TimeoutSeconds == 0 {
-		probe.TimeoutSeconds = current.TimeoutSeconds
-	}
 }
 
 func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
