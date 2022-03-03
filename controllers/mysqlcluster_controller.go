@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,6 +32,7 @@ import (
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	policyv1beta1ac "k8s.io/client-go/applyconfigurations/policy/v1beta1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -341,7 +342,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1.ConfigMap, error) {
+func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
 	log := crlog.FromContext(ctx)
 
 	var mysqldContainer *corev1ac.ContainerApplyConfiguration
@@ -390,29 +391,57 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 
 	prefix := cluster.PrefixedName() + "."
 
-	cm := &corev1.ConfigMap{}
-	cm.Namespace = cluster.Namespace
-	cm.Name = prefix + suffix
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-		cm.Labels = mergeMap(cm.Labels, labelSet(cluster, false))
-		cm.Data = map[string]string{
-			constants.MySQLConfName: conf,
-		}
-		return ctrl.SetControllerReference(cluster, cm, r.Scheme)
-	})
+	cmName := prefix + suffix
+	cmData := map[string]string{
+		constants.MySQLConfName: conf,
+	}
+
+	cm := corev1ac.ConfigMap(cmName, cluster.Namespace).
+		WithLabels(labelSet(cluster, false)).
+		WithData(cmData)
+
+	if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+		return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	var orig corev1.ConfigMap
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled my.cnf configmap", "operation", string(result))
+
+	if equality.Semantic.DeepEqual(cm, origApplyConfig) {
+		return cm, nil
 	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, cmName, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to reconcile my.cnf configmap %s/%s: %w", cluster.Namespace, cmName, err)
+	}
+
+	log.Info("reconciled my.cnf configmap", "name", cmName)
 
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, old := range cms.Items {
-		if strings.HasPrefix(old.Name, prefix) && old.Name != cm.Name {
+		if strings.HasPrefix(old.Name, prefix) && old.Name != cmName {
 			if err := r.Delete(ctx, &old); err != nil {
 				return nil, fmt.Errorf("failed to delete old my.cnf configmap %s/%s: %w", old.Namespace, old.Name, err)
 			}
@@ -441,23 +470,51 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 `
 
 	if !cluster.Spec.DisableSlowQueryLogContainer {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.SlowQueryLogAgentConfigMapName()
-		result, err := ctrl.CreateOrUpdate(ctx, r.Client, cm, func() error {
-			cm.Labels = mergeMap(cm.Labels, labelSet(cluster, false))
-			confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
-			cm.Data = map[string]string{
-				constants.FluentBitConfigName: confVal,
-			}
-			return ctrl.SetControllerReference(cluster, cm, r.Scheme)
-		})
+		name := cluster.SlowQueryLogAgentConfigMapName()
+		confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
+		data := map[string]string{
+			constants.FluentBitConfigName: confVal,
+		}
+
+		cm := corev1ac.ConfigMap(name, cluster.Namespace).
+			WithLabels(labelSet(cluster, false)).
+			WithData(data)
+
+		if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		var orig corev1.ConfigMap
+		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, name, err)
+		}
+
+		origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
 		if err != nil {
-			return fmt.Errorf("failed to reconcile configmap for slow logs: %w", err)
+			return fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, name, err)
 		}
-		if result != controllerutil.OperationResultNone {
-			log.Info("reconciled configmap for slow logs", "operation", string(result))
+
+		if equality.Semantic.DeepEqual(cm, origApplyConfig) {
+			return nil
 		}
+
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, name, err)
+		}
+		patch := &unstructured.Unstructured{
+			Object: obj,
+		}
+
+		if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			FieldManager: fieldManager,
+			Force:        pointer.Bool(true),
+		}); err != nil {
+			return fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, name, err)
+		}
+
+		log.Info("reconciled configmap for slow logs", "name", name)
 	} else {
 		cm := &corev1.ConfigMap{}
 		cm.Namespace = cluster.Namespace
@@ -474,20 +531,45 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	sa := &corev1.ServiceAccount{}
-	sa.Namespace = cluster.Namespace
-	sa.Name = cluster.PrefixedName()
+	name := cluster.PrefixedName()
+	sa := corev1ac.ServiceAccount(name, cluster.Namespace).
+		WithLabels(labelSet(cluster, false))
 
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, sa, func() error {
-		sa.Labels = mergeMap(sa.Labels, labelSet(cluster, false))
-		return ctrl.SetControllerReference(cluster, sa, r.Scheme)
-	})
+	if err := setControllerReferenceWithServiceAccount(cluster, sa, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	var orig corev1.ServiceAccount
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := corev1ac.ExtractServiceAccount(&orig, fieldManager)
 	if err != nil {
-		return fmt.Errorf("failed to reconcile service account: %w", err)
+		return fmt.Errorf("failed to extract ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled service account", "operation", string(result))
+
+	if equality.Semantic.DeepEqual(sa, origApplyConfig) {
+		return nil
 	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sa)
+	if err != nil {
+		return fmt.Errorf("failed to convert ServiceAccount %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("failed to reconcile service account %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	log.Info("reconciled service account", "name", name)
 
 	return nil
 }
@@ -620,7 +702,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1.ConfigMap) error {
+func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration) error {
 	log := crlog.FromContext(ctx)
 
 	var orig appsv1.StatefulSet
@@ -672,6 +754,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		podSpec.WithTerminationGracePeriodSeconds(defaultTerminationGracePeriodSeconds)
 	}
 
+	if mycnf.Name == nil {
+		return errors.New("unexpected error: my.conf ConfigMap name is nil")
+	}
+
 	podSpec.WithVolumes(
 		corev1ac.Volume().
 			WithName(constants.TmpVolumeName).
@@ -690,7 +776,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		corev1ac.Volume().
 			WithName(constants.MySQLConfVolumeName).
 			WithConfigMap(corev1ac.ConfigMapVolumeSource().
-				WithName(mycnf.Name).WithDefaultMode(0644)),
+				WithName(*mycnf.Name).WithDefaultMode(0644)),
 		corev1ac.Volume().
 			WithName(constants.MySQLConfSecretVolumeName).
 			WithSecret(corev1ac.SecretVolumeSource().
@@ -799,6 +885,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	pdb := &policyv1beta1.PodDisruptionBudget{}
 	pdb.Namespace = cluster.Namespace
 	pdb.Name = cluster.PrefixedName()
+
 	if cluster.Spec.Replicas < 3 {
 		err := r.Delete(ctx, pdb)
 		if err == nil {
@@ -807,22 +894,65 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		return client.IgnoreNotFound(err)
 	}
 
-	result, err := ctrl.CreateOrUpdate(ctx, r.Client, pdb, func() error {
-		pdb.Labels = mergeMap(pdb.Labels, labelSet(cluster, false))
-		maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
-		pdb.Spec.MaxUnavailable = &maxUnavailable
-		pdb.Spec.Selector = &metav1.LabelSelector{
-			MatchLabels: labelSet(cluster, false),
-		}
-		return ctrl.SetControllerReference(cluster, pdb, r.Scheme)
+	maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
+
+	pdbApplyConfig := policyv1beta1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
+		WithLabels(labelSet(cluster, false)).
+		WithSpec(policyv1beta1ac.PodDisruptionBudgetSpec().
+			WithMaxUnavailable(maxUnavailable).
+			WithSelector(metav1ac.LabelSelector().
+				WithMatchLabels(labelSet(cluster, false)),
+			),
+		)
+
+	if err := setControllerReferenceWithPDB(cluster, pdbApplyConfig, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pdbApplyConfig)
+	if err != nil {
+		return fmt.Errorf("failed to convert PDB %s/%s to unstructured: %w", pdb.Namespace, pdb.Name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	var orig policyv1beta1.PodDisruptionBudget
+	err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	origApplyConfig, err := policyv1beta1ac.ExtractPodDisruptionBudget(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+	}
+
+	if equality.Semantic.DeepEqual(pdbApplyConfig, origApplyConfig) {
+		return nil
+	}
+
+	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
 	})
 	if err != nil {
-		log.Error(err, "failed to reconcile pod disruption budget")
-		return err
+		return fmt.Errorf("failed to reconcile %s PDB: %w", pdb.Name, err)
 	}
-	if result != controllerutil.OperationResultNone {
-		log.Info("reconciled pod disruption budget", "operation", string(result))
+
+	if debugController {
+		var updated policyv1beta1.PodDisruptionBudget
+
+		if err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &updated); err != nil {
+			return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
+		}
+
+		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			fmt.Println(diff)
+		}
 	}
+
+	log.Info("reconciled PDB", "name", pdb.Name)
 
 	return nil
 }
@@ -1197,6 +1327,21 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 	return nil
 }
 
+func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *corev1ac.ConfigMapApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	cm.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
 func setControllerReferenceWithService(cluster *mocov1beta2.MySQLCluster, svc *corev1ac.ServiceApplyConfiguration, scheme *runtime.Scheme) error {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
@@ -1253,6 +1398,36 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 		WithBlockOwnerDeletion(true).
 		WithController(true))
 
+	return nil
+}
+
+func setControllerReferenceWithServiceAccount(cluster *mocov1beta2.MySQLCluster, sa *corev1ac.ServiceAccountApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	sa.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *policyv1beta1ac.PodDisruptionBudgetApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	pdb.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
 	return nil
 }
 
