@@ -136,6 +136,7 @@ mysql> CREATE USER 'clone-donor'@'%' IDENTIFIED BY 'xxxxxxxxxxx';
 mysql> GRANT BACKUP_ADMIN, REPLICATION SLAVE ON *.* TO 'clone-donor'@'%';
 mysql> CREATE USER 'clone-init'@'localhost' IDENTIFIED BY 'yyyyyyyyyyy';
 mysql> GRANT ALL ON *.* TO 'clone-init'@'localhost' WITH GRANT OPTION;
+mysql> GRANT PROXY ON ''@'' TO 'clone-init'@'localhost' WITH GRANT OPTION;
 ```
 
 You may change the user names and should change their passwords.
