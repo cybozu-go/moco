@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2022-03-07
+
 ### Support MySQLCluster v1beta2 API
 
 The addition of the API adds a conversion webhook to the CRD.
@@ -44,6 +46,9 @@ STATUS: deployed
 REVISION: 2
 TEST SUITE: None
 ```
+
+### Changed
+- Bump appVersion to 0.11.0.
 
 ## [0.1.2] - 2021-11-18
 
