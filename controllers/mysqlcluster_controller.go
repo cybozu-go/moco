@@ -259,88 +259,143 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	secretName := cluster.ControllerSecretName()
+	name := cluster.ControllerSecretName()
 	secret := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: secretName}, secret)
-	if err == nil {
-		passwd, err := password.NewMySQLPasswordFromSecret(secret)
-		if err != nil {
-			return fmt.Errorf("failed to create password from secret %s/%s: %w", secret.Namespace, secret.Name, err)
-		}
-		userSecret := &corev1.Secret{}
-		userSecret.Namespace = cluster.Namespace
-		userSecret.Name = cluster.UserSecretName()
-		result, err := ctrl.CreateOrUpdate(ctx, r.Client, userSecret, func() error {
-			newSecret := passwd.ToSecret()
-			userSecret.Annotations = mergeMap(userSecret.Annotations, newSecret.Annotations)
-			userSecret.Labels = mergeMap(userSecret.Labels, labelSet(cluster, false))
-			userSecret.Data = newSecret.Data
-			return ctrl.SetControllerReference(cluster, userSecret, r.Scheme)
-		})
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: name}, secret)
+	if apierrors.IsNotFound(err) {
+		passwd, err := password.NewMySQLPassword()
 		if err != nil {
 			return err
 		}
-		if result != controllerutil.OperationResultNone {
-			log.Info("reconciled user secret", "operation", string(result))
-		}
 
-		mycnfSecret := &corev1.Secret{}
-		mycnfSecret.Namespace = cluster.Namespace
-		mycnfSecret.Name = cluster.MyCnfSecretName()
-		result, err = ctrl.CreateOrUpdate(ctx, r.Client, mycnfSecret, func() error {
-			newSecret := passwd.ToMyCnfSecret()
-			mycnfSecret.Annotations = mergeMap(mycnfSecret.Annotations, newSecret.Annotations)
-			mycnfSecret.Labels = mergeMap(mycnfSecret.Labels, labelSet(cluster, false))
-			mycnfSecret.Data = newSecret.Data
-			return ctrl.SetControllerReference(cluster, mycnfSecret, r.Scheme)
-		})
-		if err != nil {
+		secret = passwd.ToSecret()
+		secret.Namespace = r.SystemNamespace
+		secret.Name = name
+		secret.Labels = labelSet(cluster, true)
+		if err := r.Client.Create(ctx, secret); err != nil {
 			return err
 		}
-		if result != controllerutil.OperationResultNone {
-			log.Info("reconciled my.cnf secret", "operation", string(result))
-		}
 
+		log.Info("created controller Secret", "secretName", name)
+	} else if err != nil {
+		return err
+	}
+
+	if err := r.reconcileUserSecret(ctx, req, cluster, secret); err != nil {
+		return err
+	}
+
+	if err := r.reconcileMyCnfSecret(ctx, req, cluster, secret); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+	log := crlog.FromContext(ctx)
+
+	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
+	if err != nil {
+		return fmt.Errorf("failed to create password from secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
+	}
+	newSecret := passwd.ToSecret()
+
+	name := cluster.UserSecretName()
+	secret := corev1ac.Secret(name, cluster.Namespace).
+		WithAnnotations(newSecret.Annotations).
+		WithLabels(labelSet(cluster, false)).
+		WithData(newSecret.Data)
+
+	if err := setControllerReferenceWithSecret(cluster, secret, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	var orig corev1.Secret
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Secret %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	origApplyConfig, err := corev1ac.ExtractSecret(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Secret %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(secret, origApplyConfig) {
 		return nil
 	}
-	if !apierrors.IsNotFound(err) {
-		return err
-	}
 
-	passwd, err := password.NewMySQLPassword()
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert Secret %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
 	}
 
-	secret = passwd.ToSecret()
-	secret.Namespace = r.SystemNamespace
-	secret.Name = secretName
-	secret.Labels = labelSet(cluster, true)
-	if err := r.Client.Create(ctx, secret); err != nil {
-		return err
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("failed to reconcile user Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	userSecret := passwd.ToSecret()
-	userSecret.Namespace = cluster.Namespace
-	userSecret.Name = cluster.UserSecretName()
-	userSecret.Labels = labelSet(cluster, false)
-	if err := ctrl.SetControllerReference(cluster, userSecret, r.Scheme); err != nil {
-		return err
-	}
-	if err := r.Client.Create(ctx, userSecret); err != nil {
-		return err
-	}
+	log.Info("reconciled user Secret", "secretName", name)
 
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+	log := crlog.FromContext(ctx)
+
+	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
+	if err != nil {
+		return fmt.Errorf("failed to create password from Secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
+	}
 	mycnfSecret := passwd.ToMyCnfSecret()
-	mycnfSecret.Namespace = cluster.Namespace
-	mycnfSecret.Name = cluster.MyCnfSecretName()
-	mycnfSecret.Labels = labelSet(cluster, false)
-	if err := ctrl.SetControllerReference(cluster, mycnfSecret, r.Scheme); err != nil {
-		return err
+
+	name := cluster.MyCnfSecretName()
+	secret := corev1ac.Secret(name, cluster.Namespace).
+		WithAnnotations(mycnfSecret.Annotations).
+		WithLabels(labelSet(cluster, false)).
+		WithData(mycnfSecret.Data)
+
+	if err := setControllerReferenceWithSecret(cluster, secret, r.Scheme); err != nil {
+		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
-	if err := r.Client.Create(ctx, mycnfSecret); err != nil {
-		return err
+
+	var orig corev1.Secret
+	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to get Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
+
+	origApplyConfig, err := corev1ac.ExtractSecret(&orig, fieldManager)
+	if err != nil {
+		return fmt.Errorf("failed to extract Secret %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	if equality.Semantic.DeepEqual(secret, origApplyConfig) {
+		return nil
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
+	if err != nil {
+		return fmt.Errorf("failed to convert Secret %s/%s to unstructured: %w", cluster.Namespace, name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("failed to reconcile my.cnf Secret %s/%s: %w", cluster.Namespace, name, err)
+	}
+
+	log.Info("reconciled my.cnf Secret", "secretName", name)
 
 	return nil
 }
@@ -1658,6 +1713,21 @@ func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *
 		return err
 	}
 	cm.WithOwnerReferences(metav1ac.OwnerReference().
+		WithAPIVersion(gvk.GroupVersion().String()).
+		WithKind(gvk.Kind).
+		WithName(cluster.Name).
+		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
+		WithController(true))
+	return nil
+}
+
+func setControllerReferenceWithSecret(cluster *mocov1beta2.MySQLCluster, secret *corev1ac.SecretApplyConfiguration, scheme *runtime.Scheme) error {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return err
+	}
+	secret.WithOwnerReferences(metav1ac.OwnerReference().
 		WithAPIVersion(gvk.GroupVersion().String()).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
