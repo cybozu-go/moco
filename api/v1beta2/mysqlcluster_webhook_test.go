@@ -117,6 +117,24 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should deny without container name", func() {
+		r := makeMySQLCluster()
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithContainers(corev1ac.Container().WithImage("image:dev"))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should deny without init container name", func() {
+		r := makeMySQLCluster()
+		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)
+		spec.WithInitContainers(corev1ac.Container().WithImage("image:dev"))
+		r.Spec.PodTemplate.Spec = (mocov1beta2.PodSpecApplyConfiguration)(spec)
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny mysqld container using reserved port", func() {
 		for _, port := range []*corev1ac.ContainerPortApplyConfiguration{
 			corev1ac.ContainerPort().WithContainerPort(constants.MySQLPort),
