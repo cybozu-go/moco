@@ -437,7 +437,7 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 		return nil, fmt.Errorf("failed to reconcile my.cnf configmap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
 
-	log.Info("reconciled my.cnf configmap", "name", cmName)
+	log.Info("reconciled my.cnf ConfigMap", "configMapName", cmName)
 
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
@@ -517,7 +517,7 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 			return fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, name, err)
 		}
 
-		log.Info("reconciled configmap for slow logs", "name", name)
+		log.Info("reconciled ConfigMap for slow logs", "configMapName", name)
 	} else {
 		cm := &corev1.ConfigMap{}
 		cm.Namespace = cluster.Namespace
@@ -572,7 +572,7 @@ func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, 
 		return fmt.Errorf("failed to reconcile service account %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	log.Info("reconciled service account", "name", name)
+	log.Info("reconciled ServiceAccount", "serviceAccountName", name)
 
 	return nil
 }
@@ -700,7 +700,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		}
 	}
 
-	log.Info("reconciled service", "name", name)
+	log.Info("reconciled Service", "serviceName", name)
 
 	return nil
 }
@@ -877,7 +877,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		}
 	}
 
-	log.Info("reconciled stateful set", "name", cluster.PrefixedName())
+	log.Info("reconciled StatefulSet", "statefulSetName", cluster.PrefixedName())
 
 	return nil
 }
@@ -955,7 +955,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		}
 	}
 
-	log.Info("reconciled PDB", "name", pdb.Name)
+	log.Info("reconciled PDB", "pdbName", pdb.Name)
 
 	return nil
 }
@@ -1173,7 +1173,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		}
 	}
 
-	log.Info("reconciled CronJob for backup", "name", cronJobName)
+	log.Info("reconciled CronJob for backup", "cronJobName", cronJobName)
 
 	if err := r.reconcileV1BackupJobRole(ctx, req, cluster); err != nil {
 		return err
@@ -1255,7 +1255,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, r
 		}
 	}
 
-	log.Info("reconciled Role for backup", "name", name)
+	log.Info("reconciled Role for backup", "roleName", name)
 
 	return nil
 }
@@ -1322,7 +1322,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Con
 		}
 	}
 
-	log.Info("reconciled RoleBinding for backup", "name", name)
+	log.Info("reconciled RoleBinding for backup", "roleBindingName", name)
 
 	return nil
 }
@@ -1477,7 +1477,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			}
 		}
 
-		log.Info("reconciled Job for restore", "name", jobName)
+		log.Info("reconciled Job for restore", "jobName", jobName)
 	}
 
 	if err := r.reconcileV1RestoreJobRole(ctx, req, cluster); err != nil {
@@ -1560,7 +1560,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, 
 		}
 	}
 
-	log.Info("reconciled Role for backup", "name", name)
+	log.Info("reconciled Role for backup", "roleName", name)
 
 	return nil
 }
@@ -1627,7 +1627,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Co
 		}
 	}
 
-	log.Info("reconciled RoleBinding for restore", "name", name)
+	log.Info("reconciled RoleBinding for restore", "roleBindingName", name)
 
 	return nil
 }
