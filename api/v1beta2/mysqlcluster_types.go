@@ -152,6 +152,7 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 	mysqldIndex := -1
 	for i, container := range s.PodTemplate.Spec.Containers {
 		if container.Name == nil {
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "container name is required"))
 			continue
 		}
 
@@ -192,6 +193,7 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 	pp = p.Child("initContainers")
 	for i, container := range s.PodTemplate.Spec.InitContainers {
 		if container.Name == nil {
+			allErrs = append(allErrs, field.Forbidden(pp.Index(i), "init container name is required"))
 			continue
 		}
 
