@@ -228,6 +228,8 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 			continue
 		}
 
+		updateContainerWithSecurityContext(&c)
+
 		switch *c.Name {
 		case constants.MysqldContainerName:
 		case constants.AgentContainerName:
@@ -280,6 +282,7 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, given := range spec.InitContainers {
 		ic := given
+		updateContainerWithSecurityContext(&ic)
 		initContainers = append(initContainers, &ic)
 	}
 	return initContainers
@@ -287,9 +290,9 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 
 func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
 	if container.SecurityContext == nil {
-		container.WithSecurityContext(corev1ac.SecurityContext().
-			WithRunAsUser(constants.ContainerUID).
-			WithRunAsGroup(constants.ContainerGID),
-		)
+		container.WithSecurityContext(corev1ac.SecurityContext())
 	}
+	container.SecurityContext.
+		WithRunAsUser(constants.ContainerUID).
+		WithRunAsGroup(constants.ContainerGID)
 }

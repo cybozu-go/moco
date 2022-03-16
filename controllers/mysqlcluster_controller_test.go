@@ -714,6 +714,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.Image).To(Equal("moco-mysql:latest"))
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(360)))
+				Expect(c.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
 			case constants.AgentContainerName:
 				foundAgent = true
 				Expect(c.Image).To(Equal(testAgentImage))
@@ -813,10 +814,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			WithTerminationGracePeriodSeconds(512).
 			WithPriorityClassName("hoge").
 			WithContainers(corev1ac.Container().WithName("dummy").WithImage("dummy:latest")).
-			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest")).
+			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest").
+				WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))).
 			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource()))
 
 		for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
+			switch *c.Name {
+			case constants.MysqldContainerName:
+				c.WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))
+			}
 			podSpec.WithContainers(&c)
 		}
 
@@ -848,10 +854,17 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		foundDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
+			Expect(c.SecurityContext).NotTo(BeNil())
+			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.MysqldContainerName:
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
+				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
+				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
@@ -861,6 +874,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.Args).To(HaveLen(3))
 			case "dummy":
 				foundDummyContainer = true
+				Expect(c.Image).To(Equal("dummy:latest"))
+				Expect(c.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
 			}
 		}
 		Expect(foundExporter).To(BeTrue())
@@ -868,9 +883,17 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		foundInitDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.InitContainers {
+			Expect(c.SecurityContext).NotTo(BeNil())
+			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case "init-dummy":
 				foundInitDummyContainer = true
+				Expect(c.Image).To(Equal("init-dummy:latest"))
+				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
+				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 			}
 		}
 		Expect(foundInitDummyContainer).To(BeTrue())
