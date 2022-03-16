@@ -4,4 +4,4 @@ image:
 
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
-  tag:  # 0.11.0
+  tag:  # 0.11.1
