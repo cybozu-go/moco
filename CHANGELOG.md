@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.1] - 2022-03-16
+
+### Changed
+- Using SSA to create Secret (#387)
+- Validate that container name is non-nil in validation webhook (#388)
+
+### Fixed
+- Fixed duplicate key in structured log (#386)
+- Add securityContext to the user-supplied containers (#390)
+
 ## [0.11.0] - 2022-03-07
 
 ### Added
@@ -301,7 +311,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/cybozu-go/moco/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/cybozu-go/moco/compare/v0.10.9...v0.11.0
 [0.10.9]: https://github.com/cybozu-go/moco/compare/v0.10.8...v0.10.9
 [0.10.8]: https://github.com/cybozu-go/moco/compare/v0.10.7...v0.10.8
