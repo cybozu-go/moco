@@ -461,9 +461,7 @@ func (m *mockMySQL) getStatus() *dbop.MySQLInstanceStatus {
 	}
 	if len(st.ReplicaHosts) > 0 {
 		crh := make([]dbop.ReplicaHost, len(m.status.ReplicaHosts))
-		for i, h := range m.status.ReplicaHosts {
-			crh[i] = h
-		}
+		copy(crh, m.status.ReplicaHosts)
 		st.ReplicaHosts = crh
 	}
 	return &st
