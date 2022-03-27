@@ -50,15 +50,18 @@ type PodTemplateSpec struct {
 }
 
 type OverwriteContainer struct {
-	Name      string // required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
+	Name      string
 	Resources *corev1ac.ResourceRequirementsApplyConfiguration
 }
 ```
 
 `overwriteContainers` is a container definition with only name and customizable fields.
 moco-controller refers to `overwriteContainers` when creating containers and overwrites fields if the container name matches.
+The Name field is required and validated by Enum.
+`overwriteContainers` does not distinguish between initContainer and container.
 
-`overwriteContainer` does not distinguish between initContainer and container, and the names of required fields are validated with the validation webhook.
 No merge logic is provided for container resources to avoid implicit value setting situations.
 
 Pros:
@@ -69,8 +72,6 @@ Pros:
 Cons:
 
 * If you want different customizable fields for different containers, you cannot express
-* Users need to know the list of containers to be added by the system
-  * Follow it in the documentation
 
 ## AlternativesConsidered
 
