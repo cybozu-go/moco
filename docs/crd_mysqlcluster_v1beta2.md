@@ -11,6 +11,7 @@
 * [MySQLClusterSpec](#mysqlclusterspec)
 * [MySQLClusterStatus](#mysqlclusterstatus)
 * [ObjectMeta](#objectmeta)
+* [OverwriteContainer](#overwritecontainer)
 * [PersistentVolumeClaim](#persistentvolumeclaim)
 * [PodTemplateSpec](#podtemplatespec)
 * [ReconcileInfo](#reconcileinfo)
@@ -129,6 +130,17 @@ ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMe
 
 [Back to Custom Resources](#custom-resources)
 
+#### OverwriteContainer
+
+OverwriteContainer defines the container spec used for overwriting.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name of the container to overwrite. | [OverwriteableContainerName](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName) | true |
+| resources | Resources is the container resource to be overwritten. | *[ResourceRequirementsApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration) | false |
+
+[Back to Custom Resources](#custom-resources)
+
 #### PersistentVolumeClaim
 
 PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.
@@ -148,6 +160,7 @@ PodTemplateSpec describes the data a pod should have when created from a templat
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  The name in this metadata is ignored. | [ObjectMeta](#objectmeta) | false |
 | spec | Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be `mysqld`. | [PodSpecApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration) | true |
+| overwriteContainers | OverwriteContainers overwrites the container definitions provided by default by the system. | [][OverwriteContainer](#overwritecontainer) | false |
 
 [Back to Custom Resources](#custom-resources)
 

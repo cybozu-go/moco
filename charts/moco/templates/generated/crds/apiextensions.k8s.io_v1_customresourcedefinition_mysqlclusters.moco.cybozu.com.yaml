@@ -2,8 +2,14 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ template "moco.fullname"
+      . }}-serving-cert'
     controller-gen.kubebuilder.io/version: v0.7.0
+  labels:
+    app.kubernetes.io/managed-by: '{{ .Release.Service }}'
+    app.kubernetes.io/name: '{{ include "moco.name" . }}'
+    app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
+    helm.sh/chart: '{{ include "moco.chart" . }}'
   name: mysqlclusters.moco.cybozu.com
 spec:
   conversion:
@@ -11,8 +17,8 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: webhook-service
-          namespace: system
+          name: '{{ template "moco.fullname" . }}-webhook-service'
+          namespace: '{{ .Release.Namespace }}'
           path: /convert
       conversionReviewVersions:
       - v1
