@@ -46,13 +46,24 @@ Pseudo-code:
 type PodTemplateSpec struct {
 	ObjectMeta
 	Spec                PodSpecApplyConfiguration
-	OverwriteContainers []OverwriteContainer // added
+	// +optional
+	OverwriteContainers []OverwriteContainer
 }
+
+// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
+type OverwriteableContainerName string
+
+const (
+	AgentContainerName             OverwriteableContainerName = constants.AgentContainerName
+	InitContainerName              OverwriteableContainerName = constants.InitContainerName
+	SlowQueryLogAgentContainerName OverwriteableContainerName = constants.SlowQueryLogAgentContainerName
+	ExporterContainerName          OverwriteableContainerName = constants.ExporterContainerName
+)
 
 type OverwriteContainer struct {
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
-	Name      string
+	Name OverwriteableContainerName
+	// +optional
 	Resources *corev1ac.ResourceRequirementsApplyConfiguration
 }
 ```
