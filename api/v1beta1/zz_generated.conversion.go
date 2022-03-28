@@ -181,11 +181,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*v1beta2.PodTemplateSpec)(nil), (*PodTemplateSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1beta2_PodTemplateSpec_To__PodTemplateSpec(a.(*v1beta2.PodTemplateSpec), b.(*PodTemplateSpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*ReconcileInfo)(nil), (*v1beta2.ReconcileInfo)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert__ReconcileInfo_To_v1beta2_ReconcileInfo(a.(*ReconcileInfo), b.(*v1beta2.ReconcileInfo), scope)
 	}); err != nil {
@@ -253,6 +248,11 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddConversionFunc((*v1beta2.MySQLCluster)(nil), (*MySQLCluster)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1beta2_MySQLCluster_To__MySQLCluster(a.(*v1beta2.MySQLCluster), b.(*MySQLCluster), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddConversionFunc((*v1beta2.PodTemplateSpec)(nil), (*PodTemplateSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1beta2_PodTemplateSpec_To__PodTemplateSpec(a.(*v1beta2.PodTemplateSpec), b.(*PodTemplateSpec), scope)
 	}); err != nil {
 		return err
 	}

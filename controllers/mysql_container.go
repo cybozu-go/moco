@@ -155,11 +155,12 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 	)
 
 	updateContainerWithSecurityContext(c)
+	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1ac.StatefulSetApplyConfiguration, force bool) *corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta2.MySQLCluster, sts *appsv1ac.StatefulSetApplyConfiguration, force bool) *corev1ac.ContainerApplyConfiguration {
 	stsINotNil := (sts != nil && sts.Spec != nil && sts.Spec.Template != nil && sts.Spec.Template.Spec != nil)
 
 	if !force && stsINotNil {
@@ -184,11 +185,12 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(sts *appsv1ac.State
 		)
 
 	updateContainerWithSecurityContext(c)
+	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string) *corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1ExporterContainer(cluster *mocov1beta2.MySQLCluster, collectors []string) *corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.ExporterContainerName).
 		WithImage(r.ExporterImage).
@@ -213,6 +215,7 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(collectors []string) *c
 	}
 
 	updateContainerWithSecurityContext(c)
+	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
 }
@@ -275,6 +278,7 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 	)
 
 	updateContainerWithSecurityContext(c)
+	updateContainerWithOverwriteContainers(cluster, c)
 
 	var initContainers []*corev1ac.ContainerApplyConfiguration
 	initContainers = append(initContainers, c)
@@ -295,4 +299,19 @@ func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfig
 	container.SecurityContext.
 		WithRunAsUser(constants.ContainerUID).
 		WithRunAsGroup(constants.ContainerGID)
+}
+
+func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, container *corev1ac.ContainerApplyConfiguration) {
+	if len(cluster.Spec.PodTemplate.OverwriteContainers) == 0 {
+		return
+	}
+
+	for _, overwrite := range cluster.Spec.PodTemplate.OverwriteContainers {
+		overwrite := overwrite
+		if container.Name != nil && *container.Name == overwrite.Name.String() {
+			if overwrite.Resources != nil {
+				container.WithResources((*corev1ac.ResourceRequirementsApplyConfiguration)(overwrite.Resources))
+			}
+		}
+	}
 }
