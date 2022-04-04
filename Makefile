@@ -8,6 +8,7 @@ CRD_TO_MARKDOWN_VERSION = 0.0.3
 MYSQLSH_VERSION = 8.0.28-1
 MDBOOK_VERSION = 0.4.13
 GORELEASER_VERSION = 1.0.0
+YQ_VERSION = 4.23.1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
@@ -58,11 +59,13 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: controller-gen kustomize yq ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	rm -rf charts/moco/templates/generated/
+	mkdir -p charts/moco/templates/generated/crds/
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd -o config/crd/tests # Outputs static CRDs with conversion webhook enabled for use with Envtest.
-	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds -o charts/moco/templates/generated/crds
-	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates > charts/moco/templates/generated/generated.yaml
+	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds | $(YQ) e "." - > charts/moco/templates/generated/crds/moco_crds.yaml
+	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates | $(YQ) e "." - > charts/moco/templates/generated/generated.yaml
 
 .PHONY: generate
 generate: controller-gen conversion-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -192,6 +195,15 @@ $(GORELEASER):
 	mkdir -p $(BIN_DIR)
 	curl -L -sS https://github.com/goreleaser/goreleaser/releases/download/v$(GORELEASER_VERSION)/goreleaser_Linux_x86_64.tar.gz \
 	  | tar xz -C $(BIN_DIR) goreleaser
+
+YQ := $(shell pwd)/bin/yq_linux_amd64
+.PHONY: yq
+yq: $(YQ) ## Download yq locally if necessary.
+
+$(YQ):
+	mkdir -p $(BIN_DIR)
+	curl -L -sS https://github.com/mikefarah/yq/releases/download/v$(YQ_VERSION)/yq_linux_amd64.tar.gz \
+	  | tar -C $(BIN_DIR) -xzf -
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
