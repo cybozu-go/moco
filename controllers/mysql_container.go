@@ -7,6 +7,7 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
@@ -152,6 +153,16 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 			WithName(constants.AgentMetricsPortName).
 			WithContainerPort(constants.AgentMetricsPort).
 			WithProtocol(corev1.ProtocolTCP),
+	).WithResources(
+		corev1ac.ResourceRequirements().
+			WithRequests(corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(constants.AgentContainerCPURequest),
+				corev1.ResourceMemory: resource.MustParse(constants.AgentContainerMemRequest),
+			}).
+			WithLimits(corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(constants.AgentContainerCPULimit),
+				corev1.ResourceMemory: resource.MustParse(constants.AgentContainerMemLimit),
+			}),
 	)
 
 	updateContainerWithSecurityContext(c)
@@ -182,6 +193,17 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta
 			corev1ac.VolumeMount().
 				WithName(constants.VarLogVolumeName).
 				WithMountPath(constants.LogDirPath),
+		).
+		WithResources(
+			corev1ac.ResourceRequirements().
+				WithRequests(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.SlowQueryLogAgentCPURequest),
+					corev1.ResourceMemory: resource.MustParse(constants.SlowQueryLogAgentMemRequest),
+				}).
+				WithLimits(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.SlowQueryLogAgentCPULimit),
+					corev1.ResourceMemory: resource.MustParse(constants.SlowQueryLogAgentMemLimit),
+				}),
 		)
 
 	updateContainerWithSecurityContext(c)
@@ -208,6 +230,17 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(cluster *mocov1beta2.My
 				WithName(constants.MySQLConfSecretVolumeName).
 				WithMountPath(constants.MyCnfSecretPath).
 				WithReadOnly(true),
+		).
+		WithResources(
+			corev1ac.ResourceRequirements().
+				WithRequests(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.ExporterContainerCPURequest),
+					corev1.ResourceMemory: resource.MustParse(constants.ExporterContainerMemRequest),
+				}).
+				WithLimits(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.ExporterContainerCPULimit),
+					corev1.ResourceMemory: resource.MustParse(constants.ExporterContainerMemLimit),
+				}),
 		)
 
 	for _, cl := range collectors {
@@ -275,6 +308,16 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 		corev1ac.VolumeMount().
 			WithName(constants.MySQLInitConfVolumeName).
 			WithMountPath(constants.MySQLInitConfPath),
+	).WithResources(
+		corev1ac.ResourceRequirements().
+			WithRequests(corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(constants.InitContainerCPURequest),
+				corev1.ResourceMemory: resource.MustParse(constants.InitContainerMemRequest),
+			}).
+			WithLimits(corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(constants.InitContainerCPULimit),
+				corev1.ResourceMemory: resource.MustParse(constants.InitContainerMemLimit),
+			}),
 	)
 
 	updateContainerWithSecurityContext(c)
