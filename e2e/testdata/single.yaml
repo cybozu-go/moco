@@ -12,7 +12,7 @@ data:
   long_query_time: "0"
   innodb_log_file_size: "10M"
 ---
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: foo
@@ -24,6 +24,24 @@ spec:
       containers:
       - name: mysqld
         image: quay.io/cybozu/mysql:{{ . }}
+    # Specify minimum resources so as not to overwhelm CI resources.
+    overwriteContainers:
+      - name: agent
+        resources:
+          requests:
+            cpu: 1m
+      - name: moco-init
+        resources:
+          requests:
+            cpu: 1m
+      - name: slow-log
+        resources:
+          requests:
+            cpu: 1m
+      - name: mysqld-exporter
+        resources:
+          requests:
+            cpu: 1m
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
