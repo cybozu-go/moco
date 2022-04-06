@@ -800,6 +800,7 @@ func autoConvert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration
 	out.Overhead = (*corev1.ResourceList)(unsafe.Pointer(in.Overhead))
 	out.TopologySpreadConstraints = *(*[]v1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
+	out.OS = (*v1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
 	return nil
 }
 
@@ -844,6 +845,7 @@ func autoConvert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration
 	out.Overhead = (*corev1.ResourceList)(unsafe.Pointer(in.Overhead))
 	out.TopologySpreadConstraints = *(*[]v1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
+	out.OS = (*v1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
 	return nil
 }
 
