@@ -1,13 +1,13 @@
 # Tool versions
-CTRL_TOOLS_VERSION=0.7.0
+CTRL_TOOLS_VERSION=0.8.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 CODE_GENERATOR_VERSION := $(shell awk '/k8s.io\/client-go/ {print substr($$2, 2)}' go.mod)
-KUSTOMIZE_VERSION = 4.4.1
-HELM_VERSION = 3.7.1
+KUSTOMIZE_VERSION = 4.5.4
+HELM_VERSION = 3.8.1
 CRD_TO_MARKDOWN_VERSION = 0.0.3
 MYSQLSH_VERSION = 8.0.28-1
-MDBOOK_VERSION = 0.4.13
-GORELEASER_VERSION = 1.0.0
+MDBOOK_VERSION = 0.4.17
+GORELEASER_VERSION = 1.8.2
 YQ_VERSION = 4.23.1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
