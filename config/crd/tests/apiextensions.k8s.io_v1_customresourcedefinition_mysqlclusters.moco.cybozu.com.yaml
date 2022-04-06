@@ -5303,6 +5303,49 @@ spec:
                         description: Name is the name of the object.
                         type: string
                     type: object
+                  overwriteContainers:
+                    description: OverwriteContainers overwrites the container definitions
+                      provided by default by the system.
+                    items:
+                      description: OverwriteContainer defines the container spec used
+                        for overwriting.
+                      properties:
+                        name:
+                          description: Name of the container to overwrite.
+                          enum:
+                          - agent
+                          - moco-init
+                          - slow-log
+                          - mysqld-exporter
+                          type: string
+                        resources:
+                          description: Resources is the container resource to be overwritten.
+                          properties:
+                            limits:
+                              additionalProperties:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              description: ResourceList is a set of (resource name,
+                                quantity) pairs.
+                              type: object
+                            requests:
+                              additionalProperties:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              description: ResourceList is a set of (resource name,
+                                quantity) pairs.
+                              type: object
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
                   spec:
                     description: Specification of the desired behavior of the pod.
                       The name of the MySQL server container in this spec must be

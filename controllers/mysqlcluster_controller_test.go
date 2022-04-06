@@ -668,6 +668,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.ReplicationSourceSecretName = pointer.String("source-secret")
 		cluster.Spec.PodTemplate.Annotations = map[string]string{"foo": "bar"}
 		cluster.Spec.PodTemplate.Labels = map[string]string{"foo": "baz"}
+
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -718,11 +719,17 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				foundAgent = true
 				Expect(c.Image).To(Equal(testAgentImage))
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 			case constants.SlowQueryLogAgentContainerName:
 				foundSlowLogAgent = true
 				Expect(c.Image).To(Equal(testFluentBitImage))
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
 			case constants.ExporterContainerName:
 				foundExporter = true
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 			}
 		}
 		Expect(foundMysqld).To(BeTrue())
@@ -735,6 +742,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(initContainer.Name).To(Equal(constants.InitContainerName))
 		Expect(initContainer.Image).To(Equal("moco-mysql:latest"))
 		Expect(initContainer.Command).To(ContainElement(fmt.Sprintf("%d", cluster.Spec.ServerIDBase)))
+		Expect(initContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
+		Expect(initContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 		Expect(initContainer.SecurityContext).NotTo(BeNil())
 		Expect(initContainer.SecurityContext.RunAsUser).NotTo(BeNil())
 		Expect(*initContainer.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
@@ -809,6 +818,29 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
+		cluster.Spec.PodTemplate.OverwriteContainers = []mocov1beta2.OverwriteContainer{
+			{
+				Name: mocov1beta2.AgentContainerName,
+				Resources: (*mocov1beta2.ResourceRequirementsApplyConfiguration)(corev1ac.ResourceRequirements().
+					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}).
+					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}),
+				),
+			},
+			{
+				Name: mocov1beta2.ExporterContainerName,
+				Resources: (*mocov1beta2.ResourceRequirementsApplyConfiguration)(corev1ac.ResourceRequirements().
+					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}).
+					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}),
+				),
+			},
+			{
+				Name: mocov1beta2.InitContainerName,
+				Resources: (*mocov1beta2.ResourceRequirementsApplyConfiguration)(corev1ac.ResourceRequirements().
+					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}).
+					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}),
+				),
+			},
+		}
 
 		podSpec := corev1ac.PodSpec().
 			WithTerminationGracePeriodSeconds(512).
@@ -868,10 +900,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 			case constants.ExporterContainerName:
 				foundExporter = true
 				Expect(c.Image).To(Equal(testExporterImage))
 				Expect(c.Args).To(HaveLen(3))
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
 			case "dummy":
 				foundDummyContainer = true
 				Expect(c.Image).To(Equal("dummy:latest"))
@@ -889,6 +925,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
 			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
+			case constants.InitContainerName:
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 			case "init-dummy":
 				foundInitDummyContainer = true
 				Expect(c.Image).To(Equal("init-dummy:latest"))

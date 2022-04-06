@@ -873,10 +873,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			return fmt.Errorf("failed to extract StatefulSet: %w", err)
 		}
 
-		containers = append(containers, r.makeV1SlowQueryLogContainer(sts, force))
+		containers = append(containers, r.makeV1SlowQueryLogContainer(cluster, sts, force))
 	}
 	if len(cluster.Spec.Collectors) > 0 {
-		containers = append(containers, r.makeV1ExporterContainer(cluster.Spec.Collectors))
+		containers = append(containers, r.makeV1ExporterContainer(cluster, cluster.Spec.Collectors))
 	}
 	containers = append(containers, r.makeV1OptionalContainers(cluster)...)
 

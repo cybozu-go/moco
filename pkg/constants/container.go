@@ -9,6 +9,29 @@ const (
 	ExporterContainerName          = "mysqld-exporter"
 )
 
+// container resources
+const (
+	AgentContainerCPURequest = "100m"
+	AgentContainerCPULimit   = "100m"
+	AgentContainerMemRequest = "100Mi"
+	AgentContainerMemLimit   = "100Mi"
+
+	InitContainerCPURequest = "100m"
+	InitContainerCPULimit   = "100m"
+	InitContainerMemRequest = "100Mi"
+	InitContainerMemLimit   = "100Mi"
+
+	SlowQueryLogAgentCPURequest = "100m"
+	SlowQueryLogAgentCPULimit   = "100m"
+	SlowQueryLogAgentMemRequest = "20Mi"
+	SlowQueryLogAgentMemLimit   = "20Mi"
+
+	ExporterContainerCPURequest = "200m"
+	ExporterContainerCPULimit   = "200m"
+	ExporterContainerMemRequest = "100Mi"
+	ExporterContainerMemLimit   = "100Mi"
+)
+
 // volume names
 const (
 	MySQLDataVolumeName               = "mysql-data"

@@ -11,6 +11,7 @@
 - [Usage](usage.md)
 - [Advanced topics](advanced.md)
     - [Building your own imge](custom-mysqld.md)
+    - [Customize system container](customize-system-container.md)
 - [Troubleshooting](troubles.md)
 
 # References

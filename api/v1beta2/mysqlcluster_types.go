@@ -288,6 +288,54 @@ type PodTemplateSpec struct {
 	// Specification of the desired behavior of the pod.
 	// The name of the MySQL server container in this spec must be `mysqld`.
 	Spec PodSpecApplyConfiguration `json:"spec"`
+
+	// OverwriteContainers overwrites the container definitions provided by default by the system.
+	// +optional
+	OverwriteContainers []OverwriteContainer `json:"overwriteContainers,omitempty"`
+}
+
+// OverwriteableContainerName is the name of the container.
+// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
+type OverwriteableContainerName string
+
+// String implements the fmt.Stringer interface.
+func (c OverwriteableContainerName) String() string {
+	return string(c)
+}
+
+const (
+	AgentContainerName             OverwriteableContainerName = constants.AgentContainerName
+	InitContainerName              OverwriteableContainerName = constants.InitContainerName
+	SlowQueryLogAgentContainerName OverwriteableContainerName = constants.SlowQueryLogAgentContainerName
+	ExporterContainerName          OverwriteableContainerName = constants.ExporterContainerName
+)
+
+// OverwriteContainer defines the container spec used for overwriting.
+type OverwriteContainer struct {
+	// Name of the container to overwrite.
+	// +kubebuilder:validation:Required
+	Name OverwriteableContainerName `json:"name"`
+
+	// Resources is the container resource to be overwritten.
+	// +optional
+	Resources *ResourceRequirementsApplyConfiguration `json:"resources,omitempty"`
+}
+
+// ResourceRequirementsApplyConfiguration is the type defined to implement the DeepCopy method.
+type ResourceRequirementsApplyConfiguration corev1ac.ResourceRequirementsApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new OverwriteContainer.
+func (in *ResourceRequirementsApplyConfiguration) DeepCopy() *ResourceRequirementsApplyConfiguration {
+	out := new(ResourceRequirementsApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
 }
 
 // PersistentVolumeClaimSpecApplyConfiguration is the type defined to implement the DeepCopy method.
