@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: make book
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: book
         path: docs/book
@@ -26,7 +26,7 @@ jobs:
         ref: gh-pages
       # ignore helm chart index file and chart archive file.
     - run: ls | grep -v -E 'index.yaml|moco-.*\.tgz' | xargs rm -rf
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: book
     - run: ls -R

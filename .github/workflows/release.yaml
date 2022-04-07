@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - name: GoReleaser
@@ -42,5 +42,5 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Update new version in krew-index
-      # v0.0.40 https://github.com/rajatjindal/krew-release-bot/releases/tag/v0.0.40
-      uses: rajatjindal/krew-release-bot@56925b62bacc2c652114d66a8256faaf0bf89fa9
+      # v0.0.42 https://github.com/rajatjindal/krew-release-bot/releases/tag/v0.0.42
+      uses: rajatjindal/krew-release-bot@ba5e167fbd1526240f5f5d2eaf1ec573fc5942de

@@ -30,7 +30,7 @@ jobs:
       - name: Packaging the chart
         run: helm package ./charts/moco/
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: helm-charts
           path: ./moco-*.tgz
@@ -50,7 +50,7 @@ jobs:
         with:
           version: v3.6.3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: helm-charts
 
