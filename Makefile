@@ -87,6 +87,7 @@ book: mdbook
 .PHONY: check-generate
 check-generate:
 	$(MAKE) manifests generate apidoc
+	go mod tidy
 	git diff --exit-code --name-only
 
 .PHONY: envtest
