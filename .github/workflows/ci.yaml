@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - run: make release-build
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - run: make test
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - run: make setup
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - run: |
@@ -66,7 +66,7 @@ jobs:
     - run: make logs
       working-directory: e2e
       if: always()
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: ${{ env.go-version }}
       - run: |
@@ -95,7 +95,7 @@ jobs:
       - run: make logs
         working-directory: e2e
         if: always()
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ env.go-version }}
     - run: |
@@ -120,7 +120,7 @@ jobs:
     - run: make logs
       working-directory: e2e
       if: always()
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: logs-upgrade.tar.gz
