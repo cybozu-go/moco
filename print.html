@@ -851,7 +851,7 @@ Specifying container names in <code>overwriteContainers</code> that are not list
 <p><em>Status: not fixed as of MOCO v0.9.5</em></p>
 <p>If you use MOCO with MySQL version 8.0.25 or earlier, you should not configure the replicas with <code>slave_parallel_workers</code> &gt; 1.
 Multi-threaded replication will cause the replica to fail to resume after the crash.</p>
-<p>This issue is registered as https://github.com/cybozu-go/moco/issues/322 and will be addressed at no distant date.</p>
+<p>This issue is registered as <a href="https://github.com/cybozu-go/moco/issues/322">#322</a> and will be addressed at no distant date.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="trouble-shooting"><a class="header" href="#trouble-shooting">Trouble shooting</a></h1>
 <h2 id="failed-to-initialize-data-directory-for-mysqld"><a class="header" href="#failed-to-initialize-data-directory-for-mysqld">Failed to initialize data directory for <code>mysqld</code></a></h2>
 <p>If you see the following error message from an init container of <code>mysqld</code> Pod,</p>
