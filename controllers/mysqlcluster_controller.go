@@ -226,6 +226,10 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcilePVC(ctx, req, cluster); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if err := r.reconcileV1StatefulSet(ctx, req, cluster, mycnf); err != nil {
 		log.Error(err, "failed to reconcile stateful set")
 		return ctrl.Result{}, err
