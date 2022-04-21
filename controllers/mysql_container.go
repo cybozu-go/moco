@@ -30,7 +30,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 	source.
 		WithArgs("--defaults-file="+filepath.Join(constants.MySQLConfPath, constants.MySQLConfName)).
 		WithLifecycle(corev1ac.Lifecycle().
-			WithPreStop(corev1ac.Handler().
+			WithPreStop(corev1ac.LifecycleHandler().
 				WithExec(corev1ac.ExecAction().
 					WithCommand("sleep", constants.PreStopSeconds)),
 			),

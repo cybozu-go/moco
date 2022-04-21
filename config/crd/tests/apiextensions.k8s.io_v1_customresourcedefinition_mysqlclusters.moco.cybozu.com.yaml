@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
-    controller-gen.kubebuilder.io/version: v0.7.0
+    controller-gen.kubebuilder.io/version: v0.8.0
   name: mysqlclusters.moco.cybozu.com
 spec:
   conversion:
@@ -715,9 +715,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -777,9 +777,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -856,6 +856,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -956,6 +967,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -1140,6 +1162,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -1409,9 +1442,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -1471,9 +1504,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -1550,6 +1583,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -1650,6 +1694,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -1834,6 +1889,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -2104,9 +2170,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -2166,9 +2232,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -2245,6 +2311,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -2345,6 +2422,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -2529,6 +2617,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -2644,6 +2743,15 @@ spec:
                       nodeSelector:
                         additionalProperties:
                           type: string
+                        type: object
+                      os:
+                        description: PodOSApplyConfiguration represents an declarative
+                          configuration of the PodOS type for use with apply.
+                        properties:
+                          name:
+                            description: OSName is the set of OS'es that can be used
+                              in OS.
+                            type: string
                         type: object
                       overhead:
                         additionalProperties:
@@ -5939,9 +6047,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -6001,9 +6109,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -6080,6 +6188,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -6180,6 +6299,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -6364,6 +6494,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -6633,9 +6774,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -6695,9 +6836,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -6774,6 +6915,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -6874,6 +7026,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -7058,6 +7221,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -7328,9 +7502,9 @@ spec:
                                 for use with apply.
                               properties:
                                 postStart:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -7390,9 +7564,9 @@ spec:
                                       type: object
                                   type: object
                                 preStop:
-                                  description: HandlerApplyConfiguration represents
-                                    an declarative configuration of the Handler type
-                                    for use with apply.
+                                  description: LifecycleHandlerApplyConfiguration
+                                    represents an declarative configuration of the
+                                    LifecycleHandler type for use with apply.
                                   properties:
                                     exec:
                                       description: ExecActionApplyConfiguration represents
@@ -7469,6 +7643,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -7569,6 +7754,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -7753,6 +7949,17 @@ spec:
                                 failureThreshold:
                                   format: int32
                                   type: integer
+                                grpc:
+                                  description: GRPCActionApplyConfiguration represents
+                                    an declarative configuration of the GRPCAction
+                                    type for use with apply.
+                                  properties:
+                                    port:
+                                      format: int32
+                                      type: integer
+                                    service:
+                                      type: string
+                                  type: object
                                 httpGet:
                                   description: HTTPGetActionApplyConfiguration represents
                                     an declarative configuration of the HTTPGetAction
@@ -7868,6 +8075,15 @@ spec:
                       nodeSelector:
                         additionalProperties:
                           type: string
+                        type: object
+                      os:
+                        description: PodOSApplyConfiguration represents an declarative
+                          configuration of the PodOS type for use with apply.
+                        properties:
+                          name:
+                            description: OSName is the set of OS'es that can be used
+                              in OS.
+                            type: string
                         type: object
                       overhead:
                         additionalProperties:
