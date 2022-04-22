@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2022-04-22
+
+### Added
+- Allow users to customize containers resources (#394, #395)
+- Clarify a known issue about multi-threaded replication (#400, #401)
+
+### Changed
+- Update mysqld_exporter and Fluent Bit (#402)
+- Support k8s 1.23 (#399)
+- Update actions (#398)
+
+### Fixed
+- Fix broken helm chart (#397)
+
 ## [0.11.1] - 2022-03-16
 
 ### Changed
@@ -311,7 +325,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/cybozu-go/moco/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/cybozu-go/moco/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/cybozu-go/moco/compare/v0.10.9...v0.11.0
 [0.10.9]: https://github.com/cybozu-go/moco/compare/v0.10.8...v0.10.9
