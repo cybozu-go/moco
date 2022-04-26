@@ -838,7 +838,7 @@ spec:
 Specifying container names in <code>overwriteContainers</code> that are not listed here will result in an error in API validation.</p>
 <table><thead><tr><th>Name</th><th>Default CPU Requests/Limits</th><th>Default Memory Requests/Limits</th><th>Description</th></tr></thead><tbody>
 <tr><td>agent</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MOCO's agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent</td></tr>
-<tr><td>moco-init</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address.</td></tr>
+<tr><td>moco-init</td><td><code>100m</code> / <code>100m</code></td><td><code>300Mi</code> / <code>300Mi</code></td><td>Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address.</td></tr>
 <tr><td>slow-log</td><td><code>100m</code> / <code>100m</code></td><td><code>20Mi</code> / <code>20Mi</code></td><td>Sidecar container for outputting slow query logs.</td></tr>
 <tr><td>mysqld-exporter</td><td><code>200m</code> / <code>200m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MySQL server exporter sidecar container.</td></tr>
 </tbody></table>
