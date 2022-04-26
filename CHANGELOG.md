@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2022-04-26
+
+### Fixed
+- Increase memory limit and request for moco-init (#409)
+
 ## [0.12.0] - 2022-04-22
 
 ### Added
@@ -325,7 +330,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/cybozu-go/moco/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/cybozu-go/moco/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/cybozu-go/moco/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/cybozu-go/moco/compare/v0.10.9...v0.11.0
