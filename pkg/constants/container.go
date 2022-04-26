@@ -18,8 +18,8 @@ const (
 
 	InitContainerCPURequest = "100m"
 	InitContainerCPULimit   = "100m"
-	InitContainerMemRequest = "100Mi"
-	InitContainerMemLimit   = "100Mi"
+	InitContainerMemRequest = "300Mi"
+	InitContainerMemLimit   = "300Mi"
 
 	SlowQueryLogAgentCPURequest = "100m"
 	SlowQueryLogAgentCPULimit   = "100m"
