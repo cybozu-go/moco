@@ -220,7 +220,7 @@ func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context,
 	return *storageClass.AllowVolumeExpansion, nil
 }
 
-func (_ MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
+func (MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
 	if sts.Status.ObservedGeneration == 0 {
 		return false
 	}
