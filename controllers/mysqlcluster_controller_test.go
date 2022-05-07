@@ -686,6 +686,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
 				return fmt.Errorf("status is not updated")
 			}
+
 			return nil
 		}).Should(Succeed())
 
