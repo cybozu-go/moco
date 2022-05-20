@@ -125,6 +125,8 @@ The complete reference of MySQLCluster is [`crd_mysqlcluster.md`](crd_mysqlclust
 
 Let's call the source mysqld instance _donor_.
 
+First, make sure `partial_revokes` is enabled **on the donor**; Replicating data from the donor with `partial_revokes` disabled will [result in replication inconsistencies or errors](https://dev.mysql.com/doc/refman/8.0/en/partial-revokes.html#partial-revokes-replication) since MOCO uses `partial_revokes` functionality.
+
 We use [the clone plugin][CLONE] to copy the whole data quickly.
 After the cloning, MOCO needs to create some user accounts and install plugins.
 
