@@ -383,6 +383,7 @@ spec:
 <p>The complete reference of MySQLCluster is <a href="crd_mysqlcluster.html"><code>crd_mysqlcluster.md</code></a>.</p>
 <h3 id="creating-a-cluster-that-replicates-data-from-an-external-mysqld"><a class="header" href="#creating-a-cluster-that-replicates-data-from-an-external-mysqld">Creating a cluster that replicates data from an external mysqld</a></h3>
 <p>Let's call the source mysqld instance <em>donor</em>.</p>
+<p>First, make sure <code>partial_revokes</code> is enabled <strong>on the donor</strong>; Replicating data from the donor with <code>partial_revokes</code> disabled will <a href="https://dev.mysql.com/doc/refman/8.0/en/partial-revokes.html#partial-revokes-replication">result in replication inconsistencies or errors</a> since MOCO uses <code>partial_revokes</code> functionality.</p>
 <p>We use <a href="https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html">the clone plugin</a> to copy the whole data quickly.
 After the cloning, MOCO needs to create some user accounts and install plugins.</p>
 <p><strong>On the donor</strong>, you need to install the plugin and create two user accounts as follows:</p>
