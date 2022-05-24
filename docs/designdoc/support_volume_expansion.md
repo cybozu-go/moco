@@ -77,6 +77,14 @@ status:
 
 Set the `VolumeResized` condition's status to `True` if the PVC expansion was successful.
 
+At the same time, export the metrics:
+
+```text
+moco_cluster_volume_resized_total{status="True/False", name="mycluster", namespace="mynamesapce"} 1
+```
+
+This metrics is incremented if the volume size change succeeds or fails.
+
 ### Restart the StatefulSet
 
 If the volume plugin you are using does not support [online file system expansion](https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#online-file-system-expansion),
@@ -87,3 +95,32 @@ Also, the `ExpandInUsePersistentVolumes` feature gate is enabled by default star
 
 It would be possible for MOCO to support this feature, but since many plugins support online file system expansion, we do not consider it a high priority.
 We will consider implementation when requested by users.
+
+### Allow Editing PVC metadata
+
+Make PVC metadata editable using the volume size resizing mechanism.
+moco-controller re-creates the StatefulSet and sync it to the PVC when labels or annotations are edited in the `volumeClaimTemplates` of the MySQLCluster.
+
+Failure to update will result in a discrepancy between the PVC defined in the MySQLCluster and the actual PVC.
+Add the condition `VolumeClaimTemplatesUpdated` to the MySQLCluster condition to signal this condition.
+
+```yaml
+kind: MySQLCluster
+status:
+  conditions:
+    - lastTransitionTime: "2022-05-01T16:29:24Z"
+      status: "False"
+      type: VolumeClaimTemplatesUpdated
+      message: "Failed to recreate statefulset: ..."
+```
+
+Set the `VolumeClaimTemplatesUpdated` condition's status to `True` if the `volumeClaimTemplates` change was successful.
+This condition is also updated when the PVC expansion.
+
+At the same time, export the metrics:
+
+```text
+moco_cluster_pvc_template_updated_total{status="True/False", name="mycluster", namespace="mynamesapce"} 1
+```
+
+This metrics is incremented if the `volumeClaimTemplates` change succeeds or fails.
