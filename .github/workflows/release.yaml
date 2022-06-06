@@ -33,7 +33,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         builder: ${{ steps.buildx.outputs.name }}
-        push: ${{ github.ref == 'refs/heads/main' }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         target: controller
         labels: ${{ steps.meta.outputs.labels }}
@@ -66,7 +66,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         builder: ${{ steps.buildx.outputs.name }}
-        push: ${{ github.ref == 'refs/heads/main' }}
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
