@@ -9,12 +9,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -52,33 +50,17 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Requ
 		return nil
 	}
 	if err != nil {
-		if condErr := r.updateResizeCondition(ctx, req, corev1.ConditionFalse, err.Error()); condErr != nil {
-			return fmt.Errorf("failed to update resize condition status fields in MySQLCluster: %s: %w", condErr, err)
-		}
-
 		return err
 	}
 
 	log.Info("Starting PVC resize")
 
 	if err := r.resizePVCs(ctx, cluster, &sts, resizeTarget); err != nil {
-		if condErr := r.updateResizeCondition(ctx, req, corev1.ConditionFalse, err.Error()); condErr != nil {
-			return fmt.Errorf("failed to update resize condition status: %s: %w", condErr, err)
-		}
-
 		return err
 	}
 
 	if err := r.deleteStatefulSet(ctx, &sts); err != nil {
-		if condErr := r.updateResizeCondition(ctx, req, corev1.ConditionFalse, err.Error()); condErr != nil {
-			return fmt.Errorf("failed to update resize condition status: %s: %w", condErr, err)
-		}
-
 		return err
-	}
-
-	if err := r.updateResizeCondition(ctx, req, corev1.ConditionTrue, "successfully resized pvc"); err != nil {
-		return fmt.Errorf("failed to update resize condition status: %w", err)
 	}
 
 	return nil
@@ -166,7 +148,7 @@ func (r *MySQLClusterReconciler) deleteStatefulSet(ctx context.Context, sts *app
 	return nil
 }
 
-func (r *MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool, error) {
+func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool, error) {
 	if len(sts.Spec.VolumeClaimTemplates) == 0 {
 		return nil, false, nil
 	}
@@ -222,7 +204,7 @@ func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context,
 	return *storageClass.AllowVolumeExpansion, nil
 }
 
-func (MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
+func (*MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
 	if sts.Status.ObservedGeneration == 0 {
 		return false
 	}
@@ -236,47 +218,4 @@ func (MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) boo
 	}
 
 	return false
-}
-
-func (r *MySQLClusterReconciler) updateResizeCondition(ctx context.Context, req ctrl.Request, status corev1.ConditionStatus, msg string) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		now := metav1.Now()
-
-		var cluster mocov1beta2.MySQLCluster
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, &cluster); err != nil {
-			return fmt.Errorf("failed to get MySQLCluster %s/%s: %w", req.Namespace, req.Name, err)
-		}
-		orig := cluster.DeepCopy()
-
-		newCond := mocov1beta2.MySQLClusterCondition{
-			Type:               mocov1beta2.ConditionVolumeResized,
-			Status:             status,
-			Message:            msg,
-			LastTransitionTime: now,
-		}
-
-		find := false
-
-		for i, cond := range cluster.Status.Conditions {
-			if cond.Type != mocov1beta2.ConditionVolumeResized {
-				continue
-			}
-			find = true
-			if cond.Status == status {
-				newCond.LastTransitionTime = cond.LastTransitionTime
-			}
-			cluster.Status.Conditions[i] = newCond
-		}
-
-		if !find {
-			cluster.Status.Conditions = append(cluster.Status.Conditions, newCond)
-		}
-
-		// if nothing has changed, skip updating.
-		if equality.Semantic.DeepEqual(orig, cluster) {
-			return nil
-		}
-
-		return r.Client.Status().Update(ctx, &cluster)
-	})
 }

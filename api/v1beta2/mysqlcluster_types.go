@@ -502,10 +502,9 @@ type MySQLClusterConditionType string
 
 // Valid values for MySQLClusterConditionType
 const (
-	ConditionInitialized   MySQLClusterConditionType = "Initialized"
-	ConditionAvailable     MySQLClusterConditionType = "Available"
-	ConditionHealthy       MySQLClusterConditionType = "Healthy"
-	ConditionVolumeResized MySQLClusterConditionType = "VolumeResized"
+	ConditionInitialized MySQLClusterConditionType = "Initialized"
+	ConditionAvailable   MySQLClusterConditionType = "Available"
+	ConditionHealthy     MySQLClusterConditionType = "Healthy"
 )
 
 // BackupStatus represents the status of the last successful backup.

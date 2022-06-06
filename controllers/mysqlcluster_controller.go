@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -917,6 +918,19 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 	if equality.Semantic.DeepEqual(sts, origApplyConfig) {
 		return nil
+	}
+
+	// Recreate StatefulSet if VolumeClaimTemplates has differences.
+	// sts will never be nil.
+	if origApplyConfig != nil && origApplyConfig.Spec != nil && origApplyConfig.Spec.VolumeClaimTemplates != nil {
+		if !equality.Semantic.DeepEqual(sts.Spec.VolumeClaimTemplates, origApplyConfig.Spec.VolumeClaimTemplates) {
+			opt := metav1.DeletePropagationOrphan
+			if err := r.Delete(ctx, &orig, &client.DeleteOptions{
+				PropagationPolicy: &opt,
+			}); err != nil {
+				return err
+			}
+		}
 	}
 
 	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{

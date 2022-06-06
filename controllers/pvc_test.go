@@ -65,28 +65,6 @@ func TestReconcilePVC(t *testing.T) {
 			if !pvc.Spec.Resources.Requests.Storage().Equal(tt.wantSize) {
 				t.Errorf("unexpected PVC size: got: %s, want: %s", pvc.Spec.Resources.Requests.Storage().String(), tt.wantSize.String())
 			}
-
-			var cluster mocov1beta2.MySQLCluster
-			if err := r.Get(ctx, types.NamespacedName{Name: tt.cluster.Name, Namespace: tt.cluster.Namespace}, &cluster); err != nil {
-				t.Fatalf("failed to get MySQLCluster: %v", err)
-			}
-			if len(cluster.Status.Conditions) == 0 {
-				t.Fatal("MySQLCluster should have conditions")
-			}
-
-			found := false
-
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type == mocov1beta2.ConditionVolumeResized &&
-					cond.Status == corev1.ConditionTrue {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				t.Error("MySQLCluster should have VolumeResized condition")
-			}
 		})
 	}
 }
