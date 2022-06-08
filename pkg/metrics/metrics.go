@@ -21,6 +21,11 @@ var (
 	TotalReplicasVec   *prometheus.GaugeVec
 	ReadyReplicasVec   *prometheus.GaugeVec
 	ErrantReplicasVec  *prometheus.GaugeVec
+
+	VolumeResizedTotal            *prometheus.CounterVec
+	VolumeResizedErrorTotal       *prometheus.CounterVec
+	StatefulSetRecreateTotal      *prometheus.CounterVec
+	StatefulSetRecreateErrorTotal *prometheus.CounterVec
 )
 
 // Backup related metrics
@@ -154,4 +159,36 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of warnings in the last successful backup",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(BackupWarnings)
+
+	VolumeResizedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "volume_resized_total",
+		Help:      "The number of successful volume resizes",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(VolumeResizedTotal)
+
+	VolumeResizedErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "volume_resized_errors_total",
+		Help:      "The number of failed volume resizes",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(VolumeResizedErrorTotal)
+
+	StatefulSetRecreateTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "statefulset_recreate_total",
+		Help:      "The number of successful StatefulSet recreates",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(StatefulSetRecreateTotal)
+
+	StatefulSetRecreateErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "statefulset_recreate_errors_total",
+		Help:      "The number of failed StatefulSet recreates",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(StatefulSetRecreateErrorTotal)
 }

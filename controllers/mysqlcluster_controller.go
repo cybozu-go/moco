@@ -13,6 +13,7 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/mycnf"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/google/go-cmp/cmp"
@@ -920,14 +921,21 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return nil
 	}
 
+	needRecreate := false
+
 	// Recreate StatefulSet if VolumeClaimTemplates has differences.
 	// sts will never be nil.
 	if origApplyConfig != nil && origApplyConfig.Spec != nil && origApplyConfig.Spec.VolumeClaimTemplates != nil {
 		if !equality.Semantic.DeepEqual(sts.Spec.VolumeClaimTemplates, origApplyConfig.Spec.VolumeClaimTemplates) {
+			needRecreate = true
+
+			// Don’t delete the Pod, only delete the StatefulSet.
+			// Same behavior as `kubectl delete sts moco-xxx --cascade=orphan`
 			opt := metav1.DeletePropagationOrphan
 			if err := r.Delete(ctx, &orig, &client.DeleteOptions{
 				PropagationPolicy: &opt,
 			}); err != nil {
+				metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 				return err
 			}
 		}
@@ -938,7 +946,14 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		Force:        pointer.Bool(true),
 	})
 	if err != nil {
+		if needRecreate {
+			metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
+		}
 		return fmt.Errorf("failed to reconcile stateful set: %w", err)
+	}
+
+	if needRecreate {
+		metrics.StatefulSetRecreateTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 	}
 
 	if debugController {

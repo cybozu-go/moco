@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/google/go-cmp/cmp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -31,6 +35,7 @@ func TestReconcilePVC(t *testing.T) {
 		cluster     *mocov1beta2.MySQLCluster
 		setupClient func(*testing.T) client.Client
 		wantSize    resource.Quantity
+		wantMetrics string
 	}{
 		{
 			name:    "resize succeeded",
@@ -41,6 +46,10 @@ func TestReconcilePVC(t *testing.T) {
 				return setupMockClient(t, cluster, sts)
 			},
 			wantSize: resource.MustParse("2Gi"),
+			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
+# TYPE moco_cluster_volume_resized_total counter
+moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
+`,
 		},
 	}
 
@@ -48,7 +57,10 @@ func TestReconcilePVC(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
+			registry := prometheus.NewRegistry()
 			r := &MySQLClusterReconciler{Client: tt.setupClient(t)}
+
+			metrics.Register(registry)
 
 			err := r.reconcilePVC(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
 				Namespace: tt.cluster.Namespace,
@@ -64,6 +76,10 @@ func TestReconcilePVC(t *testing.T) {
 			}
 			if !pvc.Spec.Resources.Requests.Storage().Equal(tt.wantSize) {
 				t.Errorf("unexpected PVC size: got: %s, want: %s", pvc.Spec.Resources.Requests.Storage().String(), tt.wantSize.String())
+			}
+
+			if err := testutil.GatherAndCompare(registry, strings.NewReader(tt.wantMetrics), "moco_cluster_volume_resized_total"); err != nil {
+				t.Errorf("metrics comparison failed: %v", err)
 			}
 		})
 	}

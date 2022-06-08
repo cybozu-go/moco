@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -56,12 +57,11 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Requ
 	log.Info("Starting PVC resize")
 
 	if err := r.resizePVCs(ctx, cluster, &sts, resizeTarget); err != nil {
+		metrics.VolumeResizedErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 		return err
 	}
 
-	if err := r.deleteStatefulSet(ctx, &sts); err != nil {
-		return err
-	}
+	metrics.VolumeResizedTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 
 	return nil
 }
