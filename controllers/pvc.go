@@ -28,9 +28,11 @@ var (
 //
 //   1. Rewrite PVC object requested volume size.
 //   2. Delete StatefulSet object for "--cascade=orphan" option.
-//   3. The StatefulSet will be re-created in the reconcileV1StatefulSet().
+//   3. The StatefulSet will be re-created.
 //
-// It is preferable to execute this function before reconcileV1StatefulSet(), since the deleted StatefulSet will be immediately re-created.
+// This function rewrites the PVC volume size.
+// StatefulSet deletion and re-creation is done by reconcileV1StatefulSet().
+// Therefore, this function should be called before reconcileV1StatefulSet().
 func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
