@@ -135,19 +135,6 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 	return nil
 }
 
-func (r *MySQLClusterReconciler) deleteStatefulSet(ctx context.Context, sts *appsv1.StatefulSet) error {
-	log := crlog.FromContext(ctx)
-
-	orphan := metav1.DeletePropagationOrphan
-	if err := r.Client.Delete(ctx, sts, &client.DeleteOptions{PropagationPolicy: &orphan}); err != nil {
-		return fmt.Errorf("failed to delete StatefulSet %s/%s: %w", sts.Namespace, sts.Name, err)
-	}
-
-	log.Info("Deleted StatefulSet. It will be re-created in the next reconcile loop.", "statefulSetName", sts.Name)
-
-	return nil
-}
-
 func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool, error) {
 	if len(sts.Spec.VolumeClaimTemplates) == 0 {
 		return nil, false, nil

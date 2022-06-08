@@ -938,6 +938,8 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 				metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 				return err
 			}
+
+			log.Info("volumeClaimTemplates has changed, delete StatefulSet and try to recreate it", "statefulSetName", cluster.PrefixedName())
 		}
 	}
 
