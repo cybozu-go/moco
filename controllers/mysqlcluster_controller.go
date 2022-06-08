@@ -127,7 +127,7 @@ type MySQLClusterReconciler struct {
 //+kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update;patch
-//+kubebuilder:rbac:groups="",resources=storageclasses,verbs=get;list;watch
+//+kubebuilder:rbac:groups="storage.k8s.io",resources=storageclasses,verbs=get;list;watch
 //+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups="batch",resources=cronjobs;jobs,verbs=get;list;watch;create;update;patch;delete
