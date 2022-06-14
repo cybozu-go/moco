@@ -131,6 +131,8 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 			if err := r.Client.Update(ctx, &pvc); err != nil {
 				return fmt.Errorf("failed to update PVC: %w", err)
 			}
+
+			log.Info("PVC resized", "namespace", pvc.Namespace, "pvcName", pvc.Name)
 		}
 	}
 
