@@ -25,10 +25,11 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: ghcr.io/cybozu-go/moco
+        flavor: latest=false
         # ref. https://github.com/docker/metadata-action#typesemver
         tags: |
           type=semver,pattern={{version}}
-    - name: Build (and push if on main)
+    - name: Build
       id: docker_build
       uses: docker/build-push-action@v2
       with:
@@ -58,10 +59,11 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: ghcr.io/cybozu-go/moco-backup
+        flavor: latest=false
         # ref. https://github.com/docker/metadata-action#typesemver
         tags: |
           type=semver,pattern={{version}}
-    - name: Build (and push if on main)
+    - name: Build
       id: docker_build
       uses: docker/build-push-action@v2
       with:
