@@ -91,6 +91,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should deny without storage size in volume claim template", func() {
+		r := makeMySQLCluster()
+		r.Spec.VolumeClaimTemplates[0].Spec.Resources = nil
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should set a valid serverIDBase", func() {
 		r := makeMySQLCluster()
 		err := k8sClient.Create(ctx, r)

@@ -126,6 +126,12 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s is missing", constants.MySQLDataVolumeName)))
 	}
 
+	for _, vc := range s.VolumeClaimTemplates {
+		if vc.Spec.Resources == nil || vc.Spec.Resources.Requests == nil || vc.Spec.Resources.Requests.Storage() == nil {
+			allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s storage requests is missing", vc.Name)))
+		}
+	}
+
 	pp = p.Child("serverIDBase")
 	if s.ServerIDBase <= 0 {
 		allErrs = append(allErrs, field.Invalid(pp, s.ServerIDBase, "serverIDBase must be a positive integer"))
