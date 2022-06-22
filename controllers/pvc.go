@@ -193,16 +193,30 @@ func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context,
 	return *storageClass.AllowVolumeExpansion, nil
 }
 
+// isUpdatingStatefulSet returns whether the StatefulSet is being updated or not.
 func (*MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
 	if sts.Status.ObservedGeneration == 0 {
 		return false
 	}
 
-	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
+	// Waiting for StatefulSet spec update to be observed
+	if sts.Generation > sts.Status.ObservedGeneration {
 		return true
 	}
-
-	if sts.Generation > sts.Status.ObservedGeneration && *sts.Spec.Replicas == sts.Status.Replicas {
+	// Waiting for Pods to be ready
+	if sts.Spec.Replicas != nil && sts.Status.ReadyReplicas < *sts.Spec.Replicas {
+		return true
+	}
+	// Waiting for partitioned rollout to finish
+	if sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType && sts.Spec.UpdateStrategy.RollingUpdate != nil {
+		if sts.Spec.Replicas != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+			if sts.Status.UpdatedReplicas < (*sts.Spec.Replicas - *sts.Spec.UpdateStrategy.RollingUpdate.Partition) {
+				return true
+			}
+		}
+	}
+	// Waiting for StatefulSet rolling update to complete
+	if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
 		return true
 	}
 
