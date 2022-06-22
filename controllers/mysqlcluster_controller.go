@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
 	batchv1beta1ac "k8s.io/client-go/applyconfigurations/batch/v1beta1"
@@ -940,6 +942,21 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			}
 
 			log.Info("volumeClaimTemplates has changed, delete StatefulSet and try to recreate it", "statefulSetName", cluster.PrefixedName())
+
+			// When DeletePropagationOrphan is used to delete, it waits because it is not deleted immediately.
+			if err := wait.PollImmediate(time.Millisecond*500, time.Second*5, func() (bool, error) {
+				err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &appsv1.StatefulSet{})
+				if err != nil {
+					if apierrors.IsNotFound(err) {
+						return true, nil
+					}
+					return false, err
+				}
+
+				return false, fmt.Errorf("re-creation failed the StatefulSet %s/%s has not been deleted", cluster.Namespace, cluster.PrefixedName())
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
