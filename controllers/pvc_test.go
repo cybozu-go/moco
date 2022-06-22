@@ -161,6 +161,46 @@ func TestNeedResizePVC(t *testing.T) {
 			wantResize: false,
 			wantError:  ErrReduceVolumeSize,
 		},
+		{
+			name:    "StatefulSet has more PVCs",
+			cluster: newMySQLClusterWithVolumeSize(resource.MustParse("1Gi")),
+			sts: func() *appsv1.StatefulSet {
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				pvc := corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "new-data",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						StorageClassName: pointer.String("default"),
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
+						},
+					},
+				}
+
+				sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates, pvc)
+
+				return sts
+			}(),
+			wantResize: false,
+		},
+		{
+			name: "MySQLCluster has more PVCs",
+			cluster: func() *mocov1beta2.MySQLCluster {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("1Gi"))
+				pvc := mocov1beta2.PersistentVolumeClaim{
+					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
+					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
+						WithStorageClassName("default").WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
+					)),
+				}
+				cluster.Spec.VolumeClaimTemplates = append(cluster.Spec.VolumeClaimTemplates, pvc)
+				return cluster
+			}(),
+			sts:        newStatefulSetWithVolumeSize(resource.MustParse("1Gi")),
+			wantResize: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -176,6 +216,10 @@ func TestNeedResizePVC(t *testing.T) {
 
 			if tt.wantResize != resize {
 				t.Fatalf("want resize %v, got %v", tt.wantResize, resize)
+			}
+
+			if len(tt.wantResizeTarget) != len(resizeTarget) {
+				t.Fatalf("want resize target length %v, got %v", len(tt.wantResizeTarget), len(resizeTarget))
 			}
 
 			for key, value := range tt.wantResizeTarget {

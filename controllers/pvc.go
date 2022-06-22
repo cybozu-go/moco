@@ -147,9 +147,10 @@ func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, 
 		pvcSet[pvc.Name] = pvc
 	}
 
+	resizeTarget := make(map[string]corev1.PersistentVolumeClaim)
+
 	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
 		if _, ok := pvcSet[pvc.Name]; !ok {
-			delete(pvcSet, pvc.Name)
 			continue
 		}
 
@@ -160,20 +161,20 @@ func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, 
 
 		switch i := deployedSize.Cmp(wantSize.DeepCopy()); {
 		case i == 0: // volume size is equal
-			delete(pvcSet, pvc.Name)
 			continue
 		case i == 1: // volume size is greater
 			return nil, false, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, wantSize, deployedSize, ErrReduceVolumeSize)
 		case i == -1: // volume size is smaller
+			resizeTarget[pvc.Name] = pvcSet[pvc.Name]
 			continue
 		}
 	}
 
-	if len(pvcSet) == 0 {
+	if len(resizeTarget) == 0 {
 		return nil, false, nil
 	}
 
-	return pvcSet, true, nil
+	return resizeTarget, true, nil
 }
 
 func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context, pvc *corev1.PersistentVolumeClaim) (bool, error) {
