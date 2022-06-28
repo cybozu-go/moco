@@ -254,8 +254,9 @@ func newMySQLClusterWithVolumeSize(size resource.Quantity) *mocov1beta2.MySQLClu
 func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "moco-mysql-cluster",
-			Namespace: "default",
+			Name:       "moco-mysql-cluster",
+			Namespace:  "default",
+			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointer.Int32Ptr(1),
@@ -279,6 +280,10 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 					},
 				},
 			},
+		},
+		Status: appsv1.StatefulSetStatus{
+			ObservedGeneration: 1,
+			ReadyReplicas:      1,
 		},
 	}
 }

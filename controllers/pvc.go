@@ -195,13 +195,10 @@ func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context,
 }
 
 // isUpdatingStatefulSet returns whether the StatefulSet is being updated or not.
+// refs: https://github.com/kubernetes/kubectl/blob/v0.24.2/pkg/polymorphichelpers/rollout_status.go#L119-L152
 func (*MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bool {
-	if sts.Status.ObservedGeneration == 0 {
-		return false
-	}
-
 	// Waiting for StatefulSet spec update to be observed
-	if sts.Generation > sts.Status.ObservedGeneration {
+	if sts.Status.ObservedGeneration == 0 || sts.Generation > sts.Status.ObservedGeneration {
 		return true
 	}
 	// Waiting for Pods to be ready
