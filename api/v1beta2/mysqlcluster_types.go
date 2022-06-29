@@ -8,6 +8,7 @@ import (
 	"github.com/robfig/cron/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
@@ -125,6 +126,12 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s is missing", constants.MySQLDataVolumeName)))
 	}
 
+	for _, vc := range s.VolumeClaimTemplates {
+		if vc.Spec.Resources == nil || vc.Spec.Resources.Requests == nil || vc.Spec.Resources.Requests.Storage() == nil {
+			allErrs = append(allErrs, field.Required(pp, fmt.Sprintf("required volume claim template %s storage requests is missing", vc.Name)))
+		}
+	}
+
 	pp = p.Child("serverIDBase")
 	if s.ServerIDBase <= 0 {
 		allErrs = append(allErrs, field.Invalid(pp, s.ServerIDBase, "serverIDBase must be a positive integer"))
@@ -240,6 +247,24 @@ func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
 	if !equality.Semantic.DeepEqual(s.Restore, old.Restore) {
 		p := p.Child("restore")
 		allErrs = append(allErrs, field.Forbidden(p, "not editable"))
+	}
+
+	oldPVCSet := make(map[string]PersistentVolumeClaim)
+	for _, oldPVC := range old.VolumeClaimTemplates {
+		oldPVCSet[oldPVC.Name] = oldPVC
+	}
+
+	for i, pvc := range s.VolumeClaimTemplates {
+		if old, ok := oldPVCSet[pvc.Name]; ok {
+			newSize := pvc.StorageSize()
+			oldSize := old.StorageSize()
+
+			if newSize.Cmp(oldSize) == -1 {
+				p := p.Child("volumeClaimTemplates").Index(i).
+					Child("spec").Child("resources").Child("requests").Key("storage")
+				allErrs = append(allErrs, field.Forbidden(p, "storage size cannot be reduced"))
+			}
+		}
 	}
 
 	return append(allErrs, s.validateCreate()...)
@@ -363,6 +388,15 @@ type PersistentVolumeClaim struct {
 
 	// Spec defines the desired characteristics of a volume requested by a pod author.
 	Spec PersistentVolumeClaimSpecApplyConfiguration `json:"spec"`
+}
+
+func (in PersistentVolumeClaim) StorageSize() resource.Quantity {
+	if in.Spec.Resources != nil && in.Spec.Resources.Requests != nil {
+		requests := *in.Spec.Resources.Requests
+		return requests[corev1.ResourceStorage]
+	}
+
+	return resource.Quantity{}
 }
 
 // ToCoreV1 converts the PersistentVolumeClaim to a PersistentVolumeClaimApplyConfiguration.

@@ -7,7 +7,9 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/utils/pointer"
@@ -30,6 +32,13 @@ func makeMySQLCluster() *mocov1beta2.MySQLCluster {
 					ObjectMeta: mocov1beta2.ObjectMeta{
 						Name: "mysql-data",
 					},
+					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
+						WithStorageClassName("default").
+						WithResources(corev1ac.ResourceRequirements().
+							WithRequests(corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse("1Gi"),
+							})),
+					),
 				},
 			},
 		},
@@ -78,6 +87,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 	It("should deny without mysqld-data volume claim template", func() {
 		r := makeMySQLCluster()
 		r.Spec.VolumeClaimTemplates = nil
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should deny without storage size in volume claim template", func() {
+		r := makeMySQLCluster()
+		r.Spec.VolumeClaimTemplates[0].Spec.Resources = nil
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
@@ -397,6 +413,44 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		r.Spec.Restore = nil
+		err = k8sClient.Update(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should allow storage size expansion", func() {
+		r := makeMySQLCluster()
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+
+		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+			*corev1ac.PersistentVolumeClaimSpec().
+				WithStorageClassName("default").
+				WithResources(corev1ac.ResourceRequirements().
+					WithRequests(corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					}),
+				),
+		)
+
+		err = k8sClient.Update(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should deny reduced storage size", func() {
+		r := makeMySQLCluster()
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+
+		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+			*corev1ac.PersistentVolumeClaimSpec().
+				WithStorageClassName("default").
+				WithResources(corev1ac.ResourceRequirements().
+					WithRequests(corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Mi"),
+					}),
+				),
+		)
+
 		err = k8sClient.Update(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})

@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/mycnf"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/google/go-cmp/cmp"
@@ -25,10 +27,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
 	batchv1beta1ac "k8s.io/client-go/applyconfigurations/batch/v1beta1"
@@ -124,6 +128,8 @@ type MySQLClusterReconciler struct {
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=configmaps/status,verbs=get
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;update;patch
+//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update;patch
+//+kubebuilder:rbac:groups="storage.k8s.io",resources=storageclasses,verbs=get;list;watch
 //+kubebuilder:rbac:groups="policy",resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="cert-manager.io",resources=certificates,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups="batch",resources=cronjobs;jobs,verbs=get;list;watch;create;update;patch;delete
@@ -223,6 +229,10 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 	}
 
 	if err := r.reconcileV1Service(ctx, req, cluster); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcilePVC(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -913,12 +923,56 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return nil
 	}
 
+	needRecreate := false
+
+	// Recreate StatefulSet if VolumeClaimTemplates has differences.
+	// sts will never be nil.
+	if origApplyConfig != nil && origApplyConfig.Spec != nil && origApplyConfig.Spec.VolumeClaimTemplates != nil {
+		if !equality.Semantic.DeepEqual(sts.Spec.VolumeClaimTemplates, origApplyConfig.Spec.VolumeClaimTemplates) {
+			needRecreate = true
+
+			// Don’t delete the Pod, only delete the StatefulSet.
+			// Same behavior as `kubectl delete sts moco-xxx --cascade=orphan`
+			opt := metav1.DeletePropagationOrphan
+			if err := r.Delete(ctx, &orig, &client.DeleteOptions{
+				PropagationPolicy: &opt,
+			}); err != nil {
+				metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
+				return err
+			}
+
+			log.Info("volumeClaimTemplates has changed, delete StatefulSet and try to recreate it", "statefulSetName", cluster.PrefixedName())
+
+			// When DeletePropagationOrphan is used to delete, it waits because it is not deleted immediately.
+			if err := wait.PollImmediate(time.Millisecond*500, time.Second*5, func() (bool, error) {
+				err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &appsv1.StatefulSet{})
+				if err != nil {
+					if apierrors.IsNotFound(err) {
+						return true, nil
+					}
+					return false, err
+				}
+
+				return false, fmt.Errorf("re-creation failed the StatefulSet %s/%s has not been deleted", cluster.Namespace, cluster.PrefixedName())
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
 	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
 		FieldManager: fieldManager,
 		Force:        pointer.Bool(true),
 	})
 	if err != nil {
+		if needRecreate {
+			metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
+		}
 		return fmt.Errorf("failed to reconcile stateful set: %w", err)
+	}
+
+	if needRecreate {
+		metrics.StatefulSetRecreateTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 	}
 
 	if debugController {
