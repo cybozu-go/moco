@@ -953,9 +953,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 					return false, err
 				}
 
-				return false, fmt.Errorf("re-creation failed the StatefulSet %s/%s has not been deleted", cluster.Namespace, cluster.PrefixedName())
+				return false, nil
 			}); err != nil {
-				return err
+				return fmt.Errorf("re-creation failed the StatefulSet %s/%s has not been deleted: %w", cluster.Namespace, cluster.PrefixedName(), err)
 			}
 		}
 	}
