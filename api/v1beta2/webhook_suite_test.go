@@ -16,6 +16,8 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	//+kubebuilder:scaffold:imports
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,6 +52,8 @@ var _ = BeforeSuite(func() {
 	err = mocov1beta2.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = clientgoscheme.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
 	err = admissionv1beta1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 

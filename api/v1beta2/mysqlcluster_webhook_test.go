@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,11 +69,44 @@ func deleteMySQLCluster() error {
 	return nil
 }
 
+func createStorageClass() error {
+	defaultSC := storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+			Annotations: map[string]string{
+				"storageclass.kubernetes.io/is-default-class": "true",
+			},
+		},
+		Provisioner:          "dummy",
+		AllowVolumeExpansion: pointer.Bool(true),
+	}
+
+	if err := k8sClient.Create(ctx, &defaultSC); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	notSupportVolumeExpansionSC := storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "not-support-volume-expansion",
+		},
+		Provisioner:          "dummy",
+		AllowVolumeExpansion: pointer.Bool(false),
+	}
+
+	if err := k8sClient.Create(ctx, &notSupportVolumeExpansionSC); err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
+}
+
 var _ = Describe("MySQLCluster Webhook", func() {
 	ctx := context.TODO()
 
 	BeforeEach(func() {
-		err := deleteMySQLCluster()
+		err := createStorageClass()
+		Expect(err).NotTo(HaveOccurred())
+		err = deleteMySQLCluster()
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -447,6 +481,25 @@ var _ = Describe("MySQLCluster Webhook", func() {
 				WithResources(corev1ac.ResourceRequirements().
 					WithRequests(corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("1Mi"),
+					}),
+				),
+		)
+
+		err = k8sClient.Update(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should deny storage size expansion for not support volume expansion storage class", func() {
+		r := makeMySQLCluster()
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+
+		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+			*corev1ac.PersistentVolumeClaimSpec().
+				WithStorageClassName("not-support-volume-expansion").
+				WithResources(corev1ac.ResourceRequirements().
+					WithRequests(corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
 					}),
 				),
 		)

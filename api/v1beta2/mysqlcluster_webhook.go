@@ -1,6 +1,7 @@
 package v1beta2
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"math"
@@ -57,7 +58,9 @@ func (r *MySQLCluster) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *MySQLCluster) ValidateUpdate(old runtime.Object) error {
-	errs := r.Spec.validateUpdate(old.(*MySQLCluster).Spec)
+	ctx := context.Background()
+
+	errs := r.Spec.validateUpdate(ctx, apiReader, old.(*MySQLCluster).Spec)
 	if len(errs) == 0 {
 		return nil
 	}
