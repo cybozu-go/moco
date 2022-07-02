@@ -139,7 +139,7 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 				return resizedPVC, fmt.Errorf("failed to update PVC: %w", err)
 			}
 
-			log.Info("PVC resized", "namespace", pvc.Namespace, "pvcName", pvc.Name)
+			log.Info("PVC resized", "pvcName", pvc.Name)
 
 			resizedPVC[pvc.Name] = pvc
 		}
