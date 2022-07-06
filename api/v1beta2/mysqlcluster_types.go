@@ -290,9 +290,6 @@ func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, 
 	var allErrs field.ErrorList
 	p := field.NewPath("spec").Child("volumeClaimTemplates")
 
-	useDefaultStorageClass := false
-	defaultStorageClassIndex := 0
-
 	for i, pvc := range s.VolumeClaimTemplates {
 		if pvc.Spec.StorageClassName != nil {
 			var sc storagev1.StorageClass
@@ -305,21 +302,16 @@ func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, 
 					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("storage class %q is not allowed to expand volume", *pvc.Spec.StorageClassName)))
 				}
 			}
-		} else if !useDefaultStorageClass {
-			useDefaultStorageClass = true
-			defaultStorageClassIndex = i
-		}
-	}
-
-	if useDefaultStorageClass {
-		sc, err := getDefaultStorageClass(ctx, apiReader)
-		if err != nil {
-			p := p.Index(defaultStorageClassIndex)
-			allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class: %w", err)))
 		} else {
-			if !isVolumeExpansionSupported(sc) {
-				p := p.Index(defaultStorageClassIndex)
-				allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("default storage class %q is not allowed to expand volume", sc.Name)))
+			sc, err := getDefaultStorageClass(ctx, apiReader)
+			if err != nil {
+				p := p.Index(i)
+				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class: %w", err)))
+			} else {
+				if !isVolumeExpansionSupported(sc) {
+					p := p.Index(i)
+					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("default storage class %q is not allowed to expand volume", sc.Name)))
+				}
 			}
 		}
 	}
