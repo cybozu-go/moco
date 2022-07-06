@@ -968,6 +968,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		if needRecreate {
 			metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 		}
+		if apierrors.IsInvalid(err) {
+			metrics.StatefulSetInvalidErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
+		}
 		return fmt.Errorf("failed to reconcile stateful set: %w", err)
 	}
 

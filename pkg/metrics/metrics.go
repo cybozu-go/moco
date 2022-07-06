@@ -26,6 +26,7 @@ var (
 	VolumeResizedErrorTotal       *prometheus.CounterVec
 	StatefulSetRecreateTotal      *prometheus.CounterVec
 	StatefulSetRecreateErrorTotal *prometheus.CounterVec
+	StatefulSetInvalidErrorTotal  *prometheus.CounterVec
 )
 
 // Backup related metrics
@@ -191,4 +192,12 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of failed StatefulSet recreates",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(StatefulSetRecreateErrorTotal)
+
+	StatefulSetInvalidErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "statefulset_invalid_errors_total",
+		Help:      "The number of invalid error was returned updating a StatefulSet",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(StatefulSetInvalidErrorTotal)
 }
