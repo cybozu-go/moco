@@ -104,10 +104,9 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 7. Add a new tag and push it as follows:
 
     ```console
-    # Set variables again.
-    $ APPVERSION=1.2.3
+    # Set CHARTVERSION again.
     $ CHARTVERSION=4.5.6
-    $ echo $APPVERSION $CHARTVERSION
+    $ echo $CHARTVERSION
 
     $ git checkout main
     $ git pull
