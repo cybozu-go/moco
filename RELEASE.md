@@ -30,10 +30,12 @@ It should look like:
 
 ## Bump version
 
-1. Determine a new version number.  Export it as an environment variable:
+1. Determine a new version number. Then set `VERSION` variable.
 
     ```console
+    # Set VERSION and confirm it. It should not have "v" prefix.
     $ VERSION=1.2.3
+    $ echo $VERSION
     ```
 
 2. Make a new branch from the latest `main` with `git neco dev bump-v$VERSION`.
@@ -50,9 +52,17 @@ It should look like:
 7. Add a new tag and push it as follows:
 
     ```console
+    # Set VERSION again.
+    $ VERSION=1.2.3
+    $ echo $VERSION
+
     $ git checkout main
     $ git pull
     $ git tag -a -m "Release v$VERSION" v$VERSION
+
+    # Make sure the release tag exists.
+    $ git tag -ln | grep $VERSION
+
     $ git push origin v$VERSION
     ```
 
@@ -67,8 +77,10 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 1. Determine a new version number:
 
     ```console
+    # Set variables. They should not have "v" prefix.
     $ APPVERSION=1.2.3 # MOCO version
     $ CHARTVERSION=4.5.6
+    $ echo $APPVERSION $CHARTVERSION
     ```
 
 2. Make a new branch from the latest `main` with `git neco dev bump-chart-v$CHARTVERSION`.
@@ -92,9 +104,18 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 7. Add a new tag and push it as follows:
 
     ```console
+    # Set variables again.
+    $ APPVERSION=1.2.3 # MOCO version
+    $ CHARTVERSION=4.5.6
+    $ echo $APPVERSION $CHARTVERSION
+
     $ git checkout main
     $ git pull
     $ git tag -a -m "Release chart-v$CHARTVERSION" chart-v$CHARTVERSION
+
+    # Make sure the release tag exists.
+    $ git tag -ln | grep $CHARTVERSION
+
     $ git push origin chart-v$CHARTVERSION
     ```
 
