@@ -105,7 +105,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 
     ```console
     # Set variables again.
-    $ APPVERSION=1.2.3 # MOCO version
+    $ APPVERSION=1.2.3
     $ CHARTVERSION=4.5.6
     $ echo $APPVERSION $CHARTVERSION
 
