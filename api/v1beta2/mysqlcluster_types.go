@@ -254,12 +254,12 @@ func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.R
 		allErrs = append(allErrs, field.Forbidden(p, "not editable"))
 	}
 
-	isVolumeExpansion := false
-
 	oldPVCSet := make(map[string]PersistentVolumeClaim)
 	for _, oldPVC := range old.VolumeClaimTemplates {
 		oldPVCSet[oldPVC.Name] = oldPVC
 	}
+
+	volumeExpansionTargetIndices := make([]int, 0)
 
 	for i, pvc := range s.VolumeClaimTemplates {
 		if old, ok := oldPVCSet[pvc.Name]; ok {
@@ -272,44 +272,45 @@ func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.R
 					Child("spec").Child("resources").Child("requests").Key("storage")
 				allErrs = append(allErrs, field.Forbidden(p, "storage size cannot be reduced"))
 			case cmp == 1:
-				isVolumeExpansion = true
+				volumeExpansionTargetIndices = append(volumeExpansionTargetIndices, i)
 			case cmp == 0:
 				// noop
 			}
 		}
 	}
 
-	if isVolumeExpansion {
-		allErrs = append(allErrs, s.validateVolumeExpansionSupported(ctx, apiReader)...)
+	if len(volumeExpansionTargetIndices) > 0 {
+		allErrs = append(allErrs, s.validateVolumeExpansionSupported(ctx, apiReader, volumeExpansionTargetIndices)...)
 	}
 
 	return append(allErrs, s.validateCreate()...)
 }
 
-func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, apiReader client.Reader) field.ErrorList {
+func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, apiReader client.Reader, targetIndices []int) field.ErrorList {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec").Child("volumeClaimTemplates")
 
-	for i, pvc := range s.VolumeClaimTemplates {
+	for _, idx := range targetIndices {
+		pvc := s.VolumeClaimTemplates[idx]
 		if pvc.Spec.StorageClassName != nil {
 			var sc storagev1.StorageClass
 			if err := apiReader.Get(ctx, types.NamespacedName{Name: *pvc.Spec.StorageClassName}, &sc); err != nil {
-				p := p.Index(i).Child("spec").Child("storageClassName")
+				p := p.Index(idx).Child("spec").Child("storageClassName")
 				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class %s: %w", *pvc.Spec.StorageClassName, err)))
 			} else {
 				if !isVolumeExpansionSupported(sc) {
-					p := p.Index(i).Child("spec").Child("storageClassName")
+					p := p.Index(idx).Child("spec").Child("storageClassName")
 					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("storage class %q is not allowed to expand volume", *pvc.Spec.StorageClassName)))
 				}
 			}
 		} else {
 			sc, err := getDefaultStorageClass(ctx, apiReader)
 			if err != nil {
-				p := p.Index(i)
+				p := p.Index(idx)
 				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class: %w", err)))
 			} else {
 				if !isVolumeExpansionSupported(sc) {
-					p := p.Index(i)
+					p := p.Index(idx)
 					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("default storage class %q is not allowed to expand volume", sc.Name)))
 				}
 			}

@@ -453,17 +453,45 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should allow storage size expansion", func() {
 		r := makeMySQLCluster()
+		r.Spec.VolumeClaimTemplates = make([]mocov1beta2.PersistentVolumeClaim, 2)
+
+		r.Spec.VolumeClaimTemplates[0] = mocov1beta2.PersistentVolumeClaim{
+			ObjectMeta: mocov1beta2.ObjectMeta{
+				Name: "mysql-data",
+			},
+			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+				*corev1ac.PersistentVolumeClaimSpec().
+					WithStorageClassName("default").
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						}),
+					),
+			),
+		}
+
+		r.Spec.VolumeClaimTemplates[1] = mocov1beta2.PersistentVolumeClaim{
+			ObjectMeta: mocov1beta2.ObjectMeta{
+				Name: "foo",
+			},
+			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+				*corev1ac.PersistentVolumeClaimSpec().
+					WithStorageClassName("not-support-volume-expansion").
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						}),
+					),
+			),
+		}
+
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
-		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
-			*corev1ac.PersistentVolumeClaimSpec().
-				WithStorageClassName("default").
-				WithResources(corev1ac.ResourceRequirements().
-					WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					}),
-				),
+		r.Spec.VolumeClaimTemplates[0].Spec.Resources.WithRequests(
+			corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("10Gi"),
+			},
 		)
 
 		err = k8sClient.Update(ctx, r)
@@ -491,17 +519,45 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 	It("should deny storage size expansion for not support volume expansion storage class", func() {
 		r := makeMySQLCluster()
+		r.Spec.VolumeClaimTemplates = make([]mocov1beta2.PersistentVolumeClaim, 2)
+
+		r.Spec.VolumeClaimTemplates[0] = mocov1beta2.PersistentVolumeClaim{
+			ObjectMeta: mocov1beta2.ObjectMeta{
+				Name: "mysql-data",
+			},
+			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+				*corev1ac.PersistentVolumeClaimSpec().
+					WithStorageClassName("default").
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						}),
+					),
+			),
+		}
+
+		r.Spec.VolumeClaimTemplates[1] = mocov1beta2.PersistentVolumeClaim{
+			ObjectMeta: mocov1beta2.ObjectMeta{
+				Name: "foo",
+			},
+			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
+				*corev1ac.PersistentVolumeClaimSpec().
+					WithStorageClassName("not-support-volume-expansion").
+					WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						}),
+					),
+			),
+		}
+
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
-		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
-			*corev1ac.PersistentVolumeClaimSpec().
-				WithStorageClassName("not-support-volume-expansion").
-				WithResources(corev1ac.ResourceRequirements().
-					WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("10Gi"),
-					}),
-				),
+		r.Spec.VolumeClaimTemplates[1].Spec.Resources.WithRequests(
+			corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("10Gi"),
+			},
 		)
 
 		err = k8sClient.Update(ctx, r)
