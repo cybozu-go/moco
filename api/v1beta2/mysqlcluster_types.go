@@ -298,7 +298,7 @@ func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, 
 				p := p.Index(idx).Child("spec").Child("storageClassName")
 				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class %s: %w", *pvc.Spec.StorageClassName, err)))
 			} else {
-				if !isVolumeExpansionSupported(sc) {
+				if !isVolumeExpansionSupported(&sc) {
 					p := p.Index(idx).Child("spec").Child("storageClassName")
 					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("storage class %q is not allowed to expand volume", *pvc.Spec.StorageClassName)))
 				}
@@ -320,7 +320,7 @@ func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, 
 	return allErrs
 }
 
-func isVolumeExpansionSupported(sc storagev1.StorageClass) bool {
+func isVolumeExpansionSupported(sc *storagev1.StorageClass) bool {
 	if sc.AllowVolumeExpansion == nil {
 		return false
 	}
@@ -328,22 +328,22 @@ func isVolumeExpansionSupported(sc storagev1.StorageClass) bool {
 	return *sc.AllowVolumeExpansion
 }
 
-func getDefaultStorageClass(ctx context.Context, client client.Reader) (storagev1.StorageClass, error) {
+func getDefaultStorageClass(ctx context.Context, client client.Reader) (*storagev1.StorageClass, error) {
 	var scs storagev1.StorageClassList
 	if err := client.List(ctx, &scs); err != nil {
-		return storagev1.StorageClass{}, err
+		return nil, err
 	}
 
 	for _, sc := range scs.Items {
-		if isDefaultStorageClass(sc) {
-			return sc, nil
+		if isDefaultStorageClass(&sc) {
+			return &sc, nil
 		}
 	}
 
-	return storagev1.StorageClass{}, errors.New("not found default storage class")
+	return nil, errors.New("not found default storage class")
 }
 
-func isDefaultStorageClass(sc storagev1.StorageClass) bool {
+func isDefaultStorageClass(sc *storagev1.StorageClass) bool {
 	if len(sc.Annotations) == 0 {
 		return false
 	}
