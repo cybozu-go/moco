@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.9.2
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -380,8 +380,6 @@ spec:
                                       additionalProperties:
                                         type: string
                                       type: object
-                                    clusterName:
-                                      type: string
                                     creationTimestamp:
                                       format: date-time
                                       type: string
@@ -428,8 +426,6 @@ spec:
                                         type: object
                                       type: array
                                     resourceVersion:
-                                      type: string
-                                    selfLink:
                                       type: string
                                     uid:
                                       description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
@@ -1292,8 +1288,6 @@ spec:
                                       additionalProperties:
                                         type: string
                                       type: object
-                                    clusterName:
-                                      type: string
                                     creationTimestamp:
                                       format: date-time
                                       type: string
@@ -1340,8 +1334,6 @@ spec:
                                         type: object
                                       type: array
                                     resourceVersion:
-                                      type: string
-                                    selfLink:
                                       type: string
                                     uid:
                                       description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
@@ -1848,7 +1840,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ template "moco.fullname" . }}-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.9.2
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -4278,6 +4270,9 @@ spec:
                               maxSkew:
                                 format: int32
                                 type: integer
+                              minDomains:
+                                format: int32
+                                type: integer
                               topologyKey:
                                 type: string
                               whenUnsatisfiable:
@@ -4475,8 +4470,6 @@ spec:
                                             additionalProperties:
                                               type: string
                                             type: object
-                                          clusterName:
-                                            type: string
                                           creationTimestamp:
                                             format: date-time
                                             type: string
@@ -4523,8 +4516,6 @@ spec:
                                               type: object
                                             type: array
                                           resourceVersion:
-                                            type: string
-                                          selfLink:
                                             type: string
                                           uid:
                                             description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
@@ -5337,8 +5328,6 @@ spec:
                                           additionalProperties:
                                             type: string
                                           type: object
-                                        clusterName:
-                                          type: string
                                         creationTimestamp:
                                           format: date-time
                                           type: string
@@ -5385,8 +5374,6 @@ spec:
                                             type: object
                                           type: array
                                         resourceVersion:
-                                          type: string
-                                        selfLink:
                                           type: string
                                         uid:
                                           description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
@@ -8685,6 +8672,9 @@ spec:
                               maxSkew:
                                 format: int32
                                 type: integer
+                              minDomains:
+                                format: int32
+                                type: integer
                               topologyKey:
                                 type: string
                               whenUnsatisfiable:
@@ -8882,8 +8872,6 @@ spec:
                                             additionalProperties:
                                               type: string
                                             type: object
-                                          clusterName:
-                                            type: string
                                           creationTimestamp:
                                             format: date-time
                                             type: string
@@ -8930,8 +8918,6 @@ spec:
                                               type: object
                                             type: array
                                           resourceVersion:
-                                            type: string
-                                          selfLink:
                                             type: string
                                           uid:
                                             description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
@@ -9966,8 +9952,6 @@ spec:
                                           additionalProperties:
                                             type: string
                                           type: object
-                                        clusterName:
-                                          type: string
                                         creationTimestamp:
                                           format: date-time
                                           type: string
@@ -10014,8 +9998,6 @@ spec:
                                             type: object
                                           type: array
                                         resourceVersion:
-                                          type: string
-                                        selfLink:
                                           type: string
                                         uid:
                                           description: UID is a type that holds unique ID values, including UUIDs.  Because we don't ONLY use UUIDs, this is an alias to string.  Being a type captures intent and helps make sure that UIDs and names do not get conflated.
