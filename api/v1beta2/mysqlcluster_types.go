@@ -1,17 +1,22 @@
 package v1beta2
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/robfig/cron/v3"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -228,7 +233,7 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 	return allErrs
 }
 
-func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
+func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) field.ErrorList {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 
@@ -254,20 +259,102 @@ func (s MySQLClusterSpec) validateUpdate(old MySQLClusterSpec) field.ErrorList {
 		oldPVCSet[oldPVC.Name] = oldPVC
 	}
 
+	volumeExpansionTargetIndices := make([]int, 0)
+
 	for i, pvc := range s.VolumeClaimTemplates {
 		if old, ok := oldPVCSet[pvc.Name]; ok {
 			newSize := pvc.StorageSize()
 			oldSize := old.StorageSize()
 
-			if newSize.Cmp(oldSize) == -1 {
+			switch cmp := newSize.Cmp(oldSize); {
+			case cmp == -1:
 				p := p.Child("volumeClaimTemplates").Index(i).
 					Child("spec").Child("resources").Child("requests").Key("storage")
 				allErrs = append(allErrs, field.Forbidden(p, "storage size cannot be reduced"))
+			case cmp == 1:
+				volumeExpansionTargetIndices = append(volumeExpansionTargetIndices, i)
+			case cmp == 0:
+				// noop
 			}
 		}
 	}
 
+	if len(volumeExpansionTargetIndices) > 0 {
+		allErrs = append(allErrs, s.validateVolumeExpansionSupported(ctx, apiReader, volumeExpansionTargetIndices)...)
+	}
+
 	return append(allErrs, s.validateCreate()...)
+}
+
+func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, apiReader client.Reader, targetIndices []int) field.ErrorList {
+	var allErrs field.ErrorList
+	p := field.NewPath("spec").Child("volumeClaimTemplates")
+
+	for _, idx := range targetIndices {
+		pvc := s.VolumeClaimTemplates[idx]
+		if pvc.Spec.StorageClassName != nil {
+			var sc storagev1.StorageClass
+			if err := apiReader.Get(ctx, types.NamespacedName{Name: *pvc.Spec.StorageClassName}, &sc); err != nil {
+				p := p.Index(idx).Child("spec").Child("storageClassName")
+				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class %s: %w", *pvc.Spec.StorageClassName, err)))
+			} else {
+				if !isVolumeExpansionSupported(&sc) {
+					p := p.Index(idx).Child("spec").Child("storageClassName")
+					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("storage class %q is not allowed to expand volume", *pvc.Spec.StorageClassName)))
+				}
+			}
+		} else {
+			sc, err := getDefaultStorageClass(ctx, apiReader)
+			if err != nil {
+				p := p.Index(idx)
+				allErrs = append(allErrs, field.InternalError(p, fmt.Errorf("failed to get storage class: %w", err)))
+			} else {
+				if !isVolumeExpansionSupported(sc) {
+					p := p.Index(idx)
+					allErrs = append(allErrs, field.Forbidden(p, fmt.Sprintf("default storage class %q is not allowed to expand volume", sc.Name)))
+				}
+			}
+		}
+	}
+
+	return allErrs
+}
+
+func isVolumeExpansionSupported(sc *storagev1.StorageClass) bool {
+	if sc.AllowVolumeExpansion == nil {
+		return false
+	}
+
+	return *sc.AllowVolumeExpansion
+}
+
+func getDefaultStorageClass(ctx context.Context, client client.Reader) (*storagev1.StorageClass, error) {
+	var scs storagev1.StorageClassList
+	if err := client.List(ctx, &scs); err != nil {
+		return nil, err
+	}
+
+	for _, sc := range scs.Items {
+		if isDefaultStorageClass(&sc) {
+			return &sc, nil
+		}
+	}
+
+	return nil, errors.New("not found default storage class")
+}
+
+func isDefaultStorageClass(sc *storagev1.StorageClass) bool {
+	if len(sc.Annotations) == 0 {
+		return false
+	}
+
+	// refs: https://github.com/kubernetes/kubernetes/blob/v1.24.2/pkg/apis/storage/v1beta1/util/helpers.go
+	if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" ||
+		sc.Annotations["storageclass.beta.kubernetes.io/is-default-class"] == "true" {
+		return true
+	}
+
+	return false
 }
 
 // ObjectMeta is metadata of objects.

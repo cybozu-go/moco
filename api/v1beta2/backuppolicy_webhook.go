@@ -12,40 +12,43 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-var apiReader client.Reader
-
 func (r *BackupPolicy) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	apiReader = mgr.GetAPIReader()
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(&backupPolicyAdmission{client: mgr.GetAPIReader()}).
 		Complete()
+}
+
+type backupPolicyAdmission struct {
+	client client.Reader
 }
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 //+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta2-backuppolicy,mutating=false,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=backuppolicies,verbs=create;update;delete,versions=v1beta2,name=vbackuppolicy.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &BackupPolicy{}
+var _ webhook.CustomValidator = &backupPolicyAdmission{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *BackupPolicy) ValidateCreate() error {
-	errs := r.Spec.validate()
+func (a *backupPolicyAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+	policy := obj.(*BackupPolicy)
+
+	errs := policy.Spec.validate()
 	if len(errs) == 0 {
 		return nil
 	}
 
-	return apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "BackupPolicy"}, r.Name, errs)
+	return apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "BackupPolicy"}, policy.Name, errs)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *BackupPolicy) ValidateUpdate(old runtime.Object) error {
-	return r.ValidateCreate()
+func (a *backupPolicyAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+	return a.ValidateCreate(ctx, newObj)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *BackupPolicy) ValidateDelete() error {
+func (a *backupPolicyAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+	policy := obj.(*BackupPolicy)
+
 	clusters := &MySQLClusterList{}
-	if err := apiReader.List(context.Background(), clusters, client.InNamespace(r.Namespace)); err != nil {
+	if err := a.client.List(context.Background(), clusters, client.InNamespace(policy.Namespace)); err != nil {
 		return err
 	}
 
@@ -54,7 +57,7 @@ func (r *BackupPolicy) ValidateDelete() error {
 			continue
 		}
 
-		if *cluster.Spec.BackupPolicyName == r.Name {
+		if *cluster.Spec.BackupPolicyName == policy.Name {
 			return fmt.Errorf("MySQLCluster %s/%s has a reference to this policy", cluster.Namespace, cluster.Name)
 		}
 	}
