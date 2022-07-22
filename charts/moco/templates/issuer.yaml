@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: {{ template "moco.fullname" . }}-grpc-issuer
+  name: moco-grpc-issuer
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "moco.labels" . | nindent 4 }}
