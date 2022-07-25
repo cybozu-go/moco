@@ -9,7 +9,7 @@ spec:
   commonName: moco-controller
   issuerRef:
     kind: Issuer
-    name: {{ template "moco.fullname" . }}-grpc-issuer
+    name: moco-grpc-issuer
   secretName: moco-controller-grpc
   usages:
     - digital signature
