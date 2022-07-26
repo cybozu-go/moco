@@ -62,11 +62,13 @@ type MySQLClusterSpec struct {
 	// +optional
 	ServerIDBase int32 `json:"serverIDBase,omitempty"`
 
-	// MaxDelaySeconds, if set, configures the readiness probe of mysqld container.
+	// MaxDelaySeconds configures the readiness probe of mysqld container.
 	// For a replica mysqld instance, if it is delayed to apply transactions over this threshold,
 	// the mysqld instance will be marked as non-ready.
 	// The default is 60 seconds.
+	// Setting this field to 0 disables the delay check in the probe.
 	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default=60
 	// +optional
 	MaxDelaySeconds int `json:"maxDelaySeconds,omitempty"`
 
