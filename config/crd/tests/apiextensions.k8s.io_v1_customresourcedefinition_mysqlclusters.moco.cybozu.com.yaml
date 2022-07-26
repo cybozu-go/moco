@@ -91,10 +91,12 @@ spec:
                   for the field format.
                 type: string
               maxDelaySeconds:
-                description: MaxDelaySeconds, if set, configures the readiness probe
-                  of mysqld container. For a replica mysqld instance, if it is delayed
-                  to apply transactions over this threshold, the mysqld instance will
-                  be marked as non-ready. The default is 60 seconds.
+                default: 60
+                description: MaxDelaySeconds configures the readiness probe of mysqld
+                  container. For a replica mysqld instance, if it is delayed to apply
+                  transactions over this threshold, the mysqld instance will be marked
+                  as non-ready. The default is 60 seconds. Setting this field to 0
+                  disables the delay check in the probe.
                 minimum: 0
                 type: integer
               mysqlConfigMapName:
@@ -5380,10 +5382,12 @@ spec:
                   for the field format.
                 type: string
               maxDelaySeconds:
-                description: MaxDelaySeconds, if set, configures the readiness probe
-                  of mysqld container. For a replica mysqld instance, if it is delayed
-                  to apply transactions over this threshold, the mysqld instance will
-                  be marked as non-ready. The default is 60 seconds.
+                default: 60
+                description: MaxDelaySeconds configures the readiness probe of mysqld
+                  container. For a replica mysqld instance, if it is delayed to apply
+                  transactions over this threshold, the mysqld instance will be marked
+                  as non-ready. The default is 60 seconds. Setting this field to 0
+                  disables the delay check in the probe.
                 minimum: 0
                 type: integer
               mysqlConfigMapName:
