@@ -201,7 +201,17 @@ var _ = Context("lifecycle", func() {
 			if err != nil {
 				return err
 			}
-			if len(secrets.Items) == 1 {
+
+			var notDeletedSecrets []corev1.Secret
+			for _, secret := range secrets.Items {
+				// For Kubernetes versions below v1.23,
+				// the service account token secret remains.
+				if secret.Type != corev1.SecretTypeServiceAccountToken {
+					notDeletedSecrets = append(notDeletedSecrets, secret)
+				}
+			}
+
+			if len(notDeletedSecrets) == 0 {
 				return nil
 			}
 			return fmt.Errorf("pending secrets: %+v", secrets.Items)
