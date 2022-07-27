@@ -111,9 +111,7 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		WithName(constants.AgentContainerName).
 		WithImage(r.AgentImage)
 
-	if cluster.Spec.MaxDelaySeconds > 0 {
-		c.WithArgs("--max-delay", fmt.Sprintf("%ds", cluster.Spec.MaxDelaySeconds))
-	}
+	c.WithArgs("--max-delay", fmt.Sprintf("%ds", cluster.Spec.MaxDelaySeconds))
 	if cluster.Spec.LogRotationSchedule != "" {
 		c.WithArgs("--log-rotation-schedule", cluster.Spec.LogRotationSchedule)
 	}

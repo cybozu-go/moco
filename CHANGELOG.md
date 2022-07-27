@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Disable the delay check if .spec.maxDelaySeconds == 0 in MySQLCluster (#434)
+
 ## [0.12.1] - 2022-04-26
 
 ### Fixed
