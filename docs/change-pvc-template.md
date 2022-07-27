@@ -36,6 +36,9 @@ moco-controller automatically resizes the PVC when the size of the MySQLCluster 
 If the volume plugin supports [online file system expansion](https://kubernetes.io/blog/2018/07/12/resizing-persistent-volumes-using-kubernetes/#online-file-system-expansion),
 the PVs used by the Pod will be expanded online.
 
+If volume is to be expanded, `.allowVolumeExpansion` of the StorageClass must be `true`.
+moco-controller will validate with the admission webhook and reject the request if volume expansion is not allowed.
+
 If the volume plugin does not support online file system expansion,
 the Pod must be restarted for the volume expansion to reflect.
 This must be done manually by the user.
