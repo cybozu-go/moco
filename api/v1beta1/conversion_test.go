@@ -30,18 +30,10 @@ func TestCompatibility(t *testing.T) {
 		}
 		v1beta1Cluster1 = *obj.(*MySQLCluster)
 
-		var tmp1, tmp2 mocov1beta2.MySQLCluster
-
-		if err := scheme.Convert(v1beta1Cluster1.DeepCopy(), &tmp1, nil); err != nil {
+		if err := scheme.Convert(v1beta1Cluster1.DeepCopy(), &v1beta2Cluster, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err := scheme.Convert(&tmp1, &v1beta2Cluster, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&v1beta2Cluster, &tmp2, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&tmp2, &v1beta1Cluster2, nil); err != nil {
+		if err := scheme.Convert(&v1beta2Cluster, &v1beta1Cluster2, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -64,18 +56,10 @@ func TestCompatibility(t *testing.T) {
 		}
 		v1beta2Cluster1 = *obj.(*mocov1beta2.MySQLCluster)
 
-		var tmp1, tmp2 MySQLCluster
-
-		if err := scheme.Convert(v1beta2Cluster1.DeepCopy(), &tmp1, nil); err != nil {
+		if err := scheme.Convert(v1beta2Cluster1.DeepCopy(), &v1beta1Cluster, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err := scheme.Convert(&tmp1, &v1beta1Cluster, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&v1beta1Cluster, &tmp2, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&tmp2, &v1beta2Cluster2, nil); err != nil {
+		if err := scheme.Convert(&v1beta1Cluster, &v1beta2Cluster2, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -132,18 +116,10 @@ func TestCompatibility(t *testing.T) {
 		}
 		oldPolicy1 = *obj.(*BackupPolicy)
 
-		var tmp1, tmp2 mocov1beta2.BackupPolicy
-
-		if err := scheme.Convert(oldPolicy1.DeepCopy(), &tmp1, nil); err != nil {
+		if err := scheme.Convert(oldPolicy1.DeepCopy(), &policy, nil); err != nil {
 			t.Fatal(err)
 		}
-		if err := scheme.Convert(&tmp1, &policy, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&policy, &tmp2, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err := scheme.Convert(&tmp2, &oldPolicy2, nil); err != nil {
+		if err := scheme.Convert(&policy, &oldPolicy2, nil); err != nil {
 			t.Fatal(err)
 		}
 
