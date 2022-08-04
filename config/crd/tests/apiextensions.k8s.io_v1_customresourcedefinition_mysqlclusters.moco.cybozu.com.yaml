@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.9.2
   name: mysqlclusters.moco.cybozu.com
 spec:
   conversion:
@@ -2946,6 +2946,9 @@ spec:
                             maxSkew:
                               format: int32
                               type: integer
+                            minDomains:
+                              format: int32
+                              type: integer
                             topologyKey:
                               type: string
                             whenUnsatisfiable:
@@ -3186,8 +3189,6 @@ spec:
                                           additionalProperties:
                                             type: string
                                           type: object
-                                        clusterName:
-                                          type: string
                                         creationTimestamp:
                                           format: date-time
                                           type: string
@@ -3242,8 +3243,6 @@ spec:
                                             type: object
                                           type: array
                                         resourceVersion:
-                                          type: string
-                                        selfLink:
                                           type: string
                                         uid:
                                           description: UID is a type that holds unique
@@ -4245,8 +4244,6 @@ spec:
                                         additionalProperties:
                                           type: string
                                         type: object
-                                      clusterName:
-                                        type: string
                                       creationTimestamp:
                                         format: date-time
                                         type: string
@@ -4301,8 +4298,6 @@ spec:
                                           type: object
                                         type: array
                                       resourceVersion:
-                                        type: string
-                                      selfLink:
                                         type: string
                                       uid:
                                         description: UID is a type that holds unique
@@ -8280,6 +8275,9 @@ spec:
                             maxSkew:
                               format: int32
                               type: integer
+                            minDomains:
+                              format: int32
+                              type: integer
                             topologyKey:
                               type: string
                             whenUnsatisfiable:
@@ -8520,8 +8518,6 @@ spec:
                                           additionalProperties:
                                             type: string
                                           type: object
-                                        clusterName:
-                                          type: string
                                         creationTimestamp:
                                           format: date-time
                                           type: string
@@ -8576,8 +8572,6 @@ spec:
                                             type: object
                                           type: array
                                         resourceVersion:
-                                          type: string
-                                        selfLink:
                                           type: string
                                         uid:
                                           description: UID is a type that holds unique
@@ -9825,8 +9819,6 @@ spec:
                                         additionalProperties:
                                           type: string
                                         type: object
-                                      clusterName:
-                                        type: string
                                       creationTimestamp:
                                         format: date-time
                                         type: string
@@ -9881,8 +9873,6 @@ spec:
                                           type: object
                                         type: array
                                       resourceVersion:
-                                        type: string
-                                      selfLink:
                                         type: string
                                       uid:
                                         description: UID is a type that holds unique
