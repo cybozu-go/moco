@@ -4,7 +4,7 @@ resources:
 
 namespace: '{{ .Release.Namespace }}'
 
-namePrefix: '{{ template "moco.fullname" . }}-'
+namePrefix: 'moco-'
 
 commonLabels:
   app.kubernetes.io/name: '{{ include "moco.name" . }}'

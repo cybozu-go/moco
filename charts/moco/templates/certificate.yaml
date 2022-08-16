@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ template "moco.fullname" . }}-controller-grpc
+  name: moco-controller-grpc
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "moco.labels" . | nindent 4 }}
@@ -19,7 +19,7 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ template "moco.fullname" . }}-grpc-ca
+  name: moco-grpc-ca
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "moco.labels" . | nindent 4 }}
@@ -29,22 +29,22 @@ spec:
   isCA: true
   issuerRef:
     kind: Issuer
-    name: {{ template "moco.fullname" . }}-selfsigned-issuer
+    name: moco-selfsigned-issuer
   renewBefore: 720h
   secretName: moco-grpc-ca
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ template "moco.fullname" . }}-serving-cert
+  name: moco-serving-cert
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "moco.labels" . | nindent 4 }}
 spec:
   dnsNames:
-    - {{ template "moco.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc
-    - {{ template "moco.fullname" . }}-webhook-service.{{ .Release.Namespace }}.svc.cluster.local
+    - moco-webhook-service.{{ .Release.Namespace }}.svc
+    - moco-webhook-service.{{ .Release.Namespace }}.svc.cluster.local
   issuerRef:
     kind: Issuer
-    name: {{ template "moco.fullname" . }}-selfsigned-issuer
+    name: moco-selfsigned-issuer
   secretName: moco-controller-cert
