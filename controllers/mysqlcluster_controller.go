@@ -899,6 +899,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	podSpec.InitContainers = nil
 	podSpec.WithContainers(containers...)
 	podSpec.WithInitContainers(initContainers...)
+	podSpec.WithSecurityContext(corev1ac.PodSecurityContext().
+		WithFSGroup(constants.ContainerGID).
+		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
+	)
 
 	sts.Spec.Template.WithSpec(&podSpec)
 
@@ -1212,7 +1216,11 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 								Name:                           pointer.String("work"),
 								VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*jc.WorkVolume.DeepCopy()),
 							}).
-							WithContainers(container),
+							WithContainers(container).
+							WithSecurityContext(corev1ac.PodSecurityContext().
+								WithFSGroup(constants.ContainerGID).
+								WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
+							),
 						),
 					),
 				),
@@ -1534,7 +1542,11 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 							Name:                           pointer.String("work"),
 							VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*cluster.Spec.Restore.JobConfig.WorkVolume.DeepCopy()),
 						}).
-						WithContainers(container),
+						WithContainers(container).
+						WithSecurityContext(corev1ac.PodSecurityContext().
+							WithFSGroup(constants.ContainerGID).
+							WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
+						),
 					),
 				),
 			)
