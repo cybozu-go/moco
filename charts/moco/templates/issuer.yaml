@@ -12,7 +12,7 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: {{ template "moco.fullname" . }}-selfsigned-issuer
+  name: moco-selfsigned-issuer
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "moco.labels" . | nindent 4 }}

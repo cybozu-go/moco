@@ -1839,7 +1839,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ template "moco.fullname" . }}-serving-cert'
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
     controller-gen.kubebuilder.io/version: v0.9.2
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -1853,7 +1853,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: '{{ template "moco.fullname" . }}-webhook-service'
+          name: moco-webhook-service
           namespace: '{{ .Release.Namespace }}'
           path: /convert
       conversionReviewVersions:

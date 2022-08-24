@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-controller-manager'
+  name: moco-controller-manager
   namespace: '{{ .Release.Namespace }}'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-leader-election-role'
+  name: moco-leader-election-role
   namespace: '{{ .Release.Namespace }}'
 rules:
   - apiGroups:
@@ -52,7 +52,7 @@ metadata:
     helm.sh/chart: '{{ include "moco.chart" . }}'
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
-  name: '{{ template "moco.fullname" . }}-backuppolicy-editor-role'
+  name: moco-backuppolicy-editor-role
 rules:
   - apiGroups:
       - moco.cybozu.com
@@ -82,7 +82,7 @@ metadata:
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
     rbac.authorization.k8s.io/aggregate-to-view: "true"
-  name: '{{ template "moco.fullname" . }}-backuppolicy-viewer-role'
+  name: moco-backuppolicy-viewer-role
 rules:
   - apiGroups:
       - moco.cybozu.com
@@ -108,7 +108,7 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-manager-role'
+  name: moco-manager-role
 rules:
   - apiGroups:
       - ""
@@ -327,7 +327,7 @@ metadata:
     helm.sh/chart: '{{ include "moco.chart" . }}'
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
-  name: '{{ template "moco.fullname" . }}-mysqlcluster-editor-role'
+  name: moco-mysqlcluster-editor-role
 rules:
   - apiGroups:
       - moco.cybozu.com
@@ -357,7 +357,7 @@ metadata:
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
     rbac.authorization.k8s.io/aggregate-to-view: "true"
-  name: '{{ template "moco.fullname" . }}-mysqlcluster-viewer-role'
+  name: moco-mysqlcluster-viewer-role
 rules:
   - apiGroups:
       - moco.cybozu.com
@@ -382,15 +382,15 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-leader-election-rolebinding'
+  name: moco-leader-election-rolebinding
   namespace: '{{ .Release.Namespace }}'
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: '{{ template "moco.fullname" . }}-leader-election-role'
+  name: moco-leader-election-role
 subjects:
   - kind: ServiceAccount
-    name: '{{ template "moco.fullname" . }}-controller-manager'
+    name: moco-controller-manager
     namespace: '{{ .Release.Namespace }}'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -401,14 +401,14 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-manager-rolebinding'
+  name: moco-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: '{{ template "moco.fullname" . }}-manager-role'
+  name: moco-manager-role
 subjects:
   - kind: ServiceAccount
-    name: '{{ template "moco.fullname" . }}-controller-manager'
+    name: moco-controller-manager
     namespace: '{{ .Release.Namespace }}'
 ---
 apiVersion: v1
@@ -419,7 +419,7 @@ metadata:
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-webhook-service'
+  name: moco-webhook-service
   namespace: '{{ .Release.Namespace }}'
 spec:
   ports:
@@ -433,19 +433,19 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ template "moco.fullname" . }}-serving-cert'
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-mutating-webhook-configuration'
+  name: moco-mutating-webhook-configuration
 webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
       service:
-        name: '{{ template "moco.fullname" . }}-webhook-service'
+        name: moco-webhook-service
         namespace: '{{ .Release.Namespace }}'
         path: /mutate-moco-cybozu-com-v1beta2-mysqlcluster
     failurePolicy: Fail
@@ -466,19 +466,19 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ template "moco.fullname" . }}-serving-cert'
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
-  name: '{{ template "moco.fullname" . }}-validating-webhook-configuration'
+  name: moco-validating-webhook-configuration
 webhooks:
   - admissionReviewVersions:
       - v1
     clientConfig:
       service:
-        name: '{{ template "moco.fullname" . }}-webhook-service'
+        name: moco-webhook-service
         namespace: '{{ .Release.Namespace }}'
         path: /validate-moco-cybozu-com-v1beta2-backuppolicy
     failurePolicy: Fail
@@ -500,7 +500,7 @@ webhooks:
       - v1
     clientConfig:
       service:
-        name: '{{ template "moco.fullname" . }}-webhook-service'
+        name: moco-webhook-service
         namespace: '{{ .Release.Namespace }}'
         path: /validate-moco-cybozu-com-v1beta2-mysqlcluster
     failurePolicy: Fail
