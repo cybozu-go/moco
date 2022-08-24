@@ -71,8 +71,8 @@ Related Issue: [cybozu-go/moco#426](https://github.com/cybozu-go/moco/issues/426
 
 If you are using a release name other than `moco`, you need to migrate.
 
-The migration steps involves deleting and recreating each MOCO resource once, except CRDs.
-Since the CRDs is not deleted, the pods running existing MySQL clusters are not deleted, so there is no downtime.
+The migration steps involve deleting and recreating each MOCO resource once, except CRDs.
+Since the CRDs are not deleted, the pods running existing MySQL clusters are not deleted, so there is no downtime.
 However, the migration process should be completed in a short time since the moco-controller will be temporarily deleted and no control over the cluster will be available.
 
 <details>
