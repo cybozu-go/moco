@@ -50,7 +50,6 @@ loose_replication_optimize_for_static_plugin_config = ON
 loose_replication_sender_observe_commit_only = OFF
 loose_temptable_use_mmap = ON
 max_allowed_packet = 1G
-max_connect_errors = 10
 max_connections = 100000
 max_heap_table_size = 64M
 max_sp_recursion_depth = 20

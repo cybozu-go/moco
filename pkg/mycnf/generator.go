@@ -28,7 +28,6 @@ var DefaultMycnf = map[string]string{
 
 	"back_log":            "900",
 	"max_connections":     "100000",
-	"max_connect_errors":  "10",
 	"max_allowed_packet":  "1G",
 	"max_heap_table_size": "64M",
 	"sort_buffer_size":    "4M",
