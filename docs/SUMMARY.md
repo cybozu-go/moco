@@ -14,7 +14,6 @@
     - [Customize system container](customize-system-container.md)
     - [Change volumeClaimTemplates](change-pvc-template.md)
 - [Known issues](known_issues.md)
-- [Troubleshooting](troubles.md)
 
 # References
 
