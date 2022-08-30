@@ -899,10 +899,16 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	podSpec.InitContainers = nil
 	podSpec.WithContainers(containers...)
 	podSpec.WithInitContainers(initContainers...)
-	podSpec.WithSecurityContext(corev1ac.PodSecurityContext().
-		WithFSGroup(constants.ContainerGID).
-		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
-	)
+
+	if podSpec.SecurityContext == nil {
+		podSpec.WithSecurityContext(corev1ac.PodSecurityContext())
+	}
+	if podSpec.SecurityContext.FSGroup == nil {
+		podSpec.SecurityContext.WithFSGroup(constants.ContainerGID)
+	}
+	if podSpec.SecurityContext.FSGroupChangePolicy == nil {
+		podSpec.SecurityContext.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
+	}
 
 	sts.Spec.Template.WithSpec(&podSpec)
 
