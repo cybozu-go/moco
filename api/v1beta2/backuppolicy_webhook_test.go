@@ -6,7 +6,7 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,26 +48,26 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(r.Spec.JobConfig.Memory).NotTo(BeNil())
 		Expect(r.Spec.JobConfig.Memory.Value()).To(Equal(int64(4) << 30))
 		Expect(r.Spec.JobConfig.MaxMemory).To(BeNil())
-		Expect(r.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.AllowConcurrent))
+		Expect(r.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
 	})
 
 	It("should create BackupPolicy with concurrencyPolicy=Forbid", func() {
 		r := makeBackupPolicy()
-		r.Spec.ConcurrencyPolicy = batchv1beta1.ForbidConcurrent
+		r.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should create BackupPolicy with concurrencyPolicy=Replace", func() {
 		r := makeBackupPolicy()
-		r.Spec.ConcurrencyPolicy = batchv1beta1.ReplaceConcurrent
+		r.Spec.ConcurrencyPolicy = batchv1.ReplaceConcurrent
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should deny BackupPolicy with invalid concurrencyPolicy", func() {
 		r := makeBackupPolicy()
-		r.Spec.ConcurrencyPolicy = batchv1beta1.ConcurrencyPolicy("invalid")
+		r.Spec.ConcurrencyPolicy = batchv1.ConcurrencyPolicy("invalid")
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})

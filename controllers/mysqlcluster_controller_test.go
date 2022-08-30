@@ -11,7 +11,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -1006,7 +1005,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		bp.Name = "test-policy"
 		bp.Spec.ActiveDeadlineSeconds = pointer.Int64(100)
 		bp.Spec.BackoffLimit = pointer.Int32(1)
-		bp.Spec.ConcurrencyPolicy = batchv1beta1.ForbidConcurrent
+		bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 		bp.Spec.StartingDeadlineSeconds = pointer.Int64(10)
 		bp.Spec.Schedule = "*/5 * * * *"
 		bp.Spec.SuccessfulJobsHistoryLimit = pointer.Int32(1)
@@ -1036,11 +1035,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Create(ctx, bp)
 		Expect(err).NotTo(HaveOccurred())
 
-		var cj *batchv1beta1.CronJob
+		var cj *batchv1.CronJob
 		var role *rbacv1.Role
 		var roleBinding *rbacv1.RoleBinding
 		Eventually(func() error {
-			cj = &batchv1beta1.CronJob{}
+			cj = &batchv1.CronJob{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
 				return err
 			}
@@ -1059,7 +1058,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
 		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(pointer.Int64(10)))
-		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.ForbidConcurrent))
+		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(1)))
 		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(2)))
 		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
@@ -1110,7 +1109,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		bp.Spec.ActiveDeadlineSeconds = nil
 		bp.Spec.BackoffLimit = nil
-		bp.Spec.ConcurrencyPolicy = batchv1beta1.AllowConcurrent
+		bp.Spec.ConcurrencyPolicy = batchv1.AllowConcurrent
 		bp.Spec.StartingDeadlineSeconds = nil
 		bp.Spec.Schedule = "*/5 1 * * *"
 		bp.Spec.SuccessfulJobsHistoryLimit = nil
@@ -1135,7 +1134,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			cj = &batchv1beta1.CronJob{}
+			cj = &batchv1.CronJob{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
 				return err
 			}
@@ -1146,7 +1145,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
-		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1beta1.AllowConcurrent))
+		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(3)))
 		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(1)))
 		js = &cj.Spec.JobTemplate.Spec
@@ -1196,7 +1195,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
-			cj = &batchv1beta1.CronJob{}
+			cj = &batchv1.CronJob{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, cj)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
