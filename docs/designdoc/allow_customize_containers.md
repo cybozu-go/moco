@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.28
+        image: quay.io/cybozu/mysql:8.0.30
     overwriteContainers:
     - name: agent
       resources:
@@ -95,7 +95,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.28
+        image: quay.io/cybozu/mysql:8.0.30
     overwriteContainers:
       agent:
         resources:

@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.28
+        image: quay.io/cybozu/mysql:8.0.30
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.

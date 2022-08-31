@@ -99,7 +99,7 @@ spec:
       containers:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.28
+        image: quay.io/cybozu/mysql:8.0.30
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -172,7 +172,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.28  # must be the same version as the donor
+        image: quay.io/cybozu/mysql:8.0.30  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -627,7 +627,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: quay.io/cybozu/mysql:8.0.28
+        image: quay.io/cybozu/mysql:8.0.30
 ```
 
 You are advised to make backups and/or create a replica cluster before starting the upgrade process.
