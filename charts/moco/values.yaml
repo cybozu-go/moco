@@ -5,3 +5,18 @@ image:
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
   tag:  # 0.12.1
+
+# resources -- resources used by moco-controller.
+resources:
+  requests:
+    cpu: 100m
+    memory: 20Mi
+
+# nodeSelector -- nodeSelector used by moco-controller.
+nodeSelector: {}
+
+# affinity -- affinity used by moco-controller.
+affinity: {}
+
+# tolerations -- tolerations used by moco-controller.
+tolerations: []
