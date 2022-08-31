@@ -698,6 +698,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(*sts.Spec.Replicas).To(Equal(cluster.Spec.Replicas))
 		Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).NotTo(BeNil())
 		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", defaultTerminationGracePeriodSeconds))
+		Expect(sts.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
+		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroup).To(Equal(int64(constants.ContainerGID)))
+		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroupChangePolicy).To(Equal(corev1.FSGroupChangeOnRootMismatch))
 
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 		foundMysqld := false
@@ -849,7 +852,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			WithContainers(corev1ac.Container().WithName("dummy").WithImage("dummy:latest")).
 			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest").
 				WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))).
-			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource()))
+			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource())).
+			WithSecurityContext(corev1ac.PodSecurityContext().WithFSGroup(123))
 
 		for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
 			switch *c.Name {
@@ -883,6 +887,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(sts.Spec.Template.Spec.TerminationGracePeriodSeconds).NotTo(BeNil())
 		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", 512))
 		Expect(sts.Spec.Template.Spec.PriorityClassName).To(Equal("hoge"))
+		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroup).To(Equal(int64(123)))
 
 		foundDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
