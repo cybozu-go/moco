@@ -20,7 +20,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -35,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
-	batchv1beta1ac "k8s.io/client-go/applyconfigurations/batch/v1beta1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	policyv1beta1ac "k8s.io/client-go/applyconfigurations/policy/v1beta1"
@@ -1097,7 +1095,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	log := crlog.FromContext(ctx)
 
 	if cluster.Spec.BackupPolicyName == nil {
-		cj := &batchv1beta1.CronJob{}
+		cj := &batchv1.CronJob{}
 		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj)
 		if err == nil {
 			if err := r.Delete(ctx, cj); err != nil {
@@ -1205,12 +1203,12 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	updateContainerWithSecurityContext(container)
 
 	cronJobName := cluster.BackupCronJobName()
-	cronJob := batchv1beta1ac.CronJob(cronJobName, cluster.Namespace).
+	cronJob := batchv1ac.CronJob(cronJobName, cluster.Namespace).
 		WithLabels(labelSetForJob(cluster)).
-		WithSpec(batchv1beta1ac.CronJobSpec().
+		WithSpec(batchv1ac.CronJobSpec().
 			WithSchedule(bp.Spec.Schedule).
 			WithConcurrencyPolicy(bp.Spec.ConcurrencyPolicy).
-			WithJobTemplate(batchv1beta1ac.JobTemplateSpec().
+			WithJobTemplate(batchv1ac.JobTemplateSpec().
 				WithLabels(labelSetForJob(cluster)).
 				WithSpec(batchv1ac.JobSpec().
 					WithTemplate(corev1ac.PodTemplateSpec().
@@ -1261,13 +1259,13 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		Object: obj,
 	}
 
-	var orig batchv1beta1.CronJob
+	var orig batchv1.CronJob
 	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}, &orig)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 	}
 
-	origApplyConfig, err := batchv1beta1ac.ExtractCronJob(&orig, fieldManager)
+	origApplyConfig, err := batchv1ac.ExtractCronJob(&orig, fieldManager)
 	if err != nil {
 		return fmt.Errorf("failed to extract CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 	}
@@ -1285,7 +1283,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	}
 
 	if debugController {
-		var updated batchv1beta1.CronJob
+		var updated batchv1.CronJob
 
 		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}, &updated); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
@@ -1943,7 +1941,7 @@ func setControllerReferenceWithJob(cluster *mocov1beta2.MySQLCluster, job *batch
 	return nil
 }
 
-func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJob *batchv1beta1ac.CronJobApplyConfiguration, scheme *runtime.Scheme) error {
+func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJob *batchv1ac.CronJobApplyConfiguration, scheme *runtime.Scheme) error {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
 		return err
@@ -2021,7 +2019,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
-		Owns(&batchv1beta1.CronJob{}).
+		Owns(&batchv1.CronJob{}).
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&batchv1.Job{}).

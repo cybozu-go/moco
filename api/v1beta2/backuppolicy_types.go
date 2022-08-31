@@ -2,7 +2,7 @@ package v1beta2
 
 import (
 	cron "github.com/robfig/cron/v3"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -49,7 +49,7 @@ type BackupPolicySpec struct {
 	// +kubebuilder:validation:Enum=Allow;Forbid;Replace
 	// +kubebuilder:default=Allow
 	// +optional
-	ConcurrencyPolicy batchv1beta1.ConcurrencyPolicy `json:"concurrencyPolicy,omitempty"`
+	ConcurrencyPolicy batchv1.ConcurrencyPolicy `json:"concurrencyPolicy,omitempty"`
 
 	// Specifies the duration in seconds relative to the startTime that the job
 	// may be continuously active before the system tries to terminate it; value
