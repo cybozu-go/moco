@@ -1,4 +1,4 @@
-batchv1beta1.ConcurrencyPolicy,https://pkg.go.dev/k8s.io/api/batch/v1beta1#ConcurrencyPolicy
+batchv1.ConcurrencyPolicy,https://pkg.go.dev/k8s.io/api/batch/v1#ConcurrencyPolicy
 corev1.ConditionStatus,https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus
 corev1.EnvFromSource,https://pkg.go.dev/k8s.io/api/core/v1#EnvFromSource
 corev1.EnvVar,https://pkg.go.dev/k8s.io/api/core/v1#EnvVar
