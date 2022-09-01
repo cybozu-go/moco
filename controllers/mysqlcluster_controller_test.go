@@ -12,7 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -95,7 +95,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &corev1.ServiceAccount{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &policyv1beta1.PodDisruptionBudget{}, client.InNamespace("test"))
+		err = k8sClient.DeleteAllOf(ctx, &policyv1.PodDisruptionBudget{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -968,9 +968,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		var pdb *policyv1beta1.PodDisruptionBudget
+		var pdb *policyv1.PodDisruptionBudget
 		Eventually(func() error {
-			pdb = &policyv1beta1.PodDisruptionBudget{}
+			pdb = &policyv1.PodDisruptionBudget{}
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
 		}).Should(Succeed())
 
@@ -992,7 +992,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
-			pdb = &policyv1beta1.PodDisruptionBudget{}
+			pdb = &policyv1.PodDisruptionBudget{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
