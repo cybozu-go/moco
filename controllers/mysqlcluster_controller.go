@@ -21,7 +21,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +36,7 @@ import (
 	batchv1ac "k8s.io/client-go/applyconfigurations/batch/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
-	policyv1beta1ac "k8s.io/client-go/applyconfigurations/policy/v1beta1"
+	policyv1ac "k8s.io/client-go/applyconfigurations/policy/v1"
 	rbacv1ac "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
@@ -1002,7 +1002,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	pdb := &policyv1beta1.PodDisruptionBudget{}
+	pdb := &policyv1.PodDisruptionBudget{}
 	pdb.Namespace = cluster.Namespace
 	pdb.Name = cluster.PrefixedName()
 
@@ -1016,9 +1016,9 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 
 	maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
 
-	pdbApplyConfig := policyv1beta1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
+	pdbApplyConfig := policyv1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
 		WithLabels(labelSet(cluster, false)).
-		WithSpec(policyv1beta1ac.PodDisruptionBudgetSpec().
+		WithSpec(policyv1ac.PodDisruptionBudgetSpec().
 			WithMaxUnavailable(maxUnavailable).
 			WithSelector(metav1ac.LabelSelector().
 				WithMatchLabels(labelSet(cluster, false)),
@@ -1037,13 +1037,13 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		Object: obj,
 	}
 
-	var orig policyv1beta1.PodDisruptionBudget
+	var orig policyv1.PodDisruptionBudget
 	err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &orig)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 	}
 
-	origApplyConfig, err := policyv1beta1ac.ExtractPodDisruptionBudget(&orig, fieldManager)
+	origApplyConfig, err := policyv1ac.ExtractPodDisruptionBudget(&orig, fieldManager)
 	if err != nil {
 		return fmt.Errorf("failed to extract PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 	}
@@ -1061,7 +1061,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	}
 
 	if debugController {
-		var updated policyv1beta1.PodDisruptionBudget
+		var updated policyv1.PodDisruptionBudget
 
 		if err := r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &updated); err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
@@ -1881,7 +1881,7 @@ func setControllerReferenceWithServiceAccount(cluster *mocov1beta2.MySQLCluster,
 	return nil
 }
 
-func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *policyv1beta1ac.PodDisruptionBudgetApplyConfiguration, scheme *runtime.Scheme) error {
+func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *policyv1ac.PodDisruptionBudgetApplyConfiguration, scheme *runtime.Scheme) error {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
 		return err
@@ -2018,7 +2018,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&corev1.ConfigMap{}).
-		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
 		Owns(&batchv1.CronJob{}).
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
