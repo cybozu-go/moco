@@ -163,4 +163,8 @@ var _ = Context("backup", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
 	})
+
+	It("should delete clusters", func() {
+		kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
+	})
 })
