@@ -189,6 +189,10 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>image.repository</td><td>string</td><td><code>&quot;ghcr.io/cybozu-go/moco&quot;</code></td><td>MOCO image repository to use.</td></tr>
 <tr><td>image.tag</td><td>string</td><td><code>{{ .Chart.AppVersion }}</code></td><td>MOCO image tag to use.</td></tr>
+<tr><td>resources</td><td>object</td><td><code>{&quot;requests&quot;:{&quot;cpu&quot;:&quot;100m&quot;,&quot;memory&quot;:&quot;20Mi&quot;}}</code></td><td>resources used by moco-controller.</td></tr>
+<tr><td>nodeSelector</td><td>object</td><td><code>{}</code></td><td>nodeSelector used by moco-controller.</td></tr>
+<tr><td>affinity</td><td>object</td><td><code>{}</code></td><td>affinity used by moco-controller.</td></tr>
+<tr><td>tolerations</td><td>list</td><td><code>[]</code></td><td>tolerations used by moco-controller.</td></tr>
 </tbody></table>
 <h2 id="generate-manifests"><a class="header" href="#generate-manifests">Generate Manifests</a></h2>
 <p>You can use the <code>helm template</code> command to render manifests.</p>
