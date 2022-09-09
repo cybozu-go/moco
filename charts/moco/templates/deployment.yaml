@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/component: moco-controller
-  {{- include "moco.labels" . | nindent 4 }}
+    {{- include "moco.labels" . | nindent 4 }}
 spec:
   replicas: 2
   selector:
@@ -50,10 +50,10 @@ spec:
               port: health
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- with .Values.resources }}
           resources:
-            requests:
-              cpu: 100m
-              memory: 20Mi
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -68,6 +68,18 @@ spec:
         runAsNonRoot: true
       serviceAccountName: moco-controller-manager
       terminationGracePeriodSeconds: 10
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       volumes:
         - name: cert
           secret:
