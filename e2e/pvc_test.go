@@ -194,4 +194,8 @@ var _ = Context("pvc_test", func() {
 		Expect(stsMetric).NotTo(BeNil())
 		Expect(stsMetric.GetCounter().GetValue()).To(BeNumerically("==", 1))
 	})
+
+	It("should delete clusters", func() {
+		kubectlSafe(nil, "delete", "-n", "pvc", "mysqlclusters", "--all")
+	})
 })

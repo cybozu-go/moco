@@ -14,7 +14,7 @@ func TestE2e(t *testing.T) {
 		t.Skip("no RUN_E2E environment variable")
 	}
 	RegisterFailHandler(Fail)
-	SetDefaultEventuallyTimeout(3 * time.Minute)
+	SetDefaultEventuallyTimeout(5 * time.Minute)
 	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
 	RunSpecs(t, "E2e Suite")
 }

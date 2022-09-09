@@ -148,4 +148,8 @@ var _ = Context("upgrade", func() {
 			return errors.New("no health condition")
 		}).Should(Succeed())
 	})
+
+	It("should delete clusters", func() {
+		kubectlSafe(nil, "delete", "-n", "upgrade", "mysqlclusters", "--all")
+	})
 })
