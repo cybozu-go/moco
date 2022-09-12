@@ -48,7 +48,6 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 | tolerations               | list   | `[]`                                          | tolerations used by moco-controller.               |
 | topologySpreadConstraints | list   | `[]`                                          | topologySpreadConstraints used by moco-controller. |
 
-
 ## Generate Manifests
 
 You can use the `helm template` command to render manifests.
