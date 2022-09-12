@@ -5,8 +5,29 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2022-09-12
+
+### Added
+- Support apply PVC template changes to StatefulSet (#403, #412, #417, #420, #424)
+- Support kubernetes v1.24 (#429)
+- Support MySQL 8.0.30 (#444)
+
 ### Changed
+- Make sure partial_revokes is enabled (#414)
+- Use Docker action (#416, #418)
 - Disable the delay check if .spec.maxDelaySeconds == 0 in MySQLCluster (#434)
+- Remove ineffective default setting (max_connect_errors) (#446)
+- Add fsGroup and fsGroupChangePolicy to Pod specs (#443)
+- Migrate batch/v1beta1.CronJob to batch/v1.CronJob (#447)
+- Migrate from policyv1beta1.PodDisruptionBudget to policyv1.PodDisruptionBudget (#452)
+- Update fluent-bit and mysqld_exporter container (#453)
+- Delete cluster after E2E to reduce flaky test failures (#448)
+- Update release procedure (#423)
+
+### Contributors
+
+- @inductor
+- @jelmer
 
 ## [0.12.1] - 2022-04-26
 
@@ -333,7 +354,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/cybozu-go/moco/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/cybozu-go/moco/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/cybozu-go/moco/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/cybozu-go/moco/compare/v0.11.0...v0.11.1
