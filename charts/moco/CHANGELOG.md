@@ -5,6 +5,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-09-12
+
+This release has breaking changes to the helm chart.
+If you installed the chart with a release name other than `moco`, please migrate following [this procedure](./README.md#migrate-to-v030).
+
+### Added
+- Add helm chart values (#450)
+
+### Changed
+- Bump appVersion to 0.13.0.
+- Rename helm resources (#432, #440)
+
 ## [0.2.3] - 2022-04-26
 
 ### Changed
@@ -79,7 +91,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.2.3...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.3.0...HEAD
+[0.3.0]: https://github.com/cybozu-go/moco/compare/chart-v0.2.3...chart-v0.3.0
 [0.2.3]: https://github.com/cybozu-go/moco/compare/chart-v0.2.2...chart-v0.2.3
 [0.2.2]: https://github.com/cybozu-go/moco/compare/chart-v0.2.1...chart-v0.2.2
 [0.2.1]: https://github.com/cybozu-go/moco/compare/chart-v0.2.0...chart-v0.2.1
