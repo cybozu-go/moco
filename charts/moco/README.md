@@ -38,14 +38,15 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 
 ## Values
 
-| Key              | Type   | Default                                       | Description                           |
-|------------------|--------|-----------------------------------------------|---------------------------------------|
-| image.repository | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.         |
-| image.tag        | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                |
-| resources        | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.    |
-| nodeSelector     | object | `{}`                                          | nodeSelector used by moco-controller. |
-| affinity         | object | `{}`                                          | affinity used by moco-controller.     |
-| tolerations      | list   | `[]`                                          | tolerations used by moco-controller.  |
+| Key                       | Type   | Default                                       | Description                                        |
+| ------------------------- | ------ | --------------------------------------------- | -------------------------------------------------- |
+| image.repository          | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.                      |
+| image.tag                 | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                             |
+| resources                 | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.                 |
+| nodeSelector              | object | `{}`                                          | nodeSelector used by moco-controller.              |
+| affinity                  | object | `{}`                                          | affinity used by moco-controller.                  |
+| tolerations               | list   | `[]`                                          | tolerations used by moco-controller.               |
+| topologySpreadConstraints | list   | `[]`                                          | topologySpreadConstraints used by moco-controller. |
 
 ## Generate Manifests
 
