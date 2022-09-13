@@ -20,3 +20,6 @@ affinity: {}
 
 # tolerations -- tolerations used by moco-controller.
 tolerations: []
+
+# topologySpreadConstraints -- topologySpreadConstraints used by moco-controller.
+topologySpreadConstraints: []
