@@ -687,33 +687,17 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 	svc.Spec.WithSelector(selector)
 
-	var mysqlNodePort, mysqlXNodePort int32
-	for _, p := range svc.Spec.Ports {
-		if p.Name == nil && p.NodePort == nil {
-			continue
-		}
-
-		switch *p.Name {
-		case constants.MySQLPortName:
-			mysqlNodePort = *p.NodePort
-		case constants.MySQLXPortName:
-			mysqlXNodePort = *p.NodePort
-		}
-	}
-
 	svc.Spec.WithPorts(
 		corev1ac.ServicePort().
 			WithName(constants.MySQLPortName).
 			WithProtocol(corev1.ProtocolTCP).
 			WithPort(constants.MySQLPort).
-			WithTargetPort(intstr.FromString(constants.MySQLPortName)).
-			WithNodePort(mysqlNodePort),
+			WithTargetPort(intstr.FromString(constants.MySQLPortName)),
 		corev1ac.ServicePort().
 			WithName(constants.MySQLXPortName).
 			WithProtocol(corev1.ProtocolTCP).
 			WithPort(constants.MySQLXPort).
-			WithTargetPort(intstr.FromString(constants.MySQLXPortName)).
-			WithNodePort(mysqlXNodePort),
+			WithTargetPort(intstr.FromString(constants.MySQLXPortName)),
 	)
 
 	if err := setControllerReferenceWithService(cluster, svc, r.Scheme); err != nil {
