@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQLCluster) (*corev1ac.ContainerApplyConfiguration, error) {
@@ -282,14 +284,33 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 	return containers
 }
 
-func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLCluster, image string) []*corev1ac.ContainerApplyConfiguration {
+func (r *MySQLClusterReconciler) makeV1InitContainer(ctx context.Context, cluster *mocov1beta2.MySQLCluster, image string) ([]*corev1ac.ContainerApplyConfiguration, error) {
+	var initContainers []*corev1ac.ContainerApplyConfiguration
+	initContainers = append(initContainers, r.makeInitContainerWithCopyMocoInitBin(cluster))
+
+	c, err := r.makeMocoInitContainer(ctx, cluster, image)
+	if err != nil {
+		return nil, err
+	}
+	initContainers = append(initContainers, c)
+
+	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
+	for _, given := range spec.InitContainers {
+		ic := given
+		updateContainerWithSecurityContext(&ic)
+		initContainers = append(initContainers, &ic)
+	}
+	return initContainers, nil
+}
+
+func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, cluster *mocov1beta2.MySQLCluster, image string) (*corev1ac.ContainerApplyConfiguration, error) {
 	c := corev1ac.Container().
 		WithName(constants.InitContainerName).
 		WithImage(image).
 		WithCommand(
-			constants.InitCommand,
-			"--data-dir="+constants.MySQLDataPath,
-			"--conf-dir="+constants.MySQLInitConfPath,
+			filepath.Join(constants.SharedPath, constants.InitCommand),
+			fmt.Sprintf("%s=%s", constants.MocoInitDataDirFlag, constants.MySQLDataPath),
+			fmt.Sprintf("%s=%s", constants.MocoInitConfDirFlag, constants.MySQLInitConfPath),
 			fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
 		).WithEnv(
 		corev1ac.EnvVar().
@@ -306,6 +327,9 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 		corev1ac.VolumeMount().
 			WithName(constants.MySQLInitConfVolumeName).
 			WithMountPath(constants.MySQLInitConfPath),
+		corev1ac.VolumeMount().
+			WithName(constants.SharedVolumeName).
+			WithMountPath(constants.SharedPath),
 	).WithResources(
 		corev1ac.ResourceRequirements().
 			WithRequests(corev1.ResourceList{
@@ -318,19 +342,57 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(cluster *mocov1beta2.MySQLC
 			}),
 	)
 
+	ok, err := r.isEnableLowerCaseTableNames(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		c.WithArgs(constants.MocoInitLowerCaseTableNamesFlag)
+	}
+
 	updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
-	var initContainers []*corev1ac.ContainerApplyConfiguration
-	initContainers = append(initContainers, c)
+	return c, nil
+}
 
-	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
-	for _, given := range spec.InitContainers {
-		ic := given
-		updateContainerWithSecurityContext(&ic)
-		initContainers = append(initContainers, &ic)
+func (r *MySQLClusterReconciler) makeInitContainerWithCopyMocoInitBin(cluster *mocov1beta2.MySQLCluster) *corev1ac.ContainerApplyConfiguration {
+	c := corev1ac.Container().
+		WithName(constants.CopyInitContainerName).
+		WithImage(r.AgentImage).
+		WithCommand("cp",
+			filepath.Join("/", constants.InitCommand),
+			filepath.Join(constants.SharedPath, constants.InitContainerName)).
+		WithVolumeMounts(corev1ac.VolumeMount().
+			WithName(constants.SharedVolumeName).
+			WithMountPath(constants.SharedPath))
+
+	updateContainerWithSecurityContext(c)
+	updateContainerWithOverwriteContainers(cluster, c)
+
+	return c
+}
+
+func (r *MySQLClusterReconciler) isEnableLowerCaseTableNames(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (bool, error) {
+	if cluster.Spec.MySQLConfigMapName == nil {
+		return false, nil
 	}
-	return initContainers
+
+	var cm corev1.ConfigMap
+	if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, &cm); err != nil {
+		return false, fmt.Errorf("failed to get user defined mysql conf configmap: %w", err)
+	}
+
+	v, ok := cm.Data[constants.LowerCaseTableNamesConfKey]
+	if !ok {
+		return false, nil
+	}
+
+	if v == "1" {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {

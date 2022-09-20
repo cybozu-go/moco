@@ -840,6 +840,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			WithName(constants.MySQLInitConfVolumeName).
 			WithEmptyDir(nil),
 		corev1ac.Volume().
+			WithName(constants.SharedVolumeName).
+			WithEmptyDir(nil),
+		corev1ac.Volume().
 			WithName(constants.MySQLConfVolumeName).
 			WithConfigMap(corev1ac.ConfigMapVolumeSource().
 				WithName(*mycnf.Name).WithDefaultMode(0644)),
@@ -891,7 +894,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	if mysqldContainer.Image == nil {
 		return fmt.Errorf("unexpected mysqld container definition with MySQLCluster %s/%s: image is nil", cluster.Namespace, cluster.Name)
 	}
-	initContainers := r.makeV1InitContainer(cluster, *mysqldContainer.Image)
+	initContainers, err := r.makeV1InitContainer(ctx, cluster, *mysqldContainer.Image)
+	if err != nil {
+		return err
+	}
 
 	podSpec.Containers = nil
 	podSpec.InitContainers = nil
