@@ -8,8 +8,8 @@ metadata:
 spec:
   commonName: MOCO gRPC CA
   isCA: true
-  duration: 87600h # 10 years
-  renewBefore: 720h # 30 days
+  duration: 87600h0m0s # 10 years
+  renewBefore: 720h0m0s # 30 days
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer
