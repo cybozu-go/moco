@@ -25,12 +25,12 @@ metadata:
     {{- include "moco.labels" . | nindent 4 }}
 spec:
   commonName: MOCO gRPC CA
-  duration: 87600h
+  duration: 87600h0m0s
   isCA: true
   issuerRef:
     kind: Issuer
     name: moco-selfsigned-issuer
-  renewBefore: 720h
+  renewBefore: 720h0m0s
   secretName: moco-grpc-ca
 ---
 apiVersion: cert-manager.io/v1
