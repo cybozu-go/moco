@@ -28,78 +28,38 @@ jobs:
     - run: make test
     - run: make check-generate
     - run: make envtest
+
   dbtest:
     name: Integration tests with MySQL
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30"]
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go-version }}
-    - run: make setup
-    - run: make test-bkop MYSQL_VERSION=${{ matrix.mysql-version }}
-    - run: make test-dbop MYSQL_VERSION=${{ matrix.mysql-version }}
+    uses: ./.github/workflows/dbtest.yaml
+    with:
+      mysql-version: ${{ matrix.mysql-version }}
+
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
         mysql-version: ["8.0.30"]
         k8s-version: ["1.22.9", "1.23.6", "1.24.2"]
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go-version }}
-    - run: |
-        swapon > swapon.txt
-        sudo swapoff -a
-        cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-    - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
-    - run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
-      working-directory: e2e
-    - run: make test
-      working-directory: e2e
-    - run: make logs
-      working-directory: e2e
-      if: always()
-    - uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
-        path: e2e/logs.tar.gz
+    uses: ./.github/workflows/e2e.yaml
+    with:
+      k8s-version: ${{ matrix.k8s-version }}
+      mysql-version: ${{ matrix.mysql-version }}
+
   e2e-mysql:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30"]
         k8s-version: ["1.24.2"]
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.go-version }}
-      - run: |
-          swapon > swapon.txt
-          sudo swapoff -a
-          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-      - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
-      - run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
-        working-directory: e2e
-      - run: make test
-        working-directory: e2e
-      - run: make logs
-        working-directory: e2e
-        if: always()
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
-          path: e2e-mysql/logs.tar.gz
+    uses: ./.github/workflows/e2e.yaml
+    with:
+      k8s-version: ${{ matrix.k8s-version }}
+      mysql-version: ${{ matrix.mysql-version }}
+
   upgrade:
     name: Upgrade Test
     runs-on: ubuntu-20.04
