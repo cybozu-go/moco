@@ -1,28 +1,20 @@
-name: E2E CI
+name: Weekly E2E
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths-ignore: ['**.md']
-  pull_request:
-    types: [opened, synchronize]
-    paths-ignore: ['**.md']
+  schedule:
+    # 11:00 (JST)
+    - cron: '0 2 * * 1'
 
 env:
   cache-version: 1
 
-# Use only the LTS version of MySQL for E2E running in CI.
-# Other MySQL supported versions tested weekly.
-# see: weekly.yaml
-#
-# NOTE: The LTS version is the version that Cybozu uses internally.
+# Weekly E2E tests using all MySQL versions supported by MOCO
 jobs:
   dbtest:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.28", "8.0.30"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30"]
     uses: ./.github/workflows/dbtest.yaml
     with:
       mysql-version: ${{ matrix.mysql-version }}
@@ -42,7 +34,7 @@ jobs:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.28", "8.0.30"]
+        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30"]
         k8s-version: ["1.24.2"]
     uses: ./.github/workflows/e2e.yaml
     with:
