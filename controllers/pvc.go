@@ -26,9 +26,9 @@ var (
 // reconcilePVC resizes the PVC as needed.
 // Since the PVC template of the StatefulSet is unchangeable, the following steps are required to resize the PVC
 //
-//   1. Rewrite PVC object requested volume size.
-//   2. Delete StatefulSet object for "--cascade=orphan" option.
-//   3. The StatefulSet will be re-created.
+//  1. Rewrite PVC object requested volume size.
+//  2. Delete StatefulSet object for "--cascade=orphan" option.
+//  3. The StatefulSet will be re-created.
 //
 // This function rewrites the PVC volume size.
 // StatefulSet deletion and re-creation is done by reconcileV1StatefulSet().

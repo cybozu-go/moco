@@ -801,6 +801,7 @@ func autoConvert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration
 	out.TopologySpreadConstraints = *(*[]corev1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
 	out.OS = (*corev1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
+	out.HostUsers = (*bool)(unsafe.Pointer(in.HostUsers))
 	return nil
 }
 
@@ -846,6 +847,7 @@ func autoConvert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration
 	out.TopologySpreadConstraints = *(*[]corev1.TopologySpreadConstraintApplyConfiguration)(unsafe.Pointer(&in.TopologySpreadConstraints))
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
 	out.OS = (*corev1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
+	out.HostUsers = (*bool)(unsafe.Pointer(in.HostUsers))
 	return nil
 }
 
@@ -948,7 +950,7 @@ func autoConvert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfi
 	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
 	out.SessionAffinityConfig = (*corev1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
 	out.IPFamilies = *(*[]apicorev1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
-	out.IPFamilyPolicy = (*apicorev1.IPFamilyPolicyType)(unsafe.Pointer(in.IPFamilyPolicy))
+	out.IPFamilyPolicy = (*apicorev1.IPFamilyPolicy)(unsafe.Pointer(in.IPFamilyPolicy))
 	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
 	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
 	out.InternalTrafficPolicy = (*apicorev1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))
@@ -976,7 +978,7 @@ func autoConvert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfi
 	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
 	out.SessionAffinityConfig = (*corev1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
 	out.IPFamilies = *(*[]apicorev1.IPFamily)(unsafe.Pointer(&in.IPFamilies))
-	out.IPFamilyPolicy = (*apicorev1.IPFamilyPolicyType)(unsafe.Pointer(in.IPFamilyPolicy))
+	out.IPFamilyPolicy = (*apicorev1.IPFamilyPolicy)(unsafe.Pointer(in.IPFamilyPolicy))
 	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
 	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
 	out.InternalTrafficPolicy = (*apicorev1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))

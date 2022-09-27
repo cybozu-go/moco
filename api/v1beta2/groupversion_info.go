@@ -1,6 +1,6 @@
 // Package v1beta2 contains API Schema definitions for the moco.cybozu.com v1beta2 API group
-//+kubebuilder:object:generate=true
-//+groupName=moco.cybozu.com
+// +kubebuilder:object:generate=true
+// +groupName=moco.cybozu.com
 package v1beta2
 
 import (

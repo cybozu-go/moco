@@ -259,7 +259,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32Ptr(1),
+			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					constants.LabelAppName:      constants.AppNameMySQL,
