@@ -12,7 +12,7 @@ on:
 env:
   cache-version: 1
 
-# Use only the LTS version of MySQL for E2E running in CI.
+# CI tests with the LTS version plus the latest and one previous MySQL version.
 # Other MySQL supported versions tested weekly.
 # see: weekly.yaml
 #
