@@ -12,6 +12,9 @@ resources:
     cpu: 100m
     memory: 20Mi
 
+# extraArgs -- Additional command line flags to pass to moco-controller binary.
+extraArgs: []
+
 # nodeSelector -- nodeSelector used by moco-controller.
 nodeSelector: {}
 
