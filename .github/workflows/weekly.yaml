@@ -4,6 +4,7 @@ on:
   schedule:
     # 11:00 (JST)
     - cron: '0 2 * * 1'
+  workflow_dispatch:
 
 env:
   cache-version: 1
