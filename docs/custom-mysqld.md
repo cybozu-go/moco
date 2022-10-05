@@ -23,8 +23,6 @@ You can find it under [`mysql` directory in `github.com/cybozu/neco-containers`]
 
 You should keep the following points:
 
-- Build and install [`moco-init`](https://github.com/cybozu/neco-containers/tree/main/mysql/moco-init)
-- Add directories for `mysqld` and `moco-init` to `PATH`
 - `ENTRYPOINT` should be `["mysqld"]`
 - `USER` should be `10000:10000`
 - `sleep` command must exist in one of the `PATH` directories.
