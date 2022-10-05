@@ -957,7 +957,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.InitContainerName:
-				Expect(c.Args).To(ContainElement(constants.MocoInitLowerCaseTableNamesFlag))
+				Expect(c.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 			case "init-dummy":
