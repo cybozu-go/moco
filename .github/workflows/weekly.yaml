@@ -5,6 +5,8 @@ on:
     # 11:00 (JST)
     - cron: '0 2 * * 1'
   workflow_dispatch:
+  push:
+    branches:  ["bump-v*"]
 
 env:
   cache-version: 1
