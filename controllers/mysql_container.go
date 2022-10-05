@@ -342,12 +342,14 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 			}),
 	)
 
-	ok, err := r.isEnableLowerCaseTableNames(ctx, cluster)
+	v, ok, err := r.getEnableLowerCaseTableNamesFromConf(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
 	if ok {
-		c.WithArgs(constants.MocoInitLowerCaseTableNamesFlag)
+		// Flag validation is done in the moco-init container.
+		// If invalid, the init container will fail.
+		c.WithArgs(fmt.Sprintf("%s=%s", constants.MocoInitLowerCaseTableNamesFlag, v))
 	}
 
 	updateContainerWithSecurityContext(c)
@@ -384,26 +386,18 @@ func (r *MySQLClusterReconciler) makeInitContainerWithCopyMocoInitBin(cluster *m
 	return c
 }
 
-func (r *MySQLClusterReconciler) isEnableLowerCaseTableNames(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (bool, error) {
+func (r *MySQLClusterReconciler) getEnableLowerCaseTableNamesFromConf(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (string, bool, error) {
 	if cluster.Spec.MySQLConfigMapName == nil {
-		return false, nil
+		return "", false, nil
 	}
 
 	var cm corev1.ConfigMap
 	if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: *cluster.Spec.MySQLConfigMapName}, &cm); err != nil {
-		return false, fmt.Errorf("failed to get user defined mysql conf configmap: %w", err)
+		return "", false, fmt.Errorf("failed to get user defined mysql conf configmap: %w", err)
 	}
 
 	v, ok := cm.Data[constants.LowerCaseTableNamesConfKey]
-	if !ok {
-		return false, nil
-	}
-
-	if v == "1" {
-		return true, nil
-	}
-
-	return false, nil
+	return v, ok, nil
 }
 
 func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
