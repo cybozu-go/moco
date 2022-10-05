@@ -363,6 +363,17 @@ func (r *MySQLClusterReconciler) makeInitContainerWithCopyMocoInitBin(cluster *m
 		WithCommand("cp",
 			filepath.Join("/", constants.InitCommand),
 			filepath.Join(constants.SharedPath, constants.InitContainerName)).
+		WithResources(
+			corev1ac.ResourceRequirements().
+				WithRequests(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.InitContainerCPURequest),
+					corev1.ResourceMemory: resource.MustParse(constants.InitContainerMemRequest),
+				}).
+				WithLimits(corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(constants.InitContainerCPULimit),
+					corev1.ResourceMemory: resource.MustParse(constants.InitContainerMemLimit),
+				}),
+		).
 		WithVolumeMounts(corev1ac.VolumeMount().
 			WithName(constants.SharedVolumeName).
 			WithMountPath(constants.SharedPath))
