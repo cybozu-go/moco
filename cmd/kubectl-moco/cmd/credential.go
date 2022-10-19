@@ -21,6 +21,10 @@ var credentialCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return fetchCredential(cmd.Context(), args[0])
 	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ctx := context.Background()
+		return mysqlClusterCandidates(ctx, cmd, args, toComplete)
+	},
 }
 
 func fetchCredential(ctx context.Context, clusterName string) error {
@@ -46,6 +50,10 @@ func init() {
 	fs := credentialCmd.Flags()
 	fs.StringVarP(&credentialConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql")
 	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `mycnf`]")
+
+	_ = credentialCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"plain", "mycnf"}, cobra.ShellCompDirectiveDefault
+	})
 
 	rootCmd.AddCommand(credentialCmd)
 }
