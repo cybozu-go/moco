@@ -37,8 +37,7 @@ var mysqlCmd = &cobra.Command{
 		return runMySQLCommand(cmd.Context(), args[0], cmd, args[1:])
 	},
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		ctx := context.Background()
-		return mysqlClusterCandidates(ctx, cmd, args, toComplete)
+		return mysqlClusterCandidates(cmd.Context(), cmd, args, toComplete)
 	},
 }
 

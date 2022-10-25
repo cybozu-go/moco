@@ -20,8 +20,7 @@ var switchoverCmd = &cobra.Command{
 		return switchover(cmd.Context(), args[0])
 	},
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		ctx := context.Background()
-		return mysqlClusterCandidates(ctx, cmd, args, toComplete)
+		return mysqlClusterCandidates(cmd.Context(), cmd, args, toComplete)
 	},
 }
 
