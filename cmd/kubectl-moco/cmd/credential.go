@@ -50,6 +50,9 @@ func init() {
 	fs.StringVarP(&credentialConfig.user, "mysql-user", "u", "moco-readonly", "User for login to mysql")
 	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `mycnf`]")
 
+	_ = credentialCmd.RegisterFlagCompletionFunc("mysql-user", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"moco-readonly", "moco-writable", "moco-admin"}, cobra.ShellCompDirectiveDefault
+	})
 	_ = credentialCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"plain", "mycnf"}, cobra.ShellCompDirectiveDefault
 	})
