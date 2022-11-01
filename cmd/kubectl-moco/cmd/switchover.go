@@ -19,6 +19,9 @@ var switchoverCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return switchover(cmd.Context(), args[0])
 	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return mysqlClusterCandidates(cmd.Context(), cmd, args, toComplete)
+	},
 }
 
 func switchover(ctx context.Context, name string) error {

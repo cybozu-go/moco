@@ -36,6 +36,9 @@ var mysqlCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runMySQLCommand(cmd.Context(), args[0], cmd, args[1:])
 	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return mysqlClusterCandidates(cmd.Context(), cmd, args, toComplete)
+	},
 }
 
 func runMySQLCommand(ctx context.Context, clusterName string, cmd *cobra.Command, args []string) error {
