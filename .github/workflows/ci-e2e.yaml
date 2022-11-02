@@ -22,7 +22,7 @@ jobs:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.28", "8.0.30"]
+        mysql-version: ["8.0.27", "8.0.28", "8.0.30"]
     uses: ./.github/workflows/dbtest.yaml
     with:
       mysql-version: ${{ matrix.mysql-version }}
@@ -42,7 +42,7 @@ jobs:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.28", "8.0.30"]
+        mysql-version: ["8.0.27", "8.0.28", "8.0.30"]
         k8s-version: ["1.24.2"]
     uses: ./.github/workflows/e2e.yaml
     with:
