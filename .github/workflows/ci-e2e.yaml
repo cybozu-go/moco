@@ -12,11 +12,11 @@ on:
 env:
   cache-version: 1
 
-# CI tests with the LTS version plus the latest and one previous MySQL version.
+# CI tests with the Cybozu internal use version plus the latest and one previous MySQL version.
 # Other MySQL supported versions tested weekly.
 # see: weekly.yaml
 #
-# NOTE: The LTS version is the version that Cybozu uses internally.
+# NOTE: Current Cybozu internal use version is 8.0.28.
 jobs:
   dbtest:
     name: Integration tests with MySQL
