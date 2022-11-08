@@ -4,6 +4,7 @@ package constants
 const (
 	AgentContainerName             = "agent"
 	InitContainerName              = "moco-init"
+	CopyInitContainerName          = "copy-moco-init"
 	MysqldContainerName            = "mysqld"
 	SlowQueryLogAgentContainerName = "slow-log"
 	ExporterContainerName          = "mysqld-exporter"
@@ -43,6 +44,7 @@ const (
 	VarLogVolumeName                  = "var-log"
 	TmpVolumeName                     = "tmp"
 	SlowQueryLogAgentConfigVolumeName = "slow-fluent-bit-config"
+	SharedVolumeName                  = "shared"
 )
 
 // UID/GID

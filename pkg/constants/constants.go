@@ -27,6 +27,9 @@ const (
 
 	// MyCnfSecretPath is the path for my.cnf formated credentials for CLI
 	MyCnfSecretPath = "/mysql-credentials"
+
+	// SharedPath is the path for shared dir.
+	SharedPath = "/shared"
 )
 
 const (
@@ -53,3 +56,15 @@ const (
 	CloneSourceInitUserKey     = "INIT_USER"
 	CloneSourceInitPasswordKey = "INIT_PASSWORD"
 )
+
+// moco-init flags
+const (
+	// MocoInitLowerCaseTableNamesFlag is flag for initialize mysqld with 'lower-case-table-names=1'
+	MocoInitLowerCaseTableNamesFlag = "--lower-case-table-names"
+	// MocoInitDataDirFlag is flag for data dir.
+	MocoInitDataDirFlag = "--data-dir"
+	// MocoInitConfDirFlag is flag for conf dir.
+	MocoInitConfDirFlag = "--conf-dir"
+)
+
+const LowerCaseTableNamesConfKey = "lower_case_table_names"

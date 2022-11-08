@@ -392,7 +392,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		userCM.Namespace = "test"
 		userCM.Name = "user-conf"
 		userCM.Data = map[string]string{
-			"foo": "bar",
+			"foo":                                "bar",
+			constants.LowerCaseTableNamesConfKey: "1",
 		}
 
 		err = k8sClient.Create(ctx, userCM)
@@ -434,6 +435,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = bar"))
+		Expect(cm.Data["my.cnf"]).To(ContainSubstring("lower_case_table_names = 1"))
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("innodb_buffer_pool_size = 367001600"))
 
 		userCM = &corev1.ConfigMap{}
@@ -740,8 +742,19 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(foundSlowLogAgent).To(BeTrue())
 		Expect(foundExporter).To(BeFalse())
 
-		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(1))
-		initContainer := &sts.Spec.Template.Spec.InitContainers[0]
+		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(2))
+
+		cpInitContainer := &sts.Spec.Template.Spec.InitContainers[0]
+		Expect(cpInitContainer.Name).To(Equal(constants.CopyInitContainerName))
+		Expect(cpInitContainer.Image).To(Equal(testAgentImage))
+		Expect(cpInitContainer.Command).To(ContainElement("cp"))
+		Expect(cpInitContainer.SecurityContext).NotTo(BeNil())
+		Expect(cpInitContainer.SecurityContext.RunAsUser).NotTo(BeNil())
+		Expect(*cpInitContainer.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+		Expect(cpInitContainer.SecurityContext.RunAsGroup).NotTo(BeNil())
+		Expect(*cpInitContainer.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
+
+		initContainer := &sts.Spec.Template.Spec.InitContainers[1]
 		Expect(initContainer.Name).To(Equal(constants.InitContainerName))
 		Expect(initContainer.Image).To(Equal("moco-mysql:latest"))
 		Expect(initContainer.Command).To(ContainElement(fmt.Sprintf("%d", cluster.Spec.ServerIDBase)))
@@ -863,6 +876,19 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 
 		cluster.Spec.PodTemplate.Spec = mocov1beta2.PodSpecApplyConfiguration(*podSpec)
+
+		userCM := &corev1.ConfigMap{}
+		userCM.Namespace = "test"
+		userCM.Name = "user-conf"
+		userCM.Data = map[string]string{
+			constants.LowerCaseTableNamesConfKey: "1",
+		}
+
+		err = k8sClient.Create(ctx, userCM)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
+
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -931,6 +957,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.InitContainerName:
+				Expect(c.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 			case "init-dummy":
