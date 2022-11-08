@@ -1,0 +1,25 @@
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  # Backup schedule.  Any CRON format is allowed.
+  schedule: "@daily"
+
+  jobConfig:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              namespaceSelector: {}  # to apply the anti-affinity across all namespaces
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: ["mysql-backup"]
+                  - key: app.kubernetes.io/created-by
+                    operator: In
+                    values: ["moco"]
+              topologyKey: kubernetes.io/hostname
