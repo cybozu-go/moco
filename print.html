@@ -882,8 +882,6 @@ spec:
 You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/mysql"><code>mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
 <p>You should keep the following points:</p>
 <ul>
-<li>Build and install <a href="https://github.com/cybozu/neco-containers/tree/main/mysql/moco-init"><code>moco-init</code></a></li>
-<li>Add directories for <code>mysqld</code> and <code>moco-init</code> to <code>PATH</code></li>
 <li><code>ENTRYPOINT</code> should be <code>[&quot;mysqld&quot;]</code></li>
 <li><code>USER</code> should be <code>10000:10000</code></li>
 <li><code>sleep</code> command must exist in one of the <code>PATH</code> directories.</li>
