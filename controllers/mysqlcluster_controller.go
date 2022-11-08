@@ -1204,6 +1204,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 					WithTemplate(corev1ac.PodTemplateSpec().
 						WithLabels(labelSetForJob(cluster)).
 						WithSpec(corev1ac.PodSpec().
+							WithAffinity((*corev1ac.AffinityApplyConfiguration)(jc.Affinity.DeepCopy())).
 							WithRestartPolicy(corev1.RestartPolicyNever).
 							WithServiceAccountName(bp.Spec.JobConfig.ServiceAccountName).
 							WithVolumes(&corev1ac.VolumeApplyConfiguration{
