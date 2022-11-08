@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -870,7 +871,13 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
 			switch *c.Name {
 			case constants.MysqldContainerName:
-				c.WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))
+				c.WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
+					WithLivenessProbe(corev1ac.Probe().
+						WithTerminationGracePeriodSeconds(int64(200)).
+						WithHTTPGet(corev1ac.HTTPGetAction().
+							WithPath("/healthz").
+							WithPort(intstr.FromString(constants.MySQLHealthPortName)).
+							WithScheme(corev1.URISchemeHTTP)))
 			}
 			podSpec.WithContainers(&c)
 		}
@@ -926,6 +933,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.MysqldContainerName:
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
+				Expect(c.LivenessProbe).NotTo(BeNil())
+				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(pointer.Int64(200)))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 			case constants.AgentContainerName:

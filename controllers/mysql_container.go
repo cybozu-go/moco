@@ -58,25 +58,39 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 		failureThreshold = 1
 	}
 
-	source.
-		WithStartupProbe(corev1ac.Probe().
-			WithHTTPGet(corev1ac.HTTPGetAction().
-				WithPath("/healthz").
-				WithPort(intstr.FromString(constants.MySQLHealthPortName)).
-				WithScheme(corev1.URISchemeHTTP)).
-			WithPeriodSeconds(10).
-			WithFailureThreshold(failureThreshold)).
-		WithLivenessProbe(corev1ac.Probe().
-			WithHTTPGet(corev1ac.HTTPGetAction().
-				WithPath("/healthz").
-				WithPort(intstr.FromString(constants.MySQLHealthPortName)).
-				WithScheme(corev1.URISchemeHTTP))).
-		WithReadinessProbe(corev1ac.Probe().
-			WithHTTPGet(corev1ac.HTTPGetAction().
-				WithPath("/readyz").
-				WithPort(intstr.FromString(constants.MySQLHealthPortName)).
-				WithScheme(corev1.URISchemeHTTP)),
-		)
+	if source.StartupProbe == nil {
+		source.WithStartupProbe(corev1ac.Probe())
+	}
+
+	source.StartupProbe.WithHTTPGet(corev1ac.HTTPGetAction().
+		WithPath("/healthz").
+		WithPort(intstr.FromString(constants.MySQLHealthPortName)).
+		WithScheme(corev1.URISchemeHTTP))
+
+	if source.StartupProbe.PeriodSeconds == nil {
+		source.StartupProbe.WithPeriodSeconds(10)
+	}
+	if source.StartupProbe.FailureThreshold == nil {
+		source.StartupProbe.WithFailureThreshold(failureThreshold)
+	}
+
+	if source.LivenessProbe == nil {
+		source.WithLivenessProbe(corev1ac.Probe())
+	}
+
+	source.LivenessProbe.WithHTTPGet(corev1ac.HTTPGetAction().
+		WithPath("/healthz").
+		WithPort(intstr.FromString(constants.MySQLHealthPortName)).
+		WithScheme(corev1.URISchemeHTTP))
+
+	if source.ReadinessProbe == nil {
+		source.WithReadinessProbe(corev1ac.Probe())
+	}
+
+	source.ReadinessProbe.WithHTTPGet(corev1ac.HTTPGetAction().
+		WithPath("/readyz").
+		WithPort(intstr.FromString(constants.MySQLHealthPortName)).
+		WithScheme(corev1.URISchemeHTTP))
 
 	source.WithVolumeMounts(
 		corev1ac.VolumeMount().
