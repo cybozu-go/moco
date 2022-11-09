@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.9.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -1840,7 +1840,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.9.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -3507,6 +3507,8 @@ spec:
                           type: boolean
                         hostPID:
                           type: boolean
+                        hostUsers:
+                          type: boolean
                         hostname:
                           type: string
                         imagePullSecrets:
@@ -4268,12 +4270,22 @@ spec:
                                       type: string
                                     type: object
                                 type: object
+                              matchLabelKeys:
+                                items:
+                                  type: string
+                                type: array
                               maxSkew:
                                 format: int32
                                 type: integer
                               minDomains:
                                 format: int32
                                 type: integer
+                              nodeAffinityPolicy:
+                                description: NodeInclusionPolicy defines the type of node inclusion policy
+                                type: string
+                              nodeTaintsPolicy:
+                                description: NodeInclusionPolicy defines the type of node inclusion policy
+                                type: string
                               topologyKey:
                                 type: string
                               whenUnsatisfiable:
@@ -5912,13 +5924,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: Service External Traffic Policy Type string
+                          description: ServiceExternalTrafficPolicyType describes how nodes distribute service traffic they receive on one of the Service's "externally-facing" addresses (NodePorts, ExternalIPs, and LoadBalancer IPs).
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes the type of traffic routing for internal traffic
+                          description: ServiceInternalTrafficPolicyType describes how nodes distribute service traffic they receive on the ClusterIP.
                           type: string
                         ipFamilies:
                           items:
@@ -5926,7 +5938,7 @@ spec:
                             type: string
                           type: array
                         ipFamilyPolicy:
-                          description: IPFamilyPolicyType represents the dual-stack-ness requested or required by a Service
+                          description: IPFamilyPolicy represents the dual-stack-ness requested or required by a Service
                           type: string
                         loadBalancerClass:
                           type: string
@@ -7910,6 +7922,8 @@ spec:
                           type: boolean
                         hostPID:
                           type: boolean
+                        hostUsers:
+                          type: boolean
                         hostname:
                           type: string
                         imagePullSecrets:
@@ -8671,12 +8685,22 @@ spec:
                                       type: string
                                     type: object
                                 type: object
+                              matchLabelKeys:
+                                items:
+                                  type: string
+                                type: array
                               maxSkew:
                                 format: int32
                                 type: integer
                               minDomains:
                                 format: int32
                                 type: integer
+                              nodeAffinityPolicy:
+                                description: NodeInclusionPolicy defines the type of node inclusion policy
+                                type: string
+                              nodeTaintsPolicy:
+                                description: NodeInclusionPolicy defines the type of node inclusion policy
+                                type: string
                               topologyKey:
                                 type: string
                               whenUnsatisfiable:
@@ -9437,13 +9461,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: Service External Traffic Policy Type string
+                          description: ServiceExternalTrafficPolicyType describes how nodes distribute service traffic they receive on one of the Service's "externally-facing" addresses (NodePorts, ExternalIPs, and LoadBalancer IPs).
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes the type of traffic routing for internal traffic
+                          description: ServiceInternalTrafficPolicyType describes how nodes distribute service traffic they receive on the ClusterIP.
                           type: string
                         ipFamilies:
                           items:
@@ -9451,7 +9475,7 @@ spec:
                             type: string
                           type: array
                         ipFamilyPolicy:
-                          description: IPFamilyPolicyType represents the dual-stack-ness requested or required by a Service
+                          description: IPFamilyPolicy represents the dual-stack-ness requested or required by a Service
                           type: string
                         loadBalancerClass:
                           type: string
@@ -9548,13 +9572,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: Service External Traffic Policy Type string
+                          description: ServiceExternalTrafficPolicyType describes how nodes distribute service traffic they receive on one of the Service's "externally-facing" addresses (NodePorts, ExternalIPs, and LoadBalancer IPs).
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes the type of traffic routing for internal traffic
+                          description: ServiceInternalTrafficPolicyType describes how nodes distribute service traffic they receive on the ClusterIP.
                           type: string
                         ipFamilies:
                           items:
@@ -9562,7 +9586,7 @@ spec:
                             type: string
                           type: array
                         ipFamilyPolicy:
-                          description: IPFamilyPolicyType represents the dual-stack-ness requested or required by a Service
+                          description: IPFamilyPolicy represents the dual-stack-ness requested or required by a Service
                           type: string
                         loadBalancerClass:
                           type: string
