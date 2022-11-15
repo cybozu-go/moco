@@ -1,0 +1,63 @@
+# This example shows how to uses a user-defined probe
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  replicas: 3
+  podTemplate:
+    spec:
+      containers:
+        - name: mysqld
+          image: quay.io/cybozu/mysql:8.0.30
+          # If you want to override the default probes, you cannot override the httpGet.
+          livenessProbe:
+            failureThreshold: 3
+            # Cannot be overwritten httpGet.
+            #
+            # httpGet:
+            #   path: /foo/healthz
+            #   port: health
+            #   scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+            terminationGracePeriodSeconds: 200
+# Default probes:
+#
+#         startupProbe:
+#           failureThreshold: 360  # .spec.startupWaitSeconds (default: 3600) / 10
+#           httpGet:
+#             path: /healthz
+#             port: health
+#             scheme: HTTP
+#           periodSeconds: 10
+#           successThreshold: 1
+#           timeoutSeconds: 1
+#         readinessProbe:
+#           failureThreshold: 3
+#           httpGet:
+#             path: /readyz
+#             port: health
+#             scheme: HTTP
+#           periodSeconds: 10
+#           successThreshold: 1
+#           timeoutSeconds: 1
+#         livenessProbe:
+#           failureThreshold: 3
+#           httpGet:
+#             path: /healthz
+#             port: health
+#             scheme: HTTP
+#           periodSeconds: 10
+#           successThreshold: 1
+#           timeoutSeconds: 1
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
