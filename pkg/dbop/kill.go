@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/go-sql-driver/mysql"
 )
 
 func (o *operator) KillConnections(ctx context.Context) error {
@@ -22,9 +23,16 @@ func (o *operator) KillConnections(ctx context.Context) error {
 			continue
 		}
 
-		if _, err := o.db.ExecContext(ctx, `KILL CONNECTION ?`, p.ID); err != nil {
+		if _, err := o.db.ExecContext(ctx, `KILL CONNECTION ?`, p.ID); err != nil && !isMySQLError(err, 1094) {
 			return fmt.Errorf("failed to kill connection %d for %s from %s: %w", p.ID, p.User, p.Host, err)
 		}
 	}
 	return nil
+}
+
+func isMySQLError(err error, number uint16) bool {
+	if merr, ok := err.(*mysql.MySQLError); ok {
+		return merr.Number == number
+	}
+	return false
 }
