@@ -83,7 +83,7 @@ jobs:
       with:
         go-version: ${{ env.go-version }}
     - name: GoReleaser
-      # v3.0.0 https://github.com/goreleaser/goreleaser-action/releases/tag/v3.2.0
+      # v3.2.0 https://github.com/goreleaser/goreleaser-action/releases/tag/v3.2.0
       uses: goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757
       with:
         distribution: goreleaser
