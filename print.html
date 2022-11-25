@@ -186,7 +186,7 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <pre><code class="language-console">$ helm install --create-namespace --namespace moco-system moco -f values.yaml moco/moco
 </code></pre>
 <h2 id="values"><a class="header" href="#values">Values</a></h2>
-<table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>image.repository</td><td>string</td><td><code>&quot;ghcr.io/cybozu-go/moco&quot;</code></td><td>MOCO image repository to use.</td></tr>
 <tr><td>image.tag</td><td>string</td><td><code>{{ .Chart.AppVersion }}</code></td><td>MOCO image tag to use.</td></tr>
 <tr><td>resources</td><td>object</td><td><code>{&quot;requests&quot;:{&quot;cpu&quot;:&quot;100m&quot;,&quot;memory&quot;:&quot;20Mi&quot;}}</code></td><td>resources used by moco-controller.</td></tr>
@@ -196,6 +196,7 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <tr><td>tolerations</td><td>list</td><td><code>[]</code></td><td>tolerations used by moco-controller.</td></tr>
 <tr><td>topologySpreadConstraints</td><td>list</td><td><code>[]</code></td><td>topologySpreadConstraints used by moco-controller.</td></tr>
 </tbody></table>
+</div>
 <h2 id="generate-manifests"><a class="header" href="#generate-manifests">Generate Manifests</a></h2>
 <p>You can use the <code>helm template</code> command to render manifests.</p>
 <pre><code class="language-console">$ helm template --namespace moco-system moco moco/moco
@@ -630,10 +631,11 @@ $ kubectl moco mysql -u moco-writable test -- -e &quot;GRANT ALL ON db1.* TO 'fo
 <h3 id="connecting-to-mysqld-over-network"><a class="header" href="#connecting-to-mysqld-over-network">Connecting to <code>mysqld</code> over network</a></h3>
 <p>MOCO prepares two Services for each MySQLCluster.
 For example, a MySQLCluster named <code>test</code> in <code>foo</code> Namespace has the following Services.</p>
-<table><thead><tr><th>Service Name</th><th>DNS Name</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Service Name</th><th>DNS Name</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moco-test-primary</code></td><td><code>moco-test-primary.foo.svc</code></td><td>Connect to the primary instance.</td></tr>
 <tr><td><code>moco-test-replica</code></td><td><code>moco-test-replica.foo.svc</code></td><td>Connect to replica instances.</td></tr>
 </tbody></table>
+</div>
 <p><code>moco-test-replica</code> can be used only for read access.</p>
 <p>The type of these Services is usually ClusterIP.
 The following is an example to change Service type to LoadBalancer and add an annotation for <a href="https://metallb.universe.tf/">MetalLB</a>.</p>
@@ -927,13 +929,13 @@ spec:
 <h2 id="system-containers"><a class="header" href="#system-containers">System containers</a></h2>
 <p>The following is a list of system containers used by MOCO.
 Specifying container names in <code>overwriteContainers</code> that are not listed here will result in an error in API validation.</p>
-<table><thead><tr><th>Name</th><th>Default CPU Requests/Limits</th><th>Default Memory Requests/Limits</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Default CPU Requests/Limits</th><th>Default Memory Requests/Limits</th><th>Description</th></tr></thead><tbody>
 <tr><td>agent</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MOCO's agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent</td></tr>
 <tr><td>moco-init</td><td><code>100m</code> / <code>100m</code></td><td><code>300Mi</code> / <code>300Mi</code></td><td>Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address.</td></tr>
 <tr><td>slow-log</td><td><code>100m</code> / <code>100m</code></td><td><code>20Mi</code> / <code>20Mi</code></td><td>Sidecar container for outputting slow query logs.</td></tr>
 <tr><td>mysqld-exporter</td><td><code>200m</code> / <code>200m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MySQL server exporter sidecar container.</td></tr>
 </tbody></table>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="change-the-volumeclaimtemplates"><a class="header" href="#change-the-volumeclaimtemplates">Change the volumeClaimTemplates</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="change-the-volumeclaimtemplates"><a class="header" href="#change-the-volumeclaimtemplates">Change the volumeClaimTemplates</a></h1>
 <p>MOCO supports MySQLCluster <code>.spec.volumeClaimTemplates</code> changes.</p>
 <p>When <code>.spec.volumeClaimTemplates</code> is changed, moco-controller will try to recreate the StatefulSet.
 This is because modification of <code>volumeClaimTemplates</code> in StatefulSet is currently not allowed.</p>
@@ -1012,7 +1014,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </ul>
 <h4 id="backupstatus"><a class="header" href="#backupstatus">BackupStatus</a></h4>
 <p>BackupStatus represents the status of the last successful backup.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>time</td><td>The time of the backup.  This is used to generate object keys of backup files in a bucket.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">metav1.Duration</a></td><td>true</td></tr>
 <tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
@@ -1024,35 +1026,39 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>workDirUsage</td><td>WorkDirUsage is the max usage in bytes of the woking directory.</td><td>int64</td><td>true</td></tr>
 <tr><td>warnings</td><td>Warnings are list of warnings from the last backup, if any.</td><td>[]string</td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlcluster"><a class="header" href="#mysqlcluster">MySQLCluster</a></h4>
 <p>MySQLCluster is the Schema for the mysqlclusters API</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td></td><td><a href="crd_mysqlcluster_v1beta1.html#mysqlclusterspec">MySQLClusterSpec</a></td><td>false</td></tr>
 <tr><td>status</td><td></td><td><a href="crd_mysqlcluster_v1beta1.html#mysqlclusterstatus">MySQLClusterStatus</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclustercondition"><a class="header" href="#mysqlclustercondition">MySQLClusterCondition</a></h4>
 <p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
 <tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
 <tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
 <tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
 <tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterlist"><a class="header" href="#mysqlclusterlist">MySQLClusterList</a></h4>
 <p>MySQLClusterList contains a list of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
 <tr><td>items</td><td></td><td>[]<a href="crd_mysqlcluster_v1beta1.html#mysqlcluster">MySQLCluster</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterspec"><a class="header" href="#mysqlclusterspec">MySQLClusterSpec</a></h4>
 <p>MySQLClusterSpec defines the desired state of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>replicas</td><td>Replicas is the number of instances. Available values are positive odd numbers.</td><td>int32</td><td>false</td></tr>
 <tr><td>podTemplate</td><td>PodTemplate is a <code>Pod</code> template for MySQL server container.</td><td><a href="crd_mysqlcluster_v1beta1.html#podtemplatespec">PodTemplateSpec</a></td><td>true</td></tr>
 <tr><td>volumeClaimTemplates</td><td>VolumeClaimTemplates is a list of <code>PersistentVolumeClaim</code> templates for MySQL server container. A claim named &quot;mysql-data&quot; must be included in the list.</td><td>[]<a href="crd_mysqlcluster_v1beta1.html#persistentvolumeclaim">PersistentVolumeClaim</a></td><td>true</td></tr>
@@ -1068,10 +1074,11 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>restore</td><td>Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable.</td><td>*<a href="crd_mysqlcluster_v1beta1.html#restorespec">RestoreSpec</a></td><td>false</td></tr>
 <tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named &quot;slow-log&quot; to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterstatus"><a class="header" href="#mysqlclusterstatus">MySQLClusterStatus</a></h4>
 <p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="crd_mysqlcluster_v1beta1.html#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
 <tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
 <tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
@@ -1082,64 +1089,72 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>cloned</td><td>Cloned indicates if the initial cloning from an external source has been completed.</td><td>bool</td><td>false</td></tr>
 <tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="crd_mysqlcluster_v1beta1.html#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="objectmeta"><a class="header" href="#objectmeta">ObjectMeta</a></h4>
 <p>ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMeta.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>name</td><td>Name is the name of the object.</td><td>string</td><td>false</td></tr>
 <tr><td>labels</td><td>Labels is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
 <tr><td>annotations</td><td>Annotations is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="persistentvolumeclaim"><a class="header" href="#persistentvolumeclaim">PersistentVolumeClaim</a></h4>
 <p>PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.</td><td><a href="crd_mysqlcluster_v1beta1.html#objectmeta">ObjectMeta</a></td><td>true</td></tr>
 <tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration">PersistentVolumeClaimSpecApplyConfiguration</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="podtemplatespec"><a class="header" href="#podtemplatespec">PodTemplateSpec</a></h4>
 <p>PodTemplateSpec describes the data a pod should have when created from a template. This is slightly modified from corev1.PodTemplateSpec.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  The name in this metadata is ignored.</td><td><a href="crd_mysqlcluster_v1beta1.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration">PodSpecApplyConfiguration</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="reconcileinfo"><a class="header" href="#reconcileinfo">ReconcileInfo</a></h4>
 <p>ReconcileInfo is the type to record the last reconciliation information.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>generation</td><td>Generation is the <code>metadata.generation</code> value of the last reconciliation. See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource</td><td>int64</td><td>false</td></tr>
 <tr><td>reconcileVersion</td><td>ReconcileVersion is the version of the operator reconciler.</td><td>int</td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="restorespec"><a class="header" href="#restorespec">RestoreSpec</a></h4>
 <p>RestoreSpec represents a set of parameters for Point-in-Time Recovery.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>sourceName</td><td>SourceName is the name of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. &quot;2006-01-02T15:04:05Z&quot;</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="crd_mysqlcluster_v1beta1.html#jobconfig">JobConfig</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="servicetemplate"><a class="header" href="#servicetemplate">ServiceTemplate</a></h4>
 <p>ServiceTemplate defines the desired spec and annotations of Service</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  Only <code>annotations</code> and <code>labels</code> are valid.</td><td><a href="crd_mysqlcluster_v1beta1.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration">ServiceSpecApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
 <p>BucketConfig is a set of parameter to access an object storage bucket.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="jobconfig"><a class="header" href="#jobconfig">JobConfig</a></h4>
 <p>JobConfig is a set of parameters for backup and restore job Pods.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_mysqlcluster_v1beta1.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
 <tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration">VolumeSourceApplyConfiguration</a></td><td>true</td></tr>
@@ -1149,6 +1164,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <div style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-2"><a class="header" href="#custom-resources-2">Custom Resources</a></h3>
 <ul>
@@ -1173,7 +1189,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </ul>
 <h4 id="backupstatus-1"><a class="header" href="#backupstatus-1">BackupStatus</a></h4>
 <p>BackupStatus represents the status of the last successful backup.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>time</td><td>The time of the backup.  This is used to generate object keys of backup files in a bucket.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">metav1.Duration</a></td><td>true</td></tr>
 <tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
@@ -1185,35 +1201,39 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>workDirUsage</td><td>WorkDirUsage is the max usage in bytes of the woking directory.</td><td>int64</td><td>true</td></tr>
 <tr><td>warnings</td><td>Warnings are list of warnings from the last backup, if any.</td><td>[]string</td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlcluster-1"><a class="header" href="#mysqlcluster-1">MySQLCluster</a></h4>
 <p>MySQLCluster is the Schema for the mysqlclusters API</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td></td><td><a href="crd_mysqlcluster_v1beta2.html#mysqlclusterspec">MySQLClusterSpec</a></td><td>false</td></tr>
 <tr><td>status</td><td></td><td><a href="crd_mysqlcluster_v1beta2.html#mysqlclusterstatus">MySQLClusterStatus</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclustercondition-1"><a class="header" href="#mysqlclustercondition-1">MySQLClusterCondition</a></h4>
 <p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
 <tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
 <tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
 <tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
 <tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterlist-1"><a class="header" href="#mysqlclusterlist-1">MySQLClusterList</a></h4>
 <p>MySQLClusterList contains a list of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
 <tr><td>items</td><td></td><td>[]<a href="crd_mysqlcluster_v1beta2.html#mysqlcluster">MySQLCluster</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterspec-1"><a class="header" href="#mysqlclusterspec-1">MySQLClusterSpec</a></h4>
 <p>MySQLClusterSpec defines the desired state of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>replicas</td><td>Replicas is the number of instances. Available values are positive odd numbers.</td><td>int32</td><td>false</td></tr>
 <tr><td>podTemplate</td><td>PodTemplate is a <code>Pod</code> template for MySQL server container.</td><td><a href="crd_mysqlcluster_v1beta2.html#podtemplatespec">PodTemplateSpec</a></td><td>true</td></tr>
 <tr><td>volumeClaimTemplates</td><td>VolumeClaimTemplates is a list of <code>PersistentVolumeClaim</code> templates for MySQL server container. A claim named &quot;mysql-data&quot; must be included in the list.</td><td>[]<a href="crd_mysqlcluster_v1beta2.html#persistentvolumeclaim">PersistentVolumeClaim</a></td><td>true</td></tr>
@@ -1230,10 +1250,11 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>restore</td><td>Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable.</td><td>*<a href="crd_mysqlcluster_v1beta2.html#restorespec">RestoreSpec</a></td><td>false</td></tr>
 <tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named &quot;slow-log&quot; to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterstatus-1"><a class="header" href="#mysqlclusterstatus-1">MySQLClusterStatus</a></h4>
 <p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="crd_mysqlcluster_v1beta2.html#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
 <tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
 <tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
@@ -1244,72 +1265,81 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>cloned</td><td>Cloned indicates if the initial cloning from an external source has been completed.</td><td>bool</td><td>false</td></tr>
 <tr><td>reconcileInfo</td><td>ReconcileInfo represents version information for reconciler.</td><td><a href="crd_mysqlcluster_v1beta2.html#reconcileinfo">ReconcileInfo</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="objectmeta-1"><a class="header" href="#objectmeta-1">ObjectMeta</a></h4>
 <p>ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMeta.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>name</td><td>Name is the name of the object.</td><td>string</td><td>false</td></tr>
 <tr><td>labels</td><td>Labels is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
 <tr><td>annotations</td><td>Annotations is a map of string keys and values.</td><td>map[string]string</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="overwritecontainer"><a class="header" href="#overwritecontainer">OverwriteContainer</a></h4>
 <p>OverwriteContainer defines the container spec used for overwriting.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>name</td><td>Name of the container to overwrite.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName">OverwriteableContainerName</a></td><td>true</td></tr>
 <tr><td>resources</td><td>Resources is the container resource to be overwritten.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration">ResourceRequirementsApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="persistentvolumeclaim-1"><a class="header" href="#persistentvolumeclaim-1">PersistentVolumeClaim</a></h4>
 <p>PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.</td><td><a href="crd_mysqlcluster_v1beta2.html#objectmeta">ObjectMeta</a></td><td>true</td></tr>
 <tr><td>spec</td><td>Spec defines the desired characteristics of a volume requested by a pod author.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration">PersistentVolumeClaimSpecApplyConfiguration</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="podtemplatespec-1"><a class="header" href="#podtemplatespec-1">PodTemplateSpec</a></h4>
 <p>PodTemplateSpec describes the data a pod should have when created from a template. This is slightly modified from corev1.PodTemplateSpec.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  The name in this metadata is ignored.</td><td><a href="crd_mysqlcluster_v1beta2.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td>Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be <code>mysqld</code>.</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration">PodSpecApplyConfiguration</a></td><td>true</td></tr>
 <tr><td>overwriteContainers</td><td>OverwriteContainers overwrites the container definitions provided by default by the system.</td><td>[]<a href="crd_mysqlcluster_v1beta2.html#overwritecontainer">OverwriteContainer</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="reconcileinfo-1"><a class="header" href="#reconcileinfo-1">ReconcileInfo</a></h4>
 <p>ReconcileInfo is the type to record the last reconciliation information.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>generation</td><td>Generation is the <code>metadata.generation</code> value of the last reconciliation. See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource</td><td>int64</td><td>false</td></tr>
 <tr><td>reconcileVersion</td><td>ReconcileVersion is the version of the operator reconciler.</td><td>int</td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="restorespec-1"><a class="header" href="#restorespec-1">RestoreSpec</a></h4>
 <p>RestoreSpec represents a set of parameters for Point-in-Time Recovery.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>sourceName</td><td>SourceName is the name of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. &quot;2006-01-02T15:04:05Z&quot;</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="crd_mysqlcluster_v1beta2.html#jobconfig">JobConfig</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="servicetemplate-1"><a class="header" href="#servicetemplate-1">ServiceTemplate</a></h4>
 <p>ServiceTemplate defines the desired spec and annotations of Service</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td>Standard object's metadata.  Only <code>annotations</code> and <code>labels</code> are valid.</td><td><a href="crd_mysqlcluster_v1beta2.html#objectmeta">ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td>Spec is the ServiceSpec</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration">ServiceSpecApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig-1"><a class="header" href="#bucketconfig-1">BucketConfig</a></h4>
 <p>BucketConfig is a set of parameter to access an object storage bucket.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="jobconfig-1"><a class="header" href="#jobconfig-1">JobConfig</a></h4>
 <p>JobConfig is a set of parameters for backup and restore job Pods.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_mysqlcluster_v1beta2.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
 <tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration">VolumeSourceApplyConfiguration</a></td><td>true</td></tr>
@@ -1319,6 +1349,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <div style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-3"><a class="header" href="#custom-resources-3">Custom Resources</a></h3>
 <ul>
@@ -1333,21 +1364,23 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </ul>
 <h4 id="backuppolicy-1"><a class="header" href="#backuppolicy-1">BackupPolicy</a></h4>
 <p>BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td></td><td><a href="crd_backuppolicy_v1beta1.html#backuppolicyspec">BackupPolicySpec</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicylist"><a class="header" href="#backuppolicylist">BackupPolicyList</a></h4>
 <p>BackupPolicyList contains a list of BackupPolicy</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
 <tr><td>items</td><td></td><td>[]<a href="crd_backuppolicy_v1beta1.html#backuppolicy">BackupPolicy</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicyspec"><a class="header" href="#backuppolicyspec">BackupPolicySpec</a></h4>
 <p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>schedule</td><td>The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron</td><td>string</td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for backup Pod.</td><td><a href="crd_backuppolicy_v1beta1.html#jobconfig">JobConfig</a></td><td>true</td></tr>
 <tr><td>startingDeadlineSeconds</td><td>Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.</td><td>*int64</td><td>false</td></tr>
@@ -1357,19 +1390,21 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>successfulJobsHistoryLimit</td><td>The number of successful finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 3.</td><td>*int32</td><td>false</td></tr>
 <tr><td>failedJobsHistoryLimit</td><td>The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1.</td><td>*int32</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig-2"><a class="header" href="#bucketconfig-2">BucketConfig</a></h4>
 <p>BucketConfig is a set of parameter to access an object storage bucket.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="jobconfig-2"><a class="header" href="#jobconfig-2">JobConfig</a></h4>
 <p>JobConfig is a set of parameters for backup and restore job Pods.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_backuppolicy_v1beta1.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
 <tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration">VolumeSourceApplyConfiguration</a></td><td>true</td></tr>
@@ -1379,6 +1414,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <div style="break-before: page; page-break-before: always;"></div><h3 id="custom-resources-4"><a class="header" href="#custom-resources-4">Custom Resources</a></h3>
 <ul>
@@ -1393,21 +1429,23 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </ul>
 <h4 id="backuppolicy-2"><a class="header" href="#backuppolicy-2">BackupPolicy</a></h4>
 <p>BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td></td><td><a href="crd_backuppolicy_v1beta2.html#backuppolicyspec">BackupPolicySpec</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicylist-1"><a class="header" href="#backuppolicylist-1">BackupPolicyList</a></h4>
 <p>BackupPolicyList contains a list of BackupPolicy</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
 <tr><td>items</td><td></td><td>[]<a href="crd_backuppolicy_v1beta2.html#backuppolicy">BackupPolicy</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicyspec-1"><a class="header" href="#backuppolicyspec-1">BackupPolicySpec</a></h4>
 <p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>schedule</td><td>The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron</td><td>string</td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for backup Pod.</td><td><a href="crd_backuppolicy_v1beta2.html#jobconfig">JobConfig</a></td><td>true</td></tr>
 <tr><td>startingDeadlineSeconds</td><td>Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.</td><td>*int64</td><td>false</td></tr>
@@ -1417,19 +1455,21 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>successfulJobsHistoryLimit</td><td>The number of successful finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 3.</td><td>*int32</td><td>false</td></tr>
 <tr><td>failedJobsHistoryLimit</td><td>The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1.</td><td>*int32</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig-3"><a class="header" href="#bucketconfig-3">BucketConfig</a></h4>
 <p>BucketConfig is a set of parameter to access an object storage bucket.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="jobconfig-3"><a class="header" href="#jobconfig-3">JobConfig</a></h4>
 <p>JobConfig is a set of parameters for backup and restore job Pods.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="crd_backuppolicy_v1beta2.html#bucketconfig">BucketConfig</a></td><td>true</td></tr>
 <tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration">VolumeSourceApplyConfiguration</a></td><td>true</td></tr>
@@ -1439,6 +1479,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="kubectl-moco-plugin"><a class="header" href="#kubectl-moco-plugin">kubectl moco plugin</a></h1>
@@ -1448,25 +1489,28 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <h2 id="global-options"><a class="header" href="#global-options">Global options</a></h2>
 <p>Global options are compatible with kubectl.
 For example, the following options are available.</p>
-<table><thead><tr><th>Global options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Global options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>--kubeconfig</code></td><td><code>$HOME/.kube/config</code></td><td>Path to the kubeconfig file to use for CLI requests.</td></tr>
 <tr><td><code>-n, --namespace</code></td><td><code>default</code></td><td>If present, the namespace scope for this CLI request.</td></tr>
 </tbody></table>
+</div>
 <h2 id="mysql-users-1"><a class="header" href="#mysql-users-1">MySQL users</a></h2>
 <p>You can choose one of the following user for <code>--mysql-user</code> option value.</p>
-<table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moco-readonly</code></td><td>A read-only user.</td></tr>
 <tr><td><code>moco-writable</code></td><td>A user that can edit users, databases, and tables.</td></tr>
 <tr><td><code>moco-admin</code></td><td>The super-user.</td></tr>
 </tbody></table>
+</div>
 <h2 id="kubectl-moco-mysql-options-cluster_name----mysql-args"><a class="header" href="#kubectl-moco-mysql-options-cluster_name----mysql-args"><code>kubectl moco mysql [options] CLUSTER_NAME [-- mysql args...]</code></a></h2>
 <p>Run <code>mysql</code> command in a specified MySQL instance.</p>
-<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Login as the specified user</td></tr>
 <tr><td><code>--index</code></td><td>index of the primary</td><td>Index of the target mysql instance</td></tr>
 <tr><td><code>-i, --stdin</code></td><td><code>false</code></td><td>Pass stdin to the mysql container</td></tr>
 <tr><td><code>-t, --tty</code></td><td><code>false</code></td><td>Stdin is a TTY</td></tr>
 </tbody></table>
+</div>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <p>This executes <code>SELECT VERSION()</code> on the primary instance in <code>mycluster</code> in <code>foo</code> namespace:</p>
 <pre><code class="language-console">$ kubectl moco -n foo mysql mycluster -- -N -e 'SELECT VERSION()'
@@ -1479,18 +1523,20 @@ For example, the following options are available.</p>
 </code></pre>
 <h2 id="kubectl-moco-credential-options-cluster_name"><a class="header" href="#kubectl-moco-credential-options-cluster_name"><code>kubectl moco credential [options] CLUSTER_NAME</code></a></h2>
 <p>Fetch the credential information of a specified user</p>
-<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Fetch the credential of the specified user</td></tr>
 <tr><td><code>--format</code></td><td><code>plain</code></td><td>Output format: <code>plain</code> or <code>mycnf</code></td></tr>
 </tbody></table>
+</div>
 <h2 id="kubectl-moco-switchover-cluster_name"><a class="header" href="#kubectl-moco-switchover-cluster_name"><code>kubectl moco switchover CLUSTER_NAME</code></a></h2>
 <p>Switch the primary instance to one of the replicas.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="moco-controller"><a class="header" href="#moco-controller"><code>moco-controller</code></a></h1>
 <p><code>moco-controller</code> controls MySQL clusters on Kubernetes.</p>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h2>
-<table><thead><tr><th>Name</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>POD_NAMESPACE</code></td><td>Yes</td><td>The namespace name where <code>moco-controller</code> runs.</td></tr>
 </tbody></table>
+</div>
 <h2 id="command-line-flags"><a class="header" href="#command-line-flags">Command line flags</a></h2>
 <pre><code>Flags:
       --add_dir_header                   If true, adds the file directory to the header
@@ -1572,7 +1618,7 @@ For details, read documentation of <a href="https://pkg.go.dev/github.com/aws/aw
 Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go runtime and process metrics</a>, it exposes metrics related to <a href="https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics">controller-runtime</a>, MySQL clusters, and backups.</p>
 <h3 id="mysql-clusters"><a class="header" href="#mysql-clusters">MySQL clusters</a></h3>
 <p>All these metrics are prefixed with <code>moco_cluster_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
-<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
 <tr><td><code>checks_total</code></td><td>The number of times MOCO checked the cluster</td><td>Counter</td></tr>
 <tr><td><code>errors_total</code></td><td>The number of times MOCO encountered errors when managing the cluster</td><td>Counter</td></tr>
 <tr><td><code>available</code></td><td>1 if the cluster is available, 0 otherwise</td><td>Gauge</td></tr>
@@ -1587,9 +1633,10 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>statefulset_recreate_total</code></td><td>The number of successful StatefulSet recreates</td><td>Counter</td></tr>
 <tr><td><code>statefulset_recreate_errors_total</code></td><td>The number of failed StatefulSet recreates</td><td>Counter</td></tr>
 </tbody></table>
+</div>
 <h3 id="backup"><a class="header" href="#backup">Backup</a></h3>
 <p>All these metrics are prefixed with <code>moco_backup_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
-<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
 <tr><td><code>timestamp</code></td><td>The number of seconds since January 1, 1970 UTC of the last successful backup</td><td>Gauge</td></tr>
 <tr><td><code>elapsed_seconds</code></td><td>The number of seconds taken for the last backup</td><td>Gauge</td></tr>
 <tr><td><code>dump_bytes</code></td><td>The size of compressed full backup data</td><td>Gauge</td></tr>
@@ -1597,6 +1644,7 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>workdir_usage_bytes</code></td><td>The maximum usage of the working directory</td><td>Gauge</td></tr>
 <tr><td><code>warnings</code></td><td>The number of warnings in the last successful backup</td><td>Gauge</td></tr>
 </tbody></table>
+</div>
 <h2 id="mysql-instance"><a class="header" href="#mysql-instance">MySQL instance</a></h2>
 <p>For each <code>mysqld</code> instance, <a href="https://github.com/cybozu-go/moco-agent/">moco-agent</a> exposes a set of metrics.
 Read <a href="https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md">github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md</a> for details.</p>

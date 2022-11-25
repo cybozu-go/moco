@@ -147,25 +147,28 @@
 <h2 id="global-options"><a class="header" href="#global-options">Global options</a></h2>
 <p>Global options are compatible with kubectl.
 For example, the following options are available.</p>
-<table><thead><tr><th>Global options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Global options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>--kubeconfig</code></td><td><code>$HOME/.kube/config</code></td><td>Path to the kubeconfig file to use for CLI requests.</td></tr>
 <tr><td><code>-n, --namespace</code></td><td><code>default</code></td><td>If present, the namespace scope for this CLI request.</td></tr>
 </tbody></table>
+</div>
 <h2 id="mysql-users"><a class="header" href="#mysql-users">MySQL users</a></h2>
 <p>You can choose one of the following user for <code>--mysql-user</code> option value.</p>
-<table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moco-readonly</code></td><td>A read-only user.</td></tr>
 <tr><td><code>moco-writable</code></td><td>A user that can edit users, databases, and tables.</td></tr>
 <tr><td><code>moco-admin</code></td><td>The super-user.</td></tr>
 </tbody></table>
+</div>
 <h2 id="kubectl-moco-mysql-options-cluster_name----mysql-args"><a class="header" href="#kubectl-moco-mysql-options-cluster_name----mysql-args"><code>kubectl moco mysql [options] CLUSTER_NAME [-- mysql args...]</code></a></h2>
 <p>Run <code>mysql</code> command in a specified MySQL instance.</p>
-<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Login as the specified user</td></tr>
 <tr><td><code>--index</code></td><td>index of the primary</td><td>Index of the target mysql instance</td></tr>
 <tr><td><code>-i, --stdin</code></td><td><code>false</code></td><td>Pass stdin to the mysql container</td></tr>
 <tr><td><code>-t, --tty</code></td><td><code>false</code></td><td>Stdin is a TTY</td></tr>
 </tbody></table>
+</div>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <p>This executes <code>SELECT VERSION()</code> on the primary instance in <code>mycluster</code> in <code>foo</code> namespace:</p>
 <pre><code class="language-console">$ kubectl moco -n foo mysql mycluster -- -N -e 'SELECT VERSION()'
@@ -178,10 +181,11 @@ For example, the following options are available.</p>
 </code></pre>
 <h2 id="kubectl-moco-credential-options-cluster_name"><a class="header" href="#kubectl-moco-credential-options-cluster_name"><code>kubectl moco credential [options] CLUSTER_NAME</code></a></h2>
 <p>Fetch the credential information of a specified user</p>
-<table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Options</th><th>Default value</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>-u, --mysql-user</code></td><td><code>moco-readonly</code></td><td>Fetch the credential of the specified user</td></tr>
 <tr><td><code>--format</code></td><td><code>plain</code></td><td>Output format: <code>plain</code> or <code>mycnf</code></td></tr>
 </tbody></table>
+</div>
 <h2 id="kubectl-moco-switchover-cluster_name"><a class="header" href="#kubectl-moco-switchover-cluster_name"><code>kubectl moco switchover CLUSTER_NAME</code></a></h2>
 <p>Switch the primary instance to one of the replicas.</p>
 

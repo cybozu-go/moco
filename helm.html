@@ -163,7 +163,7 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <pre><code class="language-console">$ helm install --create-namespace --namespace moco-system moco -f values.yaml moco/moco
 </code></pre>
 <h2 id="values"><a class="header" href="#values">Values</a></h2>
-<table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td>image.repository</td><td>string</td><td><code>&quot;ghcr.io/cybozu-go/moco&quot;</code></td><td>MOCO image repository to use.</td></tr>
 <tr><td>image.tag</td><td>string</td><td><code>{{ .Chart.AppVersion }}</code></td><td>MOCO image tag to use.</td></tr>
 <tr><td>resources</td><td>object</td><td><code>{&quot;requests&quot;:{&quot;cpu&quot;:&quot;100m&quot;,&quot;memory&quot;:&quot;20Mi&quot;}}</code></td><td>resources used by moco-controller.</td></tr>
@@ -173,6 +173,7 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <tr><td>tolerations</td><td>list</td><td><code>[]</code></td><td>tolerations used by moco-controller.</td></tr>
 <tr><td>topologySpreadConstraints</td><td>list</td><td><code>[]</code></td><td>topologySpreadConstraints used by moco-controller.</td></tr>
 </tbody></table>
+</div>
 <h2 id="generate-manifests"><a class="header" href="#generate-manifests">Generate Manifests</a></h2>
 <p>You can use the <code>helm template</code> command to render manifests.</p>
 <pre><code class="language-console">$ helm template --namespace moco-system moco moco/moco

@@ -153,21 +153,23 @@
 </ul>
 <h4 id="backuppolicy"><a class="header" href="#backuppolicy">BackupPolicy</a></h4>
 <p>BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">metav1.ObjectMeta</a></td><td>false</td></tr>
 <tr><td>spec</td><td></td><td><a href="#backuppolicyspec">BackupPolicySpec</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicylist"><a class="header" href="#backuppolicylist">BackupPolicyList</a></h4>
 <p>BackupPolicyList contains a list of BackupPolicy</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>metadata</td><td></td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta">metav1.ListMeta</a></td><td>false</td></tr>
 <tr><td>items</td><td></td><td>[]<a href="#backuppolicy">BackupPolicy</a></td><td>true</td></tr>
 </tbody></table>
+</div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="backuppolicyspec"><a class="header" href="#backuppolicyspec">BackupPolicySpec</a></h4>
 <p>BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>schedule</td><td>The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron</td><td>string</td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for backup Pod.</td><td><a href="#jobconfig">JobConfig</a></td><td>true</td></tr>
 <tr><td>startingDeadlineSeconds</td><td>Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones.</td><td>*int64</td><td>false</td></tr>
@@ -177,19 +179,21 @@
 <tr><td>successfulJobsHistoryLimit</td><td>The number of successful finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 3.</td><td>*int32</td><td>false</td></tr>
 <tr><td>failedJobsHistoryLimit</td><td>The number of failed finished jobs to retain. This is a pointer to distinguish between explicit zero and not specified. Defaults to 1.</td><td>*int32</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="bucketconfig"><a class="header" href="#bucketconfig">BucketConfig</a></h4>
 <p>BucketConfig is a set of parameter to access an object storage bucket.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>bucketName</td><td>The name of the bucket</td><td>string</td><td>true</td></tr>
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="jobconfig"><a class="header" href="#jobconfig">JobConfig</a></h4>
 <p>JobConfig is a set of parameters for backup and restore job Pods.</p>
-<table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>serviceAccountName</td><td>ServiceAccountName specifies the ServiceAccount to run the Pod.</td><td>string</td><td>true</td></tr>
 <tr><td>bucketConfig</td><td>Specifies how to access an object storage bucket.</td><td><a href="#bucketconfig">BucketConfig</a></td><td>true</td></tr>
 <tr><td>workVolume</td><td>WorkVolume is the volume source for the working directory. Since the backup or restore task can use a lot of bytes in the working directory, You should always give a volume with enough capacity.\n\nThe recommended volume source is a generic ephemeral volume. https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes</td><td><a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration">VolumeSourceApplyConfiguration</a></td><td>true</td></tr>
@@ -199,6 +203,7 @@
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
+</div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 
                     </main>

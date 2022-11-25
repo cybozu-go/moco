@@ -422,10 +422,11 @@ $ kubectl moco mysql -u moco-writable test -- -e &quot;GRANT ALL ON db1.* TO 'fo
 <h3 id="connecting-to-mysqld-over-network"><a class="header" href="#connecting-to-mysqld-over-network">Connecting to <code>mysqld</code> over network</a></h3>
 <p>MOCO prepares two Services for each MySQLCluster.
 For example, a MySQLCluster named <code>test</code> in <code>foo</code> Namespace has the following Services.</p>
-<table><thead><tr><th>Service Name</th><th>DNS Name</th><th>Description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Service Name</th><th>DNS Name</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>moco-test-primary</code></td><td><code>moco-test-primary.foo.svc</code></td><td>Connect to the primary instance.</td></tr>
 <tr><td><code>moco-test-replica</code></td><td><code>moco-test-replica.foo.svc</code></td><td>Connect to replica instances.</td></tr>
 </tbody></table>
+</div>
 <p><code>moco-test-replica</code> can be used only for read access.</p>
 <p>The type of these Services is usually ClusterIP.
 The following is an example to change Service type to LoadBalancer and add an annotation for <a href="https://metallb.universe.tf/">MetalLB</a>.</p>

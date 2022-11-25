@@ -156,7 +156,7 @@
 Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go runtime and process metrics</a>, it exposes metrics related to <a href="https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics">controller-runtime</a>, MySQL clusters, and backups.</p>
 <h3 id="mysql-clusters"><a class="header" href="#mysql-clusters">MySQL clusters</a></h3>
 <p>All these metrics are prefixed with <code>moco_cluster_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
-<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
 <tr><td><code>checks_total</code></td><td>The number of times MOCO checked the cluster</td><td>Counter</td></tr>
 <tr><td><code>errors_total</code></td><td>The number of times MOCO encountered errors when managing the cluster</td><td>Counter</td></tr>
 <tr><td><code>available</code></td><td>1 if the cluster is available, 0 otherwise</td><td>Gauge</td></tr>
@@ -171,9 +171,10 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>statefulset_recreate_total</code></td><td>The number of successful StatefulSet recreates</td><td>Counter</td></tr>
 <tr><td><code>statefulset_recreate_errors_total</code></td><td>The number of failed StatefulSet recreates</td><td>Counter</td></tr>
 </tbody></table>
+</div>
 <h3 id="backup"><a class="header" href="#backup">Backup</a></h3>
 <p>All these metrics are prefixed with <code>moco_backup_</code> and have <code>name</code> and <code>namespace</code> labels.</p>
-<table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Description</th><th>Type</th></tr></thead><tbody>
 <tr><td><code>timestamp</code></td><td>The number of seconds since January 1, 1970 UTC of the last successful backup</td><td>Gauge</td></tr>
 <tr><td><code>elapsed_seconds</code></td><td>The number of seconds taken for the last backup</td><td>Gauge</td></tr>
 <tr><td><code>dump_bytes</code></td><td>The size of compressed full backup data</td><td>Gauge</td></tr>
@@ -181,6 +182,7 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>workdir_usage_bytes</code></td><td>The maximum usage of the working directory</td><td>Gauge</td></tr>
 <tr><td><code>warnings</code></td><td>The number of warnings in the last successful backup</td><td>Gauge</td></tr>
 </tbody></table>
+</div>
 <h2 id="mysql-instance"><a class="header" href="#mysql-instance">MySQL instance</a></h2>
 <p>For each <code>mysqld</code> instance, <a href="https://github.com/cybozu-go/moco-agent/">moco-agent</a> exposes a set of metrics.
 Read <a href="https://github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md">github.com/cybozu-go/moco-agent/blob/main/docs/metrics.md</a> for details.</p>
