@@ -5,6 +5,31 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2022-11-28
+
+### Breaking Changes
+This release allows MOCO users to leave the moco-init binary out of a custom mysqld container image.
+Now the moco-init binary is copied from the moco-agent container through an emptyDir volume.
+
+To maintain backward compatibility, the [`moco-mysql` images](https://quay.io/repository/cybozu/moco-mysql?tab=tags) provided by Cybozu still contain the old moco-init binary.
+
+### Added
+- Copy moco-init binary from moco-agent image [#461](https://github.com/cybozu-go/moco/pull/461)
+- Support Kubernetes v1.25 [#467](https://github.com/cybozu-go/moco/pull/467)
+- Support MySQL 8.0.31 [#479](https://github.com/cybozu-go/moco/pull/479)
+- Introduce completion [#470](https://github.com/cybozu-go/moco/pull/470), [#473](https://github.com/cybozu-go/moco/pull/473)
+- Uses a probe defined by the user [#472](https://github.com/cybozu-go/moco/pull/472)
+
+### Fixed
+- Ignore MySQL error 1094 when killing connections [#476](https://github.com/cybozu-go/moco/pull/476)
+- Detect differences of service appropriately [#457](https://github.com/cybozu-go/moco/pull/457)
+- Normalize time values in Certificate resource [#460](https://github.com/cybozu-go/moco/pull/460)
+
+### Changed
+- Use reusing workflow [#465](https://github.com/cybozu-go/moco/pull/465)
+- Stop using set-output [#469](https://github.com/cybozu-go/moco/pull/469)
+- Update dependencies [#478](https://github.com/cybozu-go/moco/pull/478)
+
 ## [0.13.0] - 2022-09-12
 
 ### Added
@@ -354,7 +379,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/cybozu-go/moco/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cybozu-go/moco/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/cybozu-go/moco/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/cybozu-go/moco/compare/v0.11.1...v0.12.0

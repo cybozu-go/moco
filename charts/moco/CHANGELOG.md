@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Add topologySpreadConstraints helm chart value [#455](https://github.com/cybozu-go/moco/pull/455)
+- Add extraArgs to helm values [#466](https://github.com/cybozu-go/moco/pull/466)
+- Specify minimum Kubernetes version [#468](https://github.com/cybozu-go/moco/pull/468)
+
 ## [0.3.0] - 2022-09-12
 
 This release has breaking changes to the helm chart.
