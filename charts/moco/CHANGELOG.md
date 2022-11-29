@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2022-11-29
+
 ### Added
 - Add topologySpreadConstraints helm chart value [#455](https://github.com/cybozu-go/moco/pull/455)
 - Add extraArgs to helm values [#466](https://github.com/cybozu-go/moco/pull/466)
@@ -96,7 +98,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.3.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.4.0...HEAD
+[0.4.0]: https://github.com/cybozu-go/moco/compare/chart-v0.3.0...chart-v0.4.0
 [0.3.0]: https://github.com/cybozu-go/moco/compare/chart-v0.2.3...chart-v0.3.0
 [0.2.3]: https://github.com/cybozu-go/moco/compare/chart-v0.2.2...chart-v0.2.3
 [0.2.2]: https://github.com/cybozu-go/moco/compare/chart-v0.2.1...chart-v0.2.2
