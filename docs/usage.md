@@ -133,7 +133,7 @@ After the cloning, MOCO needs to create some user accounts and install plugins.
 **On the donor**, you need to install the plugin and create two user accounts as follows:
 
 ```console
-mysql> INSTALL PLUGIN clone SONAME mysql_clone.so;
+mysql> INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 mysql> CREATE USER 'clone-donor'@'%' IDENTIFIED BY 'xxxxxxxxxxx';
 mysql> GRANT BACKUP_ADMIN, REPLICATION SLAVE ON *.* TO 'clone-donor'@'%';
 mysql> CREATE USER 'clone-init'@'localhost' IDENTIFIED BY 'yyyyyyyyyyy';
