@@ -480,7 +480,7 @@ spec:
 <p>We use <a href="https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html">the clone plugin</a> to copy the whole data quickly.
 After the cloning, MOCO needs to create some user accounts and install plugins.</p>
 <p><strong>On the donor</strong>, you need to install the plugin and create two user accounts as follows:</p>
-<pre><code class="language-console">mysql&gt; INSTALL PLUGIN clone SONAME mysql_clone.so;
+<pre><code class="language-console">mysql&gt; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
 mysql&gt; CREATE USER 'clone-donor'@'%' IDENTIFIED BY 'xxxxxxxxxxx';
 mysql&gt; GRANT BACKUP_ADMIN, REPLICATION SLAVE ON *.* TO 'clone-donor'@'%';
 mysql&gt; CREATE USER 'clone-init'@'localhost' IDENTIFIED BY 'yyyyyyyyyyy';
