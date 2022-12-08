@@ -23,4 +23,7 @@ version: 0.4.0
 # It is recommended to use it with quotes.
 appVersion: 0.14.0
 
-kubeVersion: ">= 1.23.0"
+# This version does not necessarily match the supported version. This version number
+# will be updated when there is an obviously uninstallable version. If there are no
+# problems, update only moco/README.md#supported-software for the corresponding kubernetes version.
+kubeVersion: ">= 1.22.0"

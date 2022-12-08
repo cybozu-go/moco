@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Relax the kubeVersion constraints in Chart.yaml [#487](https://github.com/cybozu-go/moco/pull/487)
+
 ## [0.4.0] - 2022-11-29
 
 ### Added
