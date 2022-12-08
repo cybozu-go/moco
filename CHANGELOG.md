@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.1] - 2022-12-08
+
+### Fixed
+- Downgrade mysqlsh to 8.0.30 [#485](https://github.com/cybozu-go/moco/pull/485)
+
 ## [0.14.0] - 2022-11-28
 
 ### Breaking Changes
@@ -379,7 +384,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/cybozu-go/moco/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/cybozu-go/moco/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cybozu-go/moco/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/cybozu-go/moco/compare/v0.12.0...v0.12.1
