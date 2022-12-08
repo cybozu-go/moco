@@ -24,7 +24,7 @@ FROM quay.io/cybozu/mysql:8.0.31.1 as mysql
 FROM quay.io/cybozu/ubuntu:20.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.0.31-1
+ARG MYSQLSH_VERSION=8.0.30-1
 
 COPY --from=builder /work/moco-backup /moco-backup
 
