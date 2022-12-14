@@ -10,6 +10,8 @@ const (
 	LabelAppCreatedBy = "app.kubernetes.io/created-by"
 	AppCreator        = "moco"
 
+	LabelHostName = "kubernetes.io/hostname"
+
 	LabelMocoRole = "moco.cybozu.com/role"
 	RolePrimary   = "primary"
 	RoleReplica   = "replica"

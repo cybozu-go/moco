@@ -1237,6 +1237,32 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	if bp.Spec.BackoffLimit != nil {
 		cronJob.Spec.JobTemplate.Spec.WithBackoffLimit(*bp.Spec.BackoffLimit)
 	}
+	if bp.Spec.JobConfig.Affinity == nil {
+		cronJob.Spec.JobTemplate.Spec.Template.Spec.WithAffinity(corev1ac.Affinity().
+			WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+				WithPreferredDuringSchedulingIgnoredDuringExecution(corev1ac.WeightedPodAffinityTerm().
+					WithWeight(100).
+					WithPodAffinityTerm(corev1ac.PodAffinityTerm().
+						WithLabelSelector(metav1ac.LabelSelector().
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppName).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(constants.AppNameBackup),
+							).
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppCreatedBy).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(constants.AppCreator),
+							),
+						).
+						WithTopologyKey(constants.LabelHostName),
+					),
+				),
+			),
+		)
+	}
 
 	if err := setControllerReferenceWithCronJob(cluster, cronJob, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)

@@ -427,6 +427,39 @@ MOCO creates a [CronJob][] for each MySQLCluster that has `spec.backupPolicyName
 The CronJob's name is `moco-backup-` + the name of MySQLCluster.
 For the above example, a CronJob named `moco-backup-foo` is created in `default` namespace.
 
+The following podAntiAffinity is set by default for CronJob.
+If you want to override it, set `BackupPolicy.spec.jobConfig.affinity`.
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moco-backup-foo
+spec:
+...
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: app.kubernetes.io/name
+                          operator: In
+                          values:
+                            - mysql-backup
+                        - key: app.kubernetes.io/created-by
+                          operator: In
+                          values:
+                            - moco
+                    topologyKey: kubernetes.io/hostname
+                  weight: 100
+...
+```
+
 ### Credentials to access S3 bucket
 
 Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.
