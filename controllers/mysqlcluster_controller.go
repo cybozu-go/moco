@@ -1257,7 +1257,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 									WithValues(constants.AppCreator),
 							),
 						).
-						WithTopologyKey(constants.LabelHostName),
+						WithTopologyKey(corev1.LabelHostname),
 					),
 				),
 			),
