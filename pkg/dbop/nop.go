@@ -27,6 +27,10 @@ func (o NopOperator) GetStatus(context.Context) (*MySQLInstanceStatus, error) {
 	return nil, ErrNop
 }
 
+func (o NopOperator) SubtractGTID(ctx context.Context, set1, set2 string) (string, error) {
+	return "", ErrNop
+}
+
 func (o NopOperator) IsSubsetGTID(ctx context.Context, set1, set2 string) (bool, error) {
 	return false, ErrNop
 }

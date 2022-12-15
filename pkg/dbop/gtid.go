@@ -64,3 +64,11 @@ func (o *operator) IsSubsetGTID(ctx context.Context, set1, set2 string) (bool, e
 	}
 	return ret, nil
 }
+
+func (o *operator) SubtractGTID(ctx context.Context, set1, set2 string) (string, error) {
+	var ret string
+	if err := o.db.GetContext(ctx, &ret, `SELECT GTID_SUBTRACT(?,?)`, set1, set2); err != nil {
+		return "", fmt.Errorf("failed to get gtid_subtract(%s, %s): %w", set1, set2, err)
+	}
+	return ret, nil
+}

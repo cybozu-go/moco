@@ -31,6 +31,9 @@ type Operator interface {
 	// GetStatus reports the instance status.
 	GetStatus(context.Context) (*MySQLInstanceStatus, error)
 
+	// SubtractGTID returns GTID subset of set1 that are not in set2.
+	SubtractGTID(ctx context.Context, set1, set2 string) (string, error)
+
 	// IsSubsetGTID returns true if set1 is a subset of set2.
 	IsSubsetGTID(ctx context.Context, set1, set2 string) (bool, error)
 

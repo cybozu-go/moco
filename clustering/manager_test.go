@@ -491,8 +491,8 @@ var _ = Describe("manager", func() {
 
 		By("doing a switchover")
 		// advance the executed GTID set on the source and the primary
-		testSetGTID("external", "12345")
-		testSetGTID(cluster.PodHostname(0), "12345")
+		testSetGTID("external", "ex:1,ex:2,ex:3,ex:4,ex:5")
+		testSetGTID(cluster.PodHostname(0), "ex:1,ex:2,ex:3,ex:4,ex:5")
 		pod0 := &corev1.Pod{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod0)
 		Expect(err).NotTo(HaveOccurred())
@@ -514,7 +514,7 @@ var _ = Describe("manager", func() {
 
 		// check that MOCO waited for the GTID
 		gtidNew, _ := testGetGTID(cluster.PodHostname(newPrimary))
-		Expect(gtidNew).To(Equal("12345"))
+		Expect(gtidNew).To(Equal("ex:1,ex:2,ex:3,ex:4,ex:5"))
 
 		Eventually(func() int {
 			st := of.getInstanceStatus(cluster.PodHostname(newPrimary))
@@ -593,7 +593,7 @@ var _ = Describe("manager", func() {
 
 		By("stopping replication from external mysqld")
 		// advance the source GTID beforehand
-		testSetGTID("external", "123456")
+		testSetGTID("external", "ex:1,ex:2,ex:3,ex:4,ex:5,ex:6")
 
 		cluster.Spec.ReplicationSourceSecretName = nil
 		err = k8sClient.Update(ctx, cluster)
@@ -670,11 +670,13 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		By("making an errant replica")
-		testSetGTID(cluster.PodHostname(0), "10000")
-		testSetGTID(cluster.PodHostname(1), "abc")
-		testSetGTID(cluster.PodHostname(2), "1")
-		testSetGTID(cluster.PodHostname(3), "1")
-		testSetGTID(cluster.PodHostname(4), "1")
+		// When the primary load is high, sometimes the gtid_executed of a replica precedes the primary.
+		// pod(4) is intended for such situations.
+		testSetGTID(cluster.PodHostname(0), "p0:1,p0:2,p0:3") // primary
+		testSetGTID(cluster.PodHostname(1), "p0:1,p0:2,p1:1") // errant replica
+		testSetGTID(cluster.PodHostname(2), "p0:1")
+		testSetGTID(cluster.PodHostname(3), "p0:1,p0:2,p0:3")
+		testSetGTID(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4")
 		Eventually(func() int {
 			cluster, err = testGetCluster(ctx)
 			if err != nil {
@@ -716,9 +718,9 @@ var _ = Describe("manager", func() {
 		}
 
 		By("triggering a failover")
-		of.setRetrievedGTIDSet(cluster.PodHostname(2), "8000")
-		of.setRetrievedGTIDSet(cluster.PodHostname(3), "9000")
-		of.setRetrievedGTIDSet(cluster.PodHostname(4), "8000")
+		of.setRetrievedGTIDSet(cluster.PodHostname(2), "p0:1")
+		of.setRetrievedGTIDSet(cluster.PodHostname(3), "p0:1,p0:2,p0:3,p0:4")
+		of.setRetrievedGTIDSet(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4")
 		of.setFailing(cluster.PodHostname(0), true)
 
 		Eventually(func() int {
@@ -731,7 +733,7 @@ var _ = Describe("manager", func() {
 
 		// confirm that MOCO waited fot the retrieved GTID set to be executed
 		st3 := of.getInstanceStatus(cluster.PodHostname(3))
-		Expect(st3.GlobalVariables.ExecutedGTID).To(Equal("9000"))
+		Expect(st3.GlobalVariables.ExecutedGTID).To(Equal("p0:1,p0:2,p0:3,p0:4"))
 
 		Eventually(func() bool {
 			cluster, err = testGetCluster(ctx)

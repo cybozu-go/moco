@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -25,7 +26,7 @@ var testGTIDMap map[string]string
 func resetGTIDMap() {
 	testGTIDLock.Lock()
 	testGTIDMap = map[string]string{
-		"external": "1234",
+		"external": "ex:1,ex:2,ex:3,ex:4",
 	}
 	testGTIDLock.Unlock()
 }
@@ -166,8 +167,36 @@ func (o *mockOperator) GetStatus(_ context.Context) (*dbop.MySQLInstanceStatus, 
 	return st, nil
 }
 
+// SubtractGTID returns GTID subset of set1 that are not in set2.
+func (o *mockOperator) SubtractGTID(ctx context.Context, set1, set2 string) (string, error) {
+	if o.failing {
+		return "", errors.New("mysqld is down")
+	}
+	if set1 == "" {
+		return "", nil
+	}
+	if set2 == "" {
+		return set1, nil
+	}
+
+	map1 := map[string]struct{}{}
+	for _, s := range strings.Split(set1, ",") {
+		map1[s] = struct{}{}
+	}
+	for _, s := range strings.Split(set2, ",") {
+		delete(map1, s)
+	}
+
+	var diff []string
+	for k := range map1 {
+		diff = append(diff, k)
+	}
+	sort.Strings(diff)
+	return strings.Join(diff, ","), nil
+}
+
 // IsSubsetGTID returns true if set1 is a subset of set2.
-func (o *mockOperator) IsSubsetGTID(ctx context.Context, set1 string, set2 string) (bool, error) {
+func (o *mockOperator) IsSubsetGTID(ctx context.Context, set1, set2 string) (bool, error) {
 	if o.failing {
 		return false, errors.New("mysqld is down")
 	}
@@ -177,17 +206,15 @@ func (o *mockOperator) IsSubsetGTID(ctx context.Context, set1 string, set2 strin
 	if set2 == "" {
 		return false, nil
 	}
-	n1, err := strconv.Atoi(set1)
-	if err != nil {
-		//lint:ignore nilerr correct
-		return false, nil
+
+	map1 := map[string]struct{}{}
+	for _, s := range strings.Split(set1, ",") {
+		map1[s] = struct{}{}
 	}
-	n2, err := strconv.Atoi(set2)
-	if err != nil {
-		//lint:ignore nilerr correct
-		return false, nil
+	for _, s := range strings.Split(set2, ",") {
+		delete(map1, s)
 	}
-	return n1 <= n2, nil
+	return len(map1) == 0, nil
 }
 
 // FindTopRunner returns the index of the slice whose `GlobalVariables.ExecutedGtidSet`
@@ -499,6 +526,7 @@ func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 	m, ok := f.mysqls[hostname]
 	if !ok {
 		m = &mockMySQL{}
+		m.status.GlobalVariables.UUID = fmt.Sprintf("p%d", index)
 		m.status.GlobalVariables.ReadOnly = true
 		m.status.GlobalVariables.SuperReadOnly = true
 		f.mysqls[hostname] = m
@@ -520,6 +548,7 @@ func (f *mockOpFactory) getInstance(name string) *mockMySQL {
 	if name == "external" {
 		m := &mockMySQL{}
 		gtid, _ := testGetGTID("external")
+		m.status.GlobalVariables.UUID = "ex"
 		m.status.GlobalVariables.ExecutedGTID = gtid
 		return m
 	}
