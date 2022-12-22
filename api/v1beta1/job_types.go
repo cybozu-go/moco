@@ -60,6 +60,11 @@ type JobConfig struct {
 	//
 	// +optional
 	Env []EnvVarApplyConfiguration `json:"env,omitempty"`
+
+	// If specified, the pod's scheduling constraints.
+	//
+	// +optional
+	Affinity *AffinityApplyConfiguration `json:"affinity,omitempty"`
 }
 
 // VolumeSourceApplyConfiguration is the type defined to implement the DeepCopy method.
@@ -102,6 +107,23 @@ type EnvVarApplyConfiguration corev1ac.EnvVarApplyConfiguration
 // DeepCopy is copying the receiver, creating a new EnvVarApplyConfiguration.
 func (in *EnvVarApplyConfiguration) DeepCopy() *EnvVarApplyConfiguration {
 	out := new(EnvVarApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// AffinityApplyConfiguration is the type defined to implement the DeepCopy method.
+type AffinityApplyConfiguration corev1ac.AffinityApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new EnvVarApplyConfiguration.
+func (in *AffinityApplyConfiguration) DeepCopy() *AffinityApplyConfiguration {
+	out := new(AffinityApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")

@@ -19,6 +19,7 @@ const (
 )
 
 var _ conversion.Convertible = &MySQLCluster{}
+var _ conversion.Convertible = &BackupPolicy{}
 
 // ConvertTo converts this MySQLCluster to the Hub version (v1beta2).
 func (src *MySQLCluster) ConvertTo(dstRaw conversion.Hub) error {

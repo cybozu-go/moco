@@ -1107,6 +1107,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(js.ActiveDeadlineSeconds).To(Equal(pointer.Int64(100)))
 		Expect(js.BackoffLimit).To(Equal(pointer.Int32(1)))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
+		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
 		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
