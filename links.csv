@@ -19,4 +19,5 @@ ServiceSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigura
 VolumeSourceApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#VolumeSourceApplyConfiguration
 EnvFromSourceApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration
 EnvVarApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration
+AffinityApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration
 ResourceRequirementsApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration

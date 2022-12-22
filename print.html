@@ -712,6 +712,36 @@ spec:
 <p>MOCO creates a <a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">CronJob</a> for each MySQLCluster that has <code>spec.backupPolicyName</code>.</p>
 <p>The CronJob's name is <code>moco-backup-</code> + the name of MySQLCluster.
 For the above example, a CronJob named <code>moco-backup-foo</code> is created in <code>default</code> namespace.</p>
+<p>The following podAntiAffinity is set by default for CronJob.
+If you want to override it, set <code>BackupPolicy.spec.jobConfig.affinity</code>.</p>
+<pre><code class="language-yaml">apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moco-backup-foo
+spec:
+...
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: app.kubernetes.io/name
+                          operator: In
+                          values:
+                            - mysql-backup
+                        - key: app.kubernetes.io/created-by
+                          operator: In
+                          values:
+                            - moco
+                    topologyKey: kubernetes.io/hostname
+                  weight: 100
+...
+</code></pre>
 <h3 id="credentials-to-access-s3-bucket"><a class="header" href="#credentials-to-access-s3-bucket">Credentials to access S3 bucket</a></h3>
 <p>Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.</p>
 <p>For Amazon's <a href="https://aws.amazon.com/eks/">Elastic Kubernetes Service (EKS)</a> and S3 users, the easiest way is probably to use <a href="https://aws.github.io/aws-eks-best-practices/security/docs/iam/#iam-roles-for-service-accounts-irsa">IAM Roles for Service Accounts (IRSA)</a>.</p>
@@ -1163,6 +1193,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1348,6 +1379,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1413,6 +1445,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1478,6 +1511,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>maxMemory</td><td>MaxMemory is the amount of maximum memory for the Pod.</td><td>*<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity">resource.Quantity</a></td><td>false</td></tr>
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>

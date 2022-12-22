@@ -503,6 +503,36 @@ spec:
 <p>MOCO creates a <a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">CronJob</a> for each MySQLCluster that has <code>spec.backupPolicyName</code>.</p>
 <p>The CronJob's name is <code>moco-backup-</code> + the name of MySQLCluster.
 For the above example, a CronJob named <code>moco-backup-foo</code> is created in <code>default</code> namespace.</p>
+<p>The following podAntiAffinity is set by default for CronJob.
+If you want to override it, set <code>BackupPolicy.spec.jobConfig.affinity</code>.</p>
+<pre><code class="language-yaml">apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moco-backup-foo
+spec:
+...
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: app.kubernetes.io/name
+                          operator: In
+                          values:
+                            - mysql-backup
+                        - key: app.kubernetes.io/created-by
+                          operator: In
+                          values:
+                            - moco
+                    topologyKey: kubernetes.io/hostname
+                  weight: 100
+...
+</code></pre>
 <h3 id="credentials-to-access-s3-bucket"><a class="header" href="#credentials-to-access-s3-bucket">Credentials to access S3 bucket</a></h3>
 <p>Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.</p>
 <p>For Amazon's <a href="https://aws.amazon.com/eks/">Elastic Kubernetes Service (EKS)</a> and S3 users, the easiest way is probably to use <a href="https://aws.github.io/aws-eks-best-practices/security/docs/iam/#iam-roles-for-service-accounts-irsa">IAM Roles for Service Accounts (IRSA)</a>.</p>
