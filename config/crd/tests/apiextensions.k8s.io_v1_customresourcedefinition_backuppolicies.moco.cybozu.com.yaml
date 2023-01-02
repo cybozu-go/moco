@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.0
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
@@ -928,9 +928,9 @@ spec:
                                         type: string
                                     type: object
                                   dataSourceRef:
-                                    description: TypedLocalObjectReferenceApplyConfiguration
+                                    description: TypedObjectReferenceApplyConfiguration
                                       represents an declarative configuration of the
-                                      TypedLoca
+                                      TypedObjectRef
                                     properties:
                                       apiGroup:
                                         type: string
@@ -938,12 +938,24 @@ spec:
                                         type: string
                                       name:
                                         type: string
+                                      namespace:
+                                        type: string
                                     type: object
                                   resources:
                                     description: ResourceRequirementsApplyConfiguration
                                       represents an declarative configuration of the
                                       ResourceRequir
                                     properties:
+                                      claims:
+                                        items:
+                                          description: ResourceClaimApplyConfiguration
+                                            represents an declarative configuration
+                                            of the ResourceClaim type fo
+                                          properties:
+                                            name:
+                                              type: string
+                                          type: object
+                                        type: array
                                       limits:
                                         additionalProperties:
                                           anyOf:
@@ -2382,9 +2394,9 @@ spec:
                                         type: string
                                     type: object
                                   dataSourceRef:
-                                    description: TypedLocalObjectReferenceApplyConfiguration
+                                    description: TypedObjectReferenceApplyConfiguration
                                       represents an declarative configuration of the
-                                      TypedLoca
+                                      TypedObjectRef
                                     properties:
                                       apiGroup:
                                         type: string
@@ -2392,12 +2404,24 @@ spec:
                                         type: string
                                       name:
                                         type: string
+                                      namespace:
+                                        type: string
                                     type: object
                                   resources:
                                     description: ResourceRequirementsApplyConfiguration
                                       represents an declarative configuration of the
                                       ResourceRequir
                                     properties:
+                                      claims:
+                                        items:
+                                          description: ResourceClaimApplyConfiguration
+                                            represents an declarative configuration
+                                            of the ResourceClaim type fo
+                                          properties:
+                                            name:
+                                              type: string
+                                          type: object
+                                        type: array
                                       limits:
                                         additionalProperties:
                                           anyOf:

@@ -774,7 +774,7 @@ func autoConvert__PersistentVolumeClaimSpecApplyConfiguration_To_v1beta2_Persist
 	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
 	out.VolumeMode = (*corev1.PersistentVolumeMode)(unsafe.Pointer(in.VolumeMode))
 	out.DataSource = (*v1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSource))
-	out.DataSourceRef = (*v1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
+	out.DataSourceRef = (*v1.TypedObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
 	return nil
 }
 
@@ -791,7 +791,7 @@ func autoConvert_v1beta2_PersistentVolumeClaimSpecApplyConfiguration_To__Persist
 	out.StorageClassName = (*string)(unsafe.Pointer(in.StorageClassName))
 	out.VolumeMode = (*corev1.PersistentVolumeMode)(unsafe.Pointer(in.VolumeMode))
 	out.DataSource = (*v1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSource))
-	out.DataSourceRef = (*v1.TypedLocalObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
+	out.DataSourceRef = (*v1.TypedObjectReferenceApplyConfiguration)(unsafe.Pointer(in.DataSourceRef))
 	return nil
 }
 
@@ -838,6 +838,8 @@ func autoConvert__PodSpecApplyConfiguration_To_v1beta2_PodSpecApplyConfiguration
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
 	out.OS = (*v1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
 	out.HostUsers = (*bool)(unsafe.Pointer(in.HostUsers))
+	out.SchedulingGates = *(*[]v1.PodSchedulingGateApplyConfiguration)(unsafe.Pointer(&in.SchedulingGates))
+	out.ResourceClaims = *(*[]v1.PodResourceClaimApplyConfiguration)(unsafe.Pointer(&in.ResourceClaims))
 	return nil
 }
 
@@ -884,6 +886,8 @@ func autoConvert_v1beta2_PodSpecApplyConfiguration_To__PodSpecApplyConfiguration
 	out.SetHostnameAsFQDN = (*bool)(unsafe.Pointer(in.SetHostnameAsFQDN))
 	out.OS = (*v1.PodOSApplyConfiguration)(unsafe.Pointer(in.OS))
 	out.HostUsers = (*bool)(unsafe.Pointer(in.HostUsers))
+	out.SchedulingGates = *(*[]v1.PodSchedulingGateApplyConfiguration)(unsafe.Pointer(&in.SchedulingGates))
+	out.ResourceClaims = *(*[]v1.PodResourceClaimApplyConfiguration)(unsafe.Pointer(&in.ResourceClaims))
 	return nil
 }
 
