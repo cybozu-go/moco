@@ -70,10 +70,20 @@ var _ = Context("failure", func() {
 			if err != nil {
 				return err
 			}
-			if currentPrimaryIndex != cluster.Status.CurrentPrimaryIndex {
-				return nil
+			if currentPrimaryIndex == cluster.Status.CurrentPrimaryIndex {
+				return errors.New("failover not yet executed")
 			}
-			return errors.New("failover not yet executed")
+
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == corev1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
 		}).Should(Succeed())
 
 		// Immediately after replication,
@@ -106,10 +116,20 @@ var _ = Context("failure", func() {
 			if err != nil {
 				return err
 			}
-			if currentPrimaryIndex != cluster.Status.CurrentPrimaryIndex {
-				return nil
+			if currentPrimaryIndex == cluster.Status.CurrentPrimaryIndex {
+				return errors.New("failover not yet executed")
 			}
-			return errors.New("failover not yet executed")
+
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == corev1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
 		}).Should(Succeed())
 	})
 
