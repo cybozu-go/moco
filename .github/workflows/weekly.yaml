@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.31"]
-        k8s-version: ["1.23.13", "1.24.7", "1.25.3"]
+        k8s-version: ["1.24.7", "1.25.3", "1.26.0"]
     uses: ./.github/workflows/e2e.yaml
     with:
       k8s-version: ${{ matrix.k8s-version }}
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31"]
-        k8s-version: ["1.25.3"]
+        k8s-version: ["1.26.0"]
     uses: ./.github/workflows/e2e.yaml
     with:
       k8s-version: ${{ matrix.k8s-version }}

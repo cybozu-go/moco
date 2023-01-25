@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
   name: mysqlclusters.moco.cybozu.com
 spec:
@@ -997,6 +997,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -1713,6 +1723,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -2434,6 +2454,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -2717,6 +2747,25 @@ spec:
                               type: string
                           type: object
                         type: array
+                      resourceClaims:
+                        items:
+                          description: PodResourceClaimApplyConfiguration represents
+                            an declarative configuration of the PodResourceClaim t
+                          properties:
+                            name:
+                              type: string
+                            source:
+                              description: ClaimSourceApplyConfiguration represents
+                                an declarative configuration of the ClaimSource type
+                                for us
+                              properties:
+                                resourceClaimName:
+                                  type: string
+                                resourceClaimTemplateName:
+                                  type: string
+                              type: object
+                          type: object
+                        type: array
                       restartPolicy:
                         description: RestartPolicy describes how the container should
                           be restarted.
@@ -2725,6 +2774,15 @@ spec:
                         type: string
                       schedulerName:
                         type: string
+                      schedulingGates:
+                        items:
+                          description: PodSchedulingGateApplyConfiguration represents
+                            an declarative configuration of the PodSchedulingGate
+                          properties:
+                            name:
+                              type: string
+                          type: object
+                        type: array
                       securityContext:
                         description: PodSecurityContextApplyConfiguration represents
                           an declarative configuration of the PodSecurityConte
@@ -3189,9 +3247,9 @@ spec:
                                               type: string
                                           type: object
                                         dataSourceRef:
-                                          description: TypedLocalObjectReferenceApplyConfiguration
+                                          description: TypedObjectReferenceApplyConfiguration
                                             represents an declarative configuration
-                                            of the TypedLoca
+                                            of the TypedObjectRef
                                           properties:
                                             apiGroup:
                                               type: string
@@ -3199,12 +3257,24 @@ spec:
                                               type: string
                                             name:
                                               type: string
+                                            namespace:
+                                              type: string
                                           type: object
                                         resources:
                                           description: ResourceRequirementsApplyConfiguration
                                             represents an declarative configuration
                                             of the ResourceRequir
                                           properties:
+                                            claims:
+                                              items:
+                                                description: ResourceClaimApplyConfiguration
+                                                  represents an declarative configuration
+                                                  of the ResourceClaim type fo
+                                                properties:
+                                                  name:
+                                                    type: string
+                                                type: object
+                                              type: array
                                             limits:
                                               additionalProperties:
                                                 anyOf:
@@ -4617,9 +4687,9 @@ spec:
                                             type: string
                                         type: object
                                       dataSourceRef:
-                                        description: TypedLocalObjectReferenceApplyConfiguration
+                                        description: TypedObjectReferenceApplyConfiguration
                                           represents an declarative configuration
-                                          of the TypedLoca
+                                          of the TypedObjectRef
                                         properties:
                                           apiGroup:
                                             type: string
@@ -4627,12 +4697,24 @@ spec:
                                             type: string
                                           name:
                                             type: string
+                                          namespace:
+                                            type: string
                                         type: object
                                       resources:
                                         description: ResourceRequirementsApplyConfiguration
                                           represents an declarative configuration
                                           of the ResourceRequir
                                         properties:
+                                          claims:
+                                            items:
+                                              description: ResourceClaimApplyConfiguration
+                                                represents an declarative configuration
+                                                of the ResourceClaim type fo
+                                              properties:
+                                                name:
+                                                  type: string
+                                              type: object
+                                            type: array
                                           limits:
                                             additionalProperties:
                                               anyOf:
@@ -5331,8 +5413,8 @@ spec:
                               type: string
                           type: object
                         dataSourceRef:
-                          description: TypedLocalObjectReferenceApplyConfiguration
-                            represents an declarative configuration of the TypedLoca
+                          description: TypedObjectReferenceApplyConfiguration represents
+                            an declarative configuration of the TypedObjectRef
                           properties:
                             apiGroup:
                               type: string
@@ -5340,11 +5422,23 @@ spec:
                               type: string
                             name:
                               type: string
+                            namespace:
+                              type: string
                           type: object
                         resources:
                           description: ResourceRequirementsApplyConfiguration represents
                             an declarative configuration of the ResourceRequir
                           properties:
+                            claims:
+                              items:
+                                description: ResourceClaimApplyConfiguration represents
+                                  an declarative configuration of the ResourceClaim
+                                  type fo
+                                properties:
+                                  name:
+                                    type: string
+                                type: object
+                              type: array
                             limits:
                               additionalProperties:
                                 anyOf:
@@ -5659,6 +5753,16 @@ spec:
                         resources:
                           description: Resources is the container resource to be overwritten.
                           properties:
+                            claims:
+                              items:
+                                description: ResourceClaimApplyConfiguration represents
+                                  an declarative configuration of the ResourceClaim
+                                  type fo
+                                properties:
+                                  name:
+                                    type: string
+                                type: object
+                              type: array
                             limits:
                               additionalProperties:
                                 anyOf:
@@ -6580,6 +6684,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -7296,6 +7410,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -8017,6 +8141,16 @@ spec:
                               description: ResourceRequirementsApplyConfiguration
                                 represents an declarative configuration of the ResourceRequir
                               properties:
+                                claims:
+                                  items:
+                                    description: ResourceClaimApplyConfiguration represents
+                                      an declarative configuration of the ResourceClaim
+                                      type fo
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  type: array
                                 limits:
                                   additionalProperties:
                                     anyOf:
@@ -8300,6 +8434,25 @@ spec:
                               type: string
                           type: object
                         type: array
+                      resourceClaims:
+                        items:
+                          description: PodResourceClaimApplyConfiguration represents
+                            an declarative configuration of the PodResourceClaim t
+                          properties:
+                            name:
+                              type: string
+                            source:
+                              description: ClaimSourceApplyConfiguration represents
+                                an declarative configuration of the ClaimSource type
+                                for us
+                              properties:
+                                resourceClaimName:
+                                  type: string
+                                resourceClaimTemplateName:
+                                  type: string
+                              type: object
+                          type: object
+                        type: array
                       restartPolicy:
                         description: RestartPolicy describes how the container should
                           be restarted.
@@ -8308,6 +8461,15 @@ spec:
                         type: string
                       schedulerName:
                         type: string
+                      schedulingGates:
+                        items:
+                          description: PodSchedulingGateApplyConfiguration represents
+                            an declarative configuration of the PodSchedulingGate
+                          properties:
+                            name:
+                              type: string
+                          type: object
+                        type: array
                       securityContext:
                         description: PodSecurityContextApplyConfiguration represents
                           an declarative configuration of the PodSecurityConte
@@ -8772,9 +8934,9 @@ spec:
                                               type: string
                                           type: object
                                         dataSourceRef:
-                                          description: TypedLocalObjectReferenceApplyConfiguration
+                                          description: TypedObjectReferenceApplyConfiguration
                                             represents an declarative configuration
-                                            of the TypedLoca
+                                            of the TypedObjectRef
                                           properties:
                                             apiGroup:
                                               type: string
@@ -8782,12 +8944,24 @@ spec:
                                               type: string
                                             name:
                                               type: string
+                                            namespace:
+                                              type: string
                                           type: object
                                         resources:
                                           description: ResourceRequirementsApplyConfiguration
                                             represents an declarative configuration
                                             of the ResourceRequir
                                           properties:
+                                            claims:
+                                              items:
+                                                description: ResourceClaimApplyConfiguration
+                                                  represents an declarative configuration
+                                                  of the ResourceClaim type fo
+                                                properties:
+                                                  name:
+                                                    type: string
+                                                type: object
+                                              type: array
                                             limits:
                                               additionalProperties:
                                                 anyOf:
@@ -10442,9 +10616,9 @@ spec:
                                             type: string
                                         type: object
                                       dataSourceRef:
-                                        description: TypedLocalObjectReferenceApplyConfiguration
+                                        description: TypedObjectReferenceApplyConfiguration
                                           represents an declarative configuration
-                                          of the TypedLoca
+                                          of the TypedObjectRef
                                         properties:
                                           apiGroup:
                                             type: string
@@ -10452,12 +10626,24 @@ spec:
                                             type: string
                                           name:
                                             type: string
+                                          namespace:
+                                            type: string
                                         type: object
                                       resources:
                                         description: ResourceRequirementsApplyConfiguration
                                           represents an declarative configuration
                                           of the ResourceRequir
                                         properties:
+                                          claims:
+                                            items:
+                                              description: ResourceClaimApplyConfiguration
+                                                represents an declarative configuration
+                                                of the ResourceClaim type fo
+                                              properties:
+                                                name:
+                                                  type: string
+                                              type: object
+                                            type: array
                                           limits:
                                             additionalProperties:
                                               anyOf:
@@ -11034,8 +11220,8 @@ spec:
                               type: string
                           type: object
                         dataSourceRef:
-                          description: TypedLocalObjectReferenceApplyConfiguration
-                            represents an declarative configuration of the TypedLoca
+                          description: TypedObjectReferenceApplyConfiguration represents
+                            an declarative configuration of the TypedObjectRef
                           properties:
                             apiGroup:
                               type: string
@@ -11043,11 +11229,23 @@ spec:
                               type: string
                             name:
                               type: string
+                            namespace:
+                              type: string
                           type: object
                         resources:
                           description: ResourceRequirementsApplyConfiguration represents
                             an declarative configuration of the ResourceRequir
                           properties:
+                            claims:
+                              items:
+                                description: ResourceClaimApplyConfiguration represents
+                                  an declarative configuration of the ResourceClaim
+                                  type fo
+                                properties:
+                                  name:
+                                    type: string
+                                type: object
+                              type: array
                             limits:
                               additionalProperties:
                                 anyOf:
