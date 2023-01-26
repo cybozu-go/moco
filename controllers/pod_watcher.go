@@ -20,7 +20,8 @@ import (
 // PodWatcher watches MySQL pods and informs the cluster manager of the event.
 type PodWatcher struct {
 	client.Client
-	ClusterManager clustering.ClusterManager
+	ClusterManager          clustering.ClusterManager
+	MaxConcurrentReconciles int
 }
 
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
@@ -81,7 +82,7 @@ func (r *PodWatcher) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		WithOptions(
-			controller.Options{MaxConcurrentReconciles: 8},
+			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
 		Complete(r)
 }

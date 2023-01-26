@@ -88,23 +88,25 @@ func subMain(ns, addr string, port int) error {
 	defer clusterMgr.StopAll()
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		Recorder:        mgr.GetEventRecorderFor("moco-controller"),
-		AgentImage:      config.agentImage,
-		BackupImage:     config.backupImage,
-		FluentBitImage:  config.fluentBitImage,
-		ExporterImage:   config.exporterImage,
-		SystemNamespace: ns,
-		ClusterManager:  clusterMgr,
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		Recorder:                mgr.GetEventRecorderFor("moco-controller"),
+		AgentImage:              config.agentImage,
+		BackupImage:             config.backupImage,
+		FluentBitImage:          config.fluentBitImage,
+		ExporterImage:           config.exporterImage,
+		SystemNamespace:         ns,
+		ClusterManager:          clusterMgr,
+		MaxConcurrentReconciles: config.maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}
 
 	if err = (&controllers.PodWatcher{
-		Client:         mgr.GetClient(),
-		ClusterManager: clusterMgr,
+		Client:                  mgr.GetClient(),
+		ClusterManager:          clusterMgr,
+		MaxConcurrentReconciles: config.maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PodWatcher")
 		return err
