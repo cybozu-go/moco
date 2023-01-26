@@ -23,18 +23,19 @@ var (
 )
 
 var config struct {
-	metricsAddr      string
-	probeAddr        string
-	leaderElectionID string
-	webhookAddr      string
-	certDir          string
-	grpcCertDir      string
-	agentImage       string
-	backupImage      string
-	fluentBitImage   string
-	exporterImage    string
-	interval         time.Duration
-	zapOpts          zap.Options
+	metricsAddr             string
+	probeAddr               string
+	leaderElectionID        string
+	webhookAddr             string
+	certDir                 string
+	grpcCertDir             string
+	agentImage              string
+	backupImage             string
+	fluentBitImage          string
+	exporterImage           string
+	interval                time.Duration
+	maxConcurrentReconciles int
+	zapOpts                 zap.Options
 }
 
 func init() {
@@ -100,6 +101,7 @@ func init() {
 	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "The image of fluent-bit sidecar container")
 	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
+	fs.IntVar(&config.maxConcurrentReconciles, "max-concurrent-reconciles", 8, "The maximum number of concurrent reconciles which can be run")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)

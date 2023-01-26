@@ -101,14 +101,15 @@ func mergeMap(m1, m2 map[string]string) map[string]string {
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	Recorder        record.EventRecorder
-	AgentImage      string
-	BackupImage     string
-	FluentBitImage  string
-	ExporterImage   string
-	SystemNamespace string
-	ClusterManager  clustering.ClusterManager
+	Scheme                  *runtime.Scheme
+	Recorder                record.EventRecorder
+	AgentImage              string
+	BackupImage             string
+	FluentBitImage          string
+	ExporterImage           string
+	SystemNamespace         string
+	ClusterManager          clustering.ClusterManager
+	MaxConcurrentReconciles int
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;update;patch
@@ -2044,7 +2045,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, configMapHandler).
 		Watches(&source.Kind{Type: &mocov1beta2.BackupPolicy{}}, backupPolicyHandler).
 		WithOptions(
-			controller.Options{MaxConcurrentReconciles: 8},
+			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
 		Complete(r)
 }
