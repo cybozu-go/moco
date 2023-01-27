@@ -16,21 +16,22 @@ Aside from [the standard Go runtime and process metrics][standard], it exposes m
 
 All these metrics are prefixed with `moco_cluster_` and have `name` and `namespace` labels.
 
-| Name                                | Description                                                            | Type    |
-|-------------------------------------|------------------------------------------------------------------------|---------|
-| `checks_total`                      | The number of times MOCO checked the cluster                           | Counter |
-| `errors_total`                      | The number of times MOCO encountered errors when managing the cluster  | Counter |
-| `available`                         | 1 if the cluster is available, 0 otherwise                             | Gauge   |
-| `healthy`                           | 1 if the cluster is running without any problems, 0 otherwise          | Gauge   |
-| `switchover_total`                  | The number of times MOCO changed the live primary instance             | Counter |
-| `failover_total`                    | The number of times MOCO changed the failed primary instance           | Counter |
-| `replicas`                          | The number of mysqld instances in the cluster                          | Gauge   |
-| `ready_replicas`                    | The number of ready mysqld Pods in the cluster                         | Gauge   |
-| `errant_replicas`                   | The number of mysqld instances that have [errant transactions][errant] | Gauge   |
-| `volume_resized_total`              | The number of successful volume resizes                                | Counter |
-| `volume_resized_errors_total`       | The number of failed volume resizes                                    | Counter |
-| `statefulset_recreate_total`        | The number of successful StatefulSet recreates                         | Counter |
-| `statefulset_recreate_errors_total` | The number of failed StatefulSet recreates                             | Counter |
+| Name                                | Description                                                            | Type      |
+| ----------------------------------- | ---------------------------------------------------------------------- | --------- |
+| `checks_total`                      | The number of times MOCO checked the cluster                           | Counter   |
+| `errors_total`                      | The number of times MOCO encountered errors when managing the cluster  | Counter   |
+| `available`                         | 1 if the cluster is available, 0 otherwise                             | Gauge     |
+| `healthy`                           | 1 if the cluster is running without any problems, 0 otherwise          | Gauge     |
+| `switchover_total`                  | The number of times MOCO changed the live primary instance             | Counter   |
+| `failover_total`                    | The number of times MOCO changed the failed primary instance           | Counter   |
+| `replicas`                          | The number of mysqld instances in the cluster                          | Gauge     |
+| `ready_replicas`                    | The number of ready mysqld Pods in the cluster                         | Gauge     |
+| `errant_replicas`                   | The number of mysqld instances that have [errant transactions][errant] | Gauge     |
+| `processing_time_seconds`           | The length of time in seconds processing the cluster                   | Histogram |
+| `volume_resized_total`              | The number of successful volume resizes                                | Counter   |
+| `volume_resized_errors_total`       | The number of failed volume resizes                                    | Counter   |
+| `statefulset_recreate_total`        | The number of successful StatefulSet recreates                         | Counter   |
+| `statefulset_recreate_errors_total` | The number of failed StatefulSet recreates                             | Counter   |
 
 ### Backup
 

@@ -21,6 +21,7 @@ var (
 	TotalReplicasVec   *prometheus.GaugeVec
 	ReadyReplicasVec   *prometheus.GaugeVec
 	ErrantReplicasVec  *prometheus.GaugeVec
+	ProcessingTimeVec  *prometheus.HistogramVec
 
 	VolumeResizedTotal            *prometheus.CounterVec
 	VolumeResizedErrorTotal       *prometheus.CounterVec
@@ -111,6 +112,15 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of instances that have errant transactions",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(ErrantReplicasVec)
+
+	ProcessingTimeVec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "processing_time_seconds",
+		Help:      "The length of time in seconds processing the cluster",
+		Buckets:   []float64{0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10, 20, 30},
+	}, []string{"name", "namespace"})
+	registry.MustRegister(ProcessingTimeVec)
 
 	BackupTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
