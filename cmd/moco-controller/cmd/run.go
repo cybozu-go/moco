@@ -12,6 +12,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
+	"github.com/cybozu-go/moco/pkg/pprof"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -134,6 +135,13 @@ func subMain(ns, addr string, port int) error {
 	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		return err
+	}
+
+	if config.pprofAddr != "" {
+		if err := mgr.Add(pprof.NewHandler(ctrl.Log.WithName("pprof"), config.pprofAddr)); err != nil {
+			setupLog.Error(err, "unable to set pprof handler")
+			return err
+		}
 	}
 
 	metrics.Register(k8smetrics.Registry)
