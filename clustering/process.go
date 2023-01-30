@@ -30,6 +30,7 @@ type metricsSet struct {
 	replicas        prometheus.Gauge
 	readyReplicas   prometheus.Gauge
 	errantReplicas  prometheus.Gauge
+	processingTime  prometheus.Observer
 
 	backupTimestamp    prometheus.Gauge
 	backupElapsed      prometheus.Gauge
@@ -75,6 +76,7 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			replicas:           metrics.TotalReplicasVec.WithLabelValues(name.Name, name.Namespace),
 			readyReplicas:      metrics.ReadyReplicasVec.WithLabelValues(name.Name, name.Namespace),
 			errantReplicas:     metrics.ErrantReplicasVec.WithLabelValues(name.Name, name.Namespace),
+			processingTime:     metrics.ProcessingTimeVec.WithLabelValues(name.Name, name.Namespace),
 			backupTimestamp:    metrics.BackupTimestamp.WithLabelValues(name.Name, name.Namespace),
 			backupElapsed:      metrics.BackupElapsed.WithLabelValues(name.Name, name.Namespace),
 			backupDumpSize:     metrics.BackupDumpSize.WithLabelValues(name.Name, name.Namespace),
@@ -92,6 +94,7 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			metrics.TotalReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.ReadyReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.ErrantReplicasVec.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.ProcessingTimeVec.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupTimestamp.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupElapsed.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupDumpSize.DeleteLabelValues(name.Name, name.Namespace)
@@ -130,7 +133,9 @@ func (p *managerProcess) Start(ctx context.Context, interval time.Duration) {
 		}
 
 		p.metrics.checkCount.Inc()
+		startTime := time.Now()
 		redo, err := p.do(ctx)
+		p.metrics.processingTime.Observe(time.Since(startTime).Seconds())
 		if err != nil {
 			p.metrics.errorCount.Inc()
 			p.log.Error(err, "error")
