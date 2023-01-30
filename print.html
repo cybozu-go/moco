@@ -1665,6 +1665,7 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>replicas</code></td><td>The number of mysqld instances in the cluster</td><td>Gauge</td></tr>
 <tr><td><code>ready_replicas</code></td><td>The number of ready mysqld Pods in the cluster</td><td>Gauge</td></tr>
 <tr><td><code>errant_replicas</code></td><td>The number of mysqld instances that have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a></td><td>Gauge</td></tr>
+<tr><td><code>processing_time_seconds</code></td><td>The length of time in seconds processing the cluster</td><td>Histogram</td></tr>
 <tr><td><code>volume_resized_total</code></td><td>The number of successful volume resizes</td><td>Counter</td></tr>
 <tr><td><code>volume_resized_errors_total</code></td><td>The number of failed volume resizes</td><td>Counter</td></tr>
 <tr><td><code>statefulset_recreate_total</code></td><td>The number of successful StatefulSet recreates</td><td>Counter</td></tr>
