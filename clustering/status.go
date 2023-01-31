@@ -261,7 +261,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 }
 
 // containErrantTransactions check whether a GTID set contains errant transactions.
-// When the primary load is high, in the rare case, gtid_executed of replicas precedes the primary. (Probably only one event)
+// When the primary load is high, in the rare case, gtid_executed of replicas precedes the primary.
 // Assuming such a situation, this function ignores primary's event.
 func containErrantTransactions(primaryUUID, gtidSet string) bool {
 	if primaryUUID == "" {
@@ -286,17 +286,13 @@ func containErrantTransactions(primaryUUID, gtidSet string) bool {
 	//   (n >= 1)
 	// ref: https: //dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html
 
-	uuidSets := strings.Split(gtidSet, ",")
-	if len(uuidSets) > 1 {
-		return true
+	for _, uuidSet := range strings.Split(gtidSet, ",") {
+		split := strings.SplitN(uuidSet, ":", 2)
+		if split[0] != primaryUUID {
+			return true
+		}
 	}
-	split := strings.Split(uuidSets[0], ":")
-	if split[0] != primaryUUID {
-		return true
-	}
-	// If two or more events exist, they are considered errant transactions.
-	intervals := split[1:]
-	return len(intervals) > 1 || strings.Contains(intervals[0], "-")
+	return false
 }
 
 func isPodReady(pod *corev1.Pod) bool {
