@@ -1079,6 +1079,10 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	if bc.UsePathStyle {
 		args = append(args, "--use-path-style")
 	}
+	if bc.BackendType != "" {
+		args = append(args, "--backend-type="+bc.BackendType)
+	}
+
 	return append(args, bc.BucketName)
 }
 

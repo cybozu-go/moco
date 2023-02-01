@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"mime/multipart"
-	"net/http"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
@@ -13,81 +11,36 @@ import (
 )
 
 type gcsBucket struct {
-	name       string
-	client     *storage.Client
-	httpClient *http.Client
+	name   string
+	client *storage.Client
 }
 
-func NewGCSBucket(ctx context.Context, name string, httpClient *http.Client, opts ...option.ClientOption) (Bucket, error) {
-	// If an httpClient exists, add it to the beginning of the options.
-	// If the user specifies option.WithHTTPClient, that will take priority.
-	if httpClient != nil {
-		opts = append([]option.ClientOption{option.WithHTTPClient(httpClient)}, opts...)
-	}
-
+func NewGCSBucket(ctx context.Context, name string, opts ...option.ClientOption) (Bucket, error) {
 	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	b := &gcsBucket{
-		name:       name,
-		client:     client,
-		httpClient: httpClient,
-	}
-
-	if b.httpClient == nil {
-		b.httpClient = http.DefaultClient
+		name:   name,
+		client: client,
 	}
 
 	return b, nil
 }
 
-func (b *gcsBucket) Put(ctx context.Context, key string, data io.Reader, _ int64) error {
-	pv4, err := b.client.Bucket(b.name).GenerateSignedPostPolicyV4(key, &storage.PostPolicyV4Options{
-		Fields: &storage.PolicyV4Fields{
-			// It MUST only be a text file.
-			ContentType: "text/plain",
-		},
-	})
-	if err != nil {
+func (b *gcsBucket) Put(ctx context.Context, key string, data io.Reader, objectSize int64) error {
+	bucket := b.client.Bucket(b.name)
+
+	w := bucket.Object(key).NewWriter(ctx)
+	w.ChunkSize = int(decidePartSize(objectSize))
+
+	if _, err := io.Copy(w, data); err != nil {
 		return err
 	}
-
-	pr, pw := io.Pipe()
-	mw := multipart.NewWriter(pw)
-
-	for fieldName, value := range pv4.Fields {
-		if err := mw.WriteField(fieldName, value); err != nil {
-			return err
-		}
-	}
-
-	go func() {
-		defer pw.Close()
-		defer mw.Close()
-
-		fw, err := mw.CreateFormFile("file", key)
-		if err != nil {
-			return
-		}
-		if _, err := io.Copy(fw, data); err != nil {
-			return
-		}
-	}()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pv4.URL, pr)
-	if err != nil {
+	if err := w.Close(); err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-
-	resp, err := b.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
 	return nil
 }
 

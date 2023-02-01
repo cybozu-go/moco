@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/pkg/bucket"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -18,9 +20,21 @@ var commonArgs struct {
 	region       string
 	endpointURL  string
 	usePathStyle bool
+	backendType  string
 }
 
 func makeBucket(bucketName string) (bucket.Bucket, error) {
+	switch commonArgs.backendType {
+	case constants.BackendTypeS3:
+		return makeS3Bucket(bucketName)
+	case constants.BackendTypeGCS:
+		return makeGCSBucket(bucketName)
+	default:
+		return makeS3Bucket(bucketName)
+	}
+}
+
+func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 	var opts []func(*s3.Options)
 	if len(commonArgs.region) > 0 {
 		opts = append(opts, bucket.WithRegion(commonArgs.region))
@@ -32,6 +46,10 @@ func makeBucket(bucketName string) (bucket.Bucket, error) {
 		opts = append(opts, bucket.WithPathStyle())
 	}
 	return bucket.NewS3Bucket(bucketName, opts...)
+}
+
+func makeGCSBucket(bucketName string) (bucket.Bucket, error) {
+	return bucket.NewGCSBucket(context.Background(), bucketName)
 }
 
 var mysqlPassword = os.Getenv("MYSQL_PASSWORD")
@@ -73,7 +91,8 @@ func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.StringVar(&commonArgs.workDir, "work-dir", "/work", "The writable working directory")
 	pf.IntVar(&commonArgs.threads, "threads", 4, "The number of threads to be used")
-	pf.StringVar(&commonArgs.region, "region", "", "AWS region")
-	pf.StringVar(&commonArgs.endpointURL, "endpoint", "", "S3 API endpoint URL")
+	pf.StringVar(&commonArgs.region, "region", "", "Region used for object storage API")
+	pf.StringVar(&commonArgs.endpointURL, "endpoint", "", "Object storage API endpoint URL")
 	pf.BoolVar(&commonArgs.usePathStyle, "use-path-style", false, "Use path-style S3 API")
+	pf.StringVar(&commonArgs.backendType, "backend-type", "s3", "The identifier for the object storage to be used.")
 }
