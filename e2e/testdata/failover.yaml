@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: failover
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: failover
+  name: test
+spec:
+  replicas: 3
+  podTemplate:
+    spec:
+      containers:
+        - name: mysqld
+          image: quay.io/cybozu/mysql:{{ . }}
+    # Specify minimum resources so as not to overwhelm CI resources.
+    overwriteContainers:
+      - name: agent
+        resources:
+          requests:
+            cpu: 1m
+      - name: moco-init
+        resources:
+          requests:
+            cpu: 1m
+      - name: slow-log
+        resources:
+          requests:
+            cpu: 1m
+      - name: mysqld-exporter
+        resources:
+          requests:
+            cpu: 1m
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

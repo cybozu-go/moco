@@ -7,7 +7,7 @@ import (
 
 func (o *operator) FindTopRunner(ctx context.Context, status []*MySQLInstanceStatus) (int, error) {
 	latest := -1
-	var latestGTID string
+	var latestGTIDs string
 
 	for i := 0; i < len(status); i++ {
 		if status[i] == nil {
@@ -18,18 +18,28 @@ func (o *operator) FindTopRunner(ctx context.Context, status []*MySQLInstanceSta
 			continue
 		}
 
-		gtid := repl.RetrievedGtidSet
-		if len(gtid) == 0 {
+		// There are cases where Retrieved_Gtid_Set is empty,
+		// such as when there is no transaction immediately after a fail-over.
+		// Therefore, Retrieved_Gtid_Set and Executed_Gtid_Set are unioned to find for the top runner.
+		// The union of two GTID sets is simply their joined together with an interposed comma.
+		// https://dev.mysql.com/doc/refman/8.0/en/gtid-functions.html
+		var gtids string
+		if len(repl.RetrievedGtidSet) == 0 {
+			gtids = repl.ExecutedGtidSet
+		} else {
+			gtids = fmt.Sprintf("%s,%s", repl.RetrievedGtidSet, repl.ExecutedGtidSet)
+		}
+		if len(gtids) == 0 {
 			continue
 		}
 
-		if len(latestGTID) == 0 {
+		if len(latestGTIDs) == 0 {
 			latest = i
-			latestGTID = gtid
+			latestGTIDs = gtids
 			continue
 		}
 
-		isSubset, err := o.IsSubsetGTID(ctx, gtid, latestGTID)
+		isSubset, err := o.IsSubsetGTID(ctx, gtids, latestGTIDs)
 		if err != nil {
 			return -1, err
 		}
@@ -37,17 +47,17 @@ func (o *operator) FindTopRunner(ctx context.Context, status []*MySQLInstanceSta
 			continue
 		}
 
-		isSubset, err = o.IsSubsetGTID(ctx, latestGTID, gtid)
+		isSubset, err = o.IsSubsetGTID(ctx, latestGTIDs, gtids)
 		if err != nil {
 			return -1, err
 		}
 		if isSubset {
 			latest = i
-			latestGTID = gtid
+			latestGTIDs = gtids
 			continue
 		}
 
-		return -1, fmt.Errorf("%w: set1=%s, set2=%s", ErrErrantTransactions, gtid, latestGTID)
+		return -1, fmt.Errorf("%w: set1=%s, set2=%s", ErrErrantTransactions, gtids, latestGTIDs)
 	}
 
 	if latest == -1 {
