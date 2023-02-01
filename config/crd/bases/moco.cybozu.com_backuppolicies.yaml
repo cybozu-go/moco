@@ -497,6 +497,14 @@ spec:
                   bucketConfig:
                     description: Specifies how to access an object storage bucket.
                     properties:
+                      backendType:
+                        default: s3
+                        description: BackendType is an identifier for the object storage
+                          to be used.
+                        enum:
+                        - s3
+                        - gcs
+                        type: string
                       bucketName:
                         description: The name of the bucket
                         minLength: 1
@@ -1963,6 +1971,14 @@ spec:
                   bucketConfig:
                     description: Specifies how to access an object storage bucket.
                     properties:
+                      backendType:
+                        default: s3
+                        description: BackendType is an identifier for the object storage
+                          to be used.
+                        enum:
+                        - s3
+                        - gcs
+                        type: string
                       bucketName:
                         description: The name of the bucket
                         minLength: 1

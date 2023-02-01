@@ -156,4 +156,11 @@ type BucketConfig struct {
 	// is used (https?://BUCKET.ENDPOINT/KEY).
 	// +optional
 	UsePathStyle bool `json:"usePathStyle,omitempty"`
+
+	// BackendType is an identifier for the object storage to be used.
+	//
+	// +kubebuilder:validation:Enum=s3;gcs
+	// +kubebuilder:default=s3
+	// +optional
+	BackendType string `json:"backendType,omitempty"`
 }
