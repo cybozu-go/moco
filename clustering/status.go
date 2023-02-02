@@ -203,7 +203,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 					return
 				}
 				if err != nil {
-					p.log.Error(err, "failed to get mysqld status")
+					logFromContext(ctx).Error(err, "failed to get mysqld status")
 					time.Sleep(statusCheckRetryInterval)
 					continue
 				}

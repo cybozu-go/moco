@@ -15,14 +15,14 @@ type mockManager struct {
 
 var _ clustering.ClusterManager = &mockManager{}
 
-func (m *mockManager) Update(key types.NamespacedName) {
+func (m *mockManager) Update(key types.NamespacedName, origin string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.clusters[key.String()] = struct{}{}
 }
 
-func (m *mockManager) UpdateNoStart(key types.NamespacedName) {
+func (m *mockManager) UpdateNoStart(key types.NamespacedName, origin string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

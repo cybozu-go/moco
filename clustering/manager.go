@@ -23,8 +23,8 @@ import (
 //
 // This interface is meant to be used by MySQLClusterReconciler.
 type ClusterManager interface {
-	Update(types.NamespacedName)
-	UpdateNoStart(types.NamespacedName)
+	Update(types.NamespacedName, string)
+	UpdateNoStart(types.NamespacedName, string)
 	Stop(types.NamespacedName)
 	StopAll()
 }
@@ -60,15 +60,15 @@ type clusterManager struct {
 	wg sync.WaitGroup
 }
 
-func (m *clusterManager) Update(name types.NamespacedName) {
-	m.update(name, false)
+func (m *clusterManager) Update(name types.NamespacedName, origin string) {
+	m.update(name, false, origin)
 }
 
-func (m *clusterManager) UpdateNoStart(name types.NamespacedName) {
-	m.update(name, true)
+func (m *clusterManager) UpdateNoStart(name types.NamespacedName, origin string) {
+	m.update(name, true, origin)
 }
 
-func (m *clusterManager) update(name types.NamespacedName, noStart bool) {
+func (m *clusterManager) update(name types.NamespacedName, noStart bool, origin string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -79,7 +79,7 @@ func (m *clusterManager) update(name types.NamespacedName, noStart bool) {
 	key := name.String()
 	p, ok := m.processes[key]
 	if ok {
-		p.Update()
+		p.Update(origin)
 		return
 	}
 	if noStart {
@@ -88,14 +88,14 @@ func (m *clusterManager) update(name types.NamespacedName, noStart bool) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, m.log.WithName(key), cancel)
+	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, cancel)
 	m.wg.Add(1)
 	go func() {
-		p.Start(ctx, m.interval)
+		p.Start(ctx, m.log.WithName(key), m.interval)
 		m.wg.Done()
 	}()
 	m.processes[key] = p
-	p.Update()
+	p.Update(origin)
 }
 
 func (m *clusterManager) Stop(name types.NamespacedName) {

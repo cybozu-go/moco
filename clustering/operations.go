@@ -38,13 +38,14 @@ func init() {
 }
 
 func (p *managerProcess) isCloning(ctx context.Context, ss *StatusSet) bool {
+	log := logFromContext(ctx)
 	pst := ss.MySQLStatus[ss.Primary]
 	if pst == nil {
-		p.log.Info("the status of the primary is missing")
+		log.Info("the status of the primary is missing")
 		return true
 	}
 	if pst.CloneStatus != nil && pst.CloneStatus.State.String != "Failed" {
-		p.log.Info("cloning...", "state", pst.CloneStatus.State.String)
+		log.Info("cloning...", "state", pst.CloneStatus.State.String)
 		return true
 	}
 	return false
@@ -103,13 +104,14 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	}
 	defer ag.Close()
 
-	p.log.Info("begin cloning data", "source", req.Host)
+	log := logFromContext(ctx)
+	log.Info("begin cloning data", "source", req.Host)
 	if _, err := ag.Clone(ctx, req); err != nil {
-		p.log.Error(err, "clone failed", "source", req.Host)
+		log.Error(err, "clone failed", "source", req.Host)
 		return false, fmt.Errorf("failed to clone data from %s: %w", req.Host, err)
 	}
 
-	p.log.Info("clone succeeded", "source", req.Host)
+	log.Info("clone succeeded", "source", req.Host)
 
 	// wait until the instance restarts after clone
 	op := ss.DBOps[ss.Primary]
@@ -130,7 +132,8 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 }
 
 func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
-	p.log.Info("begin switchover the primary", "current", ss.Primary, "next", ss.Candidate)
+	log := logFromContext(ctx)
+	log.Info("begin switchover the primary", "current", ss.Primary, "next", ss.Candidate)
 
 	pdb := ss.DBOps[ss.Primary]
 	if err := pdb.SetReadOnly(ctx, true); err != nil {
@@ -172,12 +175,13 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 			return fmt.Errorf("failed to remove moco.cybozu.com/demote annotation: %w", err)
 		}
 	}
-	p.log.Info("switchover finished", "primary", ss.Candidate)
+	log.Info("switchover finished", "primary", ss.Candidate)
 	return nil
 }
 
 func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
-	p.log.Info("begin failover the primary", "current", ss.Primary)
+	log := logFromContext(ctx)
+	log.Info("begin failover the primary", "current", ss.Primary)
 
 	// stop all replica IO threads
 	for i, ist := range ss.MySQLStatus {
@@ -221,7 +225,7 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 	ss.Candidate = candidate
 
 	gtid := candidates[candidate].ReplicaStatus.RetrievedGtidSet
-	p.log.Info("waiting for the new primary to execute all retrieved transactions", "index", candidate, "gtid", gtid)
+	log.Info("waiting for the new primary to execute all retrieved transactions", "index", candidate, "gtid", gtid)
 	err = ss.DBOps[candidate].WaitForGTID(ctx, gtid, failOverTimeoutSeconds)
 	if err != nil {
 		return err
@@ -241,7 +245,7 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 
 	p.metrics.failoverCount.Inc()
 
-	p.log.Info("failover finished", "primary", candidate)
+	log.Info("failover finished", "primary", candidate)
 	return nil
 }
 
@@ -324,7 +328,7 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 		op := ss.DBOps[ss.Primary]
 		if pst.GlobalVariables.ReadOnly {
 			redo = true
-			p.log.Info("set read_only=0", "instance", ss.Primary)
+			logFromContext(ctx).Info("set read_only=0", "instance", ss.Primary)
 			if err := op.SetReadOnly(ctx, false); err != nil {
 				return false, fmt.Errorf("failed to make the primary writable: %w", err)
 			}
@@ -335,11 +339,12 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 }
 
 func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *StatusSet) (redo bool, e error) {
+	log := logFromContext(ctx)
 	pst := ss.MySQLStatus[ss.Primary]
 	op := ss.DBOps[ss.Primary]
 	if !pst.GlobalVariables.SuperReadOnly {
 		redo = true
-		p.log.Info("set super_read_only=1", "instance", ss.Primary)
+		log.Info("set super_read_only=1", "instance", ss.Primary)
 		if err := op.SetReadOnly(ctx, true); err != nil {
 			return false, err
 		}
@@ -363,7 +368,7 @@ func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *S
 	}
 	if pst.ReplicaStatus == nil || pst.ReplicaStatus.SlaveIORunning != "Yes" || pst.ReplicaStatus.MasterHost != ai.Host {
 		redo = true
-		p.log.Info("start replication", "instance", ss.Primary, "semisync", false)
+		log.Info("start replication", "instance", ss.Primary, "semisync", false)
 		if err := op.ConfigureReplica(ctx, ai, false); err != nil {
 			return false, err
 		}
@@ -372,13 +377,14 @@ func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *S
 }
 
 func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (redo bool, e error) {
+	log := logFromContext(ctx)
 	pst := ss.MySQLStatus[ss.Primary]
 	op := ss.DBOps[ss.Primary]
 
 	// wait for all retrieved transactions to be executed if this used to be an intermediate replica
 	if pst.ReplicaStatus != nil && pst.ReplicaStatus.SlaveIORunning == "Yes" {
 		redo = true
-		p.log.Info("stop replica IO thread", "instance", ss.Primary)
+		log.Info("stop replica IO thread", "instance", ss.Primary)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
 			return false, err
 		}
@@ -386,7 +392,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	}
 	if pst.ReplicaStatus != nil && pst.ReplicaStatus.RetrievedGtidSet != "" {
 		redo = true
-		p.log.Info("waiting for all retrieved transactions to be executed", "instance", ss.Primary, "gtid", pst.ReplicaStatus.RetrievedGtidSet)
+		log.Info("waiting for all retrieved transactions to be executed", "instance", ss.Primary, "gtid", pst.ReplicaStatus.RetrievedGtidSet)
 		if err := op.WaitForGTID(ctx, pst.ReplicaStatus.RetrievedGtidSet, 0); err != nil {
 			return false, err
 		}
@@ -399,7 +405,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	waitFor := int(ss.Cluster.Spec.Replicas / 2)
 	if !pst.GlobalVariables.SemiSyncMasterEnabled || pst.GlobalVariables.WaitForSlaveCount != waitFor {
 		redo = true
-		p.log.Info("enable semi-sync primary")
+		log.Info("enable semi-sync primary")
 		if err := op.ConfigurePrimary(ctx, waitFor); err != nil {
 			return false, err
 		}
@@ -408,6 +414,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 }
 
 func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, index int) (redo bool, e error) {
+	log := logFromContext(ctx)
 	st := ss.MySQLStatus[index]
 	op := ss.DBOps[index]
 
@@ -419,7 +426,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		if st.ReplicaStatus.SlaveIORunning != "Yes" {
 			return
 		}
-		p.log.Info("stop replica IO thread", "instance", index)
+		log.Info("stop replica IO thread", "instance", index)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
 			return false, err
 		}
@@ -428,7 +435,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 
 	if !st.GlobalVariables.SuperReadOnly {
 		redo = true
-		p.log.Info("set super_read_only=1", "instance", index)
+		log.Info("set super_read_only=1", "instance", index)
 		if err := op.SetReadOnly(ctx, true); err != nil {
 			return false, err
 		}
@@ -460,14 +467,14 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		}
 		defer ag.Close()
 
-		p.log.Info("begin cloning data", "instance", index)
+		log.Info("begin cloning data", "instance", index)
 		if _, err := ag.Clone(ctx, req); err != nil {
 			event.CloneFailed.Emit(ss.Cluster, p.recorder, index, err)
-			p.log.Error(err, "clone failed", "instance", index)
+			log.Error(err, "clone failed", "instance", index)
 			return false, fmt.Errorf("failed to clone data on instance %d: %w", index, err)
 		}
 		event.CloneSucceeded.Emit(ss.Cluster, p.recorder, index)
-		p.log.Info("clone succeeded", "instance", index)
+		log.Info("clone succeeded", "instance", index)
 
 		// wait until the instance restarts after clone
 		time.Sleep(waitForRestartDuration)
@@ -494,7 +501,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 	semisync := ss.Cluster.Spec.ReplicationSourceSecretName == nil
 	if st.ReplicaStatus == nil || st.ReplicaStatus.SlaveIORunning != "Yes" || st.ReplicaStatus.MasterHost != ai.Host || st.GlobalVariables.SemiSyncSlaveEnabled != semisync {
 		redo = true
-		p.log.Info("start replication", "instance", index, "semisync", semisync)
+		log.Info("start replication", "instance", index, "semisync", semisync)
 		if err := op.ConfigureReplica(ctx, ai, semisync); err != nil {
 			return false, err
 		}
