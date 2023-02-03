@@ -25,6 +25,7 @@ var (
 var config struct {
 	metricsAddr             string
 	probeAddr               string
+	pprofAddr               string
 	leaderElectionID        string
 	webhookAddr             string
 	certDir                 string
@@ -90,8 +91,9 @@ func Execute() {
 
 func init() {
 	fs := rootCmd.Flags()
-	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to")
+	fs.StringVar(&config.metricsAddr, "metrics-addr", ":8080", "Listen address for metric endpoint")
 	fs.StringVar(&config.probeAddr, "health-probe-addr", ":8081", "Listen address for health probes")
+	fs.StringVar(&config.pprofAddr, "pprof-addr", "", "Listen address for pprof endpoints. pprof is disabled by default")
 	fs.StringVar(&config.leaderElectionID, "leader-election-id", "moco", "ID for leader election by controller-runtime")
 	fs.StringVar(&config.webhookAddr, "webhook-addr", ":9443", "Listen address for the webhook endpoint")
 	fs.StringVar(&config.certDir, "cert-dir", "", "webhook certificate directory")
