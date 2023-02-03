@@ -166,9 +166,10 @@
       --log_file_max_size uint            Defines the maximum size a log file can grow to (no effect when -logtostderr=true). Unit is megabytes. If the value is 0, the maximum file size is unlimited. (default 1800)
       --logtostderr                       log to standard error instead of files (default true)
       --max-concurrent-reconciles int     The maximum number of concurrent reconciles which can be run (default 8)
-      --metrics-addr string               The address the metric endpoint binds to (default &quot;:8080&quot;)
+      --metrics-addr string               Listen address for metric endpoint (default &quot;:8080&quot;)
       --mysqld-exporter-image string      The image of mysqld_exporter sidecar container
       --one_output                        If true, only write logs to their native severity level (vs also writing to each lower severity level; no effect when -logtostderr=true)
+      --pprof-addr string                 Listen address for pprof endpoints. pprof is disabled by default
       --skip_headers                      If true, avoid header prefixes in the log messages
       --skip_log_headers                  If true, avoid headers when opening log files (no effect when -logtostderr=true)
       --stderrthreshold severity          logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=false) (default 2)
