@@ -137,7 +137,7 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
-	if config.pprofAddr != "" {
+	if config.pprofAddr != "" && config.pprofAddr != "0" {
 		if err := mgr.Add(pprof.NewHandler(ctrl.Log.WithName("pprof"), config.pprofAddr)); err != nil {
 			setupLog.Error(err, "unable to set pprof handler")
 			return err
