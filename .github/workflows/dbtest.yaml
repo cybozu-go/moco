@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version-file: go.mod
+          cache: true
       - run: make setup
       - run: make test-bkop MYSQL_VERSION=${{ inputs.mysql-version }}
       - run: make test-dbop MYSQL_VERSION=${{ inputs.mysql-version }}
