@@ -21,6 +21,7 @@ type MySQLInstanceStatus struct {
 }
 
 var statusGlobalVars = []string{
+	"@@server_uuid",
 	"@@gtid_executed",
 	"@@read_only",
 	"@@super_read_only",
@@ -31,6 +32,7 @@ var statusGlobalVars = []string{
 
 // GlobalVariables defines the observed global variable values of a MySQL instance
 type GlobalVariables struct {
+	UUID                  string `db:"@@server_uuid"`
 	ExecutedGTID          string `db:"@@gtid_executed"`
 	ReadOnly              bool   `db:"@@read_only"`
 	SuperReadOnly         bool   `db:"@@super_read_only"`

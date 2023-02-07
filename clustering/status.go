@@ -225,7 +225,9 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		ss.ExecutedGTID = pst.GlobalVariables.ExecutedGTID
 	}
 
+	// detect errant replicas
 	if ss.ExecutedGTID != "" {
+		pst := ss.MySQLStatus[ss.Primary]
 		for i, ist := range ss.MySQLStatus {
 			if i == ss.Primary {
 				continue
@@ -234,11 +236,11 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				continue
 			}
 
-			ok, err := ss.DBOps[ss.Primary].IsSubsetGTID(ctx, ist.GlobalVariables.ExecutedGTID, ss.ExecutedGTID)
+			diff, err := ss.DBOps[ss.Primary].SubtractGTID(ctx, ist.GlobalVariables.ExecutedGTID, ss.ExecutedGTID)
 			if err != nil {
-				return nil, fmt.Errorf("failed to compare GTID %s and %s: %w", ist.GlobalVariables.ExecutedGTID, ss.ExecutedGTID, err)
+				return nil, fmt.Errorf("failed to compare GTID for instance %d: %w", i, err)
 			}
-			if !ok {
+			if containErrantTransactions(pst.GlobalVariables.UUID, diff) {
 				ist.IsErrant = true
 				ss.Errants = append(ss.Errants, i)
 			}
@@ -256,6 +258,41 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 
 	ss.DecideState()
 	return ss, nil
+}
+
+// containErrantTransactions check whether a GTID set contains errant transactions.
+// When the primary load is high, in the rare case, gtid_executed of replicas precedes the primary.
+// Assuming such a situation, this function ignores primary's event.
+func containErrantTransactions(primaryUUID, gtidSet string) bool {
+	if primaryUUID == "" {
+		panic("uuid must be set")
+	}
+	if gtidSet == "" {
+		return false
+	}
+
+	// Syntax of GTID set
+	//   gtid_set:
+	//       uuid_set [, uuid_set] ...
+	//       | ''
+	//   uuid_set:
+	//       uuid:interval[:interval]...
+	//   uuid:
+	//       hhhhhhhh-hhhh-hhhh-hhhh-hhhhhhhhhhhh
+	//   h:
+	//       [0-9|A-F]
+	//   interval:
+	//       n[-n]
+	//   (n >= 1)
+	// ref: https: //dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html
+
+	for _, uuidSet := range strings.Split(gtidSet, ",") {
+		split := strings.SplitN(uuidSet, ":", 2)
+		if split[0] != primaryUUID {
+			return true
+		}
+	}
+	return false
 }
 
 func isPodReady(pod *corev1.Pod) bool {
