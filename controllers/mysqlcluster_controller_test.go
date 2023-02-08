@@ -1122,6 +1122,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			"--region=us-east-1",
 			"--endpoint=https://foo.bar.baz",
 			"--use-path-style",
+			"--backend-type=s3",
 			"mybucket",
 			"test",
 			"test",
@@ -1202,6 +1203,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(c.Args).To(Equal([]string{
 			"backup",
 			"--threads=1",
+			"--backend-type=s3",
 			"mybucket2",
 			"test",
 			"test",
@@ -1327,6 +1329,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			"--region=us-east-1",
 			"--endpoint=https://foo.bar.baz",
 			"--use-path-style",
+			"--backend-type=s3",
 			"mybucket",
 			"ns",
 			"single",
