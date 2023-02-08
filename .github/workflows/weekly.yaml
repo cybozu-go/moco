@@ -52,6 +52,7 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version-file: go.mod
+          cache: true
       - run: |
           swapon > swapon.txt
           sudo swapoff -a
