@@ -18,7 +18,7 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM quay.io/cybozu/mysql:8.0.31.1 as mysql
+FROM quay.io/cybozu/mysql:8.0.32.1 as mysql
 
 # the backup image
 FROM quay.io/cybozu/ubuntu:20.04
