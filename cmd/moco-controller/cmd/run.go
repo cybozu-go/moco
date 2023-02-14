@@ -59,6 +59,7 @@ func subMain(ns, addr string, port int) error {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&config.zapOpts)))
 	setupLog := ctrl.Log.WithName("setup")
 	clusterLog := ctrl.Log.WithName("cluster-manager")
+	clustering.SetDefaultLogger(clusterLog)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,

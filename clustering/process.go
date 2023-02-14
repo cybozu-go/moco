@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,15 +48,14 @@ type managerProcess struct {
 	dbf      dbop.OperatorFactory
 	agentf   AgentFactory
 	name     types.NamespacedName
-	log      logr.Logger
 	cancel   func()
 
-	ch            chan struct{}
+	ch            chan string
 	metrics       metricsSet
 	deleteMetrics func()
 }
 
-func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, log logr.Logger, cancel func()) *managerProcess {
+func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func()) *managerProcess {
 	return &managerProcess{
 		client:   c,
 		reader:   r,
@@ -63,9 +63,8 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 		dbf:      dbf,
 		agentf:   agentf,
 		name:     name,
-		log:      log,
 		cancel:   cancel,
-		ch:       make(chan struct{}, 1),
+		ch:       make(chan string, 1),
 		metrics: metricsSet{
 			checkCount:         metrics.CheckCountVec.WithLabelValues(name.Name, name.Namespace),
 			errorCount:         metrics.ErrorCountVec.WithLabelValues(name.Name, name.Namespace),
@@ -105,9 +104,9 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 	}
 }
 
-func (p *managerProcess) Update() {
+func (p *managerProcess) Update(origin string) {
 	select {
-	case p.ch <- struct{}{}:
+	case p.ch <- origin:
 	default:
 	}
 }
@@ -116,7 +115,7 @@ func (p *managerProcess) Cancel() {
 	p.cancel()
 }
 
-func (p *managerProcess) Start(ctx context.Context, interval time.Duration) {
+func (p *managerProcess) Start(ctx context.Context, rootLog logr.Logger, interval time.Duration) {
 	tick := time.NewTicker(interval)
 	defer func() {
 		tick.Stop()
@@ -124,27 +123,32 @@ func (p *managerProcess) Start(ctx context.Context, interval time.Duration) {
 	}()
 
 	for {
+		origin := "interval"
 		select {
-		case <-p.ch:
+		case origin = <-p.ch:
 		case <-tick.C:
 		case <-ctx.Done():
-			p.log.Info("quit")
+			rootLog.Info("quit")
 			return
 		}
 
+		log := rootLog.WithValues("operationId", "op-"+rand.String(5))
+		log.Info("start operation", "origin", origin)
 		p.metrics.checkCount.Inc()
 		startTime := time.Now()
-		redo, err := p.do(ctx)
-		p.metrics.processingTime.Observe(time.Since(startTime).Seconds())
+		redo, err := p.do(logr.NewContext(ctx, log))
+		duration := time.Since(startTime)
+		p.metrics.processingTime.Observe(duration.Seconds())
 		if err != nil {
 			p.metrics.errorCount.Inc()
-			p.log.Error(err, "error")
+			log.Error(err, "error", "duration", duration)
 			continue
 		}
+		log.Info("finish", "duration", duration)
 
 		if redo {
 			// to update status quickly
-			p.Update()
+			p.Update("redo")
 		}
 	}
 }
@@ -160,7 +164,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to update status fields in MySQLCluster: %w", err)
 	}
 
-	p.log.Info("cluster state is " + ss.State.String())
+	logFromContext(ctx).Info("cluster state is " + ss.State.String())
 	switch ss.State {
 	case StateCloning:
 		if p.isCloning(ctx, ss) {
@@ -311,7 +315,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 			return nil
 		}
 
-		p.log.Info("update the status information")
+		logFromContext(ctx).Info("update the status information")
 		return p.client.Status().Update(ctx, cluster)
 	})
 }
