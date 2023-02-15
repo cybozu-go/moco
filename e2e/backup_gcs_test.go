@@ -24,7 +24,7 @@ var backupGCSYAML string
 //go:embed testdata/restore_gcs.yaml
 var restoreGCSYAML string
 
-var _ = Context("backup", func() {
+var _ = Context("backup-gcs", func() {
 	if doUpgrade {
 		return
 	}
