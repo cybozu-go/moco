@@ -8,7 +8,7 @@ spec:
   replicas: 1
   restore:
     sourceName: source
-    sourceNamespace: backup
+    sourceNamespace: backup-gcs
     restorePoint: "{{ .RestorePoint }}"
     jobConfig:
       serviceAccountName: backup-owner
