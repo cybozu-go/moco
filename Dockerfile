@@ -1,15 +1,17 @@
 # Build the moco-controller binary
-FROM quay.io/cybozu/golang:1.19-focal as builder
+FROM --platform=$BUILDPLATFORM quay.io/cybozu/golang:1.19-focal as builder
+
+ARG TARGETARCH
 
 # Copy the go source
 COPY ./ .
 
 # Build
-RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o moco-controller ./cmd/moco-controller
-RUN go build -ldflags="-w -s" -o moco-backup ./cmd/moco-backup
+RUN GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -ldflags="-w -s" -o moco-controller ./cmd/moco-controller
+RUN GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o moco-backup ./cmd/moco-backup
 
 # the controller image
-FROM scratch as controller
+FROM --platform=$TARGETPLATFORM scratch as controller
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
 COPY --from=builder /work/moco-controller ./
@@ -18,10 +20,10 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM quay.io/cybozu/mysql:8.0.32.1 as mysql
+FROM --platform=$TARGETPLATFORM quay.io/cybozu/mysql:8.0.32.1 as mysql
 
 # the backup image
-FROM quay.io/cybozu/ubuntu:20.04
+FROM --platform=$TARGETPLATFORM quay.io/cybozu/ubuntu:20.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
 ARG MYSQLSH_VERSION=8.0.30-1
