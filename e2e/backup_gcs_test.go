@@ -158,7 +158,7 @@ var _ = Context("backup-gcs", func() {
 		Expect(count).To(Equal(2))
 	})
 
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "backup-gcs", "mysqlclusters", "--all")
+	It("should delete namespace", func() {
+		kubectlSafe(nil, "delete", "ns", "backup-gcs")
 	})
 })
