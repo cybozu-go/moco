@@ -5,6 +5,26 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2023-02-21
+
+### Added
+- Support Kubernetes v1.26 [#495](https://github.com/cybozu-go/moco/pull/495)
+- Support MySQL 8.0.32 [#505](https://github.com/cybozu-go/moco/pull/505)
+- Add default affinity for BackupPolicySpec [#471](https://github.com/cybozu-go/moco/pull/471)
+- Add max-concurrent-reconciles option [#498](https://github.com/cybozu-go/moco/pull/498)
+- Add metrics to measure processing time [#499](https://github.com/cybozu-go/moco/pull/499)
+- Add pprof server to moco-controller [#500](https://github.com/cybozu-go/moco/pull/500)
+
+### Changed
+- Update fluent-bit v2.0.9 [#508](https://github.com/cybozu-go/moco/pull/508)
+- Add id to cluster manager's log [#503](https://github.com/cybozu-go/moco/pull/503)
+- Build moco-controller with go 1.19 [#506](https://github.com/cybozu-go/moco/pull/506)
+
+### Fixed
+- Ignore primary's event when detecting errant replicas [#491](https://github.com/cybozu-go/moco/pull/491)
+- Use ExecutedGtidSet and RetrievedGtidSet when determining the primary [#474](https://github.com/cybozu-go/moco/pull/474)
+- Enable go.mod cache [#504](https://github.com/cybozu-go/moco/pull/504)
+
 ## [0.14.1] - 2022-12-08
 
 ### Fixed
@@ -384,7 +404,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/cybozu-go/moco/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/cybozu-go/moco/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/cybozu-go/moco/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/cybozu-go/moco/compare/v0.12.1...v0.13.0
