@@ -247,4 +247,23 @@ var _ = Context("lifecycle", func() {
 			return fmt.Errorf("pending services: %+v", services.Items)
 		}).Should(Succeed())
 	})
+
+	It("should delete clusters", func() {
+		kubectlSafe(nil, "delete", "-n", "foo", "mysqlclusters", "--all")
+
+		Eventually(func() error {
+			out, err := kubectl(nil, "get", "-n", "foo", "pod", "-o", "json")
+			if err != nil {
+				return err
+			}
+			pods := &corev1.PodList{}
+			if err := json.Unmarshal(out, pods); err != nil {
+				return err
+			}
+			if len(pods.Items) > 0 {
+				return errors.New("wait until all Pods are deleted")
+			}
+			return nil
+		}).Should(Succeed())
+	})
 })
