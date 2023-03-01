@@ -703,6 +703,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(sts.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroup).To(Equal(int64(constants.ContainerGID)))
 		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroupChangePolicy).To(Equal(corev1.FSGroupChangeOnRootMismatch))
+		Expect(sts.Spec.Template.Spec.Affinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
 
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 		foundMysqld := false
