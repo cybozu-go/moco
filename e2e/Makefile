@@ -29,12 +29,12 @@ help:
 .PHONY: start
 start: $(KIND) $(KUBECTL) $(KUSTOMIZE) $(KUBECTL_MOCO)
 	$(KIND) create cluster --name=moco --config=$(KIND_CONFIG) --image=kindest/node:v$(KUBERNETES_VERSION) --wait 1m
-	cd ..; docker build --no-cache --target controller -t moco:dev .
+	cd ..; docker buildx build --no-cache --load --target controller -t moco:dev .
 	$(KIND) load docker-image moco:dev --name=moco
-	cd ..; docker build -t moco-backup:dev .
+	cd ..; docker buildx build --load -t moco-backup:dev .
 	$(KIND) load docker-image moco-backup:dev --name=moco
 ifdef AGENT_DIR
-	cd $(AGENT_DIR); docker build --no-cache -t $(AGENT_IMAGE) .
+	cd $(AGENT_DIR); docker buildx build --load --no-cache -t $(AGENT_IMAGE) .
 	$(KIND) load docker-image $(AGENT_IMAGE) --name=moco
 endif
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml

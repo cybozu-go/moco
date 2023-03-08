@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.3
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.42
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.29.4
-	github.com/cybozu-go/moco-agent v0.8.0
+	github.com/cybozu-go/moco-agent v0.9.0
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-sql-driver/mysql v1.6.0
