@@ -108,8 +108,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.11 h1:07n33Z8lZxZ2qwegKbObQohDhXDQxiMMz1NOUGYlesw=
 github.com/creack/pty v1.1.11/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
-github.com/cybozu-go/moco-agent v0.8.0 h1:zQFBp+5SKzTxUGOZGMWma7M4qQ+r8a8puf++FAeA6kY=
-github.com/cybozu-go/moco-agent v0.8.0/go.mod h1:psUngzNi7oucca9XkyBV8d4SIkzOh6Sjwd2m4aqyWNE=
+github.com/cybozu-go/moco-agent v0.9.0 h1:77WKgWYydknWVC3XPUE3YhNokutKmc7NHCy0bIqUV0o=
+github.com/cybozu-go/moco-agent v0.9.0/go.mod h1:psUngzNi7oucca9XkyBV8d4SIkzOh6Sjwd2m4aqyWNE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
