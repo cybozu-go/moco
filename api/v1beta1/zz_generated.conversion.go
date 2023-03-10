@@ -638,7 +638,7 @@ func autoConvert__MySQLClusterSpec_To_v1beta2_MySQLClusterSpec(in *MySQLClusterS
 	out.ReplicationSourceSecretName = (*string)(unsafe.Pointer(in.ReplicationSourceSecretName))
 	out.Collectors = *(*[]string)(unsafe.Pointer(&in.Collectors))
 	out.ServerIDBase = in.ServerIDBase
-	out.MaxDelaySeconds = in.MaxDelaySeconds
+	out.MaxDelaySeconds = (*int)(unsafe.Pointer(in.MaxDelaySeconds))
 	out.StartupWaitSeconds = in.StartupWaitSeconds
 	out.LogRotationSchedule = in.LogRotationSchedule
 	out.BackupPolicyName = (*string)(unsafe.Pointer(in.BackupPolicyName))
@@ -659,7 +659,7 @@ func autoConvert_v1beta2_MySQLClusterSpec_To__MySQLClusterSpec(in *v1beta2.MySQL
 	out.ReplicationSourceSecretName = (*string)(unsafe.Pointer(in.ReplicationSourceSecretName))
 	out.Collectors = *(*[]string)(unsafe.Pointer(&in.Collectors))
 	out.ServerIDBase = in.ServerIDBase
-	out.MaxDelaySeconds = in.MaxDelaySeconds
+	out.MaxDelaySeconds = (*int)(unsafe.Pointer(in.MaxDelaySeconds))
 	out.StartupWaitSeconds = in.StartupWaitSeconds
 	out.LogRotationSchedule = in.LogRotationSchedule
 	out.BackupPolicyName = (*string)(unsafe.Pointer(in.BackupPolicyName))

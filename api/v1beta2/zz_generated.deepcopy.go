@@ -319,6 +319,11 @@ func (in *MySQLClusterSpec) DeepCopyInto(out *MySQLClusterSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.MaxDelaySeconds != nil {
+		in, out := &in.MaxDelaySeconds, &out.MaxDelaySeconds
+		*out = new(int)
+		**out = **in
+	}
 	if in.BackupPolicyName != nil {
 		in, out := &in.BackupPolicyName, &out.BackupPolicyName
 		*out = new(string)
