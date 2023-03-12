@@ -31,7 +31,6 @@ spec:
       value: fake-gcs-server.default.svc:4443
     bucketConfig:
       bucketName: moco
-      endpointURL: http://fake-gcs-server.default.svc:4443
       backendType: gcs
     workVolume:
       emptyDir: {}
