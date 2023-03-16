@@ -725,6 +725,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				foundAgent = true
 				Expect(c.Image).To(Equal(testAgentImage))
+				Expect(c.Args).To(Equal([]string{"--max-delay", "60s"}))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 			case constants.SlowQueryLogAgentContainerName:
@@ -831,7 +832,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
 		cluster.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
-		cluster.Spec.MaxDelaySeconds = 20
+		cluster.Spec.MaxDelaySeconds = pointer.Int(20)
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
@@ -986,6 +987,38 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 		}
 		Expect(foundDummyVolume).To(BeTrue())
+
+		By("updating MySQLCluster (MaxDelaySeconds=0)")
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster.Spec.MaxDelaySeconds = pointer.Int(0)
+
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			c := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, c); err != nil {
+				return err
+			}
+			if c.Status.ReconcileInfo.Generation != c.Generation {
+				return fmt.Errorf("not yet reconciled: generation=%d", c.Status.ReconcileInfo.Generation)
+			}
+			return nil
+		}).Should(Succeed())
+
+		sts = &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			switch c.Name {
+			case constants.AgentContainerName:
+				Expect(c.Args).To(ContainElement("0s"))
+			}
+		}
 	})
 
 	It("should reconcile a pod disruption budget", func() {

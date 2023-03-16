@@ -70,7 +70,7 @@ type MySQLClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:default=60
 	// +optional
-	MaxDelaySeconds int `json:"maxDelaySeconds,omitempty"`
+	MaxDelaySeconds *int `json:"maxDelaySeconds,omitempty"`
 
 	// StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working.
 	// The default is 3600 seconds.
