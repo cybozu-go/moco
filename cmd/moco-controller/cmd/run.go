@@ -61,7 +61,15 @@ func subMain(ns, addr string, port int) error {
 	clusterLog := ctrl.Log.WithName("cluster-manager")
 	clustering.SetDefaultLogger(clusterLog)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	restCfg, err := ctrl.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "failed to get REST config")
+		return err
+	}
+	restCfg.QPS = float32(config.qps)
+	restCfg.Burst = int(restCfg.QPS * 1.5)
+
+	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
 		Scheme:                  scheme,
 		MetricsBindAddress:      config.metricsAddr,
 		HealthProbeBindAddress:  config.probeAddr,
