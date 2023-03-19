@@ -33,7 +33,12 @@ func (b *gcsBucket) Put(ctx context.Context, key string, data io.Reader, objectS
 	bucket := b.client.Bucket(b.name)
 
 	w := bucket.Object(key).NewWriter(ctx)
-	w.ChunkSize = int(decidePartSize(objectSize))
+
+	// Chunk size is set to 16 MiB by default.
+	// There is a trade-off between upload speed and memory space for the chunk size.
+	// The default value is respected here.
+	// https://cloud.google.com/storage/docs/resumable-uploads#go
+	//	w.ChunkSize = int(decidePartSize(objectSize))
 
 	if _, err := io.Copy(w, data); err != nil {
 		return err
