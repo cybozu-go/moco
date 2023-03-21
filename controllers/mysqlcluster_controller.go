@@ -916,6 +916,12 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 									WithKey(constants.LabelAppInstance).
 									WithOperator(metav1.LabelSelectorOpIn).
 									WithValues(cluster.Name),
+							).
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppCreatedBy).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(constants.AppCreator),
 							),
 						).
 						WithTopologyKey(corev1.LabelHostname),
