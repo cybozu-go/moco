@@ -139,6 +139,10 @@ spec:
                   operator: In
                   values:
                   - mysql
+                - key: app.kubernetes.io/created-by
+                  operator: In
+                  values:
+                  - moco
                 - key: app.kubernetes.io/instance
                   operator: In
                   values:
