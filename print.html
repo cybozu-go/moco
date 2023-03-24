@@ -1211,6 +1211,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+<tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1226,6 +1227,8 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>volumes</td><td>Volumes defines the list of volumes that can be mounted by containers in the Pod.</td><td>[]VolumeApplyConfiguration</td><td>false</td></tr>
+<tr><td>volumeMounts</td><td>VolumeMounts describes a list of volume mounts that are to be mounted in a container.</td><td>[]VolumeMountApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1397,6 +1400,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+<tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1412,6 +1416,8 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>volumes</td><td>Volumes defines the list of volumes that can be mounted by containers in the Pod.</td><td>[]VolumeApplyConfiguration</td><td>false</td></tr>
+<tr><td>volumeMounts</td><td>VolumeMounts describes a list of volume mounts that are to be mounted in a container.</td><td>[]VolumeMountApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1463,6 +1469,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+<tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1478,6 +1485,8 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>volumes</td><td>Volumes defines the list of volumes that can be mounted by containers in the Pod.</td><td>[]VolumeApplyConfiguration</td><td>false</td></tr>
+<tr><td>volumeMounts</td><td>VolumeMounts describes a list of volume mounts that are to be mounted in a container.</td><td>[]VolumeMountApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1529,6 +1538,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>region</td><td>The region of the bucket. This can also be set through <code>AWS_REGION</code> environment variable.</td><td>string</td><td>false</td></tr>
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
+<tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1544,6 +1554,8 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>affinity</td><td>If specified, the pod's scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>volumes</td><td>Volumes defines the list of volumes that can be mounted by containers in the Pod.</td><td>[]VolumeApplyConfiguration</td><td>false</td></tr>
+<tr><td>volumeMounts</td><td>VolumeMounts describes a list of volume mounts that are to be mounted in a container.</td><td>[]VolumeMountApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -2264,8 +2276,14 @@ For instance, Amazon Elastic Kubernetes Service (EKS) has <a href="https://aws.a
 Kubernetes itself is also developing such an enhancement called <a href="https://github.com/kubernetes-sigs/container-object-storage-interface-api">Container Object Storage Interface (COSI)</a>.</p>
 <p>To allow the backup Job to update MySQLCluster status, MOCO creates Role and RoleBinding.
 The RoleBinding grants the access to the given ServiceAccount.</p>
-<p>For the time being, MOCO only supports AWS S3 API as it prevails among other object storage APIs.
-We intend to extend the support to S3-compatible object storages such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.</p>
+<p>By default, MOCO uses the Amazon S3 API, the most popular object storage API.
+Therefore, it also works with object storage that has an S3-compatible API, such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.
+Object storage that uses non-S3 compatible APIs is only partially supported.</p>
+<p>Currently supported object storage includes:</p>
+<ul>
+<li>Amazon S3-compatible API</li>
+<li>Google Cloud Storage API</li>
+</ul>
 <p>For the first time, the backup Job chooses a replica instance as the backup source if available.
 For the second and subsequent backups, the Job will choose the last chosen instance as long as it is still a replica and available.</p>
 <p>The backups are divided into two: a full dump and binlogs.
@@ -2341,6 +2359,34 @@ Here are descriptions of why we determined the current design.</p>
 <p>Compared to file systems, object storage is generally more cost-effective.
 It also has many useful features such as <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">object lifecycle management</a>.</p>
 <p>AWS S3 API is the most prevailing API for object storages.</p>
+<h3 id="what-object-storage-is-supported"><a class="header" href="#what-object-storage-is-supported">What object storage is supported?</a></h3>
+<p>MOCO currently supports the following object storage APIs:</p>
+<ul>
+<li>Amazon S3</li>
+<li>Google Cloud Storage</li>
+</ul>
+<p>MOCO uses the Amazon S3 API by default.
+You can specify <code>BackupPolicy.spec.jobConfig.bucketConfig.backendType</code> to specify the object storage API to use.
+Currently, two identifiers can be specified, <code>backendType</code> for <code>s3</code> or <code>gcs</code>.
+If not specified, it will be defaults to <code>s3</code>.</p>
+<p>The following is an example of a backup setup using Google Cloud Storage:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+...
+spec:
+  schedule: &quot;@daily&quot;
+  jobConfig:
+    serviceAccountName: backup-owner
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: &lt;dummy&gt;
+    bucketConfig:
+      bucketName: moco
+      endpointURL: https://storage.googleapis.com
+      backendType: gcs
+    workVolume:
+      emptyDir: {}
+</code></pre>
 <h3 id="why-do-we-use-jobs-for-backup-and-restoration"><a class="header" href="#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></h3>
 <p>Backup and restoration can be a CPU- and memory-consuming task.
 Running such a task in <code>moco-controller</code> is dangerous because <code>moco-controller</code> manages a lot of MySQLCluster.</p>

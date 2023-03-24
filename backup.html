@@ -226,8 +226,14 @@ For instance, Amazon Elastic Kubernetes Service (EKS) has <a href="https://aws.a
 Kubernetes itself is also developing such an enhancement called <a href="https://github.com/kubernetes-sigs/container-object-storage-interface-api">Container Object Storage Interface (COSI)</a>.</p>
 <p>To allow the backup Job to update MySQLCluster status, MOCO creates Role and RoleBinding.
 The RoleBinding grants the access to the given ServiceAccount.</p>
-<p>For the time being, MOCO only supports AWS S3 API as it prevails among other object storage APIs.
-We intend to extend the support to S3-compatible object storages such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.</p>
+<p>By default, MOCO uses the Amazon S3 API, the most popular object storage API.
+Therefore, it also works with object storage that has an S3-compatible API, such as <a href="https://min.io/">MinIO</a> and <a href="https://ceph.io/">Ceph</a>.
+Object storage that uses non-S3 compatible APIs is only partially supported.</p>
+<p>Currently supported object storage includes:</p>
+<ul>
+<li>Amazon S3-compatible API</li>
+<li>Google Cloud Storage API</li>
+</ul>
 <p>For the first time, the backup Job chooses a replica instance as the backup source if available.
 For the second and subsequent backups, the Job will choose the last chosen instance as long as it is still a replica and available.</p>
 <p>The backups are divided into two: a full dump and binlogs.
@@ -303,6 +309,34 @@ Here are descriptions of why we determined the current design.</p>
 <p>Compared to file systems, object storage is generally more cost-effective.
 It also has many useful features such as <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html">object lifecycle management</a>.</p>
 <p>AWS S3 API is the most prevailing API for object storages.</p>
+<h3 id="what-object-storage-is-supported"><a class="header" href="#what-object-storage-is-supported">What object storage is supported?</a></h3>
+<p>MOCO currently supports the following object storage APIs:</p>
+<ul>
+<li>Amazon S3</li>
+<li>Google Cloud Storage</li>
+</ul>
+<p>MOCO uses the Amazon S3 API by default.
+You can specify <code>BackupPolicy.spec.jobConfig.bucketConfig.backendType</code> to specify the object storage API to use.
+Currently, two identifiers can be specified, <code>backendType</code> for <code>s3</code> or <code>gcs</code>.
+If not specified, it will be defaults to <code>s3</code>.</p>
+<p>The following is an example of a backup setup using Google Cloud Storage:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+...
+spec:
+  schedule: &quot;@daily&quot;
+  jobConfig:
+    serviceAccountName: backup-owner
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: &lt;dummy&gt;
+    bucketConfig:
+      bucketName: moco
+      endpointURL: https://storage.googleapis.com
+      backendType: gcs
+    workVolume:
+      emptyDir: {}
+</code></pre>
 <h3 id="why-do-we-use-jobs-for-backup-and-restoration"><a class="header" href="#why-do-we-use-jobs-for-backup-and-restoration">Why do we use Jobs for backup and restoration?</a></h3>
 <p>Backup and restoration can be a CPU- and memory-consuming task.
 Running such a task in <code>moco-controller</code> is dangerous because <code>moco-controller</code> manages a lot of MySQLCluster.</p>
