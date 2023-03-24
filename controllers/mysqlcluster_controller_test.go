@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -703,6 +704,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(sts.Spec.Template.Spec.SecurityContext).NotTo(BeNil())
 		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroup).To(Equal(int64(constants.ContainerGID)))
 		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroupChangePolicy).To(Equal(corev1.FSGroupChangeOnRootMismatch))
+		Expect(sts.Spec.Template.Spec.Affinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
 
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 		foundMysqld := false
@@ -867,7 +871,24 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest").
 				WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))).
 			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource())).
-			WithSecurityContext(corev1ac.PodSecurityContext().WithFSGroup(123))
+			WithSecurityContext(corev1ac.PodSecurityContext().WithFSGroup(123)).
+			WithAffinity(corev1ac.Affinity().
+				WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+					WithRequiredDuringSchedulingIgnoredDuringExecution(corev1ac.PodAffinityTerm().
+						WithLabelSelector(metav1ac.LabelSelector().
+							WithMatchExpressions(metav1ac.LabelSelectorRequirement().
+								WithKey(constants.LabelAppName).
+								WithOperator(metav1.LabelSelectorOpIn).
+								WithValues(constants.AppNameMySQL),
+							).
+							WithMatchExpressions(metav1ac.LabelSelectorRequirement().
+								WithKey(constants.LabelAppInstance).
+								WithOperator(metav1.LabelSelectorOpIn).
+								WithValues(cluster.Name),
+							),
+						),
+					),
+				))
 
 		for _, c := range cluster.Spec.PodTemplate.Spec.Containers {
 			switch *c.Name {
@@ -921,6 +942,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(*sts.Spec.Template.Spec.TerminationGracePeriodSeconds).To(BeNumerically("==", 512))
 		Expect(sts.Spec.Template.Spec.PriorityClassName).To(Equal("hoge"))
 		Expect(*sts.Spec.Template.Spec.SecurityContext.FSGroup).To(Equal(int64(123)))
+		Expect(sts.Spec.Template.Spec.Affinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
+		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution).To(BeNil())
 
 		foundDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.Containers {

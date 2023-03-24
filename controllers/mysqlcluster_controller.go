@@ -898,6 +898,38 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	if podSpec.SecurityContext.FSGroupChangePolicy == nil {
 		podSpec.SecurityContext.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
 	}
+	if podSpec.Affinity == nil {
+		podSpec.WithAffinity(corev1ac.Affinity().
+			WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+				WithPreferredDuringSchedulingIgnoredDuringExecution(corev1ac.WeightedPodAffinityTerm().
+					WithWeight(100).
+					WithPodAffinityTerm(corev1ac.PodAffinityTerm().
+						WithLabelSelector(metav1ac.LabelSelector().
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppName).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(constants.AppNameMySQL),
+							).
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppInstance).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(cluster.Name),
+							).
+							WithMatchExpressions(
+								metav1ac.LabelSelectorRequirement().
+									WithKey(constants.LabelAppCreatedBy).
+									WithOperator(metav1.LabelSelectorOpIn).
+									WithValues(constants.AppCreator),
+							),
+						).
+						WithTopologyKey(corev1.LabelHostname),
+					),
+				),
+			),
+		)
+	}
 
 	sts.Spec.Template.WithSpec(&podSpec)
 

@@ -117,6 +117,41 @@ spec:
           storage: 1Gi
 ```
 
+By default, MOCO uses `preferredDuringSchedulingIgnoredDuringExecution` to prevent Pods from being placed on the same Node.
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: moco-<MYSQLCLSTER_NAME>
+  namespace: default
+...
+spec:
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - mysql
+                - key: app.kubernetes.io/created-by
+                  operator: In
+                  values:
+                  - moco
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - <MYSQLCLSTER_NAME>
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+...
+```
+
 There are other example manifests in [`examples`](https://github.com/cybozu-go/moco/tree/main/examples) directory.
 
 The complete reference of MySQLCluster is [`crd_mysqlcluster.md`](crd_mysqlcluster.md).
