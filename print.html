@@ -472,6 +472,38 @@ spec:
         requests:
           storage: 1Gi
 </code></pre>
+<p>By default, MOCO uses <code>preferredDuringSchedulingIgnoredDuringExecution</code> to prevent Pods from being placed on the same Node.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: moco-&lt;MYSQLCLSTER_NAME&gt;
+  namespace: default
+...
+spec:
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - mysql
+                - key: app.kubernetes.io/created-by
+                  operator: In
+                  values:
+                  - moco
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - &lt;MYSQLCLSTER_NAME&gt;
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+...
+</code></pre>
 <p>There are other example manifests in <a href="https://github.com/cybozu-go/moco/tree/main/examples"><code>examples</code></a> directory.</p>
 <p>The complete reference of MySQLCluster is <a href="crd_mysqlcluster.html"><code>crd_mysqlcluster.md</code></a>.</p>
 <h3 id="creating-a-cluster-that-replicates-data-from-an-external-mysqld"><a class="header" href="#creating-a-cluster-that-replicates-data-from-an-external-mysqld">Creating a cluster that replicates data from an external mysqld</a></h3>
