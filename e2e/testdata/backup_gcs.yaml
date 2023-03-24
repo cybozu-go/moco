@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backup-gcs
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup-gcs
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: backup-gcs
+  name: backup-owner
+---
+apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+metadata:
+  namespace: backup-gcs
+  name: daily
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    env:
+    - name: STORAGE_EMULATOR_HOST
+      value: fake-gcs-server.default.svc:4443
+    bucketConfig:
+      bucketName: moco
+      backendType: gcs
+    workVolume:
+      emptyDir: {}
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: backup-gcs
+  name: source
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 3
+  backupPolicyName: daily
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/mysql:{{ . }}
+    # Specify minimum resources so as not to overwhelm CI resources.
+    overwriteContainers:
+      - name: agent
+        resources:
+          requests:
+            cpu: 1m
+      - name: moco-init
+        resources:
+          requests:
+            cpu: 1m
+      - name: slow-log
+        resources:
+          requests:
+            cpu: 1m
+      - name: mysqld-exporter
+        resources:
+          requests:
+            cpu: 1m
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

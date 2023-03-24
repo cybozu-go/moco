@@ -65,6 +65,16 @@ type JobConfig struct {
 	//
 	// +optional
 	Affinity *AffinityApplyConfiguration `json:"affinity,omitempty"`
+
+	// Volumes defines the list of volumes that can be mounted by containers in the Pod.
+	//
+	// +optional
+	Volumes []VolumeApplyConfiguration `json:"volumes,omitempty"`
+
+	// VolumeMounts describes a list of volume mounts that are to be mounted in a container.
+	//
+	// +optional
+	VolumeMounts []VolumeMountApplyConfiguration `json:"volumeMounts,omitempty"`
 }
 
 // VolumeSourceApplyConfiguration is the type defined to implement the DeepCopy method.
@@ -73,6 +83,40 @@ type VolumeSourceApplyConfiguration corev1ac.VolumeSourceApplyConfiguration
 // DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
 func (in *VolumeSourceApplyConfiguration) DeepCopy() *VolumeSourceApplyConfiguration {
 	out := new(VolumeSourceApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// VolumeApplyConfiguration is the type defined to implement the DeepCopy method.
+type VolumeApplyConfiguration corev1ac.VolumeApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+func (in *VolumeApplyConfiguration) DeepCopy() *VolumeApplyConfiguration {
+	out := new(VolumeApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// VolumeMountApplyConfiguration is the type defined to implement the DeepCopy method.
+type VolumeMountApplyConfiguration corev1ac.VolumeMountApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+func (in *VolumeMountApplyConfiguration) DeepCopy() *VolumeMountApplyConfiguration {
+	out := new(VolumeMountApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")
@@ -156,4 +200,11 @@ type BucketConfig struct {
 	// is used (https?://BUCKET.ENDPOINT/KEY).
 	// +optional
 	UsePathStyle bool `json:"usePathStyle,omitempty"`
+
+	// BackendType is an identifier for the object storage to be used.
+	//
+	// +kubebuilder:validation:Enum=s3;gcs
+	// +kubebuilder:default=s3
+	// +optional
+	BackendType string `json:"backendType,omitempty"`
 }

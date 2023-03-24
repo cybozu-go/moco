@@ -1111,6 +1111,10 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	if bc.UsePathStyle {
 		args = append(args, "--use-path-style")
 	}
+	if bc.BackendType != "" {
+		args = append(args, "--backend-type="+bc.BackendType)
+	}
+
 	return append(args, bc.BucketName)
 }
 
@@ -1220,6 +1224,14 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 			WithName("work").
 			WithMountPath("/work"),
 		).
+		WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
+			volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
+			for _, v := range jc.VolumeMounts {
+				v := v
+				volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
+			}
+			return volumeMounts
+		}()...).
 		WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
 		WithResources(resources)
 
@@ -1244,6 +1256,14 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 								Name:                           pointer.String("work"),
 								VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*jc.WorkVolume.DeepCopy()),
 							}).
+							WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
+								volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
+								for _, v := range jc.Volumes {
+									v := v
+									volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
+								}
+								return volumes
+							}()...).
 							WithContainers(container).
 							WithSecurityContext(corev1ac.PodSecurityContext().
 								WithFSGroup(constants.ContainerGID).
@@ -1579,6 +1599,14 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithVolumeMounts(corev1ac.VolumeMount().
 				WithName("work").
 				WithMountPath("/work")).
+			WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
+				volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
+				for _, v := range jc.VolumeMounts {
+					v := v
+					volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
+				}
+				return volumeMounts
+			}()...).
 			WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
 			WithResources(resources)
 
@@ -1596,6 +1624,14 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 							Name:                           pointer.String("work"),
 							VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*cluster.Spec.Restore.JobConfig.WorkVolume.DeepCopy()),
 						}).
+						WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
+							volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
+							for _, v := range jc.Volumes {
+								v := v
+								volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
+							}
+							return volumes
+						}()...).
 						WithContainers(container).
 						WithSecurityContext(corev1ac.PodSecurityContext().
 							WithFSGroup(constants.ContainerGID).

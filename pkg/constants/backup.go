@@ -9,3 +9,8 @@ const (
 	DumpFilename     = "dump.tar"
 	BinlogFilename   = "binlog.tar.zst"
 )
+
+const (
+	BackendTypeS3  = "s3"
+	BackendTypeGCS = "gcs"
+)

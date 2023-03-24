@@ -1,0 +1,53 @@
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: backup-gcs
+  name: target
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 1
+  restore:
+    sourceName: source
+    sourceNamespace: backup-gcs
+    restorePoint: "{{ .RestorePoint }}"
+    jobConfig:
+      serviceAccountName: backup-owner
+      env:
+      - name: STORAGE_EMULATOR_HOST
+        value: fake-gcs-server.default.svc:4443
+      bucketConfig:
+        bucketName: moco
+        backendType: gcs
+      workVolume:
+        emptyDir: {}
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: quay.io/cybozu/mysql:{{ .MySQLVersion }}
+    # Specify minimum resources so as not to overwhelm CI resources.
+    overwriteContainers:
+      - name: agent
+        resources:
+          requests:
+            cpu: 1m
+      - name: moco-init
+        resources:
+          requests:
+            cpu: 1m
+      - name: slow-log
+        resources:
+          requests:
+            cpu: 1m
+      - name: mysqld-exporter
+        resources:
+          requests:
+            cpu: 1m
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

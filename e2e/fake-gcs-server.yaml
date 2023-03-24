@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: fake-gcs-server
+spec:
+  ports:
+    - name: fake-gcs-server
+      port: 4443
+      targetPort: fake-gcs-server
+      protocol: TCP
+  selector:
+    name: fake-gcs-server
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+  name: fake-gcs-server
+  labels:
+    name: fake-gcs-server
+spec:
+  containers:
+    - name: fake-gcs-server
+      image: fsouza/fake-gcs-server
+      args:
+        - "-scheme=http"
+        - "-port=4443"
+        - "-public-host=fake-gcs-server.default.svc:4443"
+      ports:
+        - name: fake-gcs-server
+          containerPort: 4443
+          protocol: TCP
+      volumeMounts:
+        - name: bucket
+          mountPath: /data/moco
+  volumes:
+    - name: bucket
+      emptyDir: {}

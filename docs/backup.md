@@ -98,8 +98,14 @@ Kubernetes itself is also developing such an enhancement called [Container Objec
 To allow the backup Job to update MySQLCluster status, MOCO creates Role and RoleBinding.
 The RoleBinding grants the access to the given ServiceAccount.
 
-For the time being, MOCO only supports AWS S3 API as it prevails among other object storage APIs.
-We intend to extend the support to S3-compatible object storages such as [MinIO][] and [Ceph][].
+By default, MOCO uses the Amazon S3 API, the most popular object storage API.
+Therefore, it also works with object storage that has an S3-compatible API, such as [MinIO][] and [Ceph][].
+Object storage that uses non-S3 compatible APIs is only partially supported.
+
+Currently supported object storage includes:
+
+* Amazon S3-compatible API
+* Google Cloud Storage API
 
 For the first time, the backup Job chooses a replica instance as the backup source if available.
 For the second and subsequent backups, the Job will choose the last chosen instance as long as it is still a replica and available.
@@ -192,6 +198,39 @@ Compared to file systems, object storage is generally more cost-effective.
 It also has many useful features such as [object lifecycle management][lifecycle].
 
 AWS S3 API is the most prevailing API for object storages.
+
+### What object storage is supported?
+
+MOCO currently supports the following object storage APIs:
+
+* Amazon S3
+* Google Cloud Storage
+
+MOCO uses the Amazon S3 API by default.
+You can specify `BackupPolicy.spec.jobConfig.bucketConfig.backendType` to specify the object storage API to use.
+Currently, two identifiers can be specified, `backendType` for `s3` or `gcs`.
+If not specified, it will be defaults to `s3`.
+
+The following is an example of a backup setup using Google Cloud Storage:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta1
+kind: BackupPolicy
+...
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: <dummy>
+    bucketConfig:
+      bucketName: moco
+      endpointURL: https://storage.googleapis.com
+      backendType: gcs
+    workVolume:
+      emptyDir: {}
+```
 
 ### Why do we use Jobs for backup and restoration?
 

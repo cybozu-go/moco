@@ -1127,6 +1127,20 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
 			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 		}
+		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
+			{
+				Name: pointer.String("test"),
+				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
+					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+				},
+			},
+		}
+		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
+			{
+				Name:      pointer.String("test"),
+				MountPath: pointer.String("/path/to/dir"),
+			},
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
@@ -1168,8 +1182,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
-		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
+		Expect(js.Template.Spec.Volumes[1].EmptyDir).NotTo(BeNil())
 		Expect(js.Template.Spec.Containers).To(HaveLen(1))
 		c := &js.Template.Spec.Containers[0]
 		Expect(c.Name).To(Equal("backup"))
@@ -1180,13 +1195,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			"--region=us-east-1",
 			"--endpoint=https://foo.bar.baz",
 			"--use-path-style",
+			"--backend-type=s3",
 			"mybucket",
 			"test",
 			"test",
 		}))
 		Expect(c.EnvFrom).To(HaveLen(1))
 		Expect(c.Env).To(HaveLen(2))
-		Expect(c.VolumeMounts).To(HaveLen(1))
+		Expect(c.VolumeMounts).To(HaveLen(2))
 		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
 		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
 		memReq := c.Resources.Requests[corev1.ResourceMemory]
@@ -1252,7 +1268,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(js.ActiveDeadlineSeconds).To(BeNil())
 		Expect(js.BackoffLimit).To(BeNil())
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("oof"))
-		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).To(BeNil())
 		Expect(js.Template.Spec.Volumes[0].HostPath).NotTo(BeNil())
 		Expect(js.Template.Spec.Containers).To(HaveLen(1))
@@ -1260,6 +1276,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(c.Args).To(Equal([]string{
 			"backup",
 			"--threads=1",
+			"--backend-type=s3",
 			"mybucket2",
 			"test",
 			"test",
@@ -1340,6 +1357,20 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
 			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 		}
+		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
+			{
+				Name: pointer.String("test"),
+				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
+					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+				},
+			},
+		}
+		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
+			{
+				Name:      pointer.String("test"),
+				MountPath: pointer.String("/path/to/dir"),
+			},
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
@@ -1373,8 +1404,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
-		Expect(js.Template.Spec.Volumes).To(HaveLen(1))
+		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
+		Expect(js.Template.Spec.Volumes[1].EmptyDir).NotTo(BeNil())
 		Expect(js.Template.Spec.Containers).To(HaveLen(1))
 		c := &js.Template.Spec.Containers[0]
 		Expect(c.Name).To(Equal("restore"))
@@ -1385,6 +1417,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			"--region=us-east-1",
 			"--endpoint=https://foo.bar.baz",
 			"--use-path-style",
+			"--backend-type=s3",
 			"mybucket",
 			"ns",
 			"single",
@@ -1394,7 +1427,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}))
 		Expect(c.EnvFrom).To(HaveLen(1))
 		Expect(c.Env).To(HaveLen(2))
-		Expect(c.VolumeMounts).To(HaveLen(1))
+		Expect(c.VolumeMounts).To(HaveLen(2))
 		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
 		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
 		memReq := c.Resources.Requests[corev1.ResourceMemory]
