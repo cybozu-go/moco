@@ -36,6 +36,7 @@ var config struct {
 	exporterImage           string
 	interval                time.Duration
 	maxConcurrentReconciles int
+	qps                     int
 	zapOpts                 zap.Options
 }
 
@@ -104,6 +105,9 @@ func init() {
 	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 	fs.IntVar(&config.maxConcurrentReconciles, "max-concurrent-reconciles", 8, "The maximum number of concurrent reconciles which can be run")
+	// The default QPS is 20.
+	// https://github.com/kubernetes-sigs/controller-runtime/blob/a26de2d610c3cf4b2a02688534aaf5a65749c743/pkg/client/config/config.go#L84-L85
+	fs.IntVar(&config.qps, "apiserver-qps-throttle", 20, "The maximum QPS to the API server.")
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)
