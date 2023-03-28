@@ -2,7 +2,7 @@ package moco
 
 const (
 	// Version is the MOCO version
-	Version = "0.15.0"
+	Version = "0.16.0"
 
 	// FluentBitImage is the image for slow-log sidecar container.
 	FluentBitImage = "quay.io/cybozu/fluent-bit:2.0.9.1"

@@ -5,6 +5,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2023-03-28
+
+### Added
+
+- Support multi-platform [#512](https://github.com/cybozu-go/moco/pull/512)
+- Add podAntiAffinity to MySQL Cluster StatefulSet. [#513](https://github.com/cybozu-go/moco/pull/513)
+- Support Google Cloud Storage [#501](https://github.com/cybozu-go/moco/pull/501)
+- Add qps flag [#518](https://github.com/cybozu-go/moco/pull/518)
+
+### Changed
+- Bump golang.org/x/net from 0.3.1-0.20221206200815-1e63c2f08a10 to 0.7.0 [#514](https://github.com/cybozu-go/moco/pull/514)
+
+### Fixed
+- Wait until all Pods are deleted in E2E [#510](https://github.com/cybozu-go/moco/pull/510)
+- Fix flaky test [#515](https://github.com/cybozu-go/moco/pull/515)
+- Disable the delay check if .spec.maxDelaySeconds == 0 [#516](https://github.com/cybozu-go/moco/pull/516)
+
 ## [0.15.0] - 2023-02-21
 
 ### Added
@@ -404,7 +421,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/cybozu-go/moco/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/cybozu-go/moco/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/cybozu-go/moco/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/cybozu-go/moco/compare/v0.13.0...v0.14.0
