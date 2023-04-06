@@ -4,7 +4,7 @@ image:
 
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
-  tag:  # 0.15.0
+  tag:  # 0.16.1
 
 # resources -- resources used by moco-controller.
 resources:
