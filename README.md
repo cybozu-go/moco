@@ -27,7 +27,7 @@ Blog article: [Introducing MOCO, a modern MySQL operator on Kubernetes](https://
 ## Supported software
 
 - MySQL: 8.0.18, 8.0.25, 8.0.26, 8.0.27, 8.0.28, 8.0.30, 8.0.31, 8.0.32
-- Kubernetes: 1.24, 1.25, 1.26
+- Kubernetes: 1.25, 1.26, 1.27
 
 Other MySQL 8 releases would probably work.  They are simply not tested in our CI.
 
