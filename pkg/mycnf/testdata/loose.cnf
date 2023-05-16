@@ -38,6 +38,7 @@ innodb_print_all_deadlocks = 1
 innodb_random_read_ahead = false
 innodb_read_ahead_threshold = 0
 innodb_tmpdir = /tmp
+innodb_undo_log_truncate = OFF
 join_buffer_size = 2M
 lock_wait_timeout = 60
 log_error_verbosity = 3

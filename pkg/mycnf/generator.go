@@ -90,6 +90,10 @@ var DefaultMycnf = map[string]string{
 	"innodb_random_read_ahead":    "false",
 	"innodb_read_ahead_threshold": "0",
 	"innodb_log_write_ahead_size": "512",
+
+	// Disabled because of https://bugs.mysql.com/bug.php?id=104573
+	// The undo log truncate always fails on replica instances of `super_read_only = 1`.
+	"innodb_undo_log_truncate": "OFF",
 }
 
 // ConstMycnf is the mysqld configurations that MOCO applies forcibly.
