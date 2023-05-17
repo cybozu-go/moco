@@ -1,0 +1,23 @@
+#!/bin/sh -e
+
+if [ $# -eq 0 ]; then
+    echo "Usage: tag_branch_consistency DIR"
+    exit 1
+fi
+
+DIR="$1"
+
+if [ ! -f "${DIR}"/BRANCH ]; then
+    echo "Skip because BRANCH not found"
+    exit 0
+fi
+
+TAG=$(cat "${DIR}"/TAG)
+BRANCH=$(cat "${DIR}"/BRANCH)
+
+if [ "${TAG}" = $(echo "${BRANCH}"$(echo "${TAG}" | sed -e s/"${BRANCH}"//)) ]; then
+    exit 0
+fi
+
+echo "TAG: ${TAG} and BRANCH: ${BRANCH} diverge"
+exit 1
