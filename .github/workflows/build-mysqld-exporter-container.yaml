@@ -1,0 +1,63 @@
+name: "Build mysqld exporter container"
+
+on:
+  pull_request:
+    paths:
+      - "containers/mysqld_exporter/**"
+      - ".github/workflows/build-mysqld-exporter-container.yaml"
+      - "!**.md"
+  push:
+    branches:
+      - 'main'
+    paths:
+      - "containers/mysqld_exporter/**"
+      - ".github/workflows/build-mysqld-exporter-container.yaml"
+      - "!**.md"
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check TAG file
+        working-directory: containers
+        run: |
+          result="$(./tag_exists mysqld_exporter)"
+          if [ "$result" = ng ]; then
+            exit 1
+          fi
+          echo "TAG=$(cat ./mysqld_exporter/TAG)" >> $GITHUB_ENV
+
+      - name: Validate consistency between BRANCH and TAG
+        working-directory: containers
+        run: |
+          ./tag_branch_consistency mysqld_exporter
+
+      - uses: docker/build-push-action@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          context: containers/fluent-bit/.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: docker/build-push-action@v4
+        if: github.event_name == 'pull_request'
+        with:
+          context: containers/fluent-bit/.
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
