@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (r *BackupPolicy) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -29,27 +30,27 @@ type backupPolicyAdmission struct {
 
 var _ webhook.CustomValidator = &backupPolicyAdmission{}
 
-func (a *backupPolicyAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (a *backupPolicyAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	policy := obj.(*BackupPolicy)
 
-	errs := policy.Spec.validate()
+	warns, errs := policy.Spec.validate()
 	if len(errs) == 0 {
-		return nil
+		return warns, nil
 	}
 
-	return apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "BackupPolicy"}, policy.Name, errs)
+	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "BackupPolicy"}, policy.Name, errs)
 }
 
-func (a *backupPolicyAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+func (a *backupPolicyAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	return a.ValidateCreate(ctx, newObj)
 }
 
-func (a *backupPolicyAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (a *backupPolicyAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	policy := obj.(*BackupPolicy)
 
 	clusters := &MySQLClusterList{}
 	if err := a.client.List(context.Background(), clusters, client.InNamespace(policy.Namespace)); err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, cluster := range clusters.Items {
@@ -58,8 +59,8 @@ func (a *backupPolicyAdmission) ValidateDelete(ctx context.Context, obj runtime.
 		}
 
 		if *cluster.Spec.BackupPolicyName == policy.Name {
-			return fmt.Errorf("MySQLCluster %s/%s has a reference to this policy", cluster.Namespace, cluster.Name)
+			return nil, fmt.Errorf("MySQLCluster %s/%s has a reference to this policy", cluster.Namespace, cluster.Name)
 		}
 	}
-	return nil
+	return nil, nil
 }

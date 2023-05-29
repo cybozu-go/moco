@@ -1011,7 +1011,7 @@ func autoConvert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfi
 	out.LoadBalancerIP = (*string)(unsafe.Pointer(in.LoadBalancerIP))
 	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))
 	out.ExternalName = (*string)(unsafe.Pointer(in.ExternalName))
-	out.ExternalTrafficPolicy = (*corev1.ServiceExternalTrafficPolicyType)(unsafe.Pointer(in.ExternalTrafficPolicy))
+	out.ExternalTrafficPolicy = (*corev1.ServiceExternalTrafficPolicy)(unsafe.Pointer(in.ExternalTrafficPolicy))
 	out.HealthCheckNodePort = (*int32)(unsafe.Pointer(in.HealthCheckNodePort))
 	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
 	out.SessionAffinityConfig = (*v1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
@@ -1019,7 +1019,7 @@ func autoConvert__ServiceSpecApplyConfiguration_To_v1beta2_ServiceSpecApplyConfi
 	out.IPFamilyPolicy = (*corev1.IPFamilyPolicy)(unsafe.Pointer(in.IPFamilyPolicy))
 	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
 	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
-	out.InternalTrafficPolicy = (*corev1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))
+	out.InternalTrafficPolicy = (*corev1.ServiceInternalTrafficPolicy)(unsafe.Pointer(in.InternalTrafficPolicy))
 	return nil
 }
 
@@ -1039,7 +1039,7 @@ func autoConvert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfi
 	out.LoadBalancerIP = (*string)(unsafe.Pointer(in.LoadBalancerIP))
 	out.LoadBalancerSourceRanges = *(*[]string)(unsafe.Pointer(&in.LoadBalancerSourceRanges))
 	out.ExternalName = (*string)(unsafe.Pointer(in.ExternalName))
-	out.ExternalTrafficPolicy = (*corev1.ServiceExternalTrafficPolicyType)(unsafe.Pointer(in.ExternalTrafficPolicy))
+	out.ExternalTrafficPolicy = (*corev1.ServiceExternalTrafficPolicy)(unsafe.Pointer(in.ExternalTrafficPolicy))
 	out.HealthCheckNodePort = (*int32)(unsafe.Pointer(in.HealthCheckNodePort))
 	out.PublishNotReadyAddresses = (*bool)(unsafe.Pointer(in.PublishNotReadyAddresses))
 	out.SessionAffinityConfig = (*v1.SessionAffinityConfigApplyConfiguration)(unsafe.Pointer(in.SessionAffinityConfig))
@@ -1047,7 +1047,7 @@ func autoConvert_v1beta2_ServiceSpecApplyConfiguration_To__ServiceSpecApplyConfi
 	out.IPFamilyPolicy = (*corev1.IPFamilyPolicy)(unsafe.Pointer(in.IPFamilyPolicy))
 	out.AllocateLoadBalancerNodePorts = (*bool)(unsafe.Pointer(in.AllocateLoadBalancerNodePorts))
 	out.LoadBalancerClass = (*string)(unsafe.Pointer(in.LoadBalancerClass))
-	out.InternalTrafficPolicy = (*corev1.ServiceInternalTrafficPolicyType)(unsafe.Pointer(in.InternalTrafficPolicy))
+	out.InternalTrafficPolicy = (*corev1.ServiceInternalTrafficPolicy)(unsafe.Pointer(in.InternalTrafficPolicy))
 	return nil
 }
 

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.1
+    controller-gen.kubebuilder.io/version: v0.12.0
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -4050,7 +4050,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.11.1
+    controller-gen.kubebuilder.io/version: v0.12.0
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -4880,6 +4880,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -5496,6 +5508,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -6117,6 +6141,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -9297,13 +9333,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: ServiceExternalTrafficPolicyType describes how nod
+                          description: ServiceExternalTrafficPolicy describes how nodes d
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes how nod
+                          description: ServiceInternalTrafficPolicy describes how nodes d
                           type: string
                         ipFamilies:
                           items:
@@ -10476,6 +10512,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -11092,6 +11140,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -11713,6 +11773,18 @@ spec:
                                     format: int32
                                     type: integer
                                 type: object
+                              resizePolicy:
+                                items:
+                                  description: ContainerResizePolicyApplyConfiguration represents
+                                  properties:
+                                    resourceName:
+                                      description: ResourceName is the name identifying various resou
+                                      type: string
+                                    restartPolicy:
+                                      description: ResourceResizeRestartPolicy specifies how to handl
+                                      type: string
+                                  type: object
+                                type: array
                               resources:
                                 description: 'ResourceRequirementsApplyConfiguration represents '
                                 properties:
@@ -12910,13 +12982,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: ServiceExternalTrafficPolicyType describes how nod
+                          description: ServiceExternalTrafficPolicy describes how nodes d
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes how nod
+                          description: ServiceInternalTrafficPolicy describes how nodes d
                           type: string
                         ipFamilies:
                           items:
@@ -13021,13 +13093,13 @@ spec:
                         externalName:
                           type: string
                         externalTrafficPolicy:
-                          description: ServiceExternalTrafficPolicyType describes how nod
+                          description: ServiceExternalTrafficPolicy describes how nodes d
                           type: string
                         healthCheckNodePort:
                           format: int32
                           type: integer
                         internalTrafficPolicy:
-                          description: ServiceInternalTrafficPolicyType describes how nod
+                          description: ServiceInternalTrafficPolicy describes how nodes d
                           type: string
                         ipFamilies:
                           items:

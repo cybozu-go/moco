@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (r *MySQLCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -56,29 +57,29 @@ func (a *mySQLClusterAdmission) Default(ctx context.Context, obj runtime.Object)
 
 var _ webhook.CustomValidator = &mySQLClusterAdmission{}
 
-func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	cluster := obj.(*MySQLCluster)
 
-	errs := cluster.Spec.validateCreate()
+	warns, errs := cluster.Spec.validateCreate()
 	if len(errs) == 0 {
-		return nil
+		return warns, nil
 	}
 
-	return apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, cluster.Name, errs)
+	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, cluster.Name, errs)
 }
 
-func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
+func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	oldCluster := oldObj.(*MySQLCluster)
 	newCluster := newObj.(*MySQLCluster)
 
-	errs := newCluster.Spec.validateUpdate(ctx, a.client, oldCluster.Spec)
+	warns, errs := newCluster.Spec.validateUpdate(ctx, a.client, oldCluster.Spec)
 	if len(errs) == 0 {
-		return nil
+		return warns, nil
 	}
 
-	return apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, newCluster.Name, errs)
+	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, newCluster.Name, errs)
 }
 
-func (a *mySQLClusterAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) error {
-	return nil
+func (a *mySQLClusterAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	return nil, nil
 }

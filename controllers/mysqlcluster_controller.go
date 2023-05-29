@@ -48,7 +48,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -975,7 +974,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			log.Info("volumeClaimTemplates has changed, delete StatefulSet and try to recreate it", "statefulSetName", cluster.PrefixedName())
 
 			// When DeletePropagationOrphan is used to delete, it waits because it is not deleted immediately.
-			if err := wait.PollImmediate(time.Millisecond*500, time.Second*5, func() (bool, error) {
+			if err := wait.PollUntilContextTimeout(ctx, time.Millisecond*500, time.Second*5, true, func(ctx context.Context) (bool, error) {
 				err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &appsv1.StatefulSet{})
 				if err != nil {
 					if apierrors.IsNotFound(err) {
@@ -2044,7 +2043,7 @@ func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJo
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	certHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	certHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		// the certificate name is formatted as "moco-agent-<cluster.Namespace>.<cluster.Name>"
 		if a.GetNamespace() != r.SystemNamespace {
 			return nil
@@ -2063,9 +2062,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	})
 
-	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
+		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
 			return nil
 		}
 		var req []reconcile.Request
@@ -2080,9 +2079,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return req
 	})
 
-	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
+		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
 			return nil
 		}
 		var req []reconcile.Request
@@ -2109,9 +2108,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&batchv1.Job{}).
-		Watches(&source.Kind{Type: certificateObj}, certHandler).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, configMapHandler).
-		Watches(&source.Kind{Type: &mocov1beta2.BackupPolicy{}}, backupPolicyHandler).
+		Watches(certificateObj, certHandler).
+		Watches(&corev1.ConfigMap{}, configMapHandler).
+		Watches(&mocov1beta2.BackupPolicy{}, backupPolicyHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
