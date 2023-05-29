@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -118,7 +119,7 @@ type MySQLClusterSpec struct {
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
 }
 
-func (s MySQLClusterSpec) validateCreate() field.ErrorList {
+func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 	pp := p.Child("volumeClaimTemplates")
@@ -232,10 +233,10 @@ func (s MySQLClusterSpec) validateCreate() field.ErrorList {
 		}
 	}
 
-	return allErrs
+	return nil, allErrs
 }
 
-func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) field.ErrorList {
+func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 
@@ -285,7 +286,8 @@ func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.R
 		allErrs = append(allErrs, s.validateVolumeExpansionSupported(ctx, apiReader, volumeExpansionTargetIndices)...)
 	}
 
-	return append(allErrs, s.validateCreate()...)
+	warns, errs := s.validateCreate()
+	return warns, append(allErrs, errs...)
 }
 
 func (s MySQLClusterSpec) validateVolumeExpansionSupported(ctx context.Context, apiReader client.Reader, targetIndices []int) field.ErrorList {

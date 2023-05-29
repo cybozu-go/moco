@@ -5,6 +5,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -84,7 +85,7 @@ type BackupPolicySpec struct {
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 }
 
-func (s *BackupPolicySpec) validate() field.ErrorList {
+func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 
@@ -92,7 +93,7 @@ func (s *BackupPolicySpec) validate() field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(p.Child("schedule"), s.Schedule, err.Error()))
 	}
 
-	return allErrs
+	return nil, allErrs
 }
 
 //+kubebuilder:object:root=true
