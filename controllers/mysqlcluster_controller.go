@@ -48,7 +48,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -2109,9 +2108,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
 		Owns(&batchv1.Job{}).
-		Watches(&source.Kind{Type: certificateObj}, certHandler).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, configMapHandler).
-		Watches(&source.Kind{Type: &mocov1beta2.BackupPolicy{}}, backupPolicyHandler).
+		Watches(certificateObj, certHandler).
+		Watches(&corev1.ConfigMap{}, configMapHandler).
+		Watches(&mocov1beta2.BackupPolicy{}, backupPolicyHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
