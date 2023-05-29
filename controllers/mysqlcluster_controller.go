@@ -2044,7 +2044,7 @@ func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJo
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	certHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	certHandler := handler.EnqueueRequestsFromMapFunc(func(_ context.Context, a client.Object) []reconcile.Request {
 		// the certificate name is formatted as "moco-agent-<cluster.Namespace>.<cluster.Name>"
 		if a.GetNamespace() != r.SystemNamespace {
 			return nil
@@ -2063,9 +2063,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	})
 
-	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
+		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
 			return nil
 		}
 		var req []reconcile.Request
@@ -2080,9 +2080,9 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return req
 	})
 
-	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(context.Background(), clusters, client.InNamespace(a.GetNamespace())); err != nil {
+		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
 			return nil
 		}
 		var req []reconcile.Request
