@@ -974,7 +974,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			log.Info("volumeClaimTemplates has changed, delete StatefulSet and try to recreate it", "statefulSetName", cluster.PrefixedName())
 
 			// When DeletePropagationOrphan is used to delete, it waits because it is not deleted immediately.
-			if err := wait.PollImmediate(time.Millisecond*500, time.Second*5, func() (bool, error) {
+			if err := wait.PollUntilContextTimeout(ctx, time.Millisecond*500, time.Second*5, true, func(ctx context.Context) (bool, error) {
 				err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &appsv1.StatefulSet{})
 				if err != nil {
 					if apierrors.IsNotFound(err) {
