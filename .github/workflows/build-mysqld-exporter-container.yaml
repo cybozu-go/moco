@@ -31,21 +31,16 @@ jobs:
       - name: Check TAG file
         working-directory: containers
         run: |
-          result="$(./tag_exists mysqld_exporter)"
-          if [ "$result" = ng ]; then
+          result="$(./tag_exists moco/mysqld_exporter mysqld_exporter)"
+          if [ "$result" = ok ]; then
             exit 1
           fi
           echo "TAG=$(cat ./mysqld_exporter/TAG)" >> $GITHUB_ENV
 
-      - name: Validate consistency between BRANCH and TAG
-        working-directory: containers
-        run: |
-          ./tag_branch_consistency mysqld_exporter
-
       - uses: docker/build-push-action@v4
         if: github.ref == 'refs/heads/main'
         with:
-          context: containers/fluent-bit/.
+          context: containers/mysqld_exporter/.
           platforms: linux/amd64,linux/arm64
           push: true
           tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
@@ -55,7 +50,7 @@ jobs:
       - uses: docker/build-push-action@v4
         if: github.event_name == 'pull_request'
         with:
-          context: containers/fluent-bit/.
+          context: containers/mysqld_exporter/.
           platforms: linux/amd64,linux/arm64
           push: false
           tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
