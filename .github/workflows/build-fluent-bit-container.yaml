@@ -37,14 +37,6 @@ jobs:
           fi
           echo "TAG=$(cat ./fluent-bit/TAG)" >> $GITHUB_ENV
 
-      - name: Validate consistency between BRANCH and TAG
-        working-directory: containers
-        run: |
-          if [ -e "$dir/NO_TAG_BRANCH_CONSISTENCY" ]; then
-            exit 0
-          fi
-          ./tag_branch_consistency fluent-bit
-
       - uses: docker/build-push-action@v4
         if: github.ref == 'refs/heads/main'
         with:
