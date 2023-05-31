@@ -31,8 +31,8 @@ jobs:
       - name: Check TAG file
         working-directory: containers
         run: |
-          result="$(./tag_exists fluent-bit)"
-          if [ "$result" = ng ]; then
+          result="$(./tag_exists moco/fluent-bit fluent-bit)"
+          if [ "$result" = ok ]; then
             exit 1
           fi
           echo "TAG=$(cat ./fluent-bit/TAG)" >> $GITHUB_ENV

@@ -13,12 +13,20 @@ else
 fi
 TAG=$(cat "$DIR"/TAG)
 
-TOKEN=$(curl -sSfL https://ghcr.io/token\?scope="repository:cybozu-go/moco:pull" | jq -r .token)
-HTTP_STATUS=$(curl --head -H "Authorization: Bearer $TOKEN" -sSL -w "%{http_code}" "https://ghcr.io/v2/cybozu-go/moco/$NAME/manifests/$TAG" -o /dev/null)
-
-if [ "$HTTP_STATUS" = "404" ]; then
-    echo "ok"
+HTTP_STATUS=$(curl -sSL -w "%{http_code}" "https://ghcr.io/token?scope=repository%3Acybozu-go%2F$NAME%3Apull&service=ghcr.io" -o /dev/null)
+# If a non-existent image is specified, 403 will be returned.
+# {"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}
+if [ "$HTTP_STATUS" = "403" ]; then
+    echo "ng"
     exit 0
 fi
 
-echo "ng"
+TOKEN=$(curl -sSfL "https://ghcr.io/token?scope=repository%3Acybozu-go%2F$NAME%3Apull&service=ghcr.io" | jq -r .token)
+RESULT=$(curl -H "Authorization: Bearer $TOKEN" -sSfL "https://ghcr.io/v2/cybozu-go/$NAME/tags/list" | jq --arg tag "$TAG" '.tags[] | select(. == $tag)')
+
+if [ -z "$RESULT" ]; then
+    echo "ng"
+    exit 0
+fi
+
+echo "ok"
