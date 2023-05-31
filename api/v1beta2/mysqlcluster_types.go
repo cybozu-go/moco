@@ -104,7 +104,7 @@ type MySQLClusterSpec struct {
 	// If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.
 	// +nullable
 	// +optional
-	BackupPolicyName *string `json:"backupPolicyName"`
+	BackupPolicyName *string `json:"backupPolicyName,omitempty"`
 
 	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is not null, MOCO restores the data as specified and create a new

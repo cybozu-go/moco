@@ -94,7 +94,7 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | maxDelaySeconds | MaxDelaySeconds configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds. Setting this field to 0 disables the delay check in the probe. | *int | false |
 | startupWaitSeconds | StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working. The default is 3600 seconds. | int32 | false |
 | logRotationSchedule | LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format. | string | false |
-| backupPolicyName | The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically. | *string | true |
+| backupPolicyName | The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically. | *string | false |
 | restore | Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable. | *[RestoreSpec](#restorespec) | false |
 | disableSlowQueryLogContainer | DisableSlowQueryLogContainer controls whether to add a sidecar container named \"slow-log\" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false. | bool | false |
 
