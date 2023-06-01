@@ -23,23 +23,6 @@ spec:
       containers:
       - name: mysqld
         image: quay.io/cybozu/mysql:{{ . }}
-    overwriteContainers:
-      - name: agent
-        resources:
-          requests:
-            cpu: 1m
-      - name: moco-init
-        resources:
-          requests:
-            cpu: 1m
-      - name: slow-log
-        resources:
-          requests:
-            cpu: 1m
-      - name: mysqld-exporter
-        resources:
-          requests:
-            cpu: 1m
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
