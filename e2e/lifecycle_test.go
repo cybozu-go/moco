@@ -45,6 +45,23 @@ var _ = Context("lifecycle", func() {
 		}).Should(Succeed())
 	})
 
+	It("should give a pod the guarranteed QoS class", func() {
+		Eventually(func() error {
+			out, err := kubectl(nil, "get", "-n", "foo", "pod", "moco-single-0", "-o", "json")
+			if err != nil {
+				return err
+			}
+			pod := &corev1.Pod{}
+			if err := json.Unmarshal(out, pod); err != nil {
+				return err
+			}
+			if pod.Status.QOSClass != corev1.PodQOSGuaranteed {
+				return fmt.Errorf("mysql pod is not the Guarranteed QoS class: %s", pod.Status.QOSClass)
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
 	It("should log slow queries via sidecar", func() {
 		out := kubectlSafe(nil, "moco", "-n", "foo", "mysql", "single", "--", "-N", "-e", "SELECT @@long_query_time")
 		val, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)

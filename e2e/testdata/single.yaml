@@ -24,6 +24,10 @@ spec:
       containers:
       - name: mysqld
         image: quay.io/cybozu/mysql:{{ . }}
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: 1Gi
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
