@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: larger_runner_16core
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
