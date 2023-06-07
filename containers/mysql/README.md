@@ -11,4 +11,4 @@ This container image is assumed to be used by [MOCO](https://github.com/cybozu-g
 
 ### Docker images
 
-Docker images are available on [Quay.io](https://quay.io/repository/cybozu/mysql).
+Docker images are available on [ghcr.io](https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql)
