@@ -5,4 +5,4 @@ This directory provides a Dockerfile to build a Docker container that runs [mysq
 Docker images
 -------------
 
-Docker images are available on [ghcr.io](https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysqld_exporter)
+Docker images are available on [ghcr.io](https://github.com/cybozu-go/moco/pkgs/container/moco/mysqld_exporter)

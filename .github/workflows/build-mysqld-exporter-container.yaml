@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: larger_runner_16core
+    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-20.04' }}
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
@@ -38,21 +38,10 @@ jobs:
           echo "TAG=$(cat ./mysqld_exporter/TAG)" >> $GITHUB_ENV
 
       - uses: docker/build-push-action@v4
-        if: github.ref == 'refs/heads/main'
         with:
           context: containers/mysqld_exporter/.
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - uses: docker/build-push-action@v4
-        if: github.event_name == 'pull_request'
-        with:
-          context: containers/mysqld_exporter/.
-          platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags:  ghcr.io/cybozu-go/moco/mysqld_exporter:${{ env.TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
