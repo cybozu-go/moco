@@ -46,6 +46,16 @@ jobs:
             ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
             ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}
 
+      - name: Install Container Structure Tests
+        run: |
+          VERSION=v1.15.0
+          curl -LO "https://storage.googleapis.com/container-structure-test/$VERSION/container-structure-test-linux-amd64" \
+            && chmod +x container-structure-test-linux-amd64 \
+            && sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+      - name: Run Container Structure Tests
+        run: |
+          container-structure-test test --image ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }} --config ./containers/mysql/${{ matrix.mysql-version }}/container-structure-test.yaml
+
       - name: Create kind cluster
         run: kind create cluster --name=moco --config=./e2e/kind-config_actions.yaml --image=kindest/node:v${{ matrix.k8s-version }} --wait 1m
 
