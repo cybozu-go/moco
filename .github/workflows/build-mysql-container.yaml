@@ -83,7 +83,7 @@ jobs:
               spec:
                 containers:
                   - name: mysqld
-                    image: ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
+                    image: ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}
             volumeClaimTemplates:
               - metadata:
                   name: mysql-data
