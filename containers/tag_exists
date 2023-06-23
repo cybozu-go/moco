@@ -1,0 +1,36 @@
+#!/bin/sh -e
+
+if [ -z "$GITHUB_REPOSITORY_OWNER" ]; then
+  GITHUB_REPOSITORY_OWNER="cybozu-go"
+fi
+
+if [ $# -eq 0 ]; then
+    echo "Usage: tag_exists NAME"
+    exit 1
+fi
+
+NAME="$1"
+if [ $# -eq 2 ]; then
+    DIR="$2"
+else
+    DIR="$NAME"
+fi
+TAG=$(cat "$DIR"/TAG)
+
+HTTP_STATUS=$(curl -sSL -w "%{http_code}" "https://ghcr.io/token?scope=repository%3A$GITHUB_REPOSITORY_OWNER%2F$NAME%3Apull&service=ghcr.io" -o /dev/null)
+# If a non-existent image is specified, 403 will be returned.
+# {"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}
+if [ "$HTTP_STATUS" = "403" ]; then
+    echo "ng"
+    exit 0
+fi
+
+TOKEN=$(curl -sSfL "https://ghcr.io/token?scope=repository%3A$GITHUB_REPOSITORY_OWNER%2F$NAME%3Apull&service=ghcr.io" | jq -r .token)
+RESULT=$(curl -H "Authorization: Bearer $TOKEN" -sSfL "https://ghcr.io/v2/$GITHUB_REPOSITORY_OWNER/$NAME/tags/list" | jq --arg tag "$TAG" '.tags[] | select(. == $tag)')
+
+if [ -z "$RESULT" ]; then
+    echo "ng"
+    exit 0
+fi
+
+echo "ok"

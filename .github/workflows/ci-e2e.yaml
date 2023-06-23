@@ -4,10 +4,14 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore: ['**.md']
+    paths-ignore:
+      - '**.md'
+      - "containers/**"
   pull_request:
     types: [opened, synchronize]
-    paths-ignore: ['**.md']
+    paths-ignore:
+      - '**.md'
+      - "containers/**"
 
 env:
   cache-version: 1
