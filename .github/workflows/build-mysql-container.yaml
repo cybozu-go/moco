@@ -129,6 +129,8 @@ jobs:
           context: containers/mysql/${{ matrix.mysql-version }}/.
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
+            ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}
