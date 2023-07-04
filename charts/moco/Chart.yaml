@@ -26,4 +26,4 @@ appVersion: 0.16.1
 # This version does not necessarily match the supported version. This version number
 # will be updated when there is an obviously uninstallable version. If there are no
 # problems, update only moco/README.md#supported-software for the corresponding kubernetes version.
-kubeVersion: ">= 1.22.0"
+kubeVersion: ">= 1.22.0-0"
