@@ -90,6 +90,10 @@ This time add the following validate:
 
 * Allow only incremental changes in storage size
 
+> :note: This will become unnecessary due to the support of volume size reduction in the following proposal.
+>
+> [Support for Reducing Volume Size](./support_reduce_volume_size.md)
+
 ### Metrics
 
 When recreating a StatefulSet, there may be cases where recreating the StatefulSet fails with a validation error.
