@@ -1,6 +1,6 @@
 # How to use MOCO
 
-After [setting up MOCO](setup.md), you can create MySQL clusters with a custom resource called [MySQLCluster](crd_mysqlcluster.md).
+After [setting up MOCO](setup.md), you can create MySQL clusters with a custom resource called [MySQLCluster](crd_mysqlcluster_v1beta2.md).
 
 - [Basics](#basics)
 - [Limitations](#limitations)
@@ -154,7 +154,7 @@ spec:
 
 There are other example manifests in [`examples`](https://github.com/cybozu-go/moco/tree/main/examples) directory.
 
-The complete reference of MySQLCluster is [`crd_mysqlcluster.md`](crd_mysqlcluster.md).
+The complete reference of MySQLCluster is [`crd_mysqlcluster_v1beta2.md`](crd_mysqlcluster_v1beta2.md).
 
 ### Creating a cluster that replicates data from an external mysqld
 
@@ -406,7 +406,7 @@ Object keys are prefixed with `moco/`.
 
 ### BackupPolicy
 
-[BackupPolicy](crd_backuppolicy.md) is a custom resource to define a policy for taking backups.
+[BackupPolicy](crd_backuppolicy_v1beta2.md) is a custom resource to define a policy for taking backups.
 
 The following is an example BackupPolicy to take a backup every day and store data in [MinIO][]:
 
