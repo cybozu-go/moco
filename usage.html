@@ -141,7 +141,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="how-to-use-moco"><a class="header" href="#how-to-use-moco">How to use MOCO</a></h1>
-<p>After <a href="setup.html">setting up MOCO</a>, you can create MySQL clusters with a custom resource called <a href="crd_mysqlcluster.html">MySQLCluster</a>.</p>
+<p>After <a href="setup.html">setting up MOCO</a>, you can create MySQL clusters with a custom resource called <a href="crd_mysqlcluster_v1beta2.html">MySQLCluster</a>.</p>
 <ul>
 <li><a href="#basics">Basics</a></li>
 <li><a href="#limitations">Limitations</a>
@@ -296,7 +296,7 @@ spec:
 ...
 </code></pre>
 <p>There are other example manifests in <a href="https://github.com/cybozu-go/moco/tree/main/examples"><code>examples</code></a> directory.</p>
-<p>The complete reference of MySQLCluster is <a href="crd_mysqlcluster.html"><code>crd_mysqlcluster.md</code></a>.</p>
+<p>The complete reference of MySQLCluster is <a href="crd_mysqlcluster_v1beta2.html"><code>crd_mysqlcluster_v1beta2.md</code></a>.</p>
 <h3 id="creating-a-cluster-that-replicates-data-from-an-external-mysqld"><a class="header" href="#creating-a-cluster-that-replicates-data-from-an-external-mysqld">Creating a cluster that replicates data from an external mysqld</a></h3>
 <p>Let's call the source mysqld instance <em>donor</em>.</p>
 <p>First, make sure <code>partial_revokes</code> is enabled <strong>on the donor</strong>; Replicating data from the donor with <code>partial_revokes</code> disabled will <a href="https://dev.mysql.com/doc/refman/8.0/en/partial-revokes.html#partial-revokes-replication">result in replication inconsistencies or errors</a> since MOCO uses <code>partial_revokes</code> functionality.</p>
@@ -488,7 +488,7 @@ To remove old backups automatically, you can set a lifecycle configuration to th
 <p>A bucket can be shared safely across multiple MySQLClusters.
 Object keys are prefixed with <code>moco/</code>.</p>
 <h3 id="backuppolicy"><a class="header" href="#backuppolicy">BackupPolicy</a></h3>
-<p><a href="crd_backuppolicy.html">BackupPolicy</a> is a custom resource to define a policy for taking backups.</p>
+<p><a href="crd_backuppolicy_v1beta2.html">BackupPolicy</a> is a custom resource to define a policy for taking backups.</p>
 <p>The following is an example BackupPolicy to take a backup every day and store data in <a href="https://min.io/">MinIO</a>:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
 kind: BackupPolicy
