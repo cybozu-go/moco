@@ -1,6 +1,6 @@
 # Building custom image of `mysqld`
 
-There are pre-built `mysqld` container images for MOCO on [`quay.io/cybozu/mysql`](https://quay.io/repository/cybozu/mysql?tag=latest&tab=tags).
+There are pre-built `mysqld` container images for MOCO on [`ghcr.io/cybozu-go/moco/mysql`](https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql).
 Users can use one of these images to supply `mysqld` container in [MySQLCluster](crd_mysqlcluster.md) like:
 
 ```yaml
@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.
