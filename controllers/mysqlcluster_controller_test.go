@@ -15,6 +15,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -1609,6 +1610,315 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets ConditionStatefulSetReady to be true when StatefulSet is ready", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var sts *appsv1.StatefulSet
+		Eventually(func() error {
+			sts = &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be ready")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "hoge"
+		sts.Status.CurrentReplicas = 3
+		sts.Status.UpdatedReplicas = 3
+		sts.Status.ObservedGeneration = sts.Generation
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is true")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets ConditionStatefulSetReady to be false when status of StatefulSet is empty", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		var sts *appsv1.StatefulSet
+		Eventually(func() error {
+			sts = &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be ready")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "hoge"
+		sts.Status.CurrentReplicas = 3
+		sts.Status.UpdatedReplicas = 3
+		sts.Status.ObservedGeneration = sts.Generation
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting condition to be updated")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition is not true")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be empty")
+		sts.Status = appsv1.StatefulSetStatus{}
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets ConditionStatefulSetReady to be false when status of StatefulSet does not found", func() {
+		cluster := testNewMySQLCluster("test")
+		cluster.Spec.MySQLConfigMapName = pointer.String("foobarhoge")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			if conditionStatefulSetReady.Reason != "StatefulSetNotFound" {
+				return fmt.Errorf("reason is not expected")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets ConditionStatefulSetReady to be false when StatefulSet is not ready", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var sts *appsv1.StatefulSet
+		Eventually(func() error {
+			sts = &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be ready")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "hoge"
+		sts.Status.CurrentReplicas = 3
+		sts.Status.UpdatedReplicas = 3
+		sts.Status.ObservedGeneration = sts.Generation
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting condition to be updated")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition is not true")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be not ready")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "fuga"
+		sts.Status.CurrentReplicas = 2
+		sts.Status.UpdatedReplicas = 1
+		sts.Status.ObservedGeneration = sts.Generation
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be ready")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "hoge"
+		sts.Status.CurrentReplicas = 3
+		sts.Status.UpdatedReplicas = 3
+		sts.Status.ObservedGeneration = sts.Generation
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting condition to be updated")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition is not true")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting sts status to be not reconciled yet")
+		sts.Status.Replicas = 3
+		sts.Status.ReadyReplicas = 3
+		sts.Status.AvailableReplicas = 3
+		sts.Status.CurrentRevision = "hoge"
+		sts.Status.UpdateRevision = "hoge"
+		sts.Status.CurrentReplicas = 3
+		sts.Status.UpdatedReplicas = 3
+		sts.Status.ObservedGeneration = sts.Generation - 1
+		err = k8sClient.Status().Update(ctx, sts)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster2.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets reconcile status condition true when success", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is true")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			conditionReconcileSuccess := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconcileSuccess)
+			if conditionReconcileSuccess == nil {
+				return fmt.Errorf("condition does not exists")
+
+			}
+			if conditionReconcileSuccess.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition is not true")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should sets reconcile status condition false when faild", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("setting configmap name to be invalid")
+		cluster.Spec.MySQLConfigMapName = pointer.String("foobarhoge")
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			conditionReconcileSuccess := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconcileSuccess)
+			if conditionReconcileSuccess == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if conditionReconcileSuccess.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
 			return nil
 		}).Should(Succeed())
 	})

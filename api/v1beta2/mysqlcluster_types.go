@@ -566,7 +566,7 @@ type MySQLClusterStatus struct {
 
 	// Conditions is an array of conditions.
 	// +optional
-	Conditions []MySQLClusterCondition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet.
 	// Initially, this is zero.
@@ -601,35 +601,12 @@ type MySQLClusterStatus struct {
 	ReconcileInfo ReconcileInfo `json:"reconcileInfo"`
 }
 
-// MySQLClusterCondition defines the condition of MySQLCluster.
-type MySQLClusterCondition struct {
-	// Type is the type of the condition.
-	Type MySQLClusterConditionType `json:"type"`
-
-	// Status is the status of the condition.
-	Status corev1.ConditionStatus `json:"status"`
-
-	// Reason is a one-word CamelCase reason for the condition's last transition.
-	// +optional
-	Reason string `json:"reason,omitempty"`
-
-	// Message is a human-readable message indicating details about last transition.
-	// +optional
-	Message string `json:"message,omitempty"`
-
-	// LastTransitionTime is the last time the condition transits from one status to another.
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-}
-
-// MySQLClusterConditionType is the type of MySQLCluster condition.
-// +kubebuilder:validation:Enum=Initialized;Available;Healthy
-type MySQLClusterConditionType string
-
-// Valid values for MySQLClusterConditionType
 const (
-	ConditionInitialized MySQLClusterConditionType = "Initialized"
-	ConditionAvailable   MySQLClusterConditionType = "Available"
-	ConditionHealthy     MySQLClusterConditionType = "Healthy"
+	ConditionInitialized      string = "Initialized"
+	ConditionAvailable        string = "Available"
+	ConditionHealthy          string = "Healthy"
+	ConditionStatefulSetReady string = "StatefulSetReady"
+	ConditionReconcileSuccess string = "ReconcileSuccess"
 )
 
 // BackupStatus represents the status of the last successful backup.

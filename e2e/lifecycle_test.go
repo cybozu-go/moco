@@ -15,6 +15,8 @@ import (
 	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //go:embed testdata/single.yaml
@@ -32,16 +34,31 @@ var _ = Context("lifecycle", func() {
 			if err != nil {
 				return err
 			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == corev1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			if cluster.Generation != cluster.Status.ReconcileInfo.Generation {
+				return fmt.Errorf("cluster is not reconciled yet")
 			}
-			return errors.New("no health condition")
+			conditionReconcileSuccess := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconcileSuccess)
+			conditionStatefulSetReady := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionStatefulSetReady)
+			conditionHealthy := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionHealthy)
+			if conditionReconcileSuccess == nil {
+				return fmt.Errorf("reconcile failed")
+			}
+			if conditionStatefulSetReady == nil {
+				return fmt.Errorf("statefulset is not ready")
+			}
+			if conditionHealthy == nil {
+				return fmt.Errorf("cluster is not healthy")
+			}
+			if conditionReconcileSuccess.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition ReconcileSuccess is not expected")
+			}
+			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition StatefulSetReady is not expected")
+			}
+			if conditionHealthy.Status != metav1.ConditionTrue {
+				return fmt.Errorf("condition Healthy is not expected")
+			}
+			return nil
 		}).Should(Succeed())
 	})
 

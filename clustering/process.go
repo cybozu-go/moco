@@ -11,8 +11,8 @@ import (
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -228,25 +228,13 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		p.metrics.backupWarnings.Set(float64(len(bs.Warnings)))
 	}
 
-	now := metav1.Now()
 	ststr := ss.State.String()
-	updateCond := func(typ mocov1beta2.MySQLClusterConditionType, val corev1.ConditionStatus, current []mocov1beta2.MySQLClusterCondition) mocov1beta2.MySQLClusterCondition {
-		updated := mocov1beta2.MySQLClusterCondition{
-			Type:               typ,
-			Status:             val,
-			Reason:             ststr,
-			Message:            "the current state is " + ststr,
-			LastTransitionTime: now,
-		}
-
-		for _, cond := range current {
-			if cond.Type != typ {
-				continue
-			}
-			if cond.Status == val {
-				updated.LastTransitionTime = cond.LastTransitionTime
-			}
-			break
+	updateCond := func(typ string, val metav1.ConditionStatus) metav1.Condition {
+		updated := metav1.Condition{
+			Type:    typ,
+			Status:  val,
+			Reason:  ststr,
+			Message: "the current state is " + ststr,
 		}
 		return updated
 	}
@@ -258,33 +246,32 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		}
 		orig := cluster.DeepCopy()
 
-		initialized := corev1.ConditionTrue
-		available := corev1.ConditionFalse
-		healthy := corev1.ConditionFalse
+		initialized := metav1.ConditionTrue
+		available := metav1.ConditionFalse
+		healthy := metav1.ConditionFalse
 		switch ss.State {
 		case StateCloning, StateRestoring:
-			initialized = corev1.ConditionFalse
+			initialized = metav1.ConditionFalse
 		case StateHealthy:
-			available = corev1.ConditionTrue
-			healthy = corev1.ConditionTrue
+			available = metav1.ConditionTrue
+			healthy = metav1.ConditionTrue
 		case StateDegraded:
-			available = corev1.ConditionTrue
+			available = metav1.ConditionTrue
 		case StateFailed:
 		case StateLost:
 		case StateIncomplete:
 		}
-		conditions := []mocov1beta2.MySQLClusterCondition{
-			updateCond(mocov1beta2.ConditionInitialized, initialized, cluster.Status.Conditions),
-			updateCond(mocov1beta2.ConditionAvailable, available, cluster.Status.Conditions),
-			updateCond(mocov1beta2.ConditionHealthy, healthy, cluster.Status.Conditions),
-		}
-		cluster.Status.Conditions = conditions
-		if available == corev1.ConditionTrue {
+
+		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionInitialized, initialized))
+		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionAvailable, available))
+		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionHealthy, healthy))
+
+		if available == metav1.ConditionTrue {
 			p.metrics.available.Set(1)
 		} else {
 			p.metrics.available.Set(0)
 		}
-		if healthy == corev1.ConditionTrue {
+		if healthy == metav1.ConditionTrue {
 			p.metrics.healthy.Set(1)
 		} else {
 			p.metrics.healthy.Set(0)
