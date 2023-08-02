@@ -36,12 +36,7 @@ jobs:
 
           done
 
-          if [ "${#array[@]}" -eq 0 ]; then
-            json_output="[]"
-          else
-            json_output=$(printf '%s\n' "${array[@]}" | jq -R . | jq -s . | jq -c .)
-          fi
-
+          json_output=$(echo "${array[@]}" | jq -Rc 'split(" ")')
           echo "GITHUB_OUTPUT: mysql-versions=$json_output"
           echo "mysql-versions=$json_output" >> "$GITHUB_OUTPUT"
 
