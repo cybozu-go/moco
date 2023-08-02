@@ -29,11 +29,9 @@ jobs:
 
           for dir in $(find ./mysql -mindepth 1 -type d -printf '%f\n'); do
             result=$(./tag_exists moco/mysql "mysql/$dir")
-
             if [ "$result" = 'ng' ]; then
               array+=( "$dir" )
             fi
-
           done
 
           json_output=$(echo "${array[@]}" | jq -Rc 'split(" ")')
