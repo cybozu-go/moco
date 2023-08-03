@@ -455,7 +455,7 @@ spec:
       containers:
       # At least a container named &quot;mysqld&quot; must be defined.
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -543,7 +543,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.30  # must be the same version as the donor
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -555,7 +555,7 @@ spec:
 </code></pre>
 <p>To stop the replication from the donor, update MySQLCluster with <code>spec.replicationSourceSecretName: null</code>.</p>
 <h3 id="bring-your-own-image"><a class="header" href="#bring-your-own-image">Bring your own image</a></h3>
-<p>We provide pre-built MySQL container images at <a href="http://quay.io/cybozu/mysql">quay.io/cybozu/mysql</a>.
+<p>We provide pre-built MySQL container images at <a href="https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql">ghcr.io/cybozu-go/moco/mysql</a>.
 If you want to build and use your own image, read <a href="custom-mysqld.html"><code>custom-mysqld.md</code></a>.</p>
 <h2 id="configurations"><a class="header" href="#configurations">Configurations</a></h2>
 <p>The default and constant configuration values for <code>mysqld</code> are available on <a href="https://pkg.go.dev/github.com/cybozu-go/moco/pkg/mycnf#pkg-variables">pkg.go.dev</a>.
@@ -916,7 +916,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: quay.io/cybozu/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
@@ -929,7 +929,7 @@ $ kubectl delete --grace-period=1 pods moco-test-0
 Delete such pending Pods until PVC is actually removed.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
-<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://quay.io/repository/cybozu/mysql?tag=latest&amp;tab=tags"><code>quay.io/cybozu/mysql</code></a>.
+<p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql"><code>ghcr.io/cybozu-go/moco/mysql</code></a>.
 Users can use one of these images to supply <code>mysqld</code> container in <a href="crd_mysqlcluster.html">MySQLCluster</a> like:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
@@ -938,7 +938,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
@@ -981,7 +981,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
     overwriteContainers:
     - name: agent
       resources:
