@@ -15,27 +15,54 @@ on:
       - "!**.md"
 
 jobs:
+  filter:
+    runs-on: ubuntu-20.04
+    outputs:
+      mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: filter
+        id: filter
+        working-directory: containers
+        run: |
+          array=()
+
+          for dir in $(find ./mysql -mindepth 1 -type d -printf '%f\n'); do
+            result=$(./tag_exists moco/mysql "mysql/$dir")
+            if [ "$result" = 'ng' ]; then
+              array+=( "$dir" )
+            fi
+          done
+
+          json_output=$(echo "${array[@]}" | jq -Rc 'split(" ")')
+          echo "GITHUB_OUTPUT: mysql-versions=$json_output"
+          echo "mysql-versions=$json_output" >> "$GITHUB_OUTPUT"
+
   tests:
-    if: github.event_name == 'pull_request'
+    if: ${{ (github.event_name == 'pull_request') && (needs.filter.outputs.mysql-versions != '[]') }}
+    needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-20.04' }}
     strategy:
       matrix:
-        mysql-version: [ "8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32" ]
+        mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
         k8s-version: [ "1.27.1" ]
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+          cache: true
       - uses: docker/setup-buildx-action@v2
         with:
           driver: docker # refs: https://github.com/docker/build-push-action/issues/321
 
-      - name: Check TAG file
+      - name: Export TAG file
+        id: tag
         working-directory: containers
         run: |
-          result="$(./tag_exists moco/mysql mysql/${{ matrix.mysql-version }})"
-          if [ "$result" = ok ]; then
-            exit 1
-          fi
-          echo "TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)" >> $GITHUB_ENV
+          TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)
+          echo "tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@v4
         with:
@@ -43,7 +70,7 @@ jobs:
           push: false
           load: true
           tags: |
-            ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
+            ghcr.io/cybozu-go/moco/mysql:${{ steps.tag.outputs.tag }}
             ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}
 
       - name: Install Container Structure Tests
@@ -56,54 +83,34 @@ jobs:
         run: |
           container-structure-test test --image ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }} --config ./containers/mysql/${{ matrix.mysql-version }}/container-structure-test.yaml
 
-      - name: Create kind cluster
-        run: kind create cluster --name=moco --config=./e2e/kind-config_actions.yaml --image=kindest/node:v${{ matrix.k8s-version }} --wait 1m
+      - run: |
+          swapon > swapon.txt
+          sudo swapoff -a
+          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+      - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
 
-      - name: Load mysqld image
-        run: kind load docker-image ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }} --name moco
+      - name: Setup test cluster with local mysql image
+        run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml USE_LOCAL_MYSQL_IMAGE=1
+        working-directory: e2e
 
-      - name: Install MOCO
-        run: |
-          kubectl apply -f https://github.com/jetstack/cert-manager/releases/latest/download/cert-manager.yaml
-          kubectl -n cert-manager wait --for=condition=available --timeout=180s --all deployments
-          kubectl apply -f https://github.com/cybozu-go/moco/releases/latest/download/moco.yaml
-          kubectl -n moco-system wait --for=condition=available --timeout=180s --all deployments
-
-      - name: Create MySQLCluster
-        run: |
-          cat > mycluster.yaml <<'EOF'
-          apiVersion: moco.cybozu.com/v1beta1
-          kind: MySQLCluster
-          metadata:
-            namespace: default
-            name: test
-          spec:
-            replicas: 3
-            podTemplate:
-              spec:
-                containers:
-                  - name: mysqld
-                    image: ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}
-            volumeClaimTemplates:
-              - metadata:
-                  name: mysql-data
-                spec:
-                  accessModes: [ "ReadWriteOnce" ]
-                  resources:
-                    requests:
-                      storage: 1Gi
-          EOF
-          kubectl apply -f mycluster.yaml
-
-      - name: Wait for MySQLCluster
-        run: kubectl wait -n default --for=condition=Available mysqlcluster/test --timeout=180s
+      - run: make test
+        working-directory: e2e
+      - run: make logs
+        working-directory: e2e
+        if: always()
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz
+          path: e2e/logs.tar.gz
 
   build:
-    if: github.ref == 'refs/heads/main'
+    if: ${{ (github.ref == 'refs/heads/main') && (needs.filter.outputs.mysql-versions != '[]') }}
+    needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-20.04' }}
     strategy:
       matrix:
-        mysql-version: [ "8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32" ]
+        mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
@@ -115,14 +122,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check TAG file
+      - name: Export TAG file
+        id: tag
         working-directory: containers
         run: |
-          result="$(./tag_exists moco/mysql mysql/${{ matrix.mysql-version }})"
-          if [ "$result" = ok ]; then
-            exit 1
-          fi
-          echo "TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)" >> $GITHUB_ENV
+          TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)
+          echo "tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@v4
         with:
@@ -132,5 +138,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/cybozu-go/moco/mysql:${{ env.TAG }}
+            ghcr.io/cybozu-go/moco/mysql:${{ steps.tag.outputs.tag }}
             ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }}

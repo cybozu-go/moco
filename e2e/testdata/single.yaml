@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: quay.io/cybozu/mysql:{{ . }}
+        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
         resources:
           limits:
             cpu: "0.5"

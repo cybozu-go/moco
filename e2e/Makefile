@@ -14,6 +14,9 @@ export MYSQL_VERSION KUBECTL KUBECONFIG
 AGENT_DIR =
 AGENT_IMAGE := ghcr.io/cybozu-go/moco-agent:$(shell awk '/moco-agent/ {print substr($$2, 2)}' ../go.mod)
 
+## to test development version of mysqld, run make with USE_LOCAL_MYSQL_IMAGE=1
+USE_LOCAL_MYSQL_IMAGE =
+
 ## We need to switch the configuration of kind on GitHub Actions
 KIND_CONFIG = kind-config.yaml
 
@@ -36,6 +39,9 @@ start: $(KIND) $(KUBECTL) $(KUSTOMIZE) $(KUBECTL_MOCO)
 ifdef AGENT_DIR
 	cd $(AGENT_DIR); docker buildx build --load --no-cache -t $(AGENT_IMAGE) .
 	$(KIND) load docker-image $(AGENT_IMAGE) --name=moco
+endif
+ifdef USE_LOCAL_MYSQL_IMAGE
+	$(KIND) load docker-image ghcr.io/cybozu-go/moco/mysql:$(MYSQL_VERSION) --name=moco
 endif
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
 	$(KUBECTL) -n cert-manager wait --for=condition=available --timeout=180s --all deployments

@@ -118,5 +118,41 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ git push origin chart-v$CHARTVERSION
     ```
 
+## Container Image Release
+
+This repository manages the following container images that MOCO uses:
+
+* [MySQL](./containers/mysql)
+* [fluent-bit](./containers/fluent-bit)
+* [mysqld_exporter](./containers/mysqld_exporter)
+
+If you want to release these images, edit the TAG file.
+
+e.g. [containers/mysql/8.0.32/TAG](./containers/mysql/8.0.32/TAG)
+
+When a commit changing the TAG file is merged into the main branch, the release of the container image is executed.
+If the TAG file is not changed, the release will not be executed even if you edit the Dockerfile.
+
+### Tag naming
+
+Images whose upstream version conform to [Semantic Versioning 2.0.0][semver] should be
+tagged like this:
+
+    Upstream version + "." + Container image version
+
+For example, if the upstream version is `X.Y.Z`, the first image for this version will
+be tagged as `X.Y.Z.1`.  Likewise, if the upstream version has pre-release part like
+`X.Y.Z-beta.3`, the tag will be `X.Y.Z-beta.3.1`.
+The container image version will be incremented when some changes are introduced to the image.
+
+If the upstream version has no patch version (`X.Y`), fill the patch version with 0 then
+add the container image version _A_ (`X.Y.0.A`).
+
+The container image version _must_ be reset to 1 when the upstream version is changed.
+
+#### Example
+
+If the upstream version is "1.2.0-beta.3", the image tag must begin with "1.2.0-beta.3.1".
+
 [semver]: https://semver.org/spec/v2.0.0.html
 [example]: https://github.com/cybozu-go/etcdpasswd/commit/77d95384ac6c97e7f48281eaf23cb94f68867f79

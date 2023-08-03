@@ -24,7 +24,8 @@ jobs:
           sudo swapoff -a
           cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
       - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
-      - run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
+      - name: Setup test cluster
+        run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
         working-directory: e2e
       - run: make test
         working-directory: e2e
