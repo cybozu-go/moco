@@ -6,15 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/expfmt"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,6 +44,7 @@ var _ = Context("pvc_test", func() {
 	})
 
 	It("should pvc template change succeed", func() {
+		// 500Mi -> 1Gi
 		kubectlSafe(fillTemplate(pvcApplyYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("pvc", "cluster")
@@ -67,107 +65,71 @@ var _ = Context("pvc_test", func() {
 	})
 
 	It("should statefulset re-created", func() {
-		cluster, err := getCluster("pvc", "cluster")
-		Expect(err).NotTo(HaveOccurred())
-
-		wantLabels := make(map[string]map[string]string)
-		for _, pvc := range cluster.Spec.VolumeClaimTemplates {
-			wantLabels[pvc.Name] = pvc.ObjectMeta.Labels
-		}
-
-		wantSizes := make(map[string]*resource.Quantity)
-		for _, pvc := range cluster.Spec.VolumeClaimTemplates {
-			wantSizes[pvc.Name] = pvc.Spec.Resources.Requests.Storage()
-		}
-
-		Eventually(func() error {
-			out, err := kubectl(nil,
-				"get", "sts",
-				"-n", "pvc",
-				"moco-cluster",
-				"-o", "json",
-			)
-			if err != nil {
-				return err
-			}
-
-			var sts appsv1.StatefulSet
-			if err := json.Unmarshal(out, &sts); err != nil {
-				return err
-			}
-
-			for _, pvc := range sts.Spec.VolumeClaimTemplates {
-				labels, ok := wantLabels[pvc.Name]
-				if !ok {
-					return fmt.Errorf("pvc %s is not expected", pvc.Name)
-				}
-
-				if !reflect.DeepEqual(pvc.ObjectMeta.Labels, labels) {
-					return fmt.Errorf("pvc %s labels are not expected", pvc.Name)
-				}
-
-				want, ok := wantSizes[pvc.Name]
-				if !ok {
-					return fmt.Errorf("pvc %s is not expected", pvc.Name)
-				}
-
-				if pvc.Spec.Resources.Requests.Storage().Cmp(*want) != 0 {
-					return fmt.Errorf("pvc %s is not expected size: %s", pvc.Name, pvc.Spec.Resources.Requests.Storage())
-				}
-			}
-
-			return nil
-		}).Should(Succeed())
+		comparePVCTemplate("pvc", "cluster")
 	})
 
 	It("should pvc resized", func() {
-		cluster, err := getCluster("pvc", "cluster")
-		Expect(err).NotTo(HaveOccurred())
+		comparePVCSize("pvc", "cluster")
+	})
 
-		wantSizes := make(map[string]*resource.Quantity)
-		for _, pvc := range cluster.Spec.VolumeClaimTemplates {
-			for i := int32(0); i < cluster.Spec.Replicas; i++ {
-				name := fmt.Sprintf("%s-%s-%d", pvc.Name, "moco-cluster", i)
-				wantSizes[name] = pvc.Spec.Resources.Requests.Storage()
-			}
-		}
-
+	It("should pvc template storage size reduce succeed", func() {
+		// 1Gi -> 500Mi
+		kubectlSafe(fillTemplate(pvcTestYAML), "apply", "-f", "-")
 		Eventually(func() error {
-			out, err := kubectl(nil,
-				"get", "pvc",
-				"-n", "pvc",
-				"-l", "app.kubernetes.io/instance=cluster",
-				"-o", "json",
-			)
+			cluster, err := getCluster("pvc", "cluster")
 			if err != nil {
 				return err
 			}
-
-			var pvcList corev1.PersistentVolumeClaimList
-			if err := json.Unmarshal(out, &pvcList); err != nil {
-				return err
-			}
-			if len(pvcList.Items) < 1 {
-				return errors.New("not found pvcs")
-			}
-
-			if len(pvcList.Items) != len(wantSizes) {
-				return fmt.Errorf("pvc count is not expected: %d", len(pvcList.Items))
-			}
-
-			for _, pvc := range pvcList.Items {
-				want, ok := wantSizes[pvc.Name]
-				if !ok {
-					return fmt.Errorf("pvc %s is not expected", pvc.Name)
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
 				}
-
-				if pvc.Spec.Resources.Requests.Storage().Cmp(*want) != 0 {
-					return fmt.Errorf("pvc %s is not expected size: %s", pvc.Name, pvc.Spec.Resources.Requests.Storage())
+				if cond.Status == corev1.ConditionTrue {
+					return nil
 				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
 			}
-
-			return nil
+			return errors.New("no health condition")
 		}).Should(Succeed())
+	})
+
+	It("should statefulset re-created", func() {
+		comparePVCTemplate("pvc", "cluster")
+	})
+
+	It("should volume size reduce succeed", func() {
+		out := kubectlSafe(nil, "get", "pods", "-n", "pvc", "-o", "json")
+		pods := &corev1.PodList{}
+		err := json.Unmarshal(out, pods)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pods.Items).To(HaveLen(3))
+
+		for _, pod := range pods.Items {
+			kubectlSafe(nil, "delete", "pvc", "-n", "pvc", "--wait=false", fmt.Sprintf("mysql-data-%s", pod.Name))
+			kubectlSafe(nil, "delete", "pod", "-n", "pvc", "--grace-period=1", pod.Name)
+
+			Eventually(func() error {
+				cluster, err := getCluster("pvc", "cluster")
+				if err != nil {
+					return err
+				}
+
+				for _, cond := range cluster.Status.Conditions {
+					if cond.Type != mocov1beta2.ConditionHealthy {
+						continue
+					}
+					if cond.Status == corev1.ConditionTrue {
+						return nil
+					}
+					return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+				}
+				return errors.New("no health condition")
+			}).Should(Succeed())
+		}
+	})
+
+	It("should pvc resized", func() {
+		comparePVCSize("pvc", "cluster")
 	})
 
 	It("metrics", func() {
@@ -193,7 +155,7 @@ var _ = Context("pvc_test", func() {
 		Expect(stsMf).NotTo(BeNil())
 		stsMetric := findMetric(stsMf, map[string]string{"namespace": "pvc", "name": "cluster"})
 		Expect(stsMetric).NotTo(BeNil())
-		Expect(stsMetric.GetCounter().GetValue()).To(BeNumerically("==", 1))
+		Expect(stsMetric.GetCounter().GetValue()).To(BeNumerically("==", 2))
 	})
 
 	It("should delete clusters", func() {

@@ -174,7 +174,12 @@ func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, 
 		case i == 0: // volume size is equal
 			continue
 		case i == 1: // volume size is greater
-			return nil, false, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, wantSize, deployedSize, ErrReduceVolumeSize)
+			// Due to the lack of support for volume size reduction, resizing will not be executed if it implies a smaller size.
+			// It's important to highlight that this does not induce an error.
+			// Instead, the recreation of the StatefulSet will be managed in the reconcileV1StatefulSet() operation, which follows this one.
+			// Hence, the execution flow remains uninterrupted.
+			// ref: docs/designdoc/support_reduce_volume_size.md
+			continue
 		case i == -1: // volume size is smaller
 			resizeTarget[pvc.Name] = pvcSet[pvc.Name]
 			continue

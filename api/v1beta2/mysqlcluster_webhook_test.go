@@ -498,25 +498,6 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should deny reduced storage size", func() {
-		r := makeMySQLCluster()
-		err := k8sClient.Create(ctx, r)
-		Expect(err).NotTo(HaveOccurred())
-
-		r.Spec.VolumeClaimTemplates[0].Spec = mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
-			*corev1ac.PersistentVolumeClaimSpec().
-				WithStorageClassName("default").
-				WithResources(corev1ac.ResourceRequirements().
-					WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("1Mi"),
-					}),
-				),
-		)
-
-		err = k8sClient.Update(ctx, r)
-		Expect(err).To(HaveOccurred())
-	})
-
 	It("should deny storage size expansion for not support volume expansion storage class", func() {
 		r := makeMySQLCluster()
 		r.Spec.VolumeClaimTemplates = make([]mocov1beta2.PersistentVolumeClaim, 2)
