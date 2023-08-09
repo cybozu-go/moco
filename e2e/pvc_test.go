@@ -22,6 +22,9 @@ var pvcTestYAML string
 var pvcApplyYAML string
 
 var _ = Context("pvc_test", func() {
+	if doUpgrade {
+		return
+	}
 
 	It("should construct a cluster", func() {
 		kubectlSafe(fillTemplate(pvcTestYAML), "apply", "-f", "-")
