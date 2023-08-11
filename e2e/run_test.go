@@ -9,13 +9,11 @@ import (
 	"reflect"
 	"text/template"
 
-	corev1 "k8s.io/api/core/v1"
-
-	appsv1 "k8s.io/api/apps/v1"
-
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -90,7 +88,11 @@ OUTER:
 	return nil
 }
 
-func comparePVCTemplate(ns string, clusterName string) {
+// verifyPVCTemplates verifies the labels and storage size of PVC templates in a specific cluster.
+// It builds two maps of anticipated PVC labels and sizes based on the cluster specifications,
+// Retrieves a StatefulSet using Kubernetes API and compares its PVC templates' labels and sizes
+// with the anticipated ones.
+func verifyPVCTemplates(ns string, clusterName string) {
 	cluster, err := getCluster(ns, clusterName)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -144,7 +146,10 @@ func comparePVCTemplate(ns string, clusterName string) {
 	}).Should(Succeed())
 }
 
-func comparePVCSize(ns string, clusterName string) {
+// verifyPVCSize validates the storage size of Persistent Volume Claims (PVC) in a specific cluster.
+// It builds a map of anticipated PVC sizes, retrieves the current state of PVCs from the Kubernetes API,
+// and assesses if the actual PVC sizes coincide with the predicted sizes.
+func verifyPVCSize(ns string, clusterName string) {
 	cluster, err := getCluster(ns, clusterName)
 	Expect(err).NotTo(HaveOccurred())
 

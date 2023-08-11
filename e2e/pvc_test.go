@@ -68,11 +68,11 @@ var _ = Context("pvc_test", func() {
 	})
 
 	It("should statefulset re-created", func() {
-		comparePVCTemplate("pvc", "cluster")
+		verifyPVCTemplates("pvc", "cluster")
 	})
 
 	It("should pvc resized", func() {
-		comparePVCSize("pvc", "cluster")
+		verifyPVCSize("pvc", "cluster")
 	})
 
 	It("should pvc template storage size reduce succeed", func() {
@@ -97,7 +97,7 @@ var _ = Context("pvc_test", func() {
 	})
 
 	It("should statefulset re-created", func() {
-		comparePVCTemplate("pvc", "cluster")
+		verifyPVCTemplates("pvc", "cluster")
 	})
 
 	It("should volume size reduce succeed", func() {
@@ -132,7 +132,7 @@ var _ = Context("pvc_test", func() {
 	})
 
 	It("should pvc resized", func() {
-		comparePVCSize("pvc", "cluster")
+		verifyPVCSize("pvc", "cluster")
 	})
 
 	It("metrics", func() {
