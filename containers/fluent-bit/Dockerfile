@@ -3,7 +3,7 @@
 # Stage1: build from source
 FROM quay.io/cybozu/ubuntu-dev:22.04 AS builder
 
-ARG FLUENT_BIT_VERSION=2.0.9
+ARG FLUENT_BIT_VERSION=2.1.8
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
