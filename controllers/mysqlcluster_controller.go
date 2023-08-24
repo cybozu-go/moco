@@ -25,6 +25,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -168,7 +169,7 @@ func (r *MySQLClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return reconciler(ctx, req, cluster)
 }
 
-func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
+func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (result ctrl.Result, err error) {
 	log := crlog.FromContext(ctx)
 
 	if cluster.DeletionTimestamp != nil {
@@ -180,13 +181,13 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 		r.ClusterManager.Stop(req.NamespacedName)
 
-		if err := r.finalizeV1(ctx, cluster); err != nil {
+		if err = r.finalizeV1(ctx, cluster); err != nil {
 			log.Error(err, "failed to finalize")
 			return ctrl.Result{}, err
 		}
 
 		controllerutil.RemoveFinalizer(cluster, constants.MySQLClusterFinalizer)
-		if err := r.Update(ctx, cluster); err != nil {
+		if err = r.Update(ctx, cluster); err != nil {
 			log.Error(err, "failed to remove finalizer")
 			return ctrl.Result{}, err
 		}
@@ -196,17 +197,24 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.reconcileV1Secret(ctx, req, cluster); err != nil {
+	defer func() {
+		if err2 := r.updateStatus(ctx, cluster, err); err2 != nil {
+			err = err2
+			log.Error(err2, "failed to update status")
+		}
+	}()
+
+	if err = r.reconcileV1Secret(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile secret")
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1Certificate(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1Certificate(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile certificate")
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1GRPCSecret(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1GRPCSecret(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile gRPC secret")
 		return ctrl.Result{}, err
 	}
@@ -217,47 +225,38 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1FluentBitConfigMap(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1FluentBitConfigMap(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile config maps for fluent-bit")
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1ServiceAccount(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1ServiceAccount(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1Service(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1Service(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcilePVC(ctx, req, cluster); err != nil {
+	if err = r.reconcilePVC(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1StatefulSet(ctx, req, cluster, mycnf); err != nil {
+	if err = r.reconcileV1StatefulSet(ctx, req, cluster, mycnf); err != nil {
 		log.Error(err, "failed to reconcile stateful set")
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1PDB(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1PDB(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1BackupJob(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1BackupJob(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileV1RestoreJob(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1RestoreJob(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
-	}
-
-	if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
-		cluster.Status.ReconcileInfo.Generation = cluster.Generation
-		cluster.Status.ReconcileInfo.ReconcileVersion = 1
-		if err := r.Status().Update(ctx, cluster); err != nil {
-			log.Error(err, "failed to update reconciliation info")
-			return ctrl.Result{}, err
-		}
 	}
 
 	r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
@@ -1859,6 +1858,68 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
+	return nil
+}
+
+func (r *MySQLClusterReconciler) updateStatus(ctx context.Context, cluster *mocov1beta2.MySQLCluster, reconcileErr error) error {
+	log := crlog.FromContext(ctx)
+	orig := cluster.DeepCopy()
+
+	cluster.Status.ReconcileInfo.Generation = cluster.Generation
+	cluster.Status.ReconcileInfo.ReconcileVersion = 1
+
+	stsReady := metav1.ConditionFalse
+	reason := "StatefulSetNotReady"
+	message := "StatefulSet is not ready"
+	var sts appsv1.StatefulSet
+	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &sts)
+	if err != nil && apierrors.IsNotFound(err) {
+		reason = "StatefulSetNotFound"
+		message = "StatefulSet not found"
+		log.Error(err, "StatefulSet not found", "namespace", cluster.Namespace, "name", cluster.PrefixedName())
+	} else if err != nil {
+		reason = "FaildToGetStatefulSet"
+		message = "failed to get StatefulSet"
+		log.Error(err, "failed to get StatefulSet", "namespace", cluster.Namespace, "name", cluster.PrefixedName())
+	} else if sts.Spec.Replicas != nil && sts.Status.AvailableReplicas == *sts.Spec.Replicas && sts.Status.CurrentRevision == sts.Status.UpdateRevision && sts.Generation == sts.Status.ObservedGeneration {
+		stsReady = metav1.ConditionTrue
+		reason = "StatefulSetReady"
+		message = "StatefulSet is ready"
+	}
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:               mocov1beta2.ConditionStatefulSetReady,
+			Status:             stsReady,
+			ObservedGeneration: cluster.Generation,
+			Reason:             reason,
+			Message:            message,
+		},
+	)
+
+	reconcileSuccess := metav1.ConditionFalse
+	reason = "ReconcileFailed"
+	message = "reconcile failed"
+	if reconcileErr == nil {
+		reconcileSuccess = metav1.ConditionTrue
+		reason = "ReconcileSuccess"
+		message = "reconcile successfully"
+	}
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:               mocov1beta2.ConditionReconcileSuccess,
+			Status:             reconcileSuccess,
+			ObservedGeneration: cluster.Generation,
+			Reason:             reason,
+			Message:            message,
+		},
+	)
+
+	if !equality.Semantic.DeepEqual(orig, cluster) {
+		if err := r.Status().Update(ctx, cluster); err != nil {
+			return err
+		}
+		log.Info("update status successfully")
+	}
 	return nil
 }
 

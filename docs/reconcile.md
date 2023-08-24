@@ -62,6 +62,13 @@ The StatefulSet will be updated when:
 
 The fluent-bit sidecar container is updated only when some fields under `spec` of MySQLCluster are modified.
 
+
+### Status about StatefulSet
+
+- In `MySQLCluster.Status.Condition`, there is a condition named `StatefulSetReady`.
+- This indicates the readieness of StatefulSet.
+- The condition will be `True` when the rolling update of StatefulSet completely finishes.
+
 ### Secrets
 
 MOCO generates random passwords for users that MOCO uses to access MySQL.
@@ -135,3 +142,9 @@ To restore data from a backup, MOCO creates a Job.
 MOCO deletes the Job after the Job finishes successfully.
 
 If the Job fails, MOCO leaves the Job.
+
+## Status of Reconcliation
+
+- In `MySQLCluster.Status.Condition`, there is a condition named `ReconcileSuccess`.
+- This indicates the status of reconcilation.
+- The condition will be `True` when the reconcile function successfully finishes.

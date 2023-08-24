@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //go:embed testdata/failure.yaml
@@ -34,7 +35,7 @@ var _ = Context("failure", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
@@ -83,7 +84,7 @@ var _ = Context("failure", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("cluster is not healthy: %s", cond.Status)

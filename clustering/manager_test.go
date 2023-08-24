@@ -176,7 +176,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("not healthy")
@@ -188,9 +188,9 @@ var _ = Describe("manager", func() {
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
 			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == corev1.ConditionTrue
+				isAvailable = cond.Status == metav1.ConditionTrue
 			case mocov1beta2.ConditionInitialized:
-				isInitialized = cond.Status == corev1.ConditionTrue
+				isInitialized = cond.Status == metav1.ConditionTrue
 			}
 		}
 		Expect(isAvailable).To(BeTrue())
@@ -233,7 +233,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionFalse {
+				if cond.Status == metav1.ConditionFalse {
 					return nil
 				}
 				return fmt.Errorf("cluster is still healthy")
@@ -244,9 +244,9 @@ var _ = Describe("manager", func() {
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
 			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == corev1.ConditionTrue
+				isAvailable = cond.Status == metav1.ConditionTrue
 			case mocov1beta2.ConditionInitialized:
-				isInitialized = cond.Status == corev1.ConditionTrue
+				isInitialized = cond.Status == metav1.ConditionTrue
 			}
 		}
 		Expect(isAvailable).To(BeFalse())
@@ -274,7 +274,7 @@ var _ = Describe("manager", func() {
 			if cond.Type != mocov1beta2.ConditionHealthy {
 				continue
 			}
-			Expect(cond.Status).To(Equal(corev1.ConditionFalse))
+			Expect(cond.Status).To(Equal(metav1.ConditionFalse))
 		}
 	})
 
@@ -347,9 +347,9 @@ var _ = Describe("manager", func() {
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
 			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == corev1.ConditionTrue
+				isAvailable = cond.Status == metav1.ConditionTrue
 			case mocov1beta2.ConditionHealthy:
-				isHealthy = cond.Status == corev1.ConditionTrue
+				isHealthy = cond.Status == metav1.ConditionTrue
 			}
 		}
 		Expect(isAvailable).To(BeFalse())
@@ -388,7 +388,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("not healthy")
@@ -452,7 +452,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("not healthy")
@@ -549,7 +549,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("not healthy")
@@ -661,7 +661,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("not healthy")
@@ -689,9 +689,9 @@ var _ = Describe("manager", func() {
 		for _, cond := range cluster.Status.Conditions {
 			switch cond.Type {
 			case mocov1beta2.ConditionHealthy:
-				isHealthy = cond.Status == corev1.ConditionTrue
+				isHealthy = cond.Status == metav1.ConditionTrue
 			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == corev1.ConditionTrue
+				isAvailable = cond.Status == metav1.ConditionTrue
 			}
 		}
 		Expect(isHealthy).To(BeFalse())
@@ -743,9 +743,9 @@ var _ = Describe("manager", func() {
 			for _, cond := range cluster.Status.Conditions {
 				switch cond.Type {
 				case mocov1beta2.ConditionHealthy:
-					isHealthy = cond.Status == corev1.ConditionTrue
+					isHealthy = cond.Status == metav1.ConditionTrue
 				case mocov1beta2.ConditionAvailable:
-					if cond.Status == corev1.ConditionTrue {
+					if cond.Status == metav1.ConditionTrue {
 						return true
 					}
 				}
@@ -812,7 +812,7 @@ var _ = Describe("manager", func() {
 				if cond.Type != mocov1beta2.ConditionAvailable {
 					continue
 				}
-				if cond.Status != corev1.ConditionFalse {
+				if cond.Status != metav1.ConditionFalse {
 					continue
 				}
 				return cond.Reason == StateLost.String()

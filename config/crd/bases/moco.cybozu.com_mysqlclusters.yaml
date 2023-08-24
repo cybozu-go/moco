@@ -6063,31 +6063,44 @@ spec:
               conditions:
                 description: Conditions is an array of conditions.
                 items:
-                  description: MySQLClusterCondition defines the condition of MyS
+                  description: Condition contains details for one aspect of the c
                   properties:
                     lastTransitionTime:
-                      description: 'LastTransitionTime is the last time the condition '
+                      description: 'lastTransitionTime is the last time the condition '
                       format: date-time
                       type: string
                     message:
-                      description: Message is a human-readable message indicating
+                      description: message is a human readable message indicating
                         det
+                      maxLength: 32768
                       type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.
+                      format: int64
+                      minimum: 0
+                      type: integer
                     reason:
-                      description: Reason is a one-word CamelCase reason for the cond
+                      description: reason contains a programmatic identifier indicati
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
                       type: string
                     status:
-                      description: Status is the status of the condition.
+                      description: status of the condition, one of True, False, Unkno
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
                       type: string
                     type:
-                      description: Type is the type of the condition.
-                      enum:
-                      - Initialized
-                      - Available
-                      - Healthy
+                      description: type of condition in CamelCase or in foo.example.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string
                   required:
                   - lastTransitionTime
+                  - message
+                  - reason
                   - status
                   - type
                   type: object
@@ -12346,31 +12359,44 @@ spec:
               conditions:
                 description: Conditions is an array of conditions.
                 items:
-                  description: MySQLClusterCondition defines the condition of MyS
+                  description: Condition contains details for one aspect of the c
                   properties:
                     lastTransitionTime:
-                      description: 'LastTransitionTime is the last time the condition '
+                      description: 'lastTransitionTime is the last time the condition '
                       format: date-time
                       type: string
                     message:
-                      description: Message is a human-readable message indicating
+                      description: message is a human readable message indicating
                         det
+                      maxLength: 32768
                       type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.
+                      format: int64
+                      minimum: 0
+                      type: integer
                     reason:
-                      description: Reason is a one-word CamelCase reason for the cond
+                      description: reason contains a programmatic identifier indicati
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
                       type: string
                     status:
-                      description: Status is the status of the condition.
+                      description: status of the condition, one of True, False, Unkno
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
                       type: string
                     type:
-                      description: Type is the type of the condition.
-                      enum:
-                      - Initialized
-                      - Available
-                      - Healthy
+                      description: type of condition in CamelCase or in foo.example.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string
                   required:
                   - lastTransitionTime
+                  - message
+                  - reason
                   - status
                   - type
                   type: object

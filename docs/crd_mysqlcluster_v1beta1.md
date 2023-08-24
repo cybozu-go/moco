@@ -6,7 +6,6 @@
 ### Sub Resources
 
 * [BackupStatus](#backupstatus)
-* [MySQLClusterCondition](#mysqlclustercondition)
 * [MySQLClusterList](#mysqlclusterlist)
 * [MySQLClusterSpec](#mysqlclusterspec)
 * [MySQLClusterStatus](#mysqlclusterstatus)
@@ -50,20 +49,6 @@ MySQLCluster is the Schema for the mysqlclusters API
 
 [Back to Custom Resources](#custom-resources)
 
-#### MySQLClusterCondition
-
-MySQLClusterCondition defines the condition of MySQLCluster.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| type | Type is the type of the condition. | [MySQLClusterConditionType](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType) | true |
-| status | Status is the status of the condition. | [corev1.ConditionStatus](https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus) | true |
-| reason | Reason is a one-word CamelCase reason for the condition's last transition. | string | false |
-| message | Message is a human-readable message indicating details about last transition. | string | false |
-| lastTransitionTime | LastTransitionTime is the last time the condition transits from one status to another. | [metav1.Time](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time) | true |
-
-[Back to Custom Resources](#custom-resources)
-
 #### MySQLClusterList
 
 MySQLClusterList contains a list of MySQLCluster
@@ -104,7 +89,7 @@ MySQLClusterStatus defines the observed state of MySQLCluster
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| conditions | Conditions is an array of conditions. | [][MySQLClusterCondition](#mysqlclustercondition) | false |
+| conditions | Conditions is an array of conditions. | [][metav1.Condition](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition) | false |
 | currentPrimaryIndex | CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero. | int | true |
 | syncedReplicas | SyncedReplicas is the number of synced instances including the primary. | int | false |
 | errantReplicas | ErrantReplicas is the number of instances that have errant transactions. | int | false |
