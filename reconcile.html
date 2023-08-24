@@ -198,6 +198,12 @@ It updates the StatefulSet only when the update is a must.</p>
 </li>
 </ul>
 <p>The fluent-bit sidecar container is updated only when some fields under <code>spec</code> of MySQLCluster are modified.</p>
+<h3 id="status-about-statefulset"><a class="header" href="#status-about-statefulset">Status about StatefulSet</a></h3>
+<ul>
+<li>In <code>MySQLCluster.Status.Condition</code>, there is a condition named <code>StatefulSetReady</code>.</li>
+<li>This indicates the readieness of StatefulSet.</li>
+<li>The condition will be <code>True</code> when the rolling update of StatefulSet completely finishes.</li>
+</ul>
 <h3 id="secrets"><a class="header" href="#secrets">Secrets</a></h3>
 <p>MOCO generates random passwords for users that MOCO uses to access MySQL.</p>
 <p>The generated passwords are stored in two Secrets.
@@ -246,6 +252,12 @@ The ServiceAccount is not bound to any Roles/ClusterRoles.</p>
 <p>To restore data from a backup, MOCO creates a Job.
 MOCO deletes the Job after the Job finishes successfully.</p>
 <p>If the Job fails, MOCO leaves the Job.</p>
+<h2 id="status-of-reconcliation"><a class="header" href="#status-of-reconcliation">Status of Reconcliation</a></h2>
+<ul>
+<li>In <code>MySQLCluster.Status.Condition</code>, there is a condition named <code>ReconcileSuccess</code>.</li>
+<li>This indicates the status of reconcilation.</li>
+<li>The condition will be <code>True</code> when the reconcile function successfully finishes.</li>
+</ul>
 
                     </main>
 

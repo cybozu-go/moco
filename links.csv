@@ -7,6 +7,7 @@ corev1.PodSpec,https://pkg.go.dev/k8s.io/api/core/v1#PodSpec
 corev1.ServiceSpec,https://pkg.go.dev/k8s.io/api/core/v1#ServiceSpec
 corev1.VolumeSource,https://pkg.go.dev/k8s.io/api/core/v1#VolumeSource
 metav1.Duration,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration
+metav1.Condition,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition
 metav1.ListMeta,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta
 metav1.ObjectMeta,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta
 metav1.Time,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time

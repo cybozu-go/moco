@@ -1061,7 +1061,6 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <h3 id="sub-resources"><a class="header" href="#sub-resources">Sub Resources</a></h3>
 <ul>
 <li><a href="crd_mysqlcluster_v1beta1.html#backupstatus">BackupStatus</a></li>
-<li><a href="crd_mysqlcluster_v1beta1.html#mysqlclustercondition">MySQLClusterCondition</a></li>
 <li><a href="crd_mysqlcluster_v1beta1.html#mysqlclusterlist">MySQLClusterList</a></li>
 <li><a href="crd_mysqlcluster_v1beta1.html#mysqlclusterspec">MySQLClusterSpec</a></li>
 <li><a href="crd_mysqlcluster_v1beta1.html#mysqlclusterstatus">MySQLClusterStatus</a></li>
@@ -1099,17 +1098,6 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
-<h4 id="mysqlclustercondition"><a class="header" href="#mysqlclustercondition">MySQLClusterCondition</a></h4>
-<p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
-<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
-<tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
-<tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
-</tbody></table>
-</div>
-<p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterlist"><a class="header" href="#mysqlclusterlist">MySQLClusterList</a></h4>
 <p>MySQLClusterList contains a list of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
@@ -1141,7 +1129,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <h4 id="mysqlclusterstatus"><a class="header" href="#mysqlclusterstatus">MySQLClusterStatus</a></h4>
 <p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="crd_mysqlcluster_v1beta1.html#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
+<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition">metav1.Condition</a></td><td>false</td></tr>
 <tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
 <tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
 <tr><td>errantReplicas</td><td>ErrantReplicas is the number of instances that have errant transactions.</td><td>int</td><td>false</td></tr>
@@ -1239,7 +1227,6 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <h3 id="sub-resources-1"><a class="header" href="#sub-resources-1">Sub Resources</a></h3>
 <ul>
 <li><a href="crd_mysqlcluster_v1beta2.html#backupstatus">BackupStatus</a></li>
-<li><a href="crd_mysqlcluster_v1beta2.html#mysqlclustercondition">MySQLClusterCondition</a></li>
 <li><a href="crd_mysqlcluster_v1beta2.html#mysqlclusterlist">MySQLClusterList</a></li>
 <li><a href="crd_mysqlcluster_v1beta2.html#mysqlclusterspec">MySQLClusterSpec</a></li>
 <li><a href="crd_mysqlcluster_v1beta2.html#mysqlclusterstatus">MySQLClusterStatus</a></li>
@@ -1278,17 +1265,6 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
-<h4 id="mysqlclustercondition-1"><a class="header" href="#mysqlclustercondition-1">MySQLClusterCondition</a></h4>
-<p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
-<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
-<tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
-<tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
-</tbody></table>
-</div>
-<p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterlist-1"><a class="header" href="#mysqlclusterlist-1">MySQLClusterList</a></h4>
 <p>MySQLClusterList contains a list of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
@@ -1321,7 +1297,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <h4 id="mysqlclusterstatus-1"><a class="header" href="#mysqlclusterstatus-1">MySQLClusterStatus</a></h4>
 <p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="crd_mysqlcluster_v1beta2.html#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
+<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition">metav1.Condition</a></td><td>false</td></tr>
 <tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
 <tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
 <tr><td>errantReplicas</td><td>ErrantReplicas is the number of instances that have errant transactions.</td><td>int</td><td>false</td></tr>
@@ -1896,6 +1872,12 @@ It updates the StatefulSet only when the update is a must.</p>
 </li>
 </ul>
 <p>The fluent-bit sidecar container is updated only when some fields under <code>spec</code> of MySQLCluster are modified.</p>
+<h3 id="status-about-statefulset"><a class="header" href="#status-about-statefulset">Status about StatefulSet</a></h3>
+<ul>
+<li>In <code>MySQLCluster.Status.Condition</code>, there is a condition named <code>StatefulSetReady</code>.</li>
+<li>This indicates the readieness of StatefulSet.</li>
+<li>The condition will be <code>True</code> when the rolling update of StatefulSet completely finishes.</li>
+</ul>
 <h3 id="secrets"><a class="header" href="#secrets">Secrets</a></h3>
 <p>MOCO generates random passwords for users that MOCO uses to access MySQL.</p>
 <p>The generated passwords are stored in two Secrets.
@@ -1944,6 +1926,12 @@ The ServiceAccount is not bound to any Roles/ClusterRoles.</p>
 <p>To restore data from a backup, MOCO creates a Job.
 MOCO deletes the Job after the Job finishes successfully.</p>
 <p>If the Job fails, MOCO leaves the Job.</p>
+<h2 id="status-of-reconcliation"><a class="header" href="#status-of-reconcliation">Status of Reconcliation</a></h2>
+<ul>
+<li>In <code>MySQLCluster.Status.Condition</code>, there is a condition named <code>ReconcileSuccess</code>.</li>
+<li>This indicates the status of reconcilation.</li>
+<li>The condition will be <code>True</code> when the reconcile function successfully finishes.</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="how-moco-maintains-mysql-clusters"><a class="header" href="#how-moco-maintains-mysql-clusters">How MOCO maintains MySQL clusters</a></h1>
 <p>For each <a href="crd_mysqlcluster.html">MySQLCluster</a>, MOCO creates and maintains a set of <code>mysqld</code> instances.
 The set contains one <em>primary</em> instance and may contain <em>multiple</em> replica instances depending on the <code>spec.replicas</code> value of MySQLCluster.</p>

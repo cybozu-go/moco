@@ -147,7 +147,6 @@
 <h3 id="sub-resources"><a class="header" href="#sub-resources">Sub Resources</a></h3>
 <ul>
 <li><a href="#backupstatus">BackupStatus</a></li>
-<li><a href="#mysqlclustercondition">MySQLClusterCondition</a></li>
 <li><a href="#mysqlclusterlist">MySQLClusterList</a></li>
 <li><a href="#mysqlclusterspec">MySQLClusterSpec</a></li>
 <li><a href="#mysqlclusterstatus">MySQLClusterStatus</a></li>
@@ -185,17 +184,6 @@
 </tbody></table>
 </div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
-<h4 id="mysqlclustercondition"><a class="header" href="#mysqlclustercondition">MySQLClusterCondition</a></h4>
-<p>MySQLClusterCondition defines the condition of MySQLCluster.</p>
-<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>type</td><td>Type is the type of the condition.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType">MySQLClusterConditionType</a></td><td>true</td></tr>
-<tr><td>status</td><td>Status is the status of the condition.</td><td><a href="https://pkg.go.dev/k8s.io/api/core/v1#ConditionStatus">corev1.ConditionStatus</a></td><td>true</td></tr>
-<tr><td>reason</td><td>Reason is a one-word CamelCase reason for the condition's last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>message</td><td>Message is a human-readable message indicating details about last transition.</td><td>string</td><td>false</td></tr>
-<tr><td>lastTransitionTime</td><td>LastTransitionTime is the last time the condition transits from one status to another.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
-</tbody></table>
-</div>
-<p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="mysqlclusterlist"><a class="header" href="#mysqlclusterlist">MySQLClusterList</a></h4>
 <p>MySQLClusterList contains a list of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
@@ -227,7 +215,7 @@
 <h4 id="mysqlclusterstatus"><a class="header" href="#mysqlclusterstatus">MySQLClusterStatus</a></h4>
 <p>MySQLClusterStatus defines the observed state of MySQLCluster</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
-<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="#mysqlclustercondition">MySQLClusterCondition</a></td><td>false</td></tr>
+<tr><td>conditions</td><td>Conditions is an array of conditions.</td><td>[]<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition">metav1.Condition</a></td><td>false</td></tr>
 <tr><td>currentPrimaryIndex</td><td>CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet. Initially, this is zero.</td><td>int</td><td>true</td></tr>
 <tr><td>syncedReplicas</td><td>SyncedReplicas is the number of synced instances including the primary.</td><td>int</td><td>false</td></tr>
 <tr><td>errantReplicas</td><td>ErrantReplicas is the number of instances that have errant transactions.</td><td>int</td><td>false</td></tr>
