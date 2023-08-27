@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
@@ -44,6 +46,13 @@ var _ = Context("pvc_test", func() {
 			}
 			return errors.New("no health condition")
 		}).Should(Succeed())
+
+		kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "-u", "moco-writable", "cluster", "--",
+			"-e", "CREATE DATABASE test")
+		kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "-u", "moco-writable", "cluster", "--",
+			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
+		kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "-u", "moco-writable", "cluster", "--",
+			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
 	})
 
 	It("should pvc template change succeed", func() {
@@ -73,6 +82,12 @@ var _ = Context("pvc_test", func() {
 
 	It("should pvc resized", func() {
 		verifyPVCSize("pvc", "cluster")
+
+		out := kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "cluster", "--",
+			"-N", "-D", "test", "-e", "SELECT COUNT(*) FROM t")
+		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(count).To(Equal(1))
 	})
 
 	It("should pvc template storage size reduce succeed", func() {
@@ -133,6 +148,12 @@ var _ = Context("pvc_test", func() {
 
 	It("should pvc resized", func() {
 		verifyPVCSize("pvc", "cluster")
+
+		out := kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "cluster", "--",
+			"-N", "-D", "test", "-e", "SELECT COUNT(*) FROM t")
+		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(count).To(Equal(1))
 	})
 
 	It("metrics", func() {
