@@ -203,17 +203,16 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 					return
 				}
 				if err != nil {
-					if j == statusCheckRetryMax {
-						logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready")
-						return
-					} else {
-						logFromContext(ctx).Error(err, "failed to get mysqld status, will retry")
-						time.Sleep(statusCheckRetryInterval)
-						continue
-					}
+					ss.MySQLStatus[index] = ist
+					return
 				}
-				ss.MySQLStatus[index] = ist
-				return
+				// process errors
+				if j == statusCheckRetryMax {
+					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready")
+					return
+				}
+				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry")
+				time.Sleep(statusCheckRetryInterval)
 			}
 		}(i)
 	}
