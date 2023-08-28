@@ -202,7 +202,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				if err == dbop.ErrNop {
 					return
 				}
-				if err != nil {
+				if err == nil {
 					ss.MySQLStatus[index] = ist
 					return
 				}
