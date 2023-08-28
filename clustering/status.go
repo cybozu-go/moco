@@ -197,15 +197,20 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		go func(index int) {
 			defer wg.Done()
 
-			for j := 0; j < statusCheckRetryMax; j++ {
+			for j := 0; j <= statusCheckRetryMax; j++ {
 				ist, err := ss.DBOps[index].GetStatus(ctx)
 				if err == dbop.ErrNop {
 					return
 				}
 				if err != nil {
-					logFromContext(ctx).Error(err, "failed to get mysqld status")
-					time.Sleep(statusCheckRetryInterval)
-					continue
+					if j == statusCheckRetryMax {
+						logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready")
+						return
+					} else {
+						logFromContext(ctx).Error(err, "failed to get mysqld status, will retry")
+						time.Sleep(statusCheckRetryInterval)
+						continue
+					}
 				}
 				ss.MySQLStatus[index] = ist
 				return
