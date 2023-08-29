@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	statusCheckRetryMax      = 3
+	statusCheckRetryMax      = 2
 	statusCheckRetryInterval = 3 * time.Second
 )
 
