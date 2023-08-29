@@ -131,6 +131,9 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 		case i == 0: // volume size is equal
 			continue
 		case i == 1: // current volume size is greater than new size
+			// The size of the Persistent Volume Claims (PVC) cannot be reduced.
+			// Although MOCO permits the reduction of PVC, an automatic resize is not performed.
+			// An error arises if a PVC involving reduction is passed, as it's unexpected.
 			return resizedPVC, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, newSize.String(), pvc.Spec.Resources.Requests.Storage().String(), ErrReduceVolumeSize)
 		case i == -1: // current volume size is smaller than new size
 			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize

@@ -159,7 +159,6 @@ func TestNeedResizePVC(t *testing.T) {
 			cluster:    newMySQLClusterWithVolumeSize(resource.MustParse("1Gi")),
 			sts:        newStatefulSetWithVolumeSize(resource.MustParse("2Gi")),
 			wantResize: false,
-			wantError:  ErrReduceVolumeSize,
 		},
 		{
 			name:    "StatefulSet has more PVCs",
@@ -201,6 +200,47 @@ func TestNeedResizePVC(t *testing.T) {
 			sts:        newStatefulSetWithVolumeSize(resource.MustParse("1Gi")),
 			wantResize: false,
 		},
+		{
+			name: "Mix expansion and reduction",
+			cluster: func() *mocov1beta2.MySQLCluster {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				pvc := mocov1beta2.PersistentVolumeClaim{
+					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
+					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
+						WithStorageClassName("default").WithResources(corev1ac.ResourceRequirements().
+						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
+					)),
+				}
+				cluster.Spec.VolumeClaimTemplates = append(cluster.Spec.VolumeClaimTemplates, pvc)
+				return cluster
+			}(),
+			sts: func() *appsv1.StatefulSet {
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				pvc := corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "new-data",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						StorageClassName: pointer.String("default"),
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
+						},
+					},
+				}
+
+				sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates, pvc)
+
+				return sts
+			}(),
+			wantResizeTarget: func() map[string]corev1.PersistentVolumeClaim {
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				pvc := sts.Spec.VolumeClaimTemplates[0]
+				m := make(map[string]corev1.PersistentVolumeClaim)
+				m[pvc.Name] = pvc
+				return m
+			}(),
+			wantResize: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -208,7 +248,7 @@ func TestNeedResizePVC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &MySQLClusterReconciler{}
 			resizeTarget, resize, err := r.needResizePVC(tt.cluster, tt.sts)
-			if err != nil {
+			if tt.wantError != nil {
 				if !errors.Is(err, tt.wantError) {
 					t.Fatalf("want error %v, got %v", tt.wantError, err)
 				}
@@ -224,7 +264,7 @@ func TestNeedResizePVC(t *testing.T) {
 
 			for key, value := range tt.wantResizeTarget {
 				if diff := cmp.Diff(value, resizeTarget[key]); len(diff) != 0 {
-					t.Fatalf("want resize target %v, got %v", value, resizeTarget[key])
+					t.Fatalf("unexpected resize target: %s", diff)
 				}
 			}
 		})

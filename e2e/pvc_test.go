@@ -102,7 +102,7 @@ var _ = Context("pvc_test", func() {
 				if cond.Type != mocov1beta2.ConditionHealthy {
 					continue
 				}
-				if cond.Status == corev1.ConditionTrue {
+				if cond.Status == metav1.ConditionTrue {
 					return nil
 				}
 				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
@@ -136,7 +136,7 @@ var _ = Context("pvc_test", func() {
 					if cond.Type != mocov1beta2.ConditionHealthy {
 						continue
 					}
-					if cond.Status == corev1.ConditionTrue {
+					if cond.Status == metav1.ConditionTrue {
 						return nil
 					}
 					return fmt.Errorf("cluster is not healthy: %s", cond.Status)
