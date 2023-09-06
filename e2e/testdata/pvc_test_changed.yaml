@@ -4,7 +4,7 @@ metadata:
   namespace: pvc
   name: cluster
 spec:
-  replicas: 1
+  replicas: 3
   mysqlConfigMapName: mycnf
   podTemplate:
     spec:

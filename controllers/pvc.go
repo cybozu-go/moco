@@ -131,6 +131,9 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 		case i == 0: // volume size is equal
 			continue
 		case i == 1: // current volume size is greater than new size
+			// The size of the Persistent Volume Claims (PVC) cannot be reduced.
+			// Although MOCO permits the reduction of PVC, an automatic resize is not performed.
+			// An error arises if a PVC involving reduction is passed, as it's unexpected.
 			return resizedPVC, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, newSize.String(), pvc.Spec.Resources.Requests.Storage().String(), ErrReduceVolumeSize)
 		case i == -1: // current volume size is smaller than new size
 			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
@@ -174,7 +177,12 @@ func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, 
 		case i == 0: // volume size is equal
 			continue
 		case i == 1: // volume size is greater
-			return nil, false, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, wantSize, deployedSize, ErrReduceVolumeSize)
+			// Due to the lack of support for volume size reduction, resizing will not be executed if it implies a smaller size.
+			// It's important to highlight that this does not induce an error.
+			// Instead, the recreation of the StatefulSet will be managed in the reconcileV1StatefulSet() operation, which follows this one.
+			// Hence, the execution flow remains uninterrupted.
+			// ref: docs/designdoc/support_reduce_volume_size.md
+			continue
 		case i == -1: // volume size is smaller
 			resizeTarget[pvc.Name] = pvcSet[pvc.Name]
 			continue
