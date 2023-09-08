@@ -138,7 +138,6 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to list object keys: %w", err)
 	}
-	sort.Strings(keys)
 
 	dumpKey, binlogKey, backupTime := rm.FindNearestDump(keys)
 	if dumpKey == "" {
@@ -195,16 +194,19 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 	return nil
 }
 
+// FindNearestDump finds the nearest dump file and binlog file to the restore point.
+// `keys` are object keys for the restoring instance. They need not be sorted.
 func (rm *RestoreManager) FindNearestDump(keys []string) (string, string, time.Time) {
+	sort.Strings(keys)
+
 	var nearest time.Time
 	var nearestDump, nearestBinlog string
 
 	for _, key := range keys {
-		if strings.HasSuffix(key, constants.BinlogFilename) {
-			nearestBinlog = key
-			continue
-		}
-		if !strings.HasSuffix(key, constants.DumpFilename) {
+		isBinlog := strings.HasSuffix(key, constants.BinlogFilename)
+		isDump := strings.HasSuffix(key, constants.DumpFilename)
+		if !isBinlog && !isDump {
+			rm.log.Info("skipping garbage", "key", key)
 			continue
 		}
 
@@ -215,6 +217,11 @@ func (rm *RestoreManager) FindNearestDump(keys []string) (string, string, time.T
 		}
 		if bkt.After(rm.restorePoint) {
 			break
+		}
+
+		if isBinlog {
+			nearestBinlog = key
+			continue
 		}
 
 		nearestDump = key
