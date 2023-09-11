@@ -91,7 +91,7 @@ For example, the user modifies the `.spec.volumeClaimTemplates` of the MySQLClus
       spec:
         containers:
         - name: mysqld
-          image: quay.io/cybozu/mysql:8.0.30
+          image: ghcr.io/cybozu-go/moco/mysql:8.0.30
     volumeClaimTemplates:
     - metadata:
         name: mysql-data
