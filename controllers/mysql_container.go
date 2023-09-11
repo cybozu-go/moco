@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -156,6 +157,9 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		corev1ac.EnvVar().
 			WithName(constants.ClusterNameEnvKey).
 			WithValue(cluster.Name),
+		corev1ac.EnvVar().
+			WithName(constants.GOMAXPROCSEnvKey).
+			WithValue("1"),
 	).WithEnvFrom(
 		corev1ac.EnvFromSource().
 			WithSecretRef(corev1ac.SecretEnvSource().
@@ -246,6 +250,11 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(cluster *mocov1beta2.My
 				WithName(constants.MySQLConfSecretVolumeName).
 				WithMountPath(constants.MyCnfSecretPath).
 				WithReadOnly(true),
+		).
+		WithEnv(
+			corev1ac.EnvVar().
+				WithName(constants.GOMAXPROCSEnvKey).
+				WithValue(constants.GOMAXPROCSDefault),
 		).
 		WithResources(
 			corev1ac.ResourceRequirements().
@@ -435,6 +444,13 @@ func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, c
 		if container.Name != nil && *container.Name == overwrite.Name.String() {
 			if overwrite.Resources != nil {
 				container.WithResources((*corev1ac.ResourceRequirementsApplyConfiguration)(overwrite.Resources))
+			}
+			if overwrite.GOMAXPROCS != "" {
+				newEnv := slices.DeleteFunc(container.Env, func(e corev1ac.EnvVarApplyConfiguration) bool {
+					return e.Name != nil && *e.Name == constants.GOMAXPROCSEnvKey
+				})
+				container.Env = newEnv
+				container.WithEnv(corev1ac.EnvVar().WithName(constants.GOMAXPROCSEnvKey).WithValue(overwrite.GOMAXPROCS))
 			}
 		}
 	}

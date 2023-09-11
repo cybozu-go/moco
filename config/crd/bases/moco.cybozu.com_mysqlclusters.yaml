@@ -6226,6 +6226,10 @@ spec:
                     items:
                       description: OverwriteContainer defines the container spec used
                       properties:
+                        gomaxprocs:
+                          description: GOMAXPROCS overwrites the GOMAXPROCS environment
+                            v
+                          type: string
                         name:
                           description: Name of the container to overwrite.
                           enum:

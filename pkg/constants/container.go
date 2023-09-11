@@ -60,3 +60,6 @@ const (
 
 // PreStop sleep duration
 const PreStopSeconds = "20"
+
+// container default environment variable values
+const GOMAXPROCSDefault = "1"

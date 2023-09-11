@@ -435,6 +435,10 @@ type OverwriteContainer struct {
 	// Resources is the container resource to be overwritten.
 	// +optional
 	Resources *ResourceRequirementsApplyConfiguration `json:"resources,omitempty"`
+
+	// GOMAXPROCS overwrites the GOMAXPROCS environment variables.
+	// +optional
+	GOMAXPROCS string `json:"gomaxprocs,omitempty"`
 }
 
 // ResourceRequirementsApplyConfiguration is the type defined to implement the DeepCopy method.

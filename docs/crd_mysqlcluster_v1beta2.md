@@ -123,6 +123,7 @@ OverwriteContainer defines the container spec used for overwriting.
 | ----- | ----------- | ------ | -------- |
 | name | Name of the container to overwrite. | [OverwriteableContainerName](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName) | true |
 | resources | Resources is the container resource to be overwritten. | *[ResourceRequirementsApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration) | false |
+| gomaxprocs | GOMAXPROCS overwrites the GOMAXPROCS environment variables. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

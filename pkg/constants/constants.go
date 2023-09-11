@@ -45,6 +45,7 @@ const (
 	PodNameEnvKey      = "POD_NAME"
 	PodNamespaceEnvKey = "POD_NAMESPACE"
 	ClusterNameEnvKey  = "CLUSTER_NAME"
+	GOMAXPROCSEnvKey   = "GOMAXPROCS"
 )
 
 // Secret keys to clone data from an external mysqld

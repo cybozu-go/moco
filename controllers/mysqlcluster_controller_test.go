@@ -731,6 +731,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				foundAgent = true
 				Expect(c.Image).To(Equal(testAgentImage))
 				Expect(c.Args).To(Equal([]string{"--max-delay", "60s"}))
+				Expect(c.Env).To(ContainElements(corev1.EnvVar{Name: constants.GOMAXPROCSEnvKey, Value: constants.GOMAXPROCSDefault}))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 			case constants.SlowQueryLogAgentContainerName:
@@ -740,6 +741,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
 			case constants.ExporterContainerName:
 				foundExporter = true
+				Expect(c.Env).To(ContainElements(corev1.EnvVar{Name: constants.GOMAXPROCSEnvKey, Value: constants.GOMAXPROCSDefault}))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
 			}
@@ -848,6 +850,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}).
 					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}),
 				),
+				GOMAXPROCS: "2",
 			},
 			{
 				Name: mocov1beta2.ExporterContainerName,
@@ -855,6 +858,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}).
 					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}),
 				),
+				GOMAXPROCS: "2",
 			},
 			{
 				Name: mocov1beta2.InitContainerName,
@@ -967,12 +971,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
+				Expect(c.Env).To(ContainElements(corev1.EnvVar{Name: constants.GOMAXPROCSEnvKey, Value: "2"}))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 			case constants.ExporterContainerName:
 				foundExporter = true
 				Expect(c.Image).To(Equal(testExporterImage))
 				Expect(c.Args).To(HaveLen(3))
+				Expect(c.Env).To(ContainElements(corev1.EnvVar{Name: constants.GOMAXPROCSEnvKey, Value: "2"}))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
 			case "dummy":
