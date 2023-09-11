@@ -5,10 +5,55 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.17.0] - 2023-09-11
+
+### Breaking Changes
+
+#### Migrate image registry
+We migrated the image repository of mysql, fluent-bit, and mysqld_exporter to `ghcr.io`.
+From MOCO v0.17.0, please use the following images.
+
+- [ghcr.io/cybozu-go/moco/mysql](https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql)
+- [ghcr.io/cybozu-go/moco/fluent-bit](https://github.com/cybozu-go/moco/pkgs/container/moco%2Ffluent-bit)
+- [ghcr.io/cybozu-go/moco/mysqld_exporter](https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysqld_exporter)
+
+The [`quay.io/cybozu/mysql`](https://quay.io/repository/cybozu/mysql), [`quay.io/cybozu/fluent-bit`](https://quay.io/repository/cybozu/fluent-bit), and [`quay.io/cybozu/mysqld_exporter`](https://quay.io/repository/cybozu/mysqld_exporter) will not be updated in the future.
+
+In addition, from this time, the mysql image does not contain the moco-init binary.
+Therefore, MOCO v0.13.0 or lower cannot use `ghcr.io/cybozu-go/moco/mysql`.
+
+#### Dropped metrics
+The default mysqld_exporter has been upgraded to [v0.15.0](https://github.com/prometheus/mysqld_exporter/releases/tag/v0.15.0).
+Accordingly, the following metrics will no longer be output.
+  - `mysql_exporter_scrapes_total`
+  - `mysql_exporter_scrape_errors_total`
+  - `mysql_last_scrape_failed`
+
+### Added
+- Support Kubernetes 1.27 [#525](https://github.com/cybozu-go/moco/pull/525)
+- Support redunce volume size [#538](https://github.com/cybozu-go/moco/pull/538), [#552](https://github.com/cybozu-go/moco/pull/552)
+- Upgrade fluent-bit v2.1.8 and mysqld-exporter v0.15.0 [#553](https://github.com/cybozu-go/moco/pull/553), [#554](https://github.com/cybozu-go/moco/pull/554)
+- Add Updated Conditon in Status [#546](https://github.com/cybozu-go/moco/pull/546)
+
+### Changed
+- Disable innodb_undo_log_truncate [#526](https://github.com/cybozu-go/moco/pull/526)
+- Migrate image registry from qury.io to ghcr.io [#528](https://github.com/cybozu-go/moco/pull/528), [#529](https://github.com/cybozu-go/moco/pull/529), [#533](https://github.com/cybozu-go/moco/pull/533), [#535](https://github.com/cybozu-go/moco/pull/535), [#542](https://github.com/cybozu-go/moco/pull/542), [#555](https://github.com/cybozu-go/moco/pull/555)
+- incorporate moco-agent v0.10.0 [#551](https://github.com/cybozu-go/moco/pull/551)
+- Fix retry message when gathering mysqld status [#559](https://github.com/cybozu-go/moco/pull/559)
+
+### Fixed
+- backup: PITR did not work sometimes [#565](https://github.com/cybozu-go/moco/pull/565)
+- Set kubeVersion compatible with EKS [#536](https://github.com/cybozu-go/moco/pull/536)
+- MySQLClusterSpec.BackupPolicyName should be annotated omitempty [#532](https://github.com/cybozu-go/moco/pull/532)
+- Fix broken links [#541](https://github.com/cybozu-go/moco/pull/541)
+- Fix log message when demote annotation is added [#560](https://github.com/cybozu-go/moco/pull/560)
+
+### Contributors
+- @fgeorgeanybox
+
 ## [0.16.1] - 2023-04-07
 
 ### Added
-
 - Add podAntiAffinity to MySQL Cluster StatefulSet. [#513](https://github.com/cybozu-go/moco/pull/513)
 - Support Google Cloud Storage [#493](https://github.com/cybozu-go/moco/pull/493) [#501](https://github.com/cybozu-go/moco/pull/501)
 - Add qps flag [#518](https://github.com/cybozu-go/moco/pull/518)
@@ -57,7 +102,7 @@ This release was canceled because the release workflow was incorrect.
 This release allows MOCO users to leave the moco-init binary out of a custom mysqld container image.
 Now the moco-init binary is copied from the moco-agent container through an emptyDir volume.
 
-To maintain backward compatibility, the [`moco-mysql` images](https://quay.io/repository/cybozu/moco-mysql?tab=tags) provided by Cybozu still contain the old moco-init binary.
+To maintain backward compatibility, the [`mysql` images](https://quay.io/repository/cybozu/mysql?tab=tags) provided by Cybozu still contain the old moco-init binary.
 
 ### Added
 - Copy moco-init binary from moco-agent image [#461](https://github.com/cybozu-go/moco/pull/461)
@@ -425,7 +470,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/cybozu-go/moco/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/cybozu-go/moco/compare/v0.15.0...v0.16.1
 [0.15.0]: https://github.com/cybozu-go/moco/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/cybozu-go/moco/compare/v0.14.0...v0.14.1
