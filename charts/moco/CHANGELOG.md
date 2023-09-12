@@ -5,6 +5,17 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2023-09-12
+
+### Changed
+- Bump appVersion to 0.17.0. [#569](https://github.com/cybozu-go/moco/pull/569)
+
+### Fixed
+- Set kubeVersion compatible with EKS [#536](https://github.com/cybozu-go/moco/pull/536)
+
+### Contributors
+- @fgeorgeanybox
+
 ## [0.6.0] - 2023-04-06
 
 ### Changed
@@ -114,7 +125,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.6.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.7.0...HEAD
+[0.7.0]: https://github.com/cybozu-go/moco/compare/chart-v0.6.0...chart-v0.7.0
 [0.6.0]: https://github.com/cybozu-go/moco/compare/chart-v0.5.0...chart-v0.6.0
 [0.5.0]: https://github.com/cybozu-go/moco/compare/chart-v0.4.1...chart-v0.5.0
 [0.4.1]: https://github.com/cybozu-go/moco/compare/chart-v0.4.0...chart-v0.4.1
