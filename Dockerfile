@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM quay.io/cybozu/golang:1.19-focal as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.21-focal as builder
 
 ARG TARGETARCH
 
