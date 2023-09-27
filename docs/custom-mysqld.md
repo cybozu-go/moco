@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.34
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.
@@ -19,7 +19,7 @@ If you want to build and use your own `mysqld`, read the rest of this document.
 ## Dockerfile
 
 The easiest way to build a custom `mysqld` for MOCO is to copy and edit our Dockerfile.
-You can find it under [`mysql` directory in `github.com/cybozu/neco-containers`](https://github.com/cybozu/neco-containers/tree/main/mysql).
+You can find it under [`containers/mysql` directory in `github.com/cybozu-go/moco`](https://github.com/cybozu-go/moco/tree/main/containers/mysql).
 
 You should keep the following points:
 

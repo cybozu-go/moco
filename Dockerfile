@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.21-focal as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.21-jammy as builder
 
 ARG TARGETARCH
 
@@ -20,13 +20,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.0.32.2 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.0.34.1 as mysql
 
 # the backup image
-FROM --platform=$TARGETPLATFORM quay.io/cybozu/ubuntu:20.04
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.0.30-1
+ARG MYSQLSH_VERSION=8.0.34-1
 
 COPY --from=builder /work/moco-backup /moco-backup
 
@@ -35,9 +35,9 @@ COPY --from=mysql /usr/local/mysql/bin/mysqlbinlog /usr/local/mysql/bin/mysqlbin
 COPY --from=mysql /usr/local/mysql/bin/mysql       /usr/local/mysql/bin/mysql
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.8 s3cmd \
+  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.10 s3cmd \
   && rm -rf /var/lib/apt/lists/* \
-  && curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_${MYSQLSH_VERSION}ubuntu20.04_amd64.deb \
+  && curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_${MYSQLSH_VERSION}ubuntu22.04_amd64.deb \
   && dpkg -i /tmp/mysqlsh.deb \
   && rm -f /tmp/mysqlsh.deb
 
