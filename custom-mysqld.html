@@ -150,12 +150,12 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.30
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.34
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
 <p>The easiest way to build a custom <code>mysqld</code> for MOCO is to copy and edit our Dockerfile.
-You can find it under <a href="https://github.com/cybozu/neco-containers/tree/main/mysql"><code>mysql</code> directory in <code>github.com/cybozu/neco-containers</code></a>.</p>
+You can find it under <a href="https://github.com/cybozu-go/moco/tree/main/containers/mysql"><code>containers/mysql</code> directory in <code>github.com/cybozu-go/moco</code></a>.</p>
 <p>You should keep the following points:</p>
 <ul>
 <li><code>ENTRYPOINT</code> should be <code>[&quot;mysqld&quot;]</code></li>
