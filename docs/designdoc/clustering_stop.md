@@ -56,15 +56,15 @@ r.ClusterManager.Stop(req.NamespacedName)
 The process of stopping the `ClusterManager` is carried out only at the first reconcile
 after the execution of `kubectl moco stop clustering <CLSUTER_NAME>`.
 
-The `ClusteringStopped` gets added to `.status.conditions` of MySQLCluster.
-The time when the `ClusterManager` was stopped is recorded in `.lastTransitionTime`.
-It also updates the `.status` of `Available` and `Healthy` to `Unknown`.
+The `ClusteringActive` is added to `.status.conditions` of MySQLCluster.
+Normally `True` is recorded, but `False` is recorded when the clustering is stopped.
+Also, when the clustering is stopped, the `Available` and `Healthy` statuses are also updated to `Unknown`.
 
 ```yaml
 status:
   conditions:
-    - type: ClusteringStopped
-      status: "True"
+    - type: ClusteringActive
+      status: "False"
       lastTransitionTime: 2018-01-01T00:00:00Z
     - type: Available
       status: "Unknown"
@@ -78,8 +78,8 @@ Also, `CLUSTERING STOPPED` will be added to the table displayed when you do `kub
 
 ```console
 $ kubectl get mysqlcluster
-NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING STOPPED   RECONCILE STOPPED   LAST BACKUP  
-test   Unknown     Unknown   0         2                                   True                                     <no value>
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING STOPPED   RECONCILE STOPPED   LAST BACKUP
+test   Unknown     Unknown   0         2                                   False                True                <no value>
 ```
 
 When you execute `kubectl moco start clustering <CLSUTER_NAME>`,
@@ -106,22 +106,23 @@ Therefore, even if changes are made to the fields of the MySQLCluster resource, 
 The only exception is the stopping and restarting of clustering by the `moco.cybozu.com/clustering-stopped` annotation.
 Also, the `ClusterManager` does not stop even if the reconcile process is stopped.
 
-The `ReconciliationStopped` gets added to `.status.conditions` of MySQLCluster.
+The `ReconciliationActive` gets added to `.status.conditions` of MySQLCluster.
+Normally `True` is recorded, but `False` is recorded when the reconciliation is stopped.
 
 ```yaml
 status:
   conditions:
-    - type: ReconciliationStopped
-      status: "True"
+    - type: ReconciliationActive
+      status: "False"
       lastTransitionTime: 2018-01-01T00:00:00Z
 ```
 
-Also, `RECONCILE STOPPED` will be added to the table displayed when you do `kubectl get mysqlcluster`.
+Also, `RECONCILE ACTIVE` will be added to the table displayed when you do `kubectl get mysqlcluster`.
 
 ```console
 $ kubectl get mysqlcluster
-NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING STOPPED   RECONCILE STOPPED   LAST BACKUP  
-test   Unknown     Unknown   0         2                                                        True                <no value>
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING ACTIVE   RECONCILE ACTIVE   LAST BACKUP
+test   Unknown     Unknown   0         2                                   True                False              <no value>
 ```
 
 When you execute `kubectl moco start reconciliation <CLSUTER_NAME>`,
