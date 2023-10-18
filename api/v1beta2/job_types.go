@@ -201,6 +201,9 @@ type BucketConfig struct {
 	// +kubebuilder:default=s3
 	// +optional
 	BackendType string `json:"backendType,omitempty"`
+
+	// +optional
+	CaCertFilePath string `json:"caCertFilePath,omitempty"`
 }
 
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.

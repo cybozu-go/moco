@@ -997,6 +997,9 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	if bc.BackendType != "" {
 		args = append(args, "--backend-type="+bc.BackendType)
 	}
+	if bc.CaCertFilePath != "" {
+		args = append(args, "--ca-cert-file-path="+bc.CaCertFilePath)
+	}
 
 	return append(args, bc.BucketName)
 }

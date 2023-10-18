@@ -422,6 +422,8 @@ spec:
                           description: The name of the bucket
                           minLength: 1
                           type: string
+                        caCertFilePath:
+                          type: string
                         endpointURL:
                           description: The API endpoint URL.
                           pattern: ^https?://.*
@@ -2451,6 +2453,8 @@ spec:
                         bucketName:
                           description: The name of the bucket
                           minLength: 1
+                          type: string
+                        caCertFilePath:
                           type: string
                         endpointURL:
                           description: The API endpoint URL.
@@ -7721,6 +7725,8 @@ spec:
                             bucketName:
                               description: The name of the bucket
                               minLength: 1
+                              type: string
+                            caCertFilePath:
                               type: string
                             endpointURL:
                               description: The API endpoint URL.
@@ -13605,6 +13611,8 @@ spec:
                             bucketName:
                               description: The name of the bucket
                               minLength: 1
+                              type: string
+                            caCertFilePath:
                               type: string
                             endpointURL:
                               description: The API endpoint URL.

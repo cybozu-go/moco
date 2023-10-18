@@ -433,6 +433,7 @@ func autoConvert__BucketConfig_To_v1beta2_BucketConfig(in *BucketConfig, out *v1
 	out.EndpointURL = in.EndpointURL
 	out.UsePathStyle = in.UsePathStyle
 	out.BackendType = in.BackendType
+	out.CaCertFilePath = in.CaCertFilePath
 	return nil
 }
 
@@ -447,6 +448,7 @@ func autoConvert_v1beta2_BucketConfig_To__BucketConfig(in *v1beta2.BucketConfig,
 	out.EndpointURL = in.EndpointURL
 	out.UsePathStyle = in.UsePathStyle
 	out.BackendType = in.BackendType
+	out.CaCertFilePath = in.CaCertFilePath
 	return nil
 }
 
