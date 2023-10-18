@@ -3,7 +3,6 @@ package clustering
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -79,6 +78,16 @@ func testGetCluster(ctx context.Context) (*mocov1beta2.MySQLCluster, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+func testGetCondition(cluster *mocov1beta2.MySQLCluster, condType string) (metav1.Condition, error) {
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type != condType {
+			continue
+		}
+		return cond, nil
+	}
+	return metav1.Condition{}, fmt.Errorf("no %s condition", condType)
 }
 
 var _ = Describe("manager", func() {
@@ -166,35 +175,30 @@ var _ = Describe("manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
 
-		Eventually(func() error {
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("not healthy")
-			}
-			return fmt.Errorf("no health condition")
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
 		}).Should(Succeed())
 
-		var isAvailable, isInitialized bool
-		for _, cond := range cluster.Status.Conditions {
-			switch cond.Type {
-			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == metav1.ConditionTrue
-			case mocov1beta2.ConditionInitialized:
-				isInitialized = cond.Status == metav1.ConditionTrue
-			}
-		}
-		Expect(isAvailable).To(BeTrue())
-		Expect(isInitialized).To(BeTrue())
+		// wait for pods' metadata changes
+		Eventually(func(g Gomega) {
+			pod := &corev1.Pod{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+		}).Should(Succeed())
+
+		condInitialized, err := testGetCondition(cluster, mocov1beta2.ConditionInitialized)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condInitialized.Status).To(Equal(metav1.ConditionTrue))
+		condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condAvailable.Status).To(Equal(metav1.ConditionTrue))
 
 		Expect(cluster.Status.ErrantReplicaList).To(BeEmpty())
 		Expect(cluster.Status.ErrantReplicas).To(Equal(0))
@@ -205,11 +209,6 @@ var _ = Describe("manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(events.Items).To(HaveLen(1))
 		Expect(events.Items[0].Reason).To(Equal(event.SetWritable.Reason))
-
-		pod := &corev1.Pod{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
 
 		st := of.getInstanceStatus(cluster.PodHostname(0))
 		Expect(st).NotTo(BeNil())
@@ -224,58 +223,48 @@ var _ = Describe("manager", func() {
 
 		By("set the instance 0 failing")
 		of.setFailing(cluster.PodHostname(0), true)
-		Eventually(func() error {
+
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == metav1.ConditionFalse {
-					return nil
-				}
-				return fmt.Errorf("cluster is still healthy")
-			}
-			return fmt.Errorf("no health status")
+			g.Expect(err).NotTo(HaveOccurred())
+
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
 		}).Should(Succeed())
 
-		for _, cond := range cluster.Status.Conditions {
-			switch cond.Type {
-			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == metav1.ConditionTrue
-			case mocov1beta2.ConditionInitialized:
-				isInitialized = cond.Status == metav1.ConditionTrue
-			}
-		}
-		Expect(isAvailable).To(BeFalse())
-		Expect(isInitialized).To(BeTrue())
+		// confirm that the role label is not changed
+		Consistently(func(g Gomega) {
+			pod := &corev1.Pod{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+		}).Should(Succeed())
+
+		condInitialized, err = testGetCondition(cluster, mocov1beta2.ConditionInitialized)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condInitialized.Status).To(Equal(metav1.ConditionTrue))
+		condAvailable, err = testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condAvailable.Status).To(Equal(metav1.ConditionFalse))
 
 		By("stopping the manager process")
 		cm.Stop(client.ObjectKeyFromObject(cluster))
 		time.Sleep(400 * time.Millisecond)
 		of.setFailing(cluster.PodHostname(0), false)
 
-		Eventually(func() bool {
+		Eventually(func(g Gomega) {
 			ch := make(chan prometheus.Metric, 2)
 			metrics.ErrantReplicasVec.Collect(ch)
-			select {
-			case <-ch:
-				return true
-			default:
-				return false
-			}
-		}).Should(BeFalse())
+			g.Expect(ch).NotTo(Receive())
+		}).Should(Succeed())
 
 		cluster, err = testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		for _, cond := range cluster.Status.Conditions {
-			if cond.Type != mocov1beta2.ConditionHealthy {
-				continue
-			}
-			Expect(cond.Status).To(Equal(metav1.ConditionFalse))
-		}
+		condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
 	})
 
 	It("should manage an intermediate primary, switchover, and scaling out the cluster", func() {
@@ -290,70 +279,50 @@ var _ = Describe("manager", func() {
 		defer func() {
 			cm.Stop(client.ObjectKeyFromObject(cluster))
 			time.Sleep(400 * time.Millisecond)
-			Eventually(func() bool {
+			Eventually(func(g Gomega) {
 				ch := make(chan prometheus.Metric, 2)
 				metrics.ErrantReplicasVec.Collect(ch)
-				select {
-				case <-ch:
-					return true
-				default:
-					return false
-				}
-			}).Should(BeFalse())
+				g.Expect(ch).NotTo(Receive())
+			}).Should(Succeed())
 		}()
 
 		By("checking cloning status")
-		Eventually(func() error {
+		// wait for cluster's condition changes
+		// at this time, the clone cannot be started because source secret does not exist.
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionInitialized {
-					continue
-				}
-				if cond.Reason == StateCloning.String() {
-					return nil
-				}
-				return fmt.Errorf("not cloning")
-			}
-			return fmt.Errorf("no initialized condition")
+			condInitialized, err := testGetCondition(cluster, mocov1beta2.ConditionInitialized)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condInitialized.Reason).To(Equal(StateCloning.String()))
 		}).Should(Succeed())
 
-		Consistently(func() error {
+		// confirm that the manager continues to try to clone
+		Consistently(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.Cloned).To(BeFalse())
 
-			if cluster.Status.Cloned {
-				return errors.New("status.cloned is set to true")
-			}
-
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionInitialized {
-					continue
-				}
-				if cond.Reason == StateCloning.String() {
-					return nil
-				}
-				return fmt.Errorf("not cloning")
-			}
-			return fmt.Errorf("no initialized condition")
+			condInitialized, err := testGetCondition(cluster, mocov1beta2.ConditionInitialized)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condInitialized.Reason).To(Equal(StateCloning.String()))
 		}, 3).Should(Succeed())
 
-		var isAvailable, isHealthy bool
-		for _, cond := range cluster.Status.Conditions {
-			switch cond.Type {
-			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == metav1.ConditionTrue
-			case mocov1beta2.ConditionHealthy:
-				isHealthy = cond.Status == metav1.ConditionTrue
-			}
-		}
-		Expect(isAvailable).To(BeFalse())
-		Expect(isHealthy).To(BeFalse())
+		// role label should not be set because the initialization of primary is not finished
+		Consistently(func(g Gomega) {
+			pod := &corev1.Pod{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
+		}).Should(Succeed())
+
+		condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condAvailable.Status).To(Equal(metav1.ConditionFalse))
+		condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
 
 		Expect(ms.checkCount).To(MetricsIs(">", 0))
 		Expect(ms.errorCount).To(MetricsIs(">", 0))
@@ -378,22 +347,13 @@ var _ = Describe("manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("checking the cluster to become healthy")
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("not healthy")
-			}
-			return fmt.Errorf("no health condition")
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
 		}).Should(Succeed())
 
 		Expect(cluster.Status.Cloned).To(BeTrue())
@@ -438,44 +398,36 @@ var _ = Describe("manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 
-		Eventually(func() error {
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.SyncedReplicas).To(Equal(3), "status is not updated yet")
 
-			if cluster.Status.SyncedReplicas != 3 {
-				return errors.New("status is not updated")
-			}
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 0:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
 				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("not healthy")
 			}
-			return fmt.Errorf("no health condition")
 		}).Should(Succeed())
 
 		Expect(ms.available).To(MetricsIs("==", 1))
 		Expect(ms.healthy).To(MetricsIs("==", 1))
 		Expect(ms.replicas).To(MetricsIs("==", 3))
 		Expect(ms.readyReplicas).To(MetricsIs("==", 3))
-
-		for i := 0; i < 3; i++ {
-			pod := &corev1.Pod{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
-			Expect(err).NotTo(HaveOccurred())
-			switch i {
-			case 0:
-				Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
-			default:
-				Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
-			}
-		}
 
 		st0 := of.getInstanceStatus(cluster.PodHostname(0))
 		Expect(st0).NotTo(BeNil())
@@ -493,6 +445,7 @@ var _ = Describe("manager", func() {
 		// advance the executed GTID set on the source and the primary
 		testSetGTID("external", "ex:1,ex:2,ex:3,ex:4,ex:5")
 		testSetGTID(cluster.PodHostname(0), "ex:1,ex:2,ex:3,ex:4,ex:5")
+
 		pod0 := &corev1.Pod{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(0)}, pod0)
 		Expect(err).NotTo(HaveOccurred())
@@ -500,29 +453,24 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Update(ctx, pod0)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() error {
+		// wait for the new primary to be selected
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
-			if cluster.Status.CurrentPrimaryIndex == 0 {
-				return errors.New("the primary is not switched yet")
-			}
-			return nil
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.CurrentPrimaryIndex).NotTo(Equal(0), "the primary is not switched yet")
 		}).Should(Succeed())
+
 		newPrimary := cluster.Status.CurrentPrimaryIndex
 
 		// check that MOCO waited for the GTID
 		gtidNew, _ := testGetGTID(cluster.PodHostname(newPrimary))
 		Expect(gtidNew).To(Equal("ex:1,ex:2,ex:3,ex:4,ex:5"))
 
-		Eventually(func() int {
+		Eventually(func(g Gomega) {
 			st := of.getInstanceStatus(cluster.PodHostname(newPrimary))
-			if st == nil {
-				return 0
-			}
-			return len(st.ReplicaHosts)
-		}).Should(Equal(2))
+			g.Expect(st).NotTo(BeNil())
+			g.Expect(st.ReplicaHosts).To(HaveLen(2))
+		}).Should(Succeed())
 
 		events = &corev1.EventList{}
 		err = k8sClient.List(ctx, events, client.InNamespace("test"))
@@ -539,22 +487,31 @@ var _ = Describe("manager", func() {
 		Expect(cloneEvents).To(Equal(2))
 		Expect(switchOverEvents).To(Equal(1))
 
-		Eventually(func() error {
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case newPrimary:
+					g.Expect(pod.Annotations).NotTo(HaveKey(constants.AnnDemote))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Annotations).NotTo(HaveKey(constants.AnnDemote))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
 				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("not healthy")
 			}
-			return fmt.Errorf("no health condition")
 		}).Should(Succeed())
 
 		Expect(cluster.Status.SyncedReplicas).To(Equal(3))
@@ -565,18 +522,6 @@ var _ = Describe("manager", func() {
 		Expect(ms.errantReplicas).To(MetricsIs("==", 0))
 		Expect(ms.switchoverCount).To(MetricsIs("==", 1))
 		Expect(ms.failoverCount).To(MetricsIs("==", 0))
-
-		for i := 0; i < 3; i++ {
-			pod := &corev1.Pod{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
-			Expect(err).NotTo(HaveOccurred())
-			if i == newPrimary {
-				Expect(pod.Annotations).NotTo(HaveKey(constants.AnnDemote))
-				Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
-			} else {
-				Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
-			}
-		}
 
 		for i := 0; i < 3; i++ {
 			st := of.getInstanceStatus(cluster.PodHostname(i))
@@ -599,26 +544,37 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			st := of.getInstanceStatus(cluster.PodHostname(newPrimary))
-			if st == nil {
-				return errors.New("failed to get status")
+			g.Expect(st).NotTo(BeNil())
+			g.Expect(st.GlobalVariables.ReadOnly).To(BeFalse(), "the primary is still read-only")
+		}).Should(Succeed())
+
+		// pods' metadata should not be changed
+		Consistently(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case newPrimary:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
 			}
-			if !st.GlobalVariables.ReadOnly {
-				return nil
-			}
-			return errors.New("the primary is still read-only")
 		}).Should(Succeed())
 
 		for i := 0; i < 3; i++ {
 			st := of.getInstanceStatus(cluster.PodHostname(i))
 			Expect(st).NotTo(BeNil())
-			if i == newPrimary {
+			switch i {
+			case newPrimary:
 				Expect(st.GlobalVariables.ReadOnly).To(BeFalse())
 				Expect(st.GlobalVariables.SemiSyncMasterEnabled).To(BeTrue())
 				Expect(st.ReplicaStatus).To(BeNil())
 				Expect(st.ReplicaHosts).To(HaveLen(2))
-			} else {
+			default:
 				Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
 				Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeTrue())
 				Expect(st.ReplicaStatus).NotTo(BeNil())
@@ -639,34 +595,36 @@ var _ = Describe("manager", func() {
 		defer func() {
 			cm.Stop(client.ObjectKeyFromObject(cluster))
 			time.Sleep(400 * time.Millisecond)
-			Eventually(func() bool {
+			Eventually(func(g Gomega) {
 				ch := make(chan prometheus.Metric, 2)
 				metrics.ErrantReplicasVec.Collect(ch)
-				select {
-				case <-ch:
-					return true
-				default:
-					return false
-				}
-			}).Should(BeFalse())
+				g.Expect(ch).NotTo(Receive())
+			}).Should(Succeed())
 		}()
 
-		Eventually(func() error {
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 5; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 0:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
 				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("not healthy")
 			}
-			return fmt.Errorf("no health condition")
 		}).Should(Succeed())
 
 		By("making an errant replica")
@@ -677,39 +635,42 @@ var _ = Describe("manager", func() {
 		testSetGTID(cluster.PodHostname(2), "p0:1")
 		testSetGTID(cluster.PodHostname(3), "p0:1,p0:2,p0:3")
 		testSetGTID(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4,p0:5")
-		Eventually(func() int {
-			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return 0
-			}
-			return cluster.Status.ErrantReplicas
-		}).Should(Equal(1))
 
-		var isHealthy, isAvailable bool
-		for _, cond := range cluster.Status.Conditions {
-			switch cond.Type {
-			case mocov1beta2.ConditionHealthy:
-				isHealthy = cond.Status == metav1.ConditionTrue
-			case mocov1beta2.ConditionAvailable:
-				isAvailable = cond.Status == metav1.ConditionTrue
+		// wait for the errant replica is detected
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.ErrantReplicas).To(Equal(1))
+			g.Expect(cluster.Status.ErrantReplicaList).To(Equal([]int{1}))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 5; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 0:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				case 1:
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
 			}
-		}
-		Expect(isHealthy).To(BeFalse())
-		Expect(isAvailable).To(BeTrue())
+		}).Should(Succeed())
+
+		condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condAvailable.Status).To(Equal(metav1.ConditionTrue))
+		condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
 
 		Expect(ms.available).To(MetricsIs("==", 1))
 		Expect(ms.healthy).To(MetricsIs("==", 0))
 		Expect(ms.errantReplicas).To(MetricsIs("==", 1))
-
-		Eventually(func() bool {
-			pod := &corev1.Pod{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(1)}, pod)
-			if err != nil {
-				return true
-			}
-			_, ok := pod.Labels[constants.LabelMocoRole]
-			return ok
-		}).Should(BeFalse())
 
 		st1 := of.getInstanceStatus(cluster.PodHostname(1))
 		Expect(st1).NotTo(BeNil())
@@ -723,56 +684,53 @@ var _ = Describe("manager", func() {
 		of.setRetrievedGTIDSet(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4,p0:5")
 		of.setFailing(cluster.PodHostname(0), true)
 
-		Eventually(func() int {
+		// wait for the new primary to be selected
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return -1
-			}
-			return cluster.Status.CurrentPrimaryIndex
-		}).Should(Equal(3))
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(3), "the primary is not switched yet")
+		}).Should(Succeed())
 
 		// confirm that MOCO waited fot the retrieved GTID set to be executed
 		st3 := of.getInstanceStatus(cluster.PodHostname(3))
 		Expect(st3.GlobalVariables.ExecutedGTID).To(Equal("p0:1,p0:2,p0:3,p0:4,p0:5"))
 
-		Eventually(func() bool {
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return false
-			}
-			for _, cond := range cluster.Status.Conditions {
-				switch cond.Type {
-				case mocov1beta2.ConditionHealthy:
-					isHealthy = cond.Status == metav1.ConditionTrue
-				case mocov1beta2.ConditionAvailable:
-					if cond.Status == metav1.ConditionTrue {
-						return true
-					}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(3))
+
+			condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condAvailable.Status).To(Equal(metav1.ConditionTrue))
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 5; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 1:
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
+				case 3:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
 				}
 			}
-			return false
-		}).Should(BeTrue())
-		Expect(isHealthy).To(BeFalse())
+		}).Should(Succeed())
 
 		st3 = of.getInstanceStatus(cluster.PodHostname(3))
 		Expect(st3.GlobalVariables.ReadOnly).To(BeFalse())
 
 		Expect(cluster.Status.ErrantReplicas).To(Equal(1))
 		Expect(cluster.Status.ErrantReplicaList).To(Equal([]int{1}))
-
-		for i := 0; i < 5; i++ {
-			pod := &corev1.Pod{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
-			Expect(err).NotTo(HaveOccurred())
-			switch i {
-			case 0, 2, 4:
-				Expect(pod.Labels).To(HaveKeyWithValue(constants.LabelMocoRole, constants.RoleReplica))
-			case 1:
-				Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
-			case 3:
-				Expect(pod.Labels).To(HaveKeyWithValue(constants.LabelMocoRole, constants.RolePrimary))
-			}
-		}
 
 		Expect(ms.available).To(MetricsIs("==", 1))
 		Expect(ms.healthy).To(MetricsIs("==", 0))
@@ -799,26 +757,46 @@ var _ = Describe("manager", func() {
 			return ms.errantReplicas
 		}).Should(MetricsIs("==", 0))
 
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.ErrantReplicas).To(Equal(0))
+			g.Expect(cluster.Status.ErrantReplicaList).To(BeEmpty())
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 5; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 3:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
+			}
+		}).Should(Succeed())
+
 		By("stopping instances to make the cluster lost")
 		of.setFailing(cluster.PodHostname(3), true)
 		of.setFailing(cluster.PodHostname(1), true)
 
-		Eventually(func() bool {
+		Eventually(func(g Gomega) {
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return false
-			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionAvailable {
-					continue
-				}
-				if cond.Status != metav1.ConditionFalse {
-					continue
-				}
-				return cond.Reason == StateLost.String()
-			}
-			return false
-		}).Should(BeTrue())
+			g.Expect(err).NotTo(HaveOccurred())
+
+			condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condAvailable.Status).To(Equal(metav1.ConditionFalse))
+			g.Expect(condAvailable.Reason).To(Equal(StateLost.String()))
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
+			g.Expect(condHealthy.Reason).To(Equal(StateLost.String()))
+		}).Should(Succeed())
 	})
 
 	It("should export backup related metrics", func() {
@@ -828,19 +806,18 @@ var _ = Describe("manager", func() {
 		defer cm.StopAll()
 
 		var cluster *mocov1beta2.MySQLCluster
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			var err error
 			cluster, err = testGetCluster(ctx)
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
+
 			cluster.Status.Backup.Time = metav1.Now()
 			cluster.Status.Backup.Elapsed = metav1.Duration{Duration: time.Minute}
 			cluster.Status.Backup.DumpSize = 10
 			cluster.Status.Backup.BinlogSize = 20
 			cluster.Status.Backup.WorkDirUsage = 30
 			cluster.Status.Backup.Warnings = []string{"aaa", "bbb"}
-			return k8sClient.Status().Update(ctx, cluster)
+			g.Expect(k8sClient.Status().Update(ctx, cluster)).To(Succeed())
 		}).Should(Succeed())
 
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
