@@ -602,11 +602,13 @@ type MySQLClusterStatus struct {
 }
 
 const (
-	ConditionInitialized      string = "Initialized"
-	ConditionAvailable        string = "Available"
-	ConditionHealthy          string = "Healthy"
-	ConditionStatefulSetReady string = "StatefulSetReady"
-	ConditionReconcileSuccess string = "ReconcileSuccess"
+	ConditionInitialized          string = "Initialized"
+	ConditionAvailable            string = "Available"
+	ConditionHealthy              string = "Healthy"
+	ConditionStatefulSetReady     string = "StatefulSetReady"
+	ConditionReconcileSuccess     string = "ReconcileSuccess"
+	ConditionReconciliationActive string = "ReconciliationActive"
+	ConditionClusteringActive     string = "ClusteringActive"
 )
 
 // BackupStatus represents the status of the last successful backup.
@@ -665,6 +667,8 @@ type ReconcileInfo struct {
 // +kubebuilder:printcolumn:name="Primary",type="integer",JSONPath=".status.currentPrimaryIndex"
 // +kubebuilder:printcolumn:name="Synced replicas",type="integer",JSONPath=".status.syncedReplicas"
 // +kubebuilder:printcolumn:name="Errant replicas",type="integer",JSONPath=".status.errantReplicas"
+// +kubebuilder:printcolumn:name="Clustering Active",type="string",JSONPath=".status.conditions[?(@.type=='ClusteringActive')].status"
+// +kubebuilder:printcolumn:name="Reconcile Active",type="string",JSONPath=".status.conditions[?(@.type=='ReconciliationActive')].status"
 // +kubebuilder:printcolumn:name="Last backup",type="string",JSONPath=".status.backup.time"
 
 // MySQLCluster is the Schema for the mysqlclusters API

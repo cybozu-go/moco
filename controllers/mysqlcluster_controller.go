@@ -232,6 +232,24 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
+	if isReconciliationStopped(cluster) {
+		log.Info("reconciliation is stopped")
+
+		if isClusteringStopped(cluster) {
+			r.ClusterManager.Stop(req.NamespacedName)
+			if err := r.clusteringStopV1(ctx, cluster); err != nil {
+				return ctrl.Result{}, err
+			}
+		} else {
+			r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
+		}
+
+		if err := r.reconciliationStopV1(ctx, cluster); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	defer func() {
 		if err2 := r.updateStatus(ctx, cluster, err); err2 != nil {
 			err = err2
@@ -292,6 +310,14 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 	if err = r.reconcileV1RestoreJob(ctx, req, cluster); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if isClusteringStopped(cluster) {
+		r.ClusterManager.Stop(req.NamespacedName)
+		if err := r.clusteringStopV1(ctx, cluster); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
@@ -1674,6 +1700,15 @@ func (r *MySQLClusterReconciler) updateStatus(ctx context.Context, cluster *moco
 		},
 	)
 
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:    mocov1beta2.ConditionReconciliationActive,
+			Status:  metav1.ConditionTrue,
+			Reason:  "ReconciliationActive",
+			Message: "reconciliation is active",
+		},
+	)
+
 	if !equality.Semantic.DeepEqual(orig, cluster) {
 		if err := r.Status().Update(ctx, cluster); err != nil {
 			return err
@@ -1681,6 +1716,77 @@ func (r *MySQLClusterReconciler) updateStatus(ctx context.Context, cluster *moco
 		log.Info("update status successfully")
 	}
 	return nil
+}
+
+func (r *MySQLClusterReconciler) clusteringStopV1(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
+	log := crlog.FromContext(ctx)
+	orig := cluster.DeepCopy()
+
+	if meta.IsStatusConditionFalse(cluster.Status.Conditions, mocov1beta2.ConditionClusteringActive) {
+		return nil
+	}
+
+	r.ClusterManager.Stop(types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
+
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type == mocov1beta2.ConditionAvailable || cond.Type == mocov1beta2.ConditionHealthy {
+			cond.Status = metav1.ConditionUnknown
+			meta.SetStatusCondition(&cluster.Status.Conditions, cond)
+		}
+	}
+
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:    mocov1beta2.ConditionClusteringActive,
+			Status:  metav1.ConditionFalse,
+			Reason:  "ClusteringInactive",
+			Message: "clustering is inactive",
+		},
+	)
+
+	if !equality.Semantic.DeepEqual(orig, cluster) {
+		if err := r.Status().Update(ctx, cluster); err != nil {
+			return err
+		}
+		log.Info("update status successfully")
+	}
+
+	return nil
+}
+
+func (r *MySQLClusterReconciler) reconciliationStopV1(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
+	log := crlog.FromContext(ctx)
+	orig := cluster.DeepCopy()
+
+	if meta.IsStatusConditionFalse(cluster.Status.Conditions, mocov1beta2.ConditionReconciliationActive) {
+		return nil
+	}
+
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:    mocov1beta2.ConditionReconciliationActive,
+			Status:  metav1.ConditionFalse,
+			Reason:  "ReconciliationInactive",
+			Message: "reconciliation is inactive",
+		},
+	)
+
+	if !equality.Semantic.DeepEqual(orig, cluster) {
+		if err := r.Status().Update(ctx, cluster); err != nil {
+			return err
+		}
+		log.Info("update status successfully")
+	}
+
+	return nil
+}
+
+func isReconciliationStopped(cluster *mocov1beta2.MySQLCluster) bool {
+	return cluster.Annotations[constants.AnnReconciliationStopped] == "true"
+}
+
+func isClusteringStopped(cluster *mocov1beta2.MySQLCluster) bool {
+	return cluster.Annotations[constants.AnnClusteringStopped] == "true"
 }
 
 func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *corev1ac.ConfigMapApplyConfiguration, scheme *runtime.Scheme) error {

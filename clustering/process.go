@@ -266,6 +266,15 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionAvailable, available))
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionHealthy, healthy))
 
+		meta.SetStatusCondition(&cluster.Status.Conditions,
+			metav1.Condition{
+				Type:    mocov1beta2.ConditionClusteringActive,
+				Status:  metav1.ConditionTrue,
+				Reason:  "ClusteringActive",
+				Message: "clustering is active",
+			},
+		)
+
 		if available == metav1.ConditionTrue {
 			p.metrics.available.Set(1)
 		} else {
