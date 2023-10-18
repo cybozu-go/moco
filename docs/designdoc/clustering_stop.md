@@ -74,12 +74,12 @@ status:
       lastTransitionTime: 2018-01-01T00:00:00Z
 ```
 
-Also, `CLUSTERING STOPPED` will be added to the table displayed when you do `kubectl get mysqlcluster`.
+Also, `CLUSTERING ACTIVE` will be added to the table displayed when you do `kubectl get mysqlcluster`.
 
 ```console
 $ kubectl get mysqlcluster
-NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING STOPPED   RECONCILE STOPPED   LAST BACKUP
-test   Unknown     Unknown   0         2                                   False                True                <no value>
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING ACTIVE   RECONCILE ACTIVE   LAST BACKUP
+test   Unknown     Unknown   0         2                                   False                True              <no value>
 ```
 
 When you execute `kubectl moco start clustering <CLSUTER_NAME>`,
