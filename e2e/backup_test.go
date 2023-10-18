@@ -19,6 +19,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//go:embed testdata/makebucket.yaml
+var makeBucketYAML string
+
 //go:embed testdata/backup.yaml
 var backupYAML string
 
@@ -33,9 +36,7 @@ var _ = Context("backup", func() {
 	var restorePoint time.Time
 
 	It("should create a bucket", func() {
-		kubectlSafe(nil, "run", "--command", "make-bucket", "--image=moco-backup:dev", "--",
-			"s3cmd", "--host=minio.default.svc:9000", "--host-bucket=minio.default.svc:9000", "--no-ssl",
-			"--access_key=minioadmin", "--secret_key=minioadmin", "mb", "s3://moco")
+		kubectlSafe([]byte(makeBucketYAML), "apply", "-f", "-")
 	})
 
 	It("should construct a source cluster", func() {

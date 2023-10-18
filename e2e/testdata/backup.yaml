@@ -27,13 +27,13 @@ spec:
   jobConfig:
     serviceAccountName: backup-owner
     env:
-    - name: AWS_ACCESS_KEY_ID
-      value: minioadmin
-    - name: AWS_SECRET_ACCESS_KEY
-      value: minioadmin
+      - name: AWS_ACCESS_KEY_ID
+        value: minioadmin
+      - name: AWS_SECRET_ACCESS_KEY
+        value: minioadmin
     bucketConfig:
       bucketName: moco
-      endpointURL: http://minio.default.svc:9000
+      endpointURL: https://minio.default.svc:9000
       usePathStyle: true
     workVolume:
       emptyDir: {}
@@ -50,13 +50,13 @@ spec:
   podTemplate:
     spec:
       containers:
-      - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+        - name: mysqld
+          image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
   volumeClaimTemplates:
-  - metadata:
-      name: mysql-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
