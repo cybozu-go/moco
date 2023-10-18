@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1168,25 +1167,27 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 	args = append(args, cluster.Namespace, cluster.Name)
 
 	resources := corev1ac.ResourceRequirements()
-	if jc.Memory != nil {
-		resources.WithRequests(corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
-			corev1.ResourceMemory: *jc.Memory,
-		})
-	} else {
-		resources.WithRequests(
-			corev1.ResourceList{
-				corev1.ResourceCPU: *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
-			},
-		)
-	}
-	if jc.MaxMemory != nil {
-		resources.WithLimits(corev1.ResourceList{
-			corev1.ResourceMemory: *jc.MaxMemory,
-		})
-	}
-	if noJobResource {
-		resources = corev1ac.ResourceRequirements()
+	if !noJobResource {
+		request := corev1.ResourceList{}
+		if jc.CPU != nil {
+			request[corev1.ResourceCPU] = *jc.CPU
+		}
+		if jc.Memory != nil {
+			request[corev1.ResourceMemory] = *jc.Memory
+		}
+		if len(request) > 0 {
+			resources.WithRequests(request)
+		}
+		limit := corev1.ResourceList{}
+		if jc.MaxCPU != nil {
+			limit[corev1.ResourceCPU] = *jc.MaxCPU
+		}
+		if jc.MaxMemory != nil {
+			limit[corev1.ResourceMemory] = *jc.MaxMemory
+		}
+		if len(limit) > 0 {
+			resources.WithLimits(limit)
+		}
 	}
 
 	container := corev1ac.Container().
@@ -1544,25 +1545,27 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 		args = append(args, cluster.Spec.Restore.RestorePoint.UTC().Format(constants.BackupTimeFormat))
 
 		resources := corev1ac.ResourceRequirements()
-		if jc.Memory != nil {
-			resources.WithRequests(corev1.ResourceList{
-				corev1.ResourceCPU:    *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
-				corev1.ResourceMemory: *jc.Memory,
-			})
-		} else {
-			resources.WithRequests(
-				corev1.ResourceList{
-					corev1.ResourceCPU: *resource.NewQuantity(int64(jc.Threads), resource.DecimalSI),
-				},
-			)
-		}
-		if jc.MaxMemory != nil {
-			resources.WithLimits(corev1.ResourceList{
-				corev1.ResourceMemory: *jc.MaxMemory,
-			})
-		}
-		if noJobResource {
-			resources = corev1ac.ResourceRequirements()
+		if !noJobResource {
+			request := corev1.ResourceList{}
+			if jc.CPU != nil {
+				request[corev1.ResourceCPU] = *jc.CPU
+			}
+			if jc.Memory != nil {
+				request[corev1.ResourceMemory] = *jc.Memory
+			}
+			if len(request) > 0 {
+				resources.WithRequests(request)
+			}
+			limit := corev1.ResourceList{}
+			if jc.MaxCPU != nil {
+				limit[corev1.ResourceCPU] = *jc.MaxCPU
+			}
+			if jc.MaxMemory != nil {
+				limit[corev1.ResourceMemory] = *jc.MaxMemory
+			}
+			if len(limit) > 0 {
+				resources.WithLimits(limit)
+			}
 		}
 
 		container := corev1ac.Container().

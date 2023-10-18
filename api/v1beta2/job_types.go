@@ -30,6 +30,17 @@ type JobConfig struct {
 	// +optional
 	Threads int `json:"threads,omitempty"`
 
+	// CPU is the amount of CPU requested for the Pod.
+	// +kubebuilder:default=4
+	// +nullable
+	// +optional
+	CPU *resource.Quantity `json:"cpu,omitempty"`
+
+	// MaxCPU is the amount of maximum CPU for the Pod.
+	// +nullable
+	// +optional
+	MaxCPU *resource.Quantity `json:"maxCpu,omitempty"`
+
 	// Memory is the amount of memory requested for the Pod.
 	// +kubebuilder:default="4Gi"
 	// +nullable

@@ -45,6 +45,9 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(r.Spec.JobConfig.Threads).To(Equal(4))
+		Expect(r.Spec.JobConfig.CPU).NotTo(BeNil())
+		Expect(r.Spec.JobConfig.CPU.Value()).To(Equal(int64(4)))
+		Expect(r.Spec.JobConfig.MaxCPU).To(BeNil())
 		Expect(r.Spec.JobConfig.Memory).NotTo(BeNil())
 		Expect(r.Spec.JobConfig.Memory.Value()).To(Equal(int64(4) << 30))
 		Expect(r.Spec.JobConfig.MaxMemory).To(BeNil())

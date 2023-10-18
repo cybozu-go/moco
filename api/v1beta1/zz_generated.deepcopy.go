@@ -169,6 +169,16 @@ func (in *JobConfig) DeepCopyInto(out *JobConfig) {
 	*out = *in
 	out.BucketConfig = in.BucketConfig
 	in.WorkVolume.DeepCopyInto(&out.WorkVolume)
+	if in.CPU != nil {
+		in, out := &in.CPU, &out.CPU
+		x := (*in).DeepCopy()
+		*out = &x
+	}
+	if in.MaxCPU != nil {
+		in, out := &in.MaxCPU, &out.MaxCPU
+		x := (*in).DeepCopy()
+		*out = &x
+	}
 	if in.Memory != nil {
 		in, out := &in.Memory, &out.Memory
 		x := (*in).DeepCopy()

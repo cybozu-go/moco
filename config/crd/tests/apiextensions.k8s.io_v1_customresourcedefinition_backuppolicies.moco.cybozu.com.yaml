@@ -473,6 +473,15 @@ spec:
                     required:
                     - bucketName
                     type: object
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    default: 4
+                    description: CPU is the amount of CPU requested for the Pod.
+                    nullable: true
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   env:
                     description: List of environment variables to set in the contai
                     items:
@@ -563,6 +572,14 @@ spec:
                           type: object
                       type: object
                     type: array
+                  maxCpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: MaxCPU is the amount of maximum CPU for the Pod.
+                    nullable: true
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   maxMemory:
                     anyOf:
                     - type: integer
@@ -2643,6 +2660,15 @@ spec:
                     required:
                     - bucketName
                     type: object
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    default: 4
+                    description: CPU is the amount of CPU requested for the Pod.
+                    nullable: true
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   env:
                     description: List of environment variables to set in the contai
                     items:
@@ -2733,6 +2759,14 @@ spec:
                           type: object
                       type: object
                     type: array
+                  maxCpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: MaxCPU is the amount of maximum CPU for the Pod.
+                    nullable: true
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   maxMemory:
                     anyOf:
                     - type: integer
