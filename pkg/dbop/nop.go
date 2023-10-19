@@ -35,10 +35,6 @@ func (o NopOperator) IsSubsetGTID(ctx context.Context, set1, set2 string) (bool,
 	return false, ErrNop
 }
 
-func (o NopOperator) FindTopRunner(context.Context, []*MySQLInstanceStatus) (int, error) {
-	return 0, ErrNop
-}
-
 func (o NopOperator) ConfigureReplica(ctx context.Context, source AccessInfo, semisync bool) error {
 	return ErrNop
 }

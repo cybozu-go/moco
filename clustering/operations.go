@@ -218,7 +218,7 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 		candidates[i] = newStatus
 	}
 
-	candidate, err := op.FindTopRunner(ctx, candidates)
+	candidate, err := dbop.FindTopRunner(ctx, op, candidates)
 	if err != nil {
 		return fmt.Errorf("failed to choose the next primary: %w", err)
 	}
