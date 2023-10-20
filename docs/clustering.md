@@ -249,7 +249,6 @@ There is nothing can be done.
 - Stop replication of errant replicas.
 - Set `super_read_only=1` for replica instances that are writable.
 - Adjust `moco.cybozu.com/role` label to Pods according to their roles.
-    - For errant replicas, the label is removed to prevent users from reading inconsistent data.
 - Finally, make the primary `mysqld` writable if the primary is not an intermediate primary.
 
 [agent]: https://github.com/cybozu-go/moco-agent

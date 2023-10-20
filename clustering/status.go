@@ -14,6 +14,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
+	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -208,10 +209,10 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				}
 				// process errors
 				if j == statusCheckRetryMax {
-					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready")
+					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready", "instance", index)
 					return
 				}
-				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry")
+				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry", "instance", index)
 				time.Sleep(statusCheckRetryInterval)
 			}
 		}(i)
@@ -297,6 +298,13 @@ func containErrantTransactions(primaryUUID, gtidSet string) bool {
 		}
 	}
 	return false
+}
+
+func isErrantReplica(ss *StatusSet, index int) bool {
+	if ss.MySQLStatus[index] != nil && ss.MySQLStatus[index].IsErrant {
+		return true
+	}
+	return slices.Contains(ss.Errants, index)
 }
 
 func isPodReady(pod *corev1.Pod) bool {
