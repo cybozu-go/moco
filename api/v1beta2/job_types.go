@@ -202,8 +202,9 @@ type BucketConfig struct {
 	// +optional
 	BackendType string `json:"backendType,omitempty"`
 
+	// Path to SSL CA certificate file instead of system default.
 	// +optional
-	CaCertFilePath string `json:"caCertFilePath,omitempty"`
+	CaCerts string `json:"caCerts,omitempty"`
 }
 
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.

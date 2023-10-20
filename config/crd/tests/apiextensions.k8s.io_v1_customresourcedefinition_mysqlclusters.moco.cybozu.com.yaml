@@ -4009,7 +4009,9 @@ spec:
                             description: The name of the bucket
                             minLength: 1
                             type: string
-                          caCertFilePath:
+                          caCerts:
+                            description: 'Path to SSL CA certificate file instead
+                              of system '
                             type: string
                           endpointURL:
                             description: The API endpoint URL.
@@ -10442,7 +10444,9 @@ spec:
                             description: The name of the bucket
                             minLength: 1
                             type: string
-                          caCertFilePath:
+                          caCerts:
+                            description: 'Path to SSL CA certificate file instead
+                              of system '
                             type: string
                           endpointURL:
                             description: The API endpoint URL.

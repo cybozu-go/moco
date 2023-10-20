@@ -19,6 +19,7 @@ Global Flags:
       --threads int       The number of threads to be used (default 4)
       --use-path-style    Use path-style S3 API
       --work-dir string   The writable working directory (default "/work")
+      --ca-certs string   Path to SSL CA certificate file instead of system default.
 ```
 
 ## Subcommands

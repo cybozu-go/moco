@@ -119,5 +119,5 @@ func init() {
 	pf.StringVar(&commonArgs.endpointURL, "endpoint", "", "Object storage API endpoint URL")
 	pf.BoolVar(&commonArgs.usePathStyle, "use-path-style", false, "Use path-style S3 API")
 	pf.StringVar(&commonArgs.backendType, "backend-type", "s3", "The identifier for the object storage to be used.")
-	pf.StringVar(&commonArgs.caCertFilePath, "ca-cert-file-path", "", "The file path using ca-certs")
+	pf.StringVar(&commonArgs.caCertFilePath, "ca-certs", "", "Path to SSL CA certificate file instead of system default")
 }

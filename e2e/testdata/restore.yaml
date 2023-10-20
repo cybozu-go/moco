@@ -28,7 +28,7 @@ spec:
         bucketName: moco
         endpointURL: https://minio.default.svc:9000
         usePathStyle: true
-        caCertFilePath: /minio-cert/ca.crt
+        caCerts: /minio-cert/ca.crt
       workVolume:
         emptyDir: {}
   podTemplate:
