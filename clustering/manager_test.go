@@ -583,7 +583,147 @@ var _ = Describe("manager", func() {
 		}
 	})
 
-	It("should handle failover and errant replicas", func() {
+	It("should handle failover", func() {
+		testSetupResources(ctx, 3, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+		defer func() {
+			cm.Stop(client.ObjectKeyFromObject(cluster))
+			time.Sleep(400 * time.Millisecond)
+			Eventually(func(g Gomega) {
+				ch := make(chan prometheus.Metric, 2)
+				metrics.ErrantReplicasVec.Collect(ch)
+				g.Expect(ch).NotTo(Receive())
+			}).Should(Succeed())
+		}()
+
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 0:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
+			}
+		}).Should(Succeed())
+
+		By("triggering a failover")
+		testSetGTID(cluster.PodHostname(0), "p0:1,p0:2,p0:3") // primary
+		testSetGTID(cluster.PodHostname(1), "p0:1")           // new primary
+		testSetGTID(cluster.PodHostname(2), "p0:1,p0:2,p0:3")
+		of.setRetrievedGTIDSet(cluster.PodHostname(1), "p0:1,p0:2,p0:3")
+		of.setRetrievedGTIDSet(cluster.PodHostname(2), "p0:1,p0:2,p0:3")
+		of.setFailing(cluster.PodHostname(0), true)
+
+		// wait for the new primary to be selected
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(1), "the primary is not switched yet")
+
+			condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condAvailable.Status).To(Equal(metav1.ConditionTrue))
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
+		}).Should(Succeed())
+
+		// wait for the pods' metadata are updated
+		Eventually(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 1:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
+			}
+		}).Should(Succeed())
+
+		st1 := of.getInstanceStatus(cluster.PodHostname(1))
+		Expect(st1.GlobalVariables.ExecutedGTID).To(Equal("p0:1,p0:2,p0:3")) // confirm that MOCO waited fot the retrieved GTID set to be executed
+		Expect(st1.GlobalVariables.ReadOnly).To(BeFalse())
+
+		Expect(cluster.Status.ErrantReplicas).To(Equal(0))
+		Expect(cluster.Status.ErrantReplicaList).To(BeEmpty())
+
+		Expect(ms.available).To(MetricsIs("==", 1))
+		Expect(ms.healthy).To(MetricsIs("==", 0))
+		Expect(ms.replicas).To(MetricsIs("==", 3))
+		Expect(ms.errantReplicas).To(MetricsIs("==", 0))
+		Expect(ms.switchoverCount).To(MetricsIs("==", 0))
+		Expect(ms.failoverCount).To(MetricsIs("==", 1))
+
+		events := &corev1.EventList{}
+		err = k8sClient.List(ctx, events, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		var failOverEvents int
+		for _, ev := range events.Items {
+			switch ev.Reason {
+			case event.FailOverSucceeded.Reason:
+				failOverEvents++
+			}
+		}
+		Expect(failOverEvents).To(Equal(1))
+
+		By("recovering failed instance")
+		of.setFailing(cluster.PodHostname(0), false)
+
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(1), "the primary should not be switched")
+
+			condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condAvailable.Status).To(Equal(metav1.ConditionTrue))
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// confirm the pods' metadata are not updated
+		Consistently(func(g Gomega) {
+			for i := 0; i < 3; i++ {
+				pod := &corev1.Pod{}
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
+				g.Expect(err).NotTo(HaveOccurred())
+				switch i {
+				case 1:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+				default:
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+				}
+			}
+		}).Should(Succeed())
+	})
+
+	It("should handle errant replicas and lost", func() {
 		testSetupResources(ctx, 5, "")
 
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
@@ -634,7 +774,7 @@ var _ = Describe("manager", func() {
 		testSetGTID(cluster.PodHostname(1), "p0:1,p0:2,p1:1") // errant replica
 		testSetGTID(cluster.PodHostname(2), "p0:1")
 		testSetGTID(cluster.PodHostname(3), "p0:1,p0:2,p0:3")
-		testSetGTID(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4,p0:5")
+		testSetGTID(cluster.PodHostname(4), "p0:1,p0:2,p0:3")
 
 		// wait for the errant replica is detected
 		Eventually(func(g Gomega) {
@@ -680,8 +820,8 @@ var _ = Describe("manager", func() {
 
 		By("triggering a failover")
 		of.setRetrievedGTIDSet(cluster.PodHostname(2), "p0:1")
-		of.setRetrievedGTIDSet(cluster.PodHostname(3), "p0:1,p0:2,p0:3,p0:4,p0:5")
-		of.setRetrievedGTIDSet(cluster.PodHostname(4), "p0:1,p0:2,p0:3,p0:4,p0:5")
+		of.setRetrievedGTIDSet(cluster.PodHostname(3), "p0:1,p0:2,p0:3")
+		of.setRetrievedGTIDSet(cluster.PodHostname(4), "p0:1,p0:2,p0:3")
 		of.setFailing(cluster.PodHostname(0), true)
 
 		// wait for the new primary to be selected
@@ -689,17 +829,6 @@ var _ = Describe("manager", func() {
 			cluster, err = testGetCluster(ctx)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(3), "the primary is not switched yet")
-		}).Should(Succeed())
-
-		// confirm that MOCO waited fot the retrieved GTID set to be executed
-		st3 := of.getInstanceStatus(cluster.PodHostname(3))
-		Expect(st3.GlobalVariables.ExecutedGTID).To(Equal("p0:1,p0:2,p0:3,p0:4,p0:5"))
-
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(3))
 
 			condAvailable, err := testGetCondition(cluster, mocov1beta2.ConditionAvailable)
 			g.Expect(err).NotTo(HaveOccurred())
@@ -726,7 +855,7 @@ var _ = Describe("manager", func() {
 			}
 		}).Should(Succeed())
 
-		st3 = of.getInstanceStatus(cluster.PodHostname(3))
+		st3 := of.getInstanceStatus(cluster.PodHostname(3))
 		Expect(st3.GlobalVariables.ReadOnly).To(BeFalse())
 
 		Expect(cluster.Status.ErrantReplicas).To(Equal(1))
