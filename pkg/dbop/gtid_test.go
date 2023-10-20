@@ -24,7 +24,7 @@ var _ = Describe("FindTopRunner", func() {
 		defer op.Close()
 
 		statuses := make([]*MySQLInstanceStatus, 3)
-		_, err = op.FindTopRunner(context.Background(), statuses)
+		_, err = FindTopRunner(context.Background(), op, statuses)
 		Expect(err).To(MatchError(ErrNoTopRunner))
 
 		set0 := `8e349184-bc14-11e3-8d4c-0800272864ba:1-29`
@@ -33,21 +33,21 @@ var _ = Describe("FindTopRunner", func() {
 		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set0}}
 		statuses[1] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set1}}
 		statuses[2] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set2}}
-		top, err := op.FindTopRunner(context.Background(), statuses)
+		top, err := FindTopRunner(context.Background(), op, statuses)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(top).To(Equal(2))
 
 		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set2}}
 		statuses[1] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set0}}
 		statuses[2] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set1}}
-		top, err = op.FindTopRunner(context.Background(), statuses)
+		top, err = FindTopRunner(context.Background(), op, statuses)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(top).To(Equal(0))
 
 		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set1}}
 		statuses[1] = nil
 		statuses[2] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set2}}
-		top, err = op.FindTopRunner(context.Background(), statuses)
+		top, err = FindTopRunner(context.Background(), op, statuses)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(top).To(Equal(2))
 
@@ -59,7 +59,7 @@ var _ = Describe("FindTopRunner", func() {
 		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set0}}
 		statuses[1] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set1}}
 		statuses[2] = nil
-		_, err = op.FindTopRunner(context.Background(), statuses)
+		_, err = FindTopRunner(context.Background(), op, statuses)
 		Expect(err).To(MatchError(ErrErrantTransactions))
 	})
 })

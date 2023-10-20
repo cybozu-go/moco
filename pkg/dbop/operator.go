@@ -37,11 +37,6 @@ type Operator interface {
 	// IsSubsetGTID returns true if set1 is a subset of set2.
 	IsSubsetGTID(ctx context.Context, set1, set2 string) (bool, error)
 
-	// FindTopRunner returns the index of the slice whose `GlobalVariables.ExecutedGtidSet`
-	// is most advanced.  This may return ErrErrantTransactions for errant transactions
-	// or ErrNoTopRunner if there is no such instance.
-	FindTopRunner(context.Context, []*MySQLInstanceStatus) (int, error)
-
 	// ConfigureReplica configures client-side replication.
 	// If `symisync` is true, it enables client-side semi-synchronous replication.
 	// In either case, it disables server-side semi-synchronous replication.

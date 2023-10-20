@@ -217,65 +217,6 @@ func (o *mockOperator) IsSubsetGTID(ctx context.Context, set1, set2 string) (boo
 	return len(map1) == 0, nil
 }
 
-// FindTopRunner returns the index of the slice whose `GlobalVariables.ExecutedGtidSet`
-// is most advanced.  This may return ErrErrantTransactions for errant transactions
-// or ErrNoTopRunner if there is no such instance.
-func (o *mockOperator) FindTopRunner(ctx context.Context, status []*dbop.MySQLInstanceStatus) (int, error) {
-	if o.failing {
-		return -1, errors.New("mysqld is down")
-	}
-
-	latest := -1
-	var latestGTID string
-
-	for i := 0; i < len(status); i++ {
-		if status[i] == nil {
-			continue
-		}
-		repl := status[i].ReplicaStatus
-		if repl == nil {
-			continue
-		}
-
-		gtid := repl.RetrievedGtidSet
-		if len(gtid) == 0 {
-			continue
-		}
-
-		if len(latestGTID) == 0 {
-			latest = i
-			latestGTID = gtid
-			continue
-		}
-
-		isSubset, err := o.IsSubsetGTID(ctx, gtid, latestGTID)
-		if err != nil {
-			return -1, err
-		}
-		if isSubset {
-			continue
-		}
-
-		isSubset, err = o.IsSubsetGTID(ctx, latestGTID, gtid)
-		if err != nil {
-			return -1, err
-		}
-		if isSubset {
-			latest = i
-			latestGTID = gtid
-			continue
-		}
-
-		return -1, fmt.Errorf("%w: set1=%s, set2=%s", dbop.ErrErrantTransactions, gtid, latestGTID)
-	}
-
-	if latest == -1 {
-		return -1, dbop.ErrNoTopRunner
-	}
-
-	return latest, nil
-}
-
 // ConfigureReplica configures client-side replication.
 // If `symisync` is true, it enables client-side semi-synchronous replication.
 // In either case, it disables server-side semi-synchronous replication.

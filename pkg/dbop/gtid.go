@@ -5,7 +5,10 @@ import (
 	"fmt"
 )
 
-func (o *operator) FindTopRunner(ctx context.Context, status []*MySQLInstanceStatus) (int, error) {
+// FindTopRunner returns the index of the slice whose `GlobalVariables.ExecutedGtidSet`
+// is most advanced.  This may return ErrErrantTransactions for errant transactions
+// or ErrNoTopRunner if there is no such instance.
+func FindTopRunner(ctx context.Context, o Operator, status []*MySQLInstanceStatus) (int, error) {
 	latest := -1
 	var latestGTIDs string
 
