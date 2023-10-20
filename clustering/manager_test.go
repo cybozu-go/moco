@@ -378,6 +378,7 @@ var _ = Describe("manager", func() {
 		Expect(otherEvents).To(Equal(0))
 
 		By("scaling out the cluster from 1 to 3 instances")
+		of.resetKillConnectionsCount()
 		cluster.Spec.Replicas = 3
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -441,7 +442,10 @@ var _ = Describe("manager", func() {
 			Expect(st.ReplicaStatus.SlaveIORunning).To(Equal("Yes"))
 		}
 
+		Expect(of.getKillConnectionsCount(cluster.PodHostname(0))).To(Equal(0)) // connection should not be killed
+
 		By("doing a switchover")
+		of.resetKillConnectionsCount()
 		// advance the executed GTID set on the source and the primary
 		testSetGTID("external", "ex:1,ex:2,ex:3,ex:4,ex:5")
 		testSetGTID(cluster.PodHostname(0), "ex:1,ex:2,ex:3,ex:4,ex:5")
@@ -533,6 +537,15 @@ var _ = Describe("manager", func() {
 				Expect(st.ReplicaStatus.MasterHost).To(Equal("external"))
 			} else {
 				Expect(st.ReplicaStatus.MasterHost).To(Equal(cluster.PodHostname(newPrimary)))
+			}
+		}
+
+		for i := 0; i < 3; i++ {
+			switch i {
+			case 0: // connection in demoted instance should be killed
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
+			default:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
 			}
 		}
 
@@ -628,6 +641,7 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		By("triggering a failover")
+		of.resetKillConnectionsCount()
 		testSetGTID(cluster.PodHostname(0), "p0:1,p0:2,p0:3") // primary
 		testSetGTID(cluster.PodHostname(1), "p0:1")           // new primary
 		testSetGTID(cluster.PodHostname(2), "p0:1,p0:2,p0:3")
@@ -690,7 +704,12 @@ var _ = Describe("manager", func() {
 		}
 		Expect(failOverEvents).To(Equal(1))
 
+		for i := 0; i < 3; i++ {
+			Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
+		}
+
 		By("recovering failed instance")
+		of.resetKillConnectionsCount()
 		of.setFailing(cluster.PodHostname(0), false)
 
 		// wait for cluster's condition changes
@@ -721,6 +740,15 @@ var _ = Describe("manager", func() {
 				}
 			}
 		}).Should(Succeed())
+
+		for i := 0; i < 3; i++ {
+			switch i {
+			case 0:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
+			default:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
+			}
+		}
 	})
 
 	It("should handle errant replicas and lost", func() {
