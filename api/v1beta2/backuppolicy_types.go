@@ -97,6 +97,7 @@ func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:storageversion
 
 // BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.
 type BackupPolicy struct {
