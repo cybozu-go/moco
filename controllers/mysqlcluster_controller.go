@@ -98,6 +98,42 @@ func mergeMap(m1, m2 map[string]string) map[string]string {
 	return m
 }
 
+var ErrApplyConfigurationNotChanged = errors.New("ApplyConfiguration not changed")
+
+type clientObjectConstraint[S any] interface {
+	*S
+	client.Object
+}
+
+func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r client.Client, key client.ObjectKey, expected U, extractFunc func(T, string) (U, error)) (T, error) {
+	var orig S
+	if err := r.Get(ctx, key, T(&orig)); err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get resource %s/%s: %w", key.Namespace, key.Name, err)
+	}
+
+	origApplyConfig, err := extractFunc(&orig, fieldManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract resource %s/%s: %w", key.Namespace, key.Name, err)
+	}
+
+	if equality.Semantic.DeepEqual(expected, origApplyConfig) {
+		return nil, ErrApplyConfigurationNotChanged
+	}
+
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(expected)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert resource %s/%s to unstructured: %w", key.Namespace, key.Name, err)
+	}
+	patch := &unstructured.Unstructured{
+		Object: obj,
+	}
+
+	return &orig, r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        pointer.Bool(true),
+	})
+}
+
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
@@ -318,33 +354,15 @@ func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ct
 		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	var orig corev1.Secret
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get Secret %s/%s: %w", cluster.Namespace, name, err)
+	key := client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      name,
 	}
 
-	origApplyConfig, err := corev1ac.ExtractSecret(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract Secret %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(secret, origApplyConfig) {
-		return nil
-	}
-
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
-	if err != nil {
-		return fmt.Errorf("failed to convert Secret %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	}); err != nil {
+	if _, err := apply(ctx, r.Client, key, secret, corev1ac.ExtractSecret); err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile user Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -372,33 +390,11 @@ func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req c
 		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	var orig corev1.Secret
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get Secret %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := corev1ac.ExtractSecret(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract Secret %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(secret, origApplyConfig) {
-		return nil
-	}
-
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
-	if err != nil {
-		return fmt.Errorf("failed to convert Secret %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	}); err != nil {
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	if _, err := apply(ctx, r.Client, key, secret, corev1ac.ExtractSecret); err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile my.cnf Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -469,33 +465,11 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 		return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
 
-	var orig corev1.ConfigMap
-	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
-	}
-
-	origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
-	}
-
-	if equality.Semantic.DeepEqual(cm, origApplyConfig) {
-		return cm, nil
-	}
-
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, cmName, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	}); err != nil {
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}
+	if _, err := apply(ctx, r.Client, key, cm, corev1ac.ExtractConfigMap); err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return cm, nil
+		}
 		return nil, fmt.Errorf("failed to reconcile my.cnf configmap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
 
@@ -549,33 +523,11 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 			return fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		var orig corev1.ConfigMap
-		err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to get ConfigMap %s/%s: %w", cluster.Namespace, name, err)
-		}
-
-		origApplyConfig, err := corev1ac.ExtractConfigMap(&orig, fieldManager)
-		if err != nil {
-			return fmt.Errorf("failed to extract ConfigMap %s/%s: %w", cluster.Namespace, name, err)
-		}
-
-		if equality.Semantic.DeepEqual(cm, origApplyConfig) {
-			return nil
-		}
-
-		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
-		if err != nil {
-			return fmt.Errorf("failed to convert ConfigMap %s/%s to unstructured: %w", cluster.Namespace, name, err)
-		}
-		patch := &unstructured.Unstructured{
-			Object: obj,
-		}
-
-		if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-			FieldManager: fieldManager,
-			Force:        pointer.Bool(true),
-		}); err != nil {
+		key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+		if _, err := apply(ctx, r.Client, key, cm, corev1ac.ExtractConfigMap); err != nil {
+			if errors.Is(err, ErrApplyConfigurationNotChanged) {
+				return nil
+			}
 			return fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, name, err)
 		}
 
@@ -604,33 +556,11 @@ func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, 
 		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	var orig corev1.ServiceAccount
-	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := corev1ac.ExtractServiceAccount(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract ServiceAccount %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(sa, origApplyConfig) {
-		return nil
-	}
-
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sa)
-	if err != nil {
-		return fmt.Errorf("failed to convert ServiceAccount %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	if err := r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	}); err != nil {
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	if _, err := apply(ctx, r.Client, key, sa, corev1ac.ExtractServiceAccount); err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile service account %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -703,34 +633,12 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(svc)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	orig, err := apply(ctx, r.Client, key, svc, corev1ac.ExtractService)
 	if err != nil {
-		return fmt.Errorf("failed to convert Service %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig corev1.Service
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := corev1ac.ExtractService(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract Service %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(svc, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s service: %w", name, err)
 	}
 
@@ -741,7 +649,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 			return fmt.Errorf("failed to get Service %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1050,34 +958,12 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		return fmt.Errorf("failed to set ownerReference to PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(pdbApplyConfig)
+	key := client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}
+	orig, err := apply(ctx, r.Client, key, pdbApplyConfig, policyv1ac.ExtractPodDisruptionBudget)
 	if err != nil {
-		return fmt.Errorf("failed to convert PDB %s/%s to unstructured: %w", pdb.Namespace, pdb.Name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig policyv1.PodDisruptionBudget
-	err = r.Get(ctx, client.ObjectKey{Namespace: pdb.Namespace, Name: pdb.Name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
-	}
-
-	origApplyConfig, err := policyv1ac.ExtractPodDisruptionBudget(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
-	}
-
-	if equality.Semantic.DeepEqual(pdbApplyConfig, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s PDB: %w", pdb.Name, err)
 	}
 
@@ -1088,7 +974,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 			return fmt.Errorf("failed to get PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1319,34 +1205,12 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		return fmt.Errorf("failed to set ownerReference to CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cronJob)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}
+	orig, err := apply(ctx, r.Client, key, cronJob, batchv1ac.ExtractCronJob)
 	if err != nil {
-		return fmt.Errorf("failed to convert CronJob %s/%s to unstructured: %w", cluster.Namespace, cronJobName, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig batchv1.CronJob
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cronJobName}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
-	}
-
-	origApplyConfig, err := batchv1ac.ExtractCronJob(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
-	}
-
-	if equality.Semantic.DeepEqual(cronJob, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s CronJob for backup: %w", cronJobName, err)
 	}
 
@@ -1357,7 +1221,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 			return fmt.Errorf("failed to get CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1401,34 +1265,12 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, r
 		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(role)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	orig, err := apply(ctx, r.Client, key, role, rbacv1ac.ExtractRole)
 	if err != nil {
-		return fmt.Errorf("failed to convert Role %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig rbacv1.Role
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := rbacv1ac.ExtractRole(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract Role %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(role, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s Role for backup: %w", name, err)
 	}
 
@@ -1439,7 +1281,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, r
 			return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1468,34 +1310,12 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Con
 		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(roleBinding)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	orig, err := apply(ctx, r.Client, key, roleBinding, rbacv1ac.ExtractRoleBinding)
 	if err != nil {
-		return fmt.Errorf("failed to convert RoleBinding %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig rbacv1.RoleBinding
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := rbacv1ac.ExtractRoleBinding(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract RoleBinding %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(roleBinding, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s RoleBinding for backup: %w", name, err)
 	}
 
@@ -1506,7 +1326,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Con
 			return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1643,34 +1463,12 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			return fmt.Errorf("failed to set ownerReference to Job %s/%s: %w", cluster.Namespace, jobName, err)
 		}
 
-		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(job)
+		key := client.ObjectKey{Namespace: cluster.Namespace, Name: jobName}
+		orig, err := apply(ctx, r.Client, key, job, batchv1ac.ExtractJob)
 		if err != nil {
-			return fmt.Errorf("failed to convert Job %s/%s to unstructured: %w", cluster.Namespace, jobName, err)
-		}
-		patch := &unstructured.Unstructured{
-			Object: obj,
-		}
-
-		var orig batchv1.Job
-		err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: jobName}, &orig)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to get Job %s/%s: %w", cluster.Namespace, jobName, err)
-		}
-
-		origApplyConfig, err := batchv1ac.ExtractJob(&orig, fieldManager)
-		if err != nil {
-			return fmt.Errorf("failed to extract Job %s/%s: %w", cluster.Namespace, jobName, err)
-		}
-
-		if equality.Semantic.DeepEqual(job, origApplyConfig) {
-			return nil
-		}
-
-		err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-			FieldManager: fieldManager,
-			Force:        pointer.Bool(true),
-		})
-		if err != nil {
+			if errors.Is(err, ErrApplyConfigurationNotChanged) {
+				return nil
+			}
 			return fmt.Errorf("failed to reconcile %s Job for backup: %w", jobName, err)
 		}
 
@@ -1681,7 +1479,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 				return fmt.Errorf("failed to get Job %s/%s: %w", cluster.Namespace, jobName, err)
 			}
 
-			if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+			if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 				fmt.Println(diff)
 			}
 		}
@@ -1726,34 +1524,12 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, 
 		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(role)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	orig, err := apply(ctx, r.Client, key, role, rbacv1ac.ExtractRole)
 	if err != nil {
-		return fmt.Errorf("failed to convert Role %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig rbacv1.Role
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := rbacv1ac.ExtractRole(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract Role %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(role, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s Role for backup: %w", name, err)
 	}
 
@@ -1764,7 +1540,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, 
 			return fmt.Errorf("failed to get Role %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
@@ -1793,34 +1569,12 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Co
 		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(roleBinding)
+	key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+	orig, err := apply(ctx, r.Client, key, roleBinding, rbacv1ac.ExtractRoleBinding)
 	if err != nil {
-		return fmt.Errorf("failed to convert RoleBinding %s/%s to unstructured: %w", cluster.Namespace, name, err)
-	}
-	patch := &unstructured.Unstructured{
-		Object: obj,
-	}
-
-	var orig rbacv1.RoleBinding
-	err = r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: name}, &orig)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	origApplyConfig, err := rbacv1ac.ExtractRoleBinding(&orig, fieldManager)
-	if err != nil {
-		return fmt.Errorf("failed to extract RoleBinding %s/%s: %w", cluster.Namespace, name, err)
-	}
-
-	if equality.Semantic.DeepEqual(roleBinding, origApplyConfig) {
-		return nil
-	}
-
-	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
-	})
-	if err != nil {
+		if errors.Is(err, ErrApplyConfigurationNotChanged) {
+			return nil
+		}
 		return fmt.Errorf("failed to reconcile %s RoleBinding for backup: %w", name, err)
 	}
 
@@ -1831,7 +1585,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Co
 			return fmt.Errorf("failed to get RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 		}
 
-		if diff := cmp.Diff(orig, updated); len(diff) > 0 {
+		if diff := cmp.Diff(*orig, updated); len(diff) > 0 {
 			fmt.Println(diff)
 		}
 	}
