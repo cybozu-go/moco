@@ -2456,7 +2456,7 @@ If backup is run in <code>mysqld</code> Pod, it would interfere with the <code>m
 <p>The biggest reason is the difference in how these tools lock the instance.</p>
 <p><code>mysqlsh</code> uses <a href="https://dev.mysql.com/doc/refman/8.0/en/lock-instance-for-backup.html"><code>LOCK INSTANCE FOR BACKUP</code></a> which blocks DDL until the lock is released.  <code>mysqldump</code>, on the other hand, allows DDL to be executed.  Once DDL is executed <em>and</em> acquire meta data lock, which means that <strong>any DML for the table modified by DDL will be blocked</strong>.</p>
 <p>Blocking DML during backup is not desirable, especially when the only available backup source is the primary instance.</p>
-<p>Another reason is that <code>mysqhsl</code> is <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">much faster</a> than <code>mysqldump</code> / <code>mysqlpump</code>.</p>
+<p>Another reason is that <code>mysqlsh</code> is <a href="https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/">much faster</a> than <code>mysqldump</code> / <code>mysqlpump</code>.</p>
 <h3 id="why-dont-we-do-continuous-backup"><a class="header" href="#why-dont-we-do-continuous-backup">Why don't we do continuous backup?</a></h3>
 <p>Continuous backup is a technique to save executed transactions in real time.
 For MySQL, this can be done with <code>mysqlbinlog --stop-never</code>.  This command continuously retrieves transactions from binary logs and outputs them to stdout.</p>
