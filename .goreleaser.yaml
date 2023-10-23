@@ -27,6 +27,7 @@ archives:
     format: tar.gz
     files:
       - LICENSE
+    rlcp: true
 
 checksum:
   name_template: checksums.txt

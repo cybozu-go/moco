@@ -135,7 +135,7 @@ build:
 
 .PHONY: release-build
 release-build: goreleaser
-	$(GORELEASER) build --snapshot --rm-dist
+	$(GORELEASER) build --snapshot --clean
 
 .PHONY: release-manifests-build
 release-manifests-build: kustomize
