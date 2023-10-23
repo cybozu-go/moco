@@ -1,4 +1,4 @@
-# Backup and restore
+# Backup and restore <!-- omit from toc -->
 
 This document describes how MOCO takes a backup of MySQLCluster data and restores a cluster from a backup.
 
@@ -12,6 +12,7 @@ This document describes how MOCO takes a backup of MySQLCluster data and restore
   - [Caveats](#caveats)
 - [Considered options](#considered-options)
   - [Why do we use S3-compatible object storage to store backups?](#why-do-we-use-s3-compatible-object-storage-to-store-backups)
+  - [What object storage is supported?](#what-object-storage-is-supported)
   - [Why do we use Jobs for backup and restoration?](#why-do-we-use-jobs-for-backup-and-restoration)
   - [Why do we prefer `mysqlsh` to `mysqldump`?](#why-do-we-prefer-mysqlsh-to-mysqldump)
   - [Why don't we do continuous backup?](#why-dont-we-do-continuous-backup)
