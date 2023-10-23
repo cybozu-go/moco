@@ -248,7 +248,7 @@ The biggest reason is the difference in how these tools lock the instance.
 
 Blocking DML during backup is not desirable, especially when the only available backup source is the primary instance.
 
-Another reason is that `mysqhsl` is [much faster][faster] than `mysqldump` / `mysqlpump`.
+Another reason is that `mysqlsh` is [much faster][faster] than `mysqldump` / `mysqlpump`.
 
 ### Why don't we do continuous backup?
 
