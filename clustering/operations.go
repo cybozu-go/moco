@@ -435,6 +435,13 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 
 	if !st.GlobalVariables.SuperReadOnly {
 		redo = true
+
+		// When a primary is demoted due to network failure, old connections via the primary service may remain.
+		// In rare cases, the old connections running write events block `set super_read_only=1`.
+		if err := op.KillConnections(ctx); err != nil {
+			return false, fmt.Errorf("failed to kill connections in instance %d: %w", index, err)
+		}
+
 		log.Info("set super_read_only=1", "instance", index)
 		if err := op.SetReadOnly(ctx, true); err != nil {
 			return false, err

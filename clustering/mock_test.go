@@ -406,6 +406,12 @@ func (o *mockOperator) SetReadOnly(ctx context.Context, readonly bool) error {
 }
 
 func (o *mockOperator) KillConnections(ctx context.Context) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.countKillConnections[o.Name()]++
 	return nil
 }
 
@@ -444,15 +450,17 @@ func (m *mockMySQL) setRetrievedGTIDSet(gtid string) {
 type mockOpFactory struct {
 	orphaned int64
 
-	mu      sync.Mutex
-	mysqls  map[string]*mockMySQL
-	failing map[string]bool
+	mu                   sync.Mutex
+	mysqls               map[string]*mockMySQL
+	failing              map[string]bool
+	countKillConnections map[string]int
 }
 
 func newMockOpFactory() *mockOpFactory {
 	return &mockOpFactory{
-		mysqls:  make(map[string]*mockMySQL),
-		failing: make(map[string]bool),
+		mysqls:               make(map[string]*mockMySQL),
+		failing:              make(map[string]bool),
+		countKillConnections: make(map[string]int),
 	}
 }
 
@@ -527,4 +535,16 @@ func (f *mockOpFactory) setFailing(name string, failing bool) {
 func (f *mockOpFactory) setRetrievedGTIDSet(name string, gtid string) {
 	m := f.getInstance(name)
 	m.setRetrievedGTIDSet(gtid)
+}
+
+func (f *mockOpFactory) resetKillConnectionsCount() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.countKillConnections = make(map[string]int)
+}
+
+func (f *mockOpFactory) getKillConnectionsCount(name string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.countKillConnections[name]
 }
