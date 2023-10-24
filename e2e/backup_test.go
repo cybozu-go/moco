@@ -37,6 +37,19 @@ var _ = Context("backup", func() {
 
 	It("should create a bucket", func() {
 		kubectlSafe([]byte(makeBucketYAML), "apply", "-f", "-")
+		Eventually(func(g Gomega) {
+			out, err := kubectl(nil, "get", "jobs", "make-bucket", "-o", "json")
+			g.Expect(err).NotTo(HaveOccurred())
+			job := &batchv1.Job{}
+			err = json.Unmarshal(out, job)
+			g.Expect(err).NotTo(HaveOccurred())
+			for _, cond := range job.Status.Conditions {
+				if cond.Type != batchv1.JobComplete {
+					continue
+				}
+				g.Expect(cond.Status).To(Equal(corev1.ConditionTrue))
+			}
+		}).Should(Succeed())
 	})
 
 	It("should construct a source cluster", func() {
