@@ -15,7 +15,6 @@ spec:
             - --access_key=minioadmin
             - --secret_key=minioadmin
             - --ssl
-            - --no-check-certificate
             - --ca-certs=/minio-cert/ca.crt
             - mb
             - s3://moco
