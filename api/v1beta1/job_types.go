@@ -219,7 +219,7 @@ type BucketConfig struct {
 	// +optional
 	BackendType string `json:"backendType,omitempty"`
 
-	// Path to SSL CA certificate file instead of system default.
+	// Path to SSL CA certificate file used in addition to system default.
 	// +optional
-	CaCerts string `json:"caCerts,omitempty"`
+	CaCert string `json:"caCert,omitempty"`
 }

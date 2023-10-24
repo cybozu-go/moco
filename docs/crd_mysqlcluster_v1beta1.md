@@ -181,7 +181,7 @@ BucketConfig is a set of parameter to access an object storage bucket.
 | endpointURL | The API endpoint URL.  Set this for non-S3 object storages. | string | false |
 | usePathStyle | Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY). | bool | false |
 | backendType | BackendType is an identifier for the object storage to be used. | string | false |
-| caCerts | Path to SSL CA certificate file instead of system default. | string | false |
+| caCert | Path to SSL CA certificate file used in addition to system default. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 
