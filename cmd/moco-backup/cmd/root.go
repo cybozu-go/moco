@@ -62,9 +62,10 @@ func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 			return nil, fmt.Errorf("failed to add ca cert")
 		}
 		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
 		}
+		transport.TLSClientConfig.RootCAs = caCertPool
 		opts = append(opts, bucket.WithHTTPClient(&http.Client{
 			Transport: transport,
 		}))
