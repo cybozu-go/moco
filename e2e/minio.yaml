@@ -1,25 +1,3 @@
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  namespace: default
-  name: default-selfsigned-issuer
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  namespace: default
-  name: minio-cert
-spec:
-  commonName: minio cert
-  issuerRef:
-    kind: Issuer
-    name: default-selfsigned-issuer
-  secretName: minio-cert
-  dnsNames:
-    - minio.default.svc
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -55,16 +33,6 @@ spec:
       volumeMounts:
         - name: data
           mountPath: /data
-        - name: secret-volume
-          mountPath: /root/.minio/certs
   volumes:
     - name: data
       emptyDir: {}
-    - name: secret-volume
-      secret:
-        secretName: minio-cert
-        items:
-          - key: tls.crt
-            path: public.crt
-          - key: tls.key
-            path: private.key

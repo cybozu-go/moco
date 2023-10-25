@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: backup
+  name: backup-tls
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: backup
+  namespace: backup-tls
   name: mycnf
 data:
   innodb_log_file_size: "10M"
@@ -14,13 +14,13 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  namespace: backup
+  namespace: backup-tls
   name: backup-owner
 ---
 apiVersion: moco.cybozu.com/v1beta1
 kind: BackupPolicy
 metadata:
-  namespace: backup
+  namespace: backup-tls
   name: daily
 spec:
   schedule: "@daily"
@@ -31,17 +31,25 @@ spec:
         value: minioadmin
       - name: AWS_SECRET_ACCESS_KEY
         value: minioadmin
+    volumeMounts:
+      - mountPath: /minio-cert
+        name: minio-cert
+    volumes:
+      - name: minio-cert
+        secret:
+          secretName: minio-cert
     bucketConfig:
       bucketName: moco
-      endpointURL: http://minio.default.svc:9000
+      endpointURL: https://minio-tls.default.svc:9000
       usePathStyle: true
+      caCert: /minio-cert/ca.crt
     workVolume:
       emptyDir: {}
 ---
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
-  namespace: backup
+  namespace: backup-tls
   name: source
 spec:
   mysqlConfigMapName: mycnf

@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: make-bucket-tls
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - command:
+            - s3cmd
+            - --host=minio-tls.default.svc:9000
+            - --host-bucket=minio-tls.default.svc:9000
+            - --access_key=minioadmin
+            - --secret_key=minioadmin
+            - --ssl
+            - --ca-certs=/minio-cert/ca.crt
+            - mb
+            - s3://moco
+          image: moco-backup:dev
+          imagePullPolicy: IfNotPresent
+          name: make-bucket-tls
+          volumeMounts:
+            - name: minio-cert
+              mountPath: /minio-cert
+      volumes:
+        - name: minio-cert
+          secret:
+            secretName: minio-cert
+            items:
+              - key: ca.crt
+                path: ca.crt
