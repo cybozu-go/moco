@@ -27,6 +27,9 @@ var (
 	VolumeResizedErrorTotal       *prometheus.CounterVec
 	StatefulSetRecreateTotal      *prometheus.CounterVec
 	StatefulSetRecreateErrorTotal *prometheus.CounterVec
+
+	ClusteringStoppedVec     *prometheus.GaugeVec
+	ReconciliationStoppedVec *prometheus.GaugeVec
 )
 
 // Backup related metrics
@@ -201,4 +204,20 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of failed StatefulSet recreates",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(StatefulSetRecreateErrorTotal)
+
+	ClusteringStoppedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "clustering_stopped",
+		Help:      "Indicates if clustering has stopped",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(ClusteringStoppedVec)
+
+	ReconciliationStoppedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "reconciliation_stopped",
+		Help:      "Indicates if reconciliation has stopped",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(ReconciliationStoppedVec)
 }

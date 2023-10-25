@@ -236,12 +236,12 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		log.Info("reconciliation is stopped")
 
 		if isClusteringStopped(cluster) {
-			r.ClusterManager.Stop(req.NamespacedName)
 			if err := r.clusteringStopV1(ctx, cluster); err != nil {
 				return ctrl.Result{}, err
 			}
 		} else {
 			r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
+			metrics.ClusteringStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(0)
 		}
 
 		if err := r.reconciliationStopV1(ctx, cluster); err != nil {
@@ -313,7 +313,6 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 	}
 
 	if isClusteringStopped(cluster) {
-		r.ClusterManager.Stop(req.NamespacedName)
 		if err := r.clusteringStopV1(ctx, cluster); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -321,6 +320,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 	}
 
 	r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
+	metrics.ClusteringStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(0)
 	return ctrl.Result{}, nil
 }
 
@@ -1644,6 +1644,9 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 		return fmt.Errorf("failed to delete certificate %s: %w", certName, err)
 	}
 
+	metrics.ClusteringStoppedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	metrics.ReconciliationStoppedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+
 	return nil
 }
 
@@ -1751,6 +1754,8 @@ func (r *MySQLClusterReconciler) clusteringStopV1(ctx context.Context, cluster *
 		log.Info("update status successfully")
 	}
 
+	metrics.ClusteringStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(1)
+
 	return nil
 }
 
@@ -1777,6 +1782,8 @@ func (r *MySQLClusterReconciler) reconciliationStopV1(ctx context.Context, clust
 		}
 		log.Info("update status successfully")
 	}
+
+	metrics.ReconciliationStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(1)
 
 	return nil
 }
