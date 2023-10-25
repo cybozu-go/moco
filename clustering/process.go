@@ -49,6 +49,7 @@ type managerProcess struct {
 	agentf   AgentFactory
 	name     types.NamespacedName
 	cancel   func()
+	pause    bool
 
 	ch            chan string
 	metrics       metricsSet
@@ -115,11 +116,20 @@ func (p *managerProcess) Cancel() {
 	p.cancel()
 }
 
+// Pause pauses the manager process.
+// Unlike Cancel, it does not delete metrics.
+func (p *managerProcess) Pause() {
+	p.pause = true
+	p.cancel()
+}
+
 func (p *managerProcess) Start(ctx context.Context, rootLog logr.Logger, interval time.Duration) {
 	tick := time.NewTicker(interval)
 	defer func() {
 		tick.Stop()
-		p.deleteMetrics()
+		if !p.pause {
+			p.deleteMetrics()
+		}
 	}()
 
 	for {

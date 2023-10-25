@@ -1729,7 +1729,7 @@ func (r *MySQLClusterReconciler) clusteringStopV1(ctx context.Context, cluster *
 		return nil
 	}
 
-	r.ClusterManager.Stop(types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
+	r.ClusterManager.Pause(types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name})
 
 	for _, cond := range cluster.Status.Conditions {
 		if cond.Type == mocov1beta2.ConditionAvailable || cond.Type == mocov1beta2.ConditionHealthy {

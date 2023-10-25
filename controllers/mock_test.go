@@ -38,6 +38,13 @@ func (m *mockManager) Stop(key types.NamespacedName) {
 
 func (m *mockManager) StopAll() {}
 
+func (m *mockManager) Pause(key types.NamespacedName) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.clusters, key.String())
+}
+
 func (m *mockManager) getKeys() map[string]bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
