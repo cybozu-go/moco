@@ -4,8 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
@@ -43,12 +41,18 @@ var _ = Context("backup", func() {
 			job := &batchv1.Job{}
 			err = json.Unmarshal(out, job)
 			g.Expect(err).NotTo(HaveOccurred())
+<<<<<<< Updated upstream
 			for _, cond := range job.Status.Conditions {
 				if cond.Type != batchv1.JobComplete {
 					continue
 				}
 				g.Expect(cond.Status).To(Equal(corev1.ConditionTrue))
 			}
+=======
+			condComplete, err := getJobCondition(job, batchv1.JobComplete)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket has not been finished")
+>>>>>>> Stashed changes
 		}).Should(Succeed())
 	})
 
@@ -61,21 +65,12 @@ var _ = Context("backup", func() {
 		secjson, err := json.Marshal(sec)
 		Expect(err).NotTo(HaveOccurred())
 		kubectlSafe(secjson, "apply", "-f", "-")
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup", "source")
-			if err != nil {
-				return err
-			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
-			}
-			return errors.New("no health condition")
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := getClusterCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
 		}).Should(Succeed())
 
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
@@ -88,24 +83,15 @@ var _ = Context("backup", func() {
 
 	It("should take a full dump", func() {
 		kubectlSafe(nil, "-n", "backup", "create", "job", "--from=cronjob/moco-backup-source", "backup-1")
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "-n", "backup", "get", "jobs", "backup-1", "-o", "json")
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 			job := &batchv1.Job{}
-			if err := json.Unmarshal(out, job); err != nil {
-				return err
-			}
-			for _, cond := range job.Status.Conditions {
-				if cond.Type != batchv1.JobComplete {
-					continue
-				}
-				if cond.Status == corev1.ConditionTrue {
-					return nil
-				}
-			}
-			return errors.New("backup-1 has not been finished")
+			err = json.Unmarshal(out, job)
+			g.Expect(err).NotTo(HaveOccurred())
+			condComplete, err := getJobCondition(job, batchv1.JobComplete)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "backup-1 has not been finished")
 		}).Should(Succeed())
 	})
 
@@ -122,24 +108,15 @@ var _ = Context("backup", func() {
 		time.Sleep(100 * time.Millisecond)
 
 		kubectlSafe(nil, "-n", "backup", "create", "job", "--from=cronjob/moco-backup-source", "backup-2")
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "-n", "backup", "get", "jobs", "backup-2", "-o", "json")
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 			job := &batchv1.Job{}
-			if err := json.Unmarshal(out, job); err != nil {
-				return err
-			}
-			for _, cond := range job.Status.Conditions {
-				if cond.Type != batchv1.JobComplete {
-					continue
-				}
-				if cond.Status == corev1.ConditionTrue {
-					return nil
-				}
-			}
-			return errors.New("backup-2 has not been finished")
+			err = json.Unmarshal(out, job)
+			g.Expect(err).NotTo(HaveOccurred())
+			condComplete, err := getJobCondition(job, batchv1.JobComplete)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "backup-2 has not been finished")
 		}).Should(Succeed())
 
 		cluster, err := getCluster("backup", "source")
@@ -163,20 +140,12 @@ var _ = Context("backup", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		kubectlSafe(buf.Bytes(), "apply", "-f", "-")
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup", "target")
-			if err != nil {
-				return err
-			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				if cond.Status == metav1.ConditionTrue {
-					return nil
-				}
-			}
-			return errors.New("target is not healthy")
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := getClusterCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue), "target is not healthy")
 		}).Should(Succeed())
 
 		out := kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target", "--",
@@ -189,19 +158,13 @@ var _ = Context("backup", func() {
 	It("should delete clusters", func() {
 		kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
 
-		Eventually(func() error {
+		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "get", "-n", "backup", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
+			g.Expect(err).NotTo(HaveOccurred())
 			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
+			err = json.Unmarshal(out, pods)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(len(pods.Items)).To(BeNumerically(">", 0), "wait until all Pods are deleted")
 		}).Should(Succeed())
 	})
 })

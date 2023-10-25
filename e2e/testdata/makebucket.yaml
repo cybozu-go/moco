@@ -14,20 +14,9 @@ spec:
             - --host-bucket=minio.default.svc:9000
             - --access_key=minioadmin
             - --secret_key=minioadmin
-            - --ssl
-            - --ca-certs=/minio-cert/ca.crt
+            - --no-ssl
             - mb
             - s3://moco
           image: moco-backup:dev
           imagePullPolicy: IfNotPresent
           name: make-bucket
-          volumeMounts:
-            - name: minio-cert
-              mountPath: /minio-cert
-      volumes:
-        - name: minio-cert
-          secret:
-            secretName: minio-cert
-            items:
-              - key: ca.crt
-                path: ca.crt
