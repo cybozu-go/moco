@@ -1933,4 +1933,58 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 	})
+
+	It("should reconciliation stopped", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("setting reconcile stop annotation")
+		cluster.Annotations[constants.AnnReconciliationStopped] = "true"
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconciliationActive)
+			if cond == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if cond.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should clustering stopped", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("setting clustering stop annotation")
+		cluster.Annotations[constants.AnnClusteringStopped] = "true"
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking condition is false")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconciliationActive)
+			if cond == nil {
+				return fmt.Errorf("condition does not exists")
+			}
+			if cond.Status != metav1.ConditionFalse {
+				return fmt.Errorf("condition is not false")
+			}
+			return nil
+		}).Should(Succeed())
+	})
 })
