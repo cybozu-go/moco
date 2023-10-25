@@ -1113,6 +1113,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc := &bp.Spec.JobConfig
 		jc.Threads = 3
 		jc.ServiceAccountName = "foo"
+		jc.CPU = resource.NewQuantity(1, resource.DecimalSI)
+		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
 		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
@@ -1205,7 +1207,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(c.Env).To(HaveLen(2))
 		Expect(c.VolumeMounts).To(HaveLen(2))
 		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
-		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
+		Expect(cpuReq.Value()).To(BeNumerically("==", 1))
+		cpuLim := c.Resources.Limits[corev1.ResourceCPU]
+		Expect(cpuLim.Value()).To(BeNumerically("==", 4))
 		memReq := c.Resources.Requests[corev1.ResourceMemory]
 		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
@@ -1234,6 +1238,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc = &bp.Spec.JobConfig
 		jc.Threads = 1
 		jc.ServiceAccountName = "oof"
+		jc.CPU = nil
+		jc.MaxCPU = nil
 		jc.Memory = nil
 		jc.MaxMemory = nil
 		jc.Env = nil
@@ -1285,7 +1291,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(c.EnvFrom).To(BeEmpty())
 		Expect(c.Env).To(HaveLen(1))
 		cpuReq = c.Resources.Requests[corev1.ResourceCPU]
-		Expect(cpuReq.Value()).To(BeNumerically("==", 1))
+		Expect(cpuReq.Value()).To(BeNumerically("==", 4))
+		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceCPU))
 		memReq = c.Resources.Requests[corev1.ResourceMemory]
 		Expect(memReq.Value()).To(BeNumerically("==", 4<<30))
 		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceMemory))
@@ -1343,6 +1350,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc := &cluster.Spec.Restore.JobConfig
 		jc.Threads = 3
 		jc.ServiceAccountName = "foo"
+		jc.CPU = resource.NewQuantity(1, resource.DecimalSI)
+		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
 		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
@@ -1430,7 +1439,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(c.Env).To(HaveLen(2))
 		Expect(c.VolumeMounts).To(HaveLen(2))
 		cpuReq := c.Resources.Requests[corev1.ResourceCPU]
-		Expect(cpuReq.Value()).To(BeNumerically("==", 3))
+		Expect(cpuReq.Value()).To(BeNumerically("==", 1))
+		cpuLim := c.Resources.Limits[corev1.ResourceCPU]
+		Expect(cpuLim.Value()).To(BeNumerically("==", 4))
 		memReq := c.Resources.Requests[corev1.ResourceMemory]
 		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
 		memLim := c.Resources.Limits[corev1.ResourceMemory]

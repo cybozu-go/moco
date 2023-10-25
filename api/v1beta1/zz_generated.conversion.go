@@ -512,6 +512,8 @@ func autoConvert__JobConfig_To_v1beta2_JobConfig(in *JobConfig, out *v1beta2.Job
 		return err
 	}
 	out.Threads = in.Threads
+	out.CPU = (*resource.Quantity)(unsafe.Pointer(in.CPU))
+	out.MaxCPU = (*resource.Quantity)(unsafe.Pointer(in.MaxCPU))
 	out.Memory = (*resource.Quantity)(unsafe.Pointer(in.Memory))
 	out.MaxMemory = (*resource.Quantity)(unsafe.Pointer(in.MaxMemory))
 	out.EnvFrom = *(*[]v1beta2.EnvFromSourceApplyConfiguration)(unsafe.Pointer(&in.EnvFrom))
@@ -536,6 +538,8 @@ func autoConvert_v1beta2_JobConfig_To__JobConfig(in *v1beta2.JobConfig, out *Job
 		return err
 	}
 	out.Threads = in.Threads
+	out.CPU = (*resource.Quantity)(unsafe.Pointer(in.CPU))
+	out.MaxCPU = (*resource.Quantity)(unsafe.Pointer(in.MaxCPU))
 	out.Memory = (*resource.Quantity)(unsafe.Pointer(in.Memory))
 	out.MaxMemory = (*resource.Quantity)(unsafe.Pointer(in.MaxMemory))
 	out.EnvFrom = *(*[]EnvFromSourceApplyConfiguration)(unsafe.Pointer(&in.EnvFrom))
