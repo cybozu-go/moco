@@ -1940,6 +1940,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setting reconcile stop annotation")
+		if cluster.Annotations == nil {
+			cluster.Annotations = map[string]string{}
+		}
 		cluster.Annotations[constants.AnnReconciliationStopped] = "true"
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -1967,6 +1970,9 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setting clustering stop annotation")
+		if cluster.Annotations == nil {
+			cluster.Annotations = map[string]string{}
+		}
 		cluster.Annotations[constants.AnnClusteringStopped] = "true"
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -1977,7 +1983,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			cond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconciliationActive)
+			cond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionClusteringActive)
 			if cond == nil {
 				return fmt.Errorf("condition does not exists")
 			}

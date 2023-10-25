@@ -45,6 +45,9 @@ func stopClustering(ctx context.Context, name string) error {
 
 	orig := cluster.DeepCopy()
 
+	if cluster.Annotations == nil {
+		cluster.Annotations = make(map[string]string)
+	}
 	cluster.Annotations[constants.AnnClusteringStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
@@ -79,6 +82,9 @@ func stopReconciliation(ctx context.Context, name string) error {
 
 	orig := cluster.DeepCopy()
 
+	if cluster.Annotations == nil {
+		cluster.Annotations = make(map[string]string)
+	}
 	cluster.Annotations[constants.AnnReconciliationStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
