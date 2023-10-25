@@ -55,7 +55,8 @@ jobs:
 
   upgrade:
     name: Upgrade Test
-    runs-on: ubuntu-20.04
+    runs-on:
+      group: moco
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
