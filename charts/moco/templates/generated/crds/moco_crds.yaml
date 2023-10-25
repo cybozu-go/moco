@@ -18,7 +18,8 @@ spec:
     singular: backuppolicy
   scope: Namespaced
   versions:
-    - name: v1beta1
+    - deprecated: true
+      name: v1beta1
       schema:
         openAPIV3Schema:
           description: 'BackupPolicy is a namespaced resource that should '
@@ -4129,6 +4130,7 @@ spec:
         - jsonPath: .status.backup.time
           name: Last backup
           type: string
+      deprecated: true
       name: v1beta1
       schema:
         openAPIV3Schema:

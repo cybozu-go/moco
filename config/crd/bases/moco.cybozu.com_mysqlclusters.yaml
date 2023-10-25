@@ -33,6 +33,7 @@ spec:
     - jsonPath: .status.backup.time
       name: Last backup
       type: string
+    deprecated: true
     name: v1beta1
     schema:
       openAPIV3Schema:
