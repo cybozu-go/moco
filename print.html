@@ -1271,6 +1271,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 <tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
+<tr><td>caCert</td><td>Path to SSL CA certificate file used in addition to system default.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1450,6 +1451,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 <tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
+<tr><td>caCert</td><td>Path to SSL CA certificate file used in addition to system default.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1521,6 +1523,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 <tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
+<tr><td>caCert</td><td>Path to SSL CA certificate file used in addition to system default.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta1.html#custom-resources">Back to Custom Resources</a></p>
@@ -1592,6 +1595,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>endpointURL</td><td>The API endpoint URL.  Set this for non-S3 object storages.</td><td>string</td><td>false</td></tr>
 <tr><td>usePathStyle</td><td>Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY).</td><td>bool</td><td>false</td></tr>
 <tr><td>backendType</td><td>BackendType is an identifier for the object storage to be used.</td><td>string</td><td>false</td></tr>
+<tr><td>caCert</td><td>Path to SSL CA certificate file used in addition to system default.</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_backuppolicy_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
@@ -1721,6 +1725,7 @@ For details, read documentation of <a href="https://pkg.go.dev/github.com/aws/aw
       --threads int       The number of threads to be used (default 4)
       --use-path-style    Use path-style S3 API
       --work-dir string   The writable working directory (default &quot;/work&quot;)
+      --ca-cert string    Path to SSL CA certificate file used in addition to system default
 </code></pre>
 <h2 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h2>
 <h3 id="backup-subcommand"><a class="header" href="#backup-subcommand"><code>backup</code> subcommand</a></h3>
