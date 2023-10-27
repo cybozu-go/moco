@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Add tls settings for BackupPolicy [#580](https://github.com/cybozu-go/moco/pull/580)
+
 ## [0.17.0] - 2023-09-11
 
 ### Breaking Changes

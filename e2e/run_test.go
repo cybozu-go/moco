@@ -13,8 +13,10 @@ import (
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func kubectl(input []byte, args ...string) ([]byte, error) {
@@ -55,6 +57,26 @@ func getCluster(ns, name string) (*mocov1beta2.MySQLCluster, error) {
 		return nil, err
 	}
 	return cluster, nil
+}
+
+func getClusterCondition(cluster *mocov1beta2.MySQLCluster, condType string) (metav1.Condition, error) {
+	for _, cond := range cluster.Status.Conditions {
+		if cond.Type != condType {
+			continue
+		}
+		return cond, nil
+	}
+	return metav1.Condition{}, fmt.Errorf("no %s condition", condType)
+}
+
+func getJobCondition(job *batchv1.Job, condType batchv1.JobConditionType) (batchv1.JobCondition, error) {
+	for _, cond := range job.Status.Conditions {
+		if cond.Type != condType {
+			continue
+		}
+		return cond, nil
+	}
+	return batchv1.JobCondition{}, fmt.Errorf("no %s condition", condType)
 }
 
 func fillTemplate(tmpl string) []byte {

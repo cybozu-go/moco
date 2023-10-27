@@ -218,4 +218,8 @@ type BucketConfig struct {
 	// +kubebuilder:default=s3
 	// +optional
 	BackendType string `json:"backendType,omitempty"`
+
+	// Path to SSL CA certificate file used in addition to system default.
+	// +optional
+	CaCert string `json:"caCert,omitempty"`
 }

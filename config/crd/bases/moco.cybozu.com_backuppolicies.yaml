@@ -462,6 +462,10 @@ spec:
                         description: The name of the bucket
                         minLength: 1
                         type: string
+                      caCert:
+                        description: Path to SSL CA certificate file used in addition
+                          t
+                        type: string
                       endpointURL:
                         description: The API endpoint URL.
                         pattern: ^https?://.*
@@ -2648,6 +2652,10 @@ spec:
                       bucketName:
                         description: The name of the bucket
                         minLength: 1
+                        type: string
+                      caCert:
+                        description: Path to SSL CA certificate file used in addition
+                          t
                         type: string
                       endpointURL:
                         description: The API endpoint URL.

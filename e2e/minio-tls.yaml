@@ -1,0 +1,70 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  namespace: default
+  name: default-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  namespace: default
+  name: minio-cert
+spec:
+  commonName: minio cert
+  issuerRef:
+    kind: Issuer
+    name: default-selfsigned-issuer
+  secretName: minio-cert
+  dnsNames:
+    - minio-tls.default.svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: minio-tls
+spec:
+  ports:
+    - name: minio
+      port: 9000
+      targetPort: minio
+      protocol: TCP
+  selector:
+    name: minio-tls
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+  name: minio-tls
+  labels:
+    name: minio-tls
+spec:
+  containers:
+    - name: minio
+      image: minio/minio
+      args:
+        - server
+        - /data
+      ports:
+        - name: minio
+          containerPort: 9000
+          protocol: TCP
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: secret-volume
+          mountPath: /root/.minio/certs
+  volumes:
+    - name: data
+      emptyDir: {}
+    - name: secret-volume
+      secret:
+        secretName: minio-cert
+        items:
+          - key: tls.crt
+            path: public.crt
+          - key: tls.key
+            path: private.key

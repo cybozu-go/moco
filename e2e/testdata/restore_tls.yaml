@@ -1,14 +1,14 @@
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
-  namespace: backup
+  namespace: backup-tls
   name: target
 spec:
   mysqlConfigMapName: mycnf
   replicas: 1
   restore:
     sourceName: source
-    sourceNamespace: backup
+    sourceNamespace: backup-tls
     restorePoint: "{{ .RestorePoint }}"
     jobConfig:
       serviceAccountName: backup-owner
@@ -17,10 +17,18 @@ spec:
           value: minioadmin
         - name: AWS_SECRET_ACCESS_KEY
           value: minioadmin
+      volumeMounts:
+        - mountPath: /minio-cert
+          name: minio-cert
+      volumes:
+        - name: minio-cert
+          secret:
+            secretName: minio-cert
       bucketConfig:
         bucketName: moco
-        endpointURL: http://minio.default.svc:9000
+        endpointURL: https://minio-tls.default.svc:9000
         usePathStyle: true
+        caCert: /minio-cert/ca.crt
       workVolume:
         emptyDir: {}
   podTemplate:

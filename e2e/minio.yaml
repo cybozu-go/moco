@@ -5,10 +5,10 @@ metadata:
   name: minio
 spec:
   ports:
-  - name: minio
-    port: 9000
-    targetPort: minio
-    protocol: TCP
+    - name: minio
+      port: 9000
+      targetPort: minio
+      protocol: TCP
   selector:
     name: minio
 ---
@@ -21,18 +21,18 @@ metadata:
     name: minio
 spec:
   containers:
-  - name: minio
-    image: minio/minio
-    args:
-    - server
-    - /data
-    ports:
     - name: minio
-      containerPort: 9000
-      protocol: TCP
-    volumeMounts:
-    - name: data
-      mountPath: /data
+      image: minio/minio
+      args:
+        - server
+        - /data
+      ports:
+        - name: minio
+          containerPort: 9000
+          protocol: TCP
+      volumeMounts:
+        - name: data
+          mountPath: /data
   volumes:
-  - name: data
-    emptyDir: {}
+    - name: data
+      emptyDir: {}
