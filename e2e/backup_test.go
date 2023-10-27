@@ -49,13 +49,6 @@ var _ = Context("backup", func() {
 
 	It("should construct a source cluster", func() {
 		kubectlSafe(fillTemplate(backupYAML), "apply", "-f", "-")
-		secjson := kubectlSafe(nil, "get", "secret", "-o", "json", "minio-cert")
-		sec := &corev1.Secret{}
-		json.Unmarshal(secjson, sec)
-		sec.SetNamespace("backup")
-		secjson, err := json.Marshal(sec)
-		Expect(err).NotTo(HaveOccurred())
-		kubectlSafe(secjson, "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup", "source")
 			g.Expect(err).NotTo(HaveOccurred())
