@@ -832,7 +832,7 @@ var _ = Describe("manager", func() {
 				case 0:
 					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
 				case 1:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleErrantReplica))
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
 				default:
 					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
 				}
@@ -857,12 +857,7 @@ var _ = Describe("manager", func() {
 		}
 
 		for i := 0; i < 5; i++ {
-			switch i {
-			case 1:
-				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
-			default:
-				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
-			}
+			Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
 		}
 
 		By("triggering a failover")
@@ -893,7 +888,7 @@ var _ = Describe("manager", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				switch i {
 				case 1:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleErrantReplica))
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
 				case 3:
 					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
 				default:

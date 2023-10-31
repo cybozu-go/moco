@@ -273,18 +273,11 @@ func (p *managerProcess) removeRoleLabel(ctx context.Context, ss *StatusSet) ([]
 			continue
 		}
 
-		if i == ss.Primary {
-			if v == constants.RolePrimary {
-				continue
-			}
-		} else if isErrantReplica(ss, i) {
-			if v == constants.RoleErrantReplica {
-				continue
-			}
-		} else {
-			if v == constants.RoleReplica {
-				continue
-			}
+		if i == ss.Primary && v == constants.RolePrimary {
+			continue
+		}
+		if i != ss.Primary && !isErrantReplica(ss, i) && v == constants.RoleReplica {
+			continue
 		}
 
 		noRoles = append(noRoles, i)
@@ -299,11 +292,13 @@ func (p *managerProcess) removeRoleLabel(ctx context.Context, ss *StatusSet) ([]
 
 func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, noRoles []int) error {
 	for _, i := range noRoles {
+		if isErrantReplica(ss, i) {
+			continue
+		}
+
 		var newValue string
 		if i == ss.Primary {
 			newValue = constants.RolePrimary
-		} else if isErrantReplica(ss, i) {
-			newValue = constants.RoleErrantReplica
 		} else {
 			newValue = constants.RoleReplica
 		}
@@ -335,21 +330,18 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 	}
 
 	// if the role of alive instances is changed, kill the connections on those instances
-	alive := false
+	var alive []int
 	for _, i := range noRoles {
-		if ss.MySQLStatus[i] == nil {
+		if ss.MySQLStatus[i] == nil || isErrantReplica(ss, i) {
 			continue
 		}
-		alive = true
+		alive = append(alive, i)
 	}
-	if alive {
+	if len(alive) > 0 {
 		// I hope the backend pods of primary and replica services will be updated during this sleep.
 		time.Sleep(waitForRoleChangeDuration)
 	}
-	for _, i := range noRoles {
-		if ss.MySQLStatus[i] == nil {
-			continue
-		}
+	for _, i := range alive {
 		if err := ss.DBOps[i].KillConnections(ctx); err != nil {
 			return false, fmt.Errorf("failed to kill connections in instance %d: %w", i, err)
 		}

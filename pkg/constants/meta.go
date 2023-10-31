@@ -10,10 +10,9 @@ const (
 	LabelAppCreatedBy = "app.kubernetes.io/created-by"
 	AppCreator        = "moco"
 
-	LabelMocoRole     = "moco.cybozu.com/role"
-	RolePrimary       = "primary"
-	RoleReplica       = "replica"
-	RoleErrantReplica = "errant-replica"
+	LabelMocoRole = "moco.cybozu.com/role"
+	RolePrimary   = "primary"
+	RoleReplica   = "replica"
 )
 
 // annotation keys and values
