@@ -94,7 +94,7 @@ check-generate:
 envtest: setup-envtest
 	source <($(SETUP_ENVTEST) use -p env); \
 		export MOCO_CHECK_INTERVAL=100ms; \
-		export MOCO_WAIT_INTERVAL=100ms; \
+		export MOCO_CLONE_WAIT_DURATION=100ms; \
 		go test -v -count 1 -race ./clustering -ginkgo.progress -ginkgo.v -ginkgo.failFast
 	source <($(SETUP_ENVTEST) use -p env); \
 		export DEBUG_CONTROLLER=1; \

@@ -540,9 +540,12 @@ var _ = Describe("manager", func() {
 			}
 		}
 
+		// confirm that connections of the mysql whose role has changed are killed
 		for i := 0; i < 3; i++ {
 			switch i {
-			case 0: // connection in demoted instance should be killed
+			case 0: // KilleConnection is called twice: when the start of the switchover and the changing of role.
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(2))
+			case newPrimary:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
 			default:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
@@ -705,7 +708,12 @@ var _ = Describe("manager", func() {
 		Expect(failOverEvents).To(Equal(1))
 
 		for i := 0; i < 3; i++ {
-			Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
+			switch i {
+			case 1:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
+			default:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
+			}
 		}
 
 		By("recovering failed instance")
@@ -796,6 +804,8 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		By("making an errant replica")
+		of.resetKillConnectionsCount()
+
 		// When the primary load is high, sometimes the gtid_executed of a replica precedes the primary.
 		// pod(4) is intended for such situations.
 		testSetGTID(cluster.PodHostname(0), "p0:1,p0:2,p0:3") // primary
@@ -844,6 +854,10 @@ var _ = Describe("manager", func() {
 		Expect(st1).NotTo(BeNil())
 		if st1.ReplicaHosts != nil {
 			Expect(st1.ReplicaStatus.SlaveIORunning).NotTo(Equal("Yes"))
+		}
+
+		for i := 0; i < 5; i++ {
+			Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
 		}
 
 		By("triggering a failover")
@@ -909,6 +923,7 @@ var _ = Describe("manager", func() {
 		Expect(failOverEvents).To(Equal(1))
 
 		By("re-initializing the errant replica")
+		of.resetKillConnectionsCount()
 		testSetGTID(cluster.PodHostname(1), "")
 		Eventually(func() interface{} {
 			return ms.errantReplicas
@@ -936,6 +951,15 @@ var _ = Describe("manager", func() {
 				}
 			}
 		}).Should(Succeed())
+
+		for i := 0; i < 5; i++ {
+			switch i {
+			case 1:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
+			default:
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
+			}
+		}
 
 		By("stopping instances to make the cluster lost")
 		of.setFailing(cluster.PodHostname(3), true)

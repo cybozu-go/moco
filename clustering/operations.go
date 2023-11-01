@@ -23,10 +23,13 @@ const (
 	failOverTimeoutSeconds   = 3600
 )
 
-var waitForRestartDuration = 3 * time.Second
+var (
+	waitForCloneRestartDuration = 3 * time.Second
+	waitForRoleChangeDuration   = 300 * time.Millisecond
+)
 
 func init() {
-	intervalStr := os.Getenv("MOCO_WAIT_INTERVAL")
+	intervalStr := os.Getenv("MOCO_CLONE_WAIT_DURATION")
 	if intervalStr == "" {
 		return
 	}
@@ -34,7 +37,19 @@ func init() {
 	if err != nil {
 		return
 	}
-	waitForRestartDuration = interval
+	waitForCloneRestartDuration = interval
+}
+
+func init() {
+	intervalStr := os.Getenv("MOCO_ROLE_WAIT_DURATION")
+	if intervalStr == "" {
+		return
+	}
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		return
+	}
+	waitForRoleChangeDuration = interval
 }
 
 func (p *managerProcess) isCloning(ctx context.Context, ss *StatusSet) bool {
@@ -115,7 +130,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 
 	// wait until the instance restarts after clone
 	op := ss.DBOps[ss.Primary]
-	time.Sleep(waitForRestartDuration)
+	time.Sleep(waitForCloneRestartDuration)
 	for i := 0; i < 60; i++ {
 		select {
 		case <-time.After(1 * time.Second):
@@ -249,9 +264,90 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 	return nil
 }
 
+func (p *managerProcess) removeRoleLabel(ctx context.Context, ss *StatusSet) ([]int, error) {
+	var noRoles []int
+	for i, pod := range ss.Pods {
+		v := pod.Labels[constants.LabelMocoRole]
+		if v == "" {
+			noRoles = append(noRoles, i)
+			continue
+		}
+
+		if i == ss.Primary && v == constants.RolePrimary {
+			continue
+		}
+		if i != ss.Primary && !isErrantReplica(ss, i) && v == constants.RoleReplica {
+			continue
+		}
+
+		noRoles = append(noRoles, i)
+		modified := pod.DeepCopy()
+		delete(modified.Labels, constants.LabelMocoRole)
+		if err := p.client.Patch(ctx, modified, client.MergeFrom(pod)); err != nil {
+			return nil, fmt.Errorf("failed to remove %s label from %s/%s: %w", constants.LabelMocoRole, pod.Namespace, pod.Name, err)
+		}
+	}
+	return noRoles, nil
+}
+
+func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, noRoles []int) error {
+	for _, i := range noRoles {
+		if isErrantReplica(ss, i) {
+			continue
+		}
+
+		var newValue string
+		if i == ss.Primary {
+			newValue = constants.RolePrimary
+		} else {
+			newValue = constants.RoleReplica
+		}
+
+		pod := ss.Pods[i]
+		modified := pod.DeepCopy()
+		if modified.Labels == nil {
+			modified.Labels = make(map[string]string)
+		}
+		modified.Labels[constants.LabelMocoRole] = newValue
+		if err := p.client.Patch(ctx, modified, client.MergeFrom(pod)); err != nil {
+			return fmt.Errorf("failed to add %s label to pod %s/%s: %w", constants.LabelMocoRole, pod.Namespace, pod.Name, err)
+		}
+	}
+	return nil
+}
+
 func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, error) {
 	redo := false
 
+	// remove old role label from mysql pods whose role is changed
+	// NOTE:
+	//   I want to redo if even one pod is updated to refresh pod resources in StatusSet.
+	//   But if some mysql instances are down, there is a wait of about 9 seconds at "(*managerProdess).GatherStatus()" after redo.
+	//   The wait slows the recovery process, and downtime becomes longer. To prevent that, continue processing without redoing.
+	noRoles, err := p.removeRoleLabel(ctx, ss)
+	if err != nil {
+		return false, err
+	}
+
+	// if the role of alive instances is changed, kill the connections on those instances
+	var alive []int
+	for _, i := range noRoles {
+		if ss.MySQLStatus[i] == nil || isErrantReplica(ss, i) {
+			continue
+		}
+		alive = append(alive, i)
+	}
+	if len(alive) > 0 {
+		// I hope the backend pods of primary and replica services will be updated during this sleep.
+		time.Sleep(waitForRoleChangeDuration)
+	}
+	for _, i := range alive {
+		if err := ss.DBOps[i].KillConnections(ctx); err != nil {
+			return false, fmt.Errorf("failed to kill connections in instance %d: %w", i, err)
+		}
+	}
+
+	// configure primary instance
 	if ss.Cluster.Spec.ReplicationSourceSecretName != nil {
 		r, err := p.configureIntermediatePrimary(ctx, ss)
 		if err != nil {
@@ -266,6 +362,7 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 		redo = redo || r
 	}
 
+	// configure replica instances
 	for i, ist := range ss.MySQLStatus {
 		if i == ss.Primary {
 			continue
@@ -280,46 +377,10 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 		redo = redo || r
 	}
 
-	// update labels
-	for i, pod := range ss.Pods {
-		if i == ss.Primary {
-			if pod.Labels[constants.LabelMocoRole] != constants.RolePrimary {
-				redo = true
-				modified := pod.DeepCopy()
-				if modified.Labels == nil {
-					modified.Labels = make(map[string]string)
-				}
-				modified.Labels[constants.LabelMocoRole] = constants.RolePrimary
-				if err := p.client.Patch(ctx, modified, client.MergeFrom(pod)); err != nil {
-					return false, fmt.Errorf("failed to set role for pod %s/%s: %w", pod.Namespace, pod.Name, err)
-				}
-			}
-			continue
-		}
-
-		if ss.MySQLStatus[i] != nil && ss.MySQLStatus[i].IsErrant {
-			if _, ok := pod.Labels[constants.LabelMocoRole]; ok {
-				redo = true
-				modified := pod.DeepCopy()
-				delete(modified.Labels, constants.LabelMocoRole)
-				if err := p.client.Patch(ctx, modified, client.MergeFrom(pod)); err != nil {
-					return false, fmt.Errorf("failed to set role for pod %s/%s: %w", pod.Namespace, pod.Name, err)
-				}
-			}
-			continue
-		}
-
-		if pod.Labels[constants.LabelMocoRole] != constants.RoleReplica {
-			redo = true
-			modified := pod.DeepCopy()
-			if modified.Labels == nil {
-				modified.Labels = make(map[string]string)
-			}
-			modified.Labels[constants.LabelMocoRole] = constants.RoleReplica
-			if err := p.client.Patch(ctx, modified, client.MergeFrom(pod)); err != nil {
-				return false, fmt.Errorf("failed to set role for pod %s/%s: %w", pod.Namespace, pod.Name, err)
-			}
-		}
+	// add new role label
+	err = p.addRoleLabel(ctx, ss, noRoles)
+	if err != nil {
+		return false, err
 	}
 
 	// make the primary writable if it is not an intermediate primary
@@ -484,7 +545,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		log.Info("clone succeeded", "instance", index)
 
 		// wait until the instance restarts after clone
-		time.Sleep(waitForRestartDuration)
+		time.Sleep(waitForCloneRestartDuration)
 		for i := 0; i < 60; i++ {
 			select {
 			case <-time.After(1 * time.Second):

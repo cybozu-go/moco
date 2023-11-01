@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -208,10 +209,10 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				}
 				// process errors
 				if j == statusCheckRetryMax {
-					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready")
+					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready", "instance", index)
 					return
 				}
-				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry")
+				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry", "instance", index)
 				time.Sleep(statusCheckRetryInterval)
 			}
 		}(i)
@@ -297,6 +298,13 @@ func containErrantTransactions(primaryUUID, gtidSet string) bool {
 		}
 	}
 	return false
+}
+
+func isErrantReplica(ss *StatusSet, index int) bool {
+	if ss.MySQLStatus[index] != nil && ss.MySQLStatus[index].IsErrant {
+		return true
+	}
+	return slices.Contains(ss.Errants, index)
 }
 
 func isPodReady(pod *corev1.Pod) bool {
