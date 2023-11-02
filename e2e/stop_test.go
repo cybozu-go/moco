@@ -24,7 +24,7 @@ var stopYAML string
 //go:embed testdata/stop_changed.yaml
 var stopChangedYAML string
 
-var _ = Context("stop", func() {
+var _ = Context("stop reconciliation and clustering", func() {
 	if doUpgrade {
 		return
 	}
@@ -169,7 +169,7 @@ var _ = Context("stop", func() {
 			"-c", "mysqld",
 			"--", "kill", "1")
 
-		timeout := 5 * time.Minute
+		timeout := 3 * time.Minute
 		Consistently(func() error {
 			cluster, err := getCluster("stop", "test")
 			if err != nil {
@@ -230,6 +230,22 @@ var _ = Context("stop", func() {
 	})
 
 	It("active metrics", func() {
+		Eventually(func() error {
+			cluster, err := getCluster("stop", "test")
+			if err != nil {
+				return err
+			}
+			reconcileCond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionReconciliationActive)
+			if reconcileCond.Status == metav1.ConditionFalse {
+				return fmt.Errorf("reconciliation is stopped: %s", reconcileCond.Status)
+			}
+			clusteringCond := meta.FindStatusCondition(cluster.Status.Conditions, mocov1beta2.ConditionClusteringActive)
+			if clusteringCond.Status == metav1.ConditionFalse {
+				return fmt.Errorf("clustering is stopped: %s", clusteringCond.Status)
+			}
+			return nil
+		}).Should(Succeed())
+
 		out := kubectlSafe(nil, "-n", "moco-system", "get", "pods", "-l", "app.kubernetes.io/component=moco-controller", "-o", "json")
 		pods := &corev1.PodList{}
 		err := json.Unmarshal(out, pods)
@@ -246,13 +262,13 @@ var _ = Context("stop", func() {
 		Expect(clusteringMf).NotTo(BeNil())
 		clusteringMetric := findMetric(clusteringMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(clusteringMetric).NotTo(BeNil())
-		Expect(clusteringMetric.GetCounter().GetValue()).To(BeNumerically("==", 0))
+		Expect(clusteringMetric.GetGauge().GetValue()).To(BeNumerically("==", 0))
 
 		reconcileMf := mfs["moco_cluster_reconciliation_stopped"]
 		Expect(reconcileMf).NotTo(BeNil())
 		reconcileMetric := findMetric(reconcileMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(reconcileMetric).NotTo(BeNil())
-		Expect(reconcileMetric.GetCounter().GetValue()).To(BeNumerically("==", 0))
+		Expect(reconcileMetric.GetGauge().GetValue()).To(BeNumerically("==", 0))
 	})
 
 	It("stopped metrics", func() {
@@ -291,13 +307,13 @@ var _ = Context("stop", func() {
 		Expect(clusteringMf).NotTo(BeNil())
 		clusteringMetric := findMetric(clusteringMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(clusteringMetric).NotTo(BeNil())
-		Expect(clusteringMetric.GetCounter().GetValue()).To(BeNumerically("==", 1))
+		Expect(clusteringMetric.GetGauge().GetValue()).To(BeNumerically("==", 1))
 
 		reconcileMf := mfs["moco_cluster_reconciliation_stopped"]
 		Expect(reconcileMf).NotTo(BeNil())
 		reconcileMetric := findMetric(reconcileMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(reconcileMetric).NotTo(BeNil())
-		Expect(reconcileMetric.GetCounter().GetValue()).To(BeNumerically("==", 1))
+		Expect(reconcileMetric.GetGauge().GetValue()).To(BeNumerically("==", 1))
 	})
 
 	It("should delete clusters", func() {

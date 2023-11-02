@@ -1718,6 +1718,9 @@ func (r *MySQLClusterReconciler) updateStatus(ctx context.Context, cluster *moco
 		}
 		log.Info("update status successfully")
 	}
+
+	metrics.ReconciliationStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(0)
+
 	return nil
 }
 
