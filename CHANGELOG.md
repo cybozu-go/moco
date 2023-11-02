@@ -5,8 +5,37 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2023-11-02
+
+### Notification
+
+With this release, the storage version of CRD has been changed from `v1beta1` to `v1beta2`. [#586](https://github.com/cybozu-go/moco/pull/586)
+In addition, `v1beta1` has been deprecated and will be removed in the next version. [#592](https://github.com/cybozu-go/moco/pull/592)
+
 ### Added
+- Add MySQL 8.0.33 an 8.0.34 containers [#574](https://github.com/cybozu-go/moco/pull/574)
+- Support MySQL 8.0.33 and 8.0.34 [#575](https://github.com/cybozu-go/moco/pull/575)
+- Enable cpu specification in jobConfig [#582](https://github.com/cybozu-go/moco/pull/582)
 - Add tls settings for BackupPolicy [#580](https://github.com/cybozu-go/moco/pull/580)
+
+### Changed
+- api: change the storage version to v1beta2 [#586](https://github.com/cybozu-go/moco/pull/586)
+- api: add deprecatedversion marker [#592](https://github.com/cybozu-go/moco/pull/592)
+- Build moco-controller with go 1.21 [#571](https://github.com/cybozu-go/moco/pull/571)
+- Build moco-controller and moco-backup with ubuntu-22.04 [#575](https://github.com/cybozu-go/moco/pull/575)
+- Bump golang.org/x/net from 0.10.0 to 0.17.0 [#579](https://github.com/cybozu-go/moco/pull/579)
+- Bump google.golang.org/grpc from 1.55.0 to 1.56.3 [#594](https://github.com/cybozu-go/moco/pull/594)
+
+### Fixed
+- Use Gomega matcher in Eventually and check pods' labels [#584](https://github.com/cybozu-go/moco/pull/584)
+- Remove copy code of FindTopRunner [#585](https://github.com/cybozu-go/moco/pull/585)
+- Deduplicate SSA related code [#583](https://github.com/cybozu-go/moco/pull/583)
+- Kill old connections when demoting primary [#561](https://github.com/cybozu-go/moco/pull/561)
+- Fix documentations [#590](https://github.com/cybozu-go/moco/pull/590), [#589](https://github.com/cybozu-go/moco/pull/589)
+- Fix deprecated Goreleaser's options [#591](https://github.com/cybozu-go/moco/pull/591)
+- Run e2e tests on larger runners [#593](https://github.com/cybozu-go/moco/pull/593)
+- Revert "Fix flaky test" [#595](https://github.com/cybozu-go/moco/pull/595)
+- Kill existing connections when changing roles [#587](https://github.com/cybozu-go/moco/pull/587)
 
 ## [0.17.0] - 2023-09-11
 
@@ -473,7 +502,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/cybozu-go/moco/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cybozu-go/moco/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/cybozu-go/moco/compare/v0.15.0...v0.16.1
 [0.15.0]: https://github.com/cybozu-go/moco/compare/v0.14.1...v0.15.0
