@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.18.1] - 2023-11-06
+
+The release workflow for 0.18.0 failed due to an error, and will be corrected and re-released as 0.18.1.
+
+### Changed
+- Bump goreleaser-action and goreleaser [#599](https://github.com/cybozu-go/moco/pull/599)
+
 ## [0.18.0] - 2023-11-02
 
 ### Notification
@@ -502,7 +509,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/cybozu-go/moco/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/cybozu-go/moco/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cybozu-go/moco/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/cybozu-go/moco/compare/v0.15.0...v0.16.1
