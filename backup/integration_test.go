@@ -142,6 +142,8 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bs.Elapsed.Seconds()).To(BeNumerically(">", 0))
 		Expect(bs.SourceIndex).To(Equal(1))
 		Expect(bs.SourceUUID).To(Equal("123"))
+		uuidSet := map[string]string{"0": "123", "1": "123", "2": "123"}
+		Expect(bs.UUIDSet).To(Equal(uuidSet))
 		Expect(bs.BinlogFilename).To(Equal("binlog.000001"))
 		Expect(bs.GTIDSet).To(Equal("gtid1"))
 		Expect(bs.DumpSize).To(BeNumerically(">", 0))
@@ -229,6 +231,8 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bs.Time.IsZero()).To(BeFalse())
 		Expect(bs.SourceIndex).To(Equal(1))
 		Expect(bs.SourceUUID).To(Equal("123"))
+		uuidSet := map[string]string{"0": "123", "1": "123", "2": "123"}
+		Expect(bs.UUIDSet).To(Equal(uuidSet))
 		Expect(bs.BinlogFilename).To(Equal("binlog.000002"))
 		Expect(bs.GTIDSet).To(Equal("gtid2"))
 		Expect(bs.DumpSize).To(BeNumerically(">", 0))

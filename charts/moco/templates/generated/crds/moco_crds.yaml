@@ -7753,6 +7753,11 @@ spec:
                       format: date-time
                       nullable: true
                       type: string
+                    uuidSet:
+                      additionalProperties:
+                        type: string
+                      description: 'UUIDSet is the `server_uuid` set of all candidate '
+                      type: object
                     warnings:
                       description: Warnings are list of warnings from the last backup
                       items:

@@ -10,7 +10,6 @@
 * [MySQLClusterSpec](#mysqlclusterspec)
 * [MySQLClusterStatus](#mysqlclusterstatus)
 * [ObjectMeta](#objectmeta)
-* [OverwriteContainer](#overwritecontainer)
 * [PersistentVolumeClaim](#persistentvolumeclaim)
 * [PodTemplateSpec](#podtemplatespec)
 * [ReconcileInfo](#reconcileinfo)
@@ -71,14 +70,13 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | replicas | Replicas is the number of instances. Available values are positive odd numbers. | int32 | false |
 | podTemplate | PodTemplate is a `Pod` template for MySQL server container. | [PodTemplateSpec](#podtemplatespec) | true |
 | volumeClaimTemplates | VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container. A claim named \"mysql-data\" must be included in the list. | [][PersistentVolumeClaim](#persistentvolumeclaim) | true |
-| primaryServiceTemplate | PrimaryServiceTemplate is a `Service` template for primary. | *[ServiceTemplate](#servicetemplate) | false |
-| replicaServiceTemplate | ReplicaServiceTemplate is a `Service` template for replica. | *[ServiceTemplate](#servicetemplate) | false |
+| serviceTemplate | ServiceTemplate is a `Service` template for both primary and replicas. | *[ServiceTemplate](#servicetemplate) | false |
 | mysqlConfigMapName | MySQLConfigMapName is a `ConfigMap` name of MySQL config. | *string | false |
 | replicationSourceSecretName | ReplicationSourceSecretName is a `Secret` name which contains replication source info. If this field is given, the `MySQLCluster` works as an intermediate primary. | *string | false |
 | collectors | Collectors is the list of collector flag names of mysqld_exporter. If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect and export mysqld metrics in Prometheus format.\n\nSee https://github.com/prometheus/mysqld_exporter/blob/master/README.md#collector-flags for flag names.\n\nExample: [\"engine_innodb_status\", \"info_schema.innodb_metrics\"] | []string | false |
 | serverIDBase | ServerIDBase, if set, will become the base number of server-id of each MySQL instance of this cluster.  For example, if this is 100, the server-ids will be 100, 101, 102, and so on. If the field is not given or zero, MOCO automatically sets a random positive integer. | int32 | false |
 | maxDelaySeconds | MaxDelaySeconds configures the readiness probe of mysqld container. For a replica mysqld instance, if it is delayed to apply transactions over this threshold, the mysqld instance will be marked as non-ready. The default is 60 seconds. Setting this field to 0 disables the delay check in the probe. | *int | false |
-| startupWaitSeconds | StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working. The default is 3600 seconds. | int32 | false |
+| startupDelaySeconds | StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working. The default is 3600 seconds. | int32 | false |
 | logRotationSchedule | LogRotationSchedule specifies the schedule to rotate MySQL logs. If not set, the default is to rotate logs every 5 minutes. See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format. | string | false |
 | backupPolicyName | The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically. | *string | false |
 | restore | Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable. | *[RestoreSpec](#restorespec) | false |
@@ -116,17 +114,6 @@ ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMe
 
 [Back to Custom Resources](#custom-resources)
 
-#### OverwriteContainer
-
-OverwriteContainer defines the container spec used for overwriting.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| name | Name of the container to overwrite. | [OverwriteableContainerName](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName) | true |
-| resources | Resources is the container resource to be overwritten. | *[ResourceRequirementsApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration) | false |
-
-[Back to Custom Resources](#custom-resources)
-
 #### PersistentVolumeClaim
 
 PersistentVolumeClaim is a user's request for and claim to a persistent volume. This is slightly modified from corev1.PersistentVolumeClaim.
@@ -146,7 +133,6 @@ PodTemplateSpec describes the data a pod should have when created from a templat
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  The name in this metadata is ignored. | [ObjectMeta](#objectmeta) | false |
 | spec | Specification of the desired behavior of the pod. The name of the MySQL server container in this spec must be `mysqld`. | [PodSpecApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSpecApplyConfiguration) | true |
-| overwriteContainers | OverwriteContainers overwrites the container definitions provided by default by the system. | [][OverwriteContainer](#overwritecontainer) | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -3,11 +3,13 @@ package backup
 import (
 	"context"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -45,6 +47,7 @@ type BackupManager struct {
 	startTime    time.Time
 	sourceIndex  int
 	status       bkop.ServerStatus
+	uuidSet      map[string]string
 	gtidSet      string
 	dumpSize     int64
 	binlogSize   int64
@@ -117,7 +120,13 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 		orderedPods[index] = &pods.Items[i]
 	}
 
-	sourceIndex, err := bm.ChoosePod(ctx, orderedPods)
+	uuidSet, err := bm.GetUUIDSet(ctx, orderedPods)
+	if err != nil {
+		return fmt.Errorf("failed to get server_uuid set: %w", err)
+	}
+	bm.uuidSet = uuidSet
+
+	sourceIndex, skipBackupBinlog, err := bm.ChoosePod(ctx, orderedPods)
 	if err != nil {
 		return fmt.Errorf("failed to choose source instance: %w", err)
 	}
@@ -146,8 +155,7 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 	}
 
 	// dump and upload binlog for the second or later backups
-	lastBackup := &bm.cluster.Status.Backup
-	if !lastBackup.Time.IsZero() {
+	if !skipBackupBinlog {
 		if err := bm.backupBinlog(ctx, op); err != nil {
 			// since the full backup has succeeded, we should continue
 			ev := event.BackupNoBinlog.ToEvent(bm.clusterRef)
@@ -172,6 +180,7 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 		sb.Elapsed = metav1.Duration{Duration: elapsed}
 		sb.SourceIndex = sourceIndex
 		sb.SourceUUID = bm.status.UUID
+		sb.UUIDSet = bm.uuidSet
 		sb.BinlogFilename = bm.status.CurrentBinlog
 		sb.GTIDSet = bm.gtidSet
 		sb.DumpSize = bm.dumpSize
@@ -194,89 +203,83 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 	return nil
 }
 
-func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int, error) {
+func (bm *BackupManager) GetUUIDSet(ctx context.Context, pods []*corev1.Pod) (map[string]string, error) {
 	cluster := bm.cluster
+	uuids := make(map[string]string, len(pods))
+	for i := range pods {
+		if podIsReady(pods[i]) {
+			op, err := newOperator(cluster.PodHostname(i),
+				constants.MySQLPort,
+				constants.BackupUser,
+				bm.mysqlPassword,
+				bm.threads)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create operator: %w", err)
+			}
+			defer op.Close()
+
+			if err := op.GetServerStatus(ctx, &bm.status); err != nil {
+				return nil, fmt.Errorf("failed to get server status: %w", err)
+			}
+			uuids[strconv.Itoa(i)] = bm.status.UUID
+		}
+	}
+	return uuids, nil
+}
+
+// ChoosePod chooses a pod to take a backup from.
+// It returns the index of the chosen pod and whether the backupBinlog should be skipped.
+func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int, bool, error) {
+	currentPrimaryIndex := int(bm.cluster.Status.CurrentPrimaryIndex)
+	lastBackup := &bm.cluster.Status.Backup
 	// if this is the first time
-	if cluster.Status.Backup.Time.IsZero() {
+	if lastBackup.Time.IsZero() {
 		if len(pods) == 1 {
-			return 0, nil
+			return 0, true, nil
 		}
 
 		for i := range pods {
-			if i == int(cluster.Status.CurrentPrimaryIndex) {
+			if i == currentPrimaryIndex {
 				continue
 			}
 			if podIsReady(pods[i]) {
-				return i, nil
+				return i, true, nil
 			}
 		}
-		return int(cluster.Status.CurrentPrimaryIndex), nil
+		return currentPrimaryIndex, true, nil
 	}
 
-	lastIndex := cluster.Status.Backup.SourceIndex
-	op, err := newOperator(cluster.PodHostname(lastIndex),
-		constants.MySQLPort,
-		constants.BackupUser,
-		bm.mysqlPassword,
-		bm.threads)
-	if err != nil {
-		return -1, err
-	}
-	defer op.Close()
+	lastIndex := lastBackup.SourceIndex
+	choosableIndexes := getIdxsWithUnchangedUUID(bm.uuidSet, lastBackup.UUIDSet)
 
-	st := &bkop.ServerStatus{}
-	if err := op.GetServerStatus(ctx, st); err != nil {
-		return -1, err
+	if len(choosableIndexes) == 0 {
+		bm.log.Info("the server_uuid of all pods has changed or some pods are not ready")
+		bm.warnings = append(bm.warnings, "skip binlog backups because some binlog files may be missing")
+		return currentPrimaryIndex, true, nil
 	}
 
-	if st.UUID != cluster.Status.Backup.SourceUUID {
-		bm.log.Info("server_uuid of the last backup source has changed", "index", lastIndex)
-
-		for i := range pods {
-			if i == lastIndex {
+	if !slices.Contains(choosableIndexes, lastIndex) {
+		bm.log.Info("the last backup source is not available or server_uuid has been changed", "index", lastIndex)
+		for _, i := range choosableIndexes {
+			if i == currentPrimaryIndex {
 				continue
 			}
-			if i == int(cluster.Status.CurrentPrimaryIndex) {
-				continue
-			}
-			if podIsReady(pods[i]) {
-				return i, nil
-			}
+			return i, false, nil
 		}
-		return cluster.Status.CurrentPrimaryIndex, nil
+		return currentPrimaryIndex, false, nil
 	}
 
-	if !podIsReady(pods[lastIndex]) {
-		bm.log.Info("the last backup source is not ready", "index", lastIndex)
-
-		for i := range pods {
-			if i == lastIndex {
-				continue
-			}
-			if i == int(cluster.Status.CurrentPrimaryIndex) {
-				continue
-			}
-			if podIsReady(pods[i]) {
-				return i, nil
-			}
-		}
-		return cluster.Status.CurrentPrimaryIndex, nil
-	}
-
-	if lastIndex == int(cluster.Status.CurrentPrimaryIndex) {
+	if lastIndex == currentPrimaryIndex {
 		bm.log.Info("the last backup source is not a replica", "index", lastIndex)
-		for i := range pods {
-			if i == lastIndex {
+		for _, i := range choosableIndexes {
+			if i == currentPrimaryIndex {
 				continue
 			}
-			if podIsReady(pods[i]) {
-				return i, nil
-			}
+			return i, false, nil
 		}
-		return cluster.Status.CurrentPrimaryIndex, nil
+		return currentPrimaryIndex, false, nil
 	}
-
-	return lastIndex, nil
+	return lastIndex, false, nil
 }
 
 func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error {
@@ -361,7 +364,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	}
 
 	if err := op.DumpBinlog(ctx, binlogDir, binlogName, lastBackup.GTIDSet); err != nil {
-		return fmt.Errorf("failed to take a binlog backup: %w", err)
+		return fmt.Errorf("failed to exec mysqlbinlog command: %w", err)
 	}
 
 	usage, err := dirUsage(binlogDir)
@@ -469,4 +472,19 @@ func dirUsage(dir string) (int64, error) {
 	}
 
 	return usage, nil
+}
+
+func getIdxsWithUnchangedUUID(current, last map[string]string) []int {
+	idxs := []int{}
+	for key, currentUUID := range current {
+		if lastUUID, ok := last[key]; ok && currentUUID == lastUUID {
+			i, err := strconv.Atoi(key)
+			if err != nil {
+				continue
+			}
+			idxs = append(idxs, i)
+		}
+	}
+	sort.Ints(idxs)
+	return idxs
 }
