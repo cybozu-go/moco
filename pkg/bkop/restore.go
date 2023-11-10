@@ -23,7 +23,7 @@ func (o operator) PrepareRestore(ctx context.Context) error {
 func (o operator) LoadDump(ctx context.Context, dir string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s:%d", o.user, o.host, o.port),
-		"--passwords-from-stdin",
+		"-p" + o.password,
 		"--save-passwords=never",
 		"-C", "False",
 		"--",
@@ -39,7 +39,6 @@ func (o operator) LoadDump(ctx context.Context, dir string) error {
 	}
 
 	cmd := exec.CommandContext(ctx, "mysqlsh", args...)
-	cmd.Stdin = strings.NewReader(o.password)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
