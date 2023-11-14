@@ -5,6 +5,22 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2023-11-14
+
+### Breaking Changes
+
+⚠️ The MOCO API version v1beta1 is no longer served.
+If you deploy a custom resource that contains v1beta1, it will fail.
+Please update the version of your custom resources before upgrading MOCO to v0.19.0.
+
+### Fixed
+
+- Pass password via command arguments on backup to avoid partial log line. [#605](https://github.com/cybozu-go/moco/pull/605)
+
+### Changed
+
+- The API version v1beta1 is no longer served. [#608](https://github.com/cybozu-go/moco/pull/608)
+
 ## [0.18.1] - 2023-11-06
 
 The release workflow for 0.18.0 failed due to an error, and will be corrected and re-released as 0.18.1.
@@ -509,7 +525,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/cybozu-go/moco/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/cybozu-go/moco/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/cybozu-go/moco/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/cybozu-go/moco/compare/v0.16.1...v0.17.0
