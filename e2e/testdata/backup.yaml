@@ -17,7 +17,7 @@ metadata:
   namespace: backup
   name: backup-owner
 ---
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: BackupPolicy
 metadata:
   namespace: backup
