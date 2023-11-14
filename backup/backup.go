@@ -361,7 +361,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	}
 
 	if err := op.DumpBinlog(ctx, binlogDir, binlogName, lastBackup.GTIDSet); err != nil {
-		return fmt.Errorf("failed to take a full dump: %w", err)
+		return fmt.Errorf("failed to take a binlog backup: %w", err)
 	}
 
 	usage, err := dirUsage(binlogDir)
