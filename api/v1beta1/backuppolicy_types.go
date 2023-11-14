@@ -84,6 +84,7 @@ type BackupPolicySpec struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:deprecatedversion
+//+kubebuilder:unservedversion
 
 // BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.
 type BackupPolicy struct {
