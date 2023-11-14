@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	mocov1beta1 "github.com/cybozu-go/moco/api/v1beta1"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -47,9 +46,7 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	scheme := runtime.NewScheme()
-	err := mocov1beta1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = mocov1beta2.AddToScheme(scheme)
+	err := mocov1beta2.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = clientgoscheme.AddToScheme(scheme)
@@ -91,8 +88,6 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&mocov1beta1.MySQLCluster{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
 	err = (&mocov1beta2.MySQLCluster{}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 	err = (&mocov1beta2.BackupPolicy{}).SetupWebhookWithManager(mgr)
