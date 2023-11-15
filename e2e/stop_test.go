@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -314,6 +315,12 @@ var _ = Context("stop reconciliation and clustering", func() {
 		reconcileMetric := findMetric(reconcileMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(reconcileMetric).NotTo(BeNil())
 		Expect(reconcileMetric.GetGauge().GetValue()).To(BeNumerically("==", 1))
+
+		healthyMf := mfs["moco_cluster_healthy"]
+		Expect(healthyMf).NotTo(BeNil())
+		healthyMetric := findMetric(healthyMf, map[string]string{"namespace": "stop", "name": "test"})
+		Expect(healthyMetric).NotTo(BeNil())
+		Expect(healthyMetric.GetGauge().GetValue()).To(BeNumerically("==", math.NaN()))
 	})
 
 	It("should delete clusters", func() {
