@@ -320,7 +320,7 @@ var _ = Context("stop reconciliation and clustering", func() {
 		Expect(healthyMf).NotTo(BeNil())
 		healthyMetric := findMetric(healthyMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(healthyMetric).NotTo(BeNil())
-		Expect(healthyMetric.GetGauge().GetValue()).To(BeNumerically("==", math.NaN()))
+		Expect(math.IsNaN(healthyMetric.GetGauge().GetValue())).To(BeTrue())
 	})
 
 	It("should delete clusters", func() {
