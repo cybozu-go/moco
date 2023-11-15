@@ -2,8 +2,19 @@ apiVersion: v1
 entries:
   moco:
   - apiVersion: v2
+    appVersion: 0.19.0
+    created: "2023-11-15T10:44:48.945347368Z"
+    description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
+    digest: 678ec94c9e6a41d7f9f3ad22caec9bbaffbce6a59732a6f124677f7c15a4e9f9
+    kubeVersion: '>= 1.22.0-0'
+    name: moco
+    type: application
+    urls:
+    - https://cybozu-go.github.io/moco/moco-0.9.0.tgz
+    version: 0.9.0
+  - apiVersion: v2
     appVersion: 0.18.1
-    created: "2023-11-07T00:29:36.108712394Z"
+    created: "2023-11-15T10:44:48.942834306Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 61ce3be7043b0f95f34487a4941602293571255559e5e5623c5863fc440b6dca
     kubeVersion: '>= 1.22.0-0'
@@ -14,7 +25,7 @@ entries:
     version: 0.8.0
   - apiVersion: v2
     appVersion: 0.17.0
-    created: "2023-11-07T00:29:36.106098463Z"
+    created: "2023-11-15T10:44:48.941196395Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 41741df057f9162943893eefca6e80c490c076c41832be823a745db6fa8feb21
     kubeVersion: '>= 1.22.0-0'
@@ -25,7 +36,7 @@ entries:
     version: 0.7.0
   - apiVersion: v2
     appVersion: 0.16.1
-    created: "2023-11-07T00:29:36.103011926Z"
+    created: "2023-11-15T10:44:48.938815901Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 144071abda5cc4ebe95cf26191a68a1d7ace50d8728d300e372d98bf170f13d8
     kubeVersion: '>= 1.22.0'
@@ -36,7 +47,7 @@ entries:
     version: 0.6.0
   - apiVersion: v2
     appVersion: 0.15.0
-    created: "2023-11-07T00:29:36.100546797Z"
+    created: "2023-11-15T10:44:48.937221591Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: cebc618f151433ad322bc6a9bbe0c3e2abf0d70fd6ef0f36afbf62a2c4d478f0
     kubeVersion: '>= 1.22.0'
@@ -47,7 +58,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 0.14.1
-    created: "2023-11-07T00:29:36.097197356Z"
+    created: "2023-11-15T10:44:48.934965484Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 5a55cee0564d1181efa5049e46b975f01f45296fdfb68a47c74dad11c4e7a18f
     kubeVersion: '>= 1.22.0'
@@ -58,7 +69,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 0.14.0
-    created: "2023-11-07T00:29:36.094718427Z"
+    created: "2023-11-15T10:44:48.933489944Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 9afc2acb17266dc3827e546e39ac9a55ca591eb8490a8b6f3c98b7f10019d4c9
     kubeVersion: '>= 1.23.0'
@@ -69,7 +80,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 0.13.0
-    created: "2023-11-07T00:29:36.092670202Z"
+    created: "2023-11-15T10:44:48.931347413Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 0e1b383ffa32bcd5d62306d5b182d0d31e58cc4b080174915f54b9b5db5ba50c
     name: moco
@@ -79,7 +90,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.12.1
-    created: "2023-11-07T00:29:36.090240673Z"
+    created: "2023-11-15T10:44:48.929712856Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: a79a696a27b71ab8756ca1caba41211086d3eae9f766f85f13f12d10ed88190f
     name: moco
@@ -89,7 +100,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 0.12.0
-    created: "2023-11-07T00:29:36.087418439Z"
+    created: "2023-11-15T10:44:48.928199267Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 9eea28c544ab30924530b50e5c82e9bdc1abe88b0c9df27e5002941f714ab1b5
     name: moco
@@ -99,7 +110,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 0.11.1
-    created: "2023-11-07T00:29:36.085505216Z"
+    created: "2023-11-15T10:44:48.925981703Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 9b9f667c15cf6fb7be5154c3f3226f0ae2aa58582b5296077c1aa718695591dd
     name: moco
@@ -109,7 +120,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 0.11.0
-    created: "2023-11-07T00:29:36.081893573Z"
+    created: "2023-11-15T10:44:48.923703583Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 975031493a47fced3c74d16ad233cc29c15dc61035e73ddcf7f1205f378daad8
     name: moco
@@ -119,7 +130,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.10.9
-    created: "2023-11-07T00:29:36.079732247Z"
+    created: "2023-11-15T10:44:48.922165857Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 7efb7d562cef64e34d08e7b3e0eecd5e134673f7cd613c32b2f2af545a215487
     name: moco
@@ -129,7 +140,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 0.10.8
-    created: "2023-11-07T00:29:36.076058903Z"
+    created: "2023-11-15T10:44:48.919322003Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: 4012945084ecb3b432f7af59d95cc62da2dad356ad0662d5f493c59889d2b738
     name: moco
@@ -139,7 +150,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 0.10.7
-    created: "2023-11-07T00:29:36.073685375Z"
+    created: "2023-11-15T10:44:48.917362475Z"
     description: MySQL operator on Kubernetes using GTID-based semi-synchronous replication.
     digest: d6a6df2aefc2b978a6beaa625833b8a66c7a3d2d38d1ab32c4e84876f328c36a
     name: moco
@@ -147,4 +158,4 @@ entries:
     urls:
     - https://cybozu-go.github.io/moco/moco-0.1.0.tgz
     version: 0.1.0
-generated: "2023-11-07T00:29:36.069204221Z"
+generated: "2023-11-15T10:44:48.915418726Z"
