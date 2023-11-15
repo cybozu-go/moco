@@ -177,12 +177,7 @@ func TestChoosePod(t *testing.T) {
 		}
 	}
 
-	makeBS := func(replicas, idx int, uuid string) mocov1beta2.BackupStatus {
-		uuidSet := make(map[string]string, replicas)
-		for i := 0; i < replicas; i++ {
-			uuidSet[strconv.Itoa(i)] = "uuid-" + strconv.Itoa(i)
-		}
-		uuidSet[strconv.Itoa(idx)] = uuid
+	makeBS := func(replicas, idx int, uuid string, uuidSet map[string]string) mocov1beta2.BackupStatus {
 		return mocov1beta2.BackupStatus{
 			Time:        metav1.Now(),
 			SourceIndex: idx,
@@ -206,15 +201,16 @@ func TestChoosePod(t *testing.T) {
 		{"single-not-ready", 1, 0, mocov1beta2.BackupStatus{}, makePod1(false), 0, true, 0},
 		{"triple-ready", 3, 0, mocov1beta2.BackupStatus{}, makePod3(true, false, true), 2, true, 0},
 		{"triple-not-ready", 3, 1, mocov1beta2.BackupStatus{}, makePod3(false, true, false), 1, true, 0},
-		{"single-2nd", 1, 0, makeBS(1, 0, "uuid-0"), makePod1(true), 0, false, 0},
-		{"single-2nd-uuid-changed", 1, 0, makeBS(1, 0, "uuid-a"), makePod1(true), 0, true, 1},
-		{"single-2nd-not-ready", 1, 0, makeBS(1, 0, "uuid-0"), makePod1(false), 0, true, 1},
-		{"triple-2nd", 3, 0, makeBS(3, 1, "uuid-1"), makePod3(true, true, true), 1, false, 0},
-		{"triple-2nd-uuid-changed", 3, 0, makeBS(3, 1, "uuid-b"), makePod3(true, true, true), 2, false, 0},
-		{"triple-2nd-not-ready", 3, 0, makeBS(3, 1, "uuid-1"), makePod3(true, false, true), 2, false, 0},
-		{"triple-2nd-primary", 3, 1, makeBS(3, 1, "uuid-1"), makePod3(true, true, true), 0, false, 0},
-		{"triple-2nd-all-not-ready", 3, 0, makeBS(3, 1, "uuid-1"), makePod3(true, false, false), 0, false, 0},
-		{"trinpe-2nd-all-not-ready-and-uuid-changed", 3, 0, makeBS(3, 0, "uuid-a"), makePod3(true, false, false), 0, true, 1},
+		{"single-2nd", 1, 0, makeBS(1, 0, "uuid-0", map[string]string{"0": "uuid-0"}), makePod1(true), 0, false, 0},
+		{"single-2nd-uuid-changed", 1, 0, makeBS(1, 0, "uuid-a", map[string]string{"0": "uuid-a"}), makePod1(true), 0, true, 1},
+		{"single-2nd-not-ready", 1, 0, makeBS(1, 0, "uuid-0", map[string]string{"0": "uuid-0"}), makePod1(false), 0, true, 1},
+		{"triple-2nd", 3, 0, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, true, true), 1, false, 0},
+		{"triple-2nd-uuid-changed", 3, 0, makeBS(3, 1, "uuid-b", map[string]string{"0": "uuid-0", "1": "uuid-b", "2": "uuid-2"}), makePod3(true, true, true), 2, false, 0},
+		{"triple-2nd-not-ready", 3, 0, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, false, true), 2, false, 0},
+		{"triple-2nd-primary", 3, 1, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, true, true), 0, false, 0},
+		{"triple-2nd-all-not-ready", 3, 0, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, false, false), 0, false, 0},
+		{"trinpe-2nd-all-not-ready-and-uuid-changed-1", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, true), 2, true, 1},
+		{"trinpe-2nd-all-not-ready-and-uuid-changed-2", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, false), 0, true, 1},
 	}
 
 	for _, tc := range testCases {

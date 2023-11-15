@@ -255,6 +255,18 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 	if len(choosableIndexes) == 0 {
 		bm.log.Info("the server_uuid of all pods has changed or some pods are not ready")
 		bm.warnings = append(bm.warnings, "skip binlog backups because some binlog files may be missing")
+		if len(pods) == 1 {
+			return 0, true, nil
+		}
+
+		for i := range pods {
+			if i == currentPrimaryIndex {
+				continue
+			}
+			if podIsReady(pods[i]) {
+				return i, true, nil
+			}
+		}
 		return currentPrimaryIndex, true, nil
 	}
 
