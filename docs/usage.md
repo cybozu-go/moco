@@ -722,3 +722,54 @@ Delete such pending Pods until PVC is actually removed.
 [MinIO]: https://min.io/
 [EKS]: https://aws.amazon.com/eks/
 [CronJob]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+
+### Stop Clustering and Reconciliation
+
+In MOCO, you can optionally stop the clustering and reconciliation of a MySQLCluster.
+
+To stop clustering and reconciliation, use the following commands.
+
+```console
+$ kubectl moco stop clustering <CLSUTER_NAME>
+$ kubectl moco stop reconciliation <CLSUTER_NAME>
+```
+
+To resume the stopped clustering and reconciliation, use the following commands.
+
+```console
+$ kubectl moco start clustering <CLSUTER_NAME>
+$ kubectl moco start reconciliation <CLSUTER_NAME>
+```
+
+You could use this feature in the following cases:
+
+1. To stop the replication of a MySQLCluster and perform a manual operation to align the GTID
+    * Run the `kubectl moco stop clustering` command on the MySQLCluster where you want to stop the replication
+2. To suppress the full update of MySQLCluster that occurs during the upgrade of MOCO
+    * Run the `kubectl moco stop reconciliation` command on the MySQLCluster on which you want to suppress the update
+
+To check whether clustering and reconciliation are stopped, use `kubectl get mysqlcluster`.
+Moreover, while clustering is stopped, `AVAILABLE` and `HEALTHY` values will be `Unknown`.
+
+```console
+$ kubectl get mysqlcluster
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING ACTIVE   RECONCILE ACTIVE   LAST BACKUP
+test   Unknown     Unknown   0         3                                   False               False              <no value>
+```
+
+The MOCO controller outputs the following metrics to indicate that clustering has been stopped.
+1 if the cluster is clustering or reconciliation stopped, 0 otherwise.
+
+```text
+moco_cluster_clustering_stopped{name="mycluster", namespace="mynamesapce"} 1
+moco_cluster_reconciliation_stopped{name="mycluster", namespace="mynamesapce"} 1
+```
+
+During the stop of clustering, monitoring of the cluster from MOCO will be halted, and the value of the following metrics will become NaN.
+
+```text
+moco_cluster_available{name="test",namespace="default"} NaN
+moco_cluster_healthy{name="test",namespace="default"} NaN
+moco_cluster_ready_replicas{name="test",namespace="default"} NaN
+moco_cluster_errant_replicas{name="test",namespace="default"} NaN
+```
