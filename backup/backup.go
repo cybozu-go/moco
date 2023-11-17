@@ -3,12 +3,12 @@ package backup
 import (
 	"context"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
