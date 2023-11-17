@@ -219,7 +219,7 @@ func (bm *BackupManager) GetUUIDSet(ctx context.Context, pods []*corev1.Pod) (ma
 			defer op.Close()
 
 			if err := op.GetServerStatus(ctx, &bm.status); err != nil {
-				return nil, fmt.Errorf("failed to get server status: %w", err)
+				continue
 			}
 			uuids[strconv.Itoa(i)] = bm.status.UUID
 		}
