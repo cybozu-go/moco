@@ -209,8 +209,8 @@ func TestChoosePod(t *testing.T) {
 		{"triple-2nd-not-ready", 3, 0, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, false, true), 2, false, 0},
 		{"triple-2nd-primary", 3, 1, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, true, true), 0, false, 0},
 		{"triple-2nd-all-not-ready", 3, 0, makeBS(3, 1, "uuid-1", map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}), makePod3(true, false, false), 0, false, 0},
-		{"trinpe-2nd-all-not-ready-and-uuid-changed-1", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, true), 2, true, 1},
-		{"trinpe-2nd-all-not-ready-and-uuid-changed-2", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, false), 0, true, 1},
+		{"triple-2nd-all-not-ready-and-uuid-changed-1", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, true), 2, true, 1},
+		{"triple-2nd-all-not-ready-and-uuid-changed-2", 3, 0, makeBS(3, 0, "uuid-a", map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}), makePod3(true, false, false), 0, true, 1},
 	}
 
 	for _, tc := range testCases {
