@@ -173,20 +173,16 @@ style F1 fill:#ffc1c1
 F -->|"no"| F2["return\nprimaryIdx\nskipBackupBinlog=true"]
 style F2 fill:#ffc1c1
 
-G{"Is lastIndex included in x?"}
+G{"Are there replica indexes in x?"}
 G -->|"yes"| H
-G -->|"no"| I
+G -->|"no"| G1["return\nreplicaIdx\nskipBackupBinlog=false"]
+style G1 fill:#ffffc1
 
-H{"Is lastIndex a replica?"}
-H --> |"yes"| H1["return\nlastIdx\nskipBackupBinlog=false"]
+H{"Is lastIndex included in x?"}
+H -->|"yes"| H1["return\nlastIdx\nskipBackupBinlog=false"]
 style H1 fill:#c1ffff
-H --> |"no"| I
-
-I{"Are there replica indexes in x?"}
-I --> |"yes"| I1["return\nreplicaIdx\nskipBackupBinlog=false"]
-style I1 fill:#c1ffff
-I --> |"no"| I2["return\nprimaryIdx\nskipBackupBinlog=false"]
-style I2 fill:#ffffc1
+H -->|"no"| H2["return\nreplicaIdx\nskipBackupBinlog=false"]
+style H2 fill:#c1ffff
 ```
 
 ### Restore
