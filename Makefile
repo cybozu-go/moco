@@ -62,7 +62,7 @@ manifests: controller-gen kustomize yq ## Generate WebhookConfiguration, Cluster
 	rm -rf charts/moco/templates/generated/
 	mkdir -p charts/moco/templates/generated/crds/
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(KUSTOMIZE) build config/crd -o config/crd/tests # Outputs static CRDs with conversion webhook enabled for use with Envtest.
+	$(KUSTOMIZE) build config/crd -o config/crd/tests # Outputs static CRDs for use with Envtest.
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds | $(YQ) e "." - > charts/moco/templates/generated/crds/moco_crds.yaml
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates | $(YQ) e "." - > charts/moco/templates/generated/generated.yaml
 

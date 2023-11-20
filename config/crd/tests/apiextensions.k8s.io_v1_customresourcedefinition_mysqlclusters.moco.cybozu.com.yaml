@@ -6,16 +6,6 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.12.0
   name: mysqlclusters.moco.cybozu.com
 spec:
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: webhook-service
-          namespace: system
-          path: /convert
-      conversionReviewVersions:
-      - v1
   group: moco.cybozu.com
   names:
     kind: MySQLCluster
