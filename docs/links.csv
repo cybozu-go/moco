@@ -11,7 +11,7 @@ metav1.Condition,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Conditi
 metav1.ListMeta,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ListMeta
 metav1.ObjectMeta,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta
 metav1.Time,https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time
-MySQLClusterConditionType,https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta1#MySQLClusterConditionType
+MySQLClusterConditionType,https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#MySQLClusterConditionType
 OverwriteableContainerName,https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName
 resource.Quantity,https://pkg.go.dev/k8s.io/apimachinery/pkg/api/resource#Quantity
 PersistentVolumeClaimSpecApplyConfiguration,https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PersistentVolumeClaimSpecApplyConfiguration

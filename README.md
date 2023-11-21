@@ -63,7 +63,7 @@ You can then create a three-instance MySQL cluster as follows:
 
 ```console
 $ cat > mycluster.yaml <<'EOF'
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: default

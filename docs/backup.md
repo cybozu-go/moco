@@ -215,7 +215,7 @@ If not specified, it will be defaults to `s3`.
 The following is an example of a backup setup using Google Cloud Storage:
 
 ```yaml
-apiVersion: moco.cybozu.com/v1beta1
+apiVersion: moco.cybozu.com/v1beta2
 kind: BackupPolicy
 ...
 spec:
