@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -270,28 +269,20 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 		return currentPrimaryIndex, true, nil
 	}
 
-	if !slices.Contains(choosableIndexes, lastIndex) {
-		bm.log.Info("the last backup source is not available or server_uuid has been changed", "index", lastIndex)
-		for _, i := range choosableIndexes {
-			if i == currentPrimaryIndex {
-				continue
-			}
+	replicas := []int{}
+	for _, i := range choosableIndexes {
+		if i == currentPrimaryIndex {
+			continue
+		}
+		if i == lastIndex {
 			return i, false, nil
 		}
-		return currentPrimaryIndex, false, nil
+		replicas = append(replicas, i)
 	}
-
-	if lastIndex == currentPrimaryIndex {
-		bm.log.Info("the last backup source is not a replica", "index", lastIndex)
-		for _, i := range choosableIndexes {
-			if i == currentPrimaryIndex {
-				continue
-			}
-			return i, false, nil
-		}
-		return currentPrimaryIndex, false, nil
+	if len(replicas) != 0 {
+		return replicas[0], false, nil
 	}
-	return lastIndex, false, nil
+	return currentPrimaryIndex, false, nil
 }
 
 func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error {
