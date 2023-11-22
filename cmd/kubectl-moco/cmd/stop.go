@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/api/equality"
-
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/types"
 )
 
