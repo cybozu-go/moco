@@ -320,6 +320,24 @@ var _ = Context("stop reconciliation and clustering", func() {
 		healthyMetric := findMetric(healthyMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(healthyMetric).NotTo(BeNil())
 		Expect(math.IsNaN(healthyMetric.GetGauge().GetValue())).To(BeTrue())
+
+		availableMf := mfs["moco_cluster_available"]
+		Expect(availableMf).NotTo(BeNil())
+		availableMetric := findMetric(availableMf, map[string]string{"namespace": "stop", "name": "test"})
+		Expect(availableMetric).NotTo(BeNil())
+		Expect(math.IsNaN(availableMetric.GetGauge().GetValue())).To(BeTrue())
+
+		readyReplicasMf := mfs["moco_cluster_ready_replicas"]
+		Expect(readyReplicasMf).NotTo(BeNil())
+		readyReplicasMetric := findMetric(readyReplicasMf, map[string]string{"namespace": "stop", "name": "test"})
+		Expect(readyReplicasMetric).NotTo(BeNil())
+		Expect(math.IsNaN(readyReplicasMetric.GetGauge().GetValue())).To(BeTrue())
+
+		errantReplicasMf := mfs["moco_cluster_errant_replicas"]
+		Expect(errantReplicasMf).NotTo(BeNil())
+		errantReplicasMetric := findMetric(errantReplicasMf, map[string]string{"namespace": "stop", "name": "test"})
+		Expect(errantReplicasMetric).NotTo(BeNil())
+		Expect(math.IsNaN(errantReplicasMetric.GetGauge().GetValue())).To(BeTrue())
 	})
 
 	It("should delete clusters", func() {
