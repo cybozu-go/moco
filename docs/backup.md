@@ -175,7 +175,7 @@ style F2 fill:#ffc1c1
 
 G{"Are there replica indexes in x?"}
 G -->|"yes"| H
-G -->|"no"| G1["return\nreplicaIdx\nskipBackupBinlog=false"]
+G -->|"no"| G1["return\nprimaryIdx\nskipBackupBinlog=false"]
 style G1 fill:#ffffc1
 
 H{"Is lastIndex included in x?"}
