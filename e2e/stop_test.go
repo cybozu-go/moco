@@ -221,7 +221,6 @@ var _ = Context("stop reconciliation and clustering", func() {
 					continue
 				}
 				if cond.Status == metav1.ConditionTrue {
-					currentPrimaryIndex = cluster.Status.CurrentPrimaryIndex
 					return nil
 				}
 				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
