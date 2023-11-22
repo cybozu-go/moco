@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -57,6 +58,8 @@ func stopClustering(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to stop clustering of MySQLCluster: %w", err)
 	}
 
+	fmt.Fprintf(os.Stdout, "stopped clustering of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
+
 	return nil
 }
 
@@ -93,6 +96,8 @@ func stopReconciliation(ctx context.Context, name string) error {
 	if err := kubeClient.Update(ctx, cluster); err != nil {
 		return fmt.Errorf("failed to stop reconciliation of MySQLCluster: %w", err)
 	}
+
+	fmt.Fprintf(os.Stdout, "stopped reconciliation of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
 
 	return nil
 }
