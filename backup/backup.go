@@ -245,7 +245,7 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 		if podIsReady(pods[currentPrimaryIndex]) {
 			return currentPrimaryIndex, false, nil
 		} else {
-			return 0, false, errors.New("No ready pod exists")
+			return 0, false, errors.New("no ready pod exists")
 		}
 	}
 
@@ -266,7 +266,7 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 		if podIsReady(pods[currentPrimaryIndex]) {
 			return currentPrimaryIndex, false, nil
 		} else {
-			return 0, false, errors.New("No ready pod exists")
+			return 0, false, errors.New("no ready pod exists")
 		}
 	}
 
