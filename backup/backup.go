@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -125,7 +126,7 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 	}
 	bm.uuidSet = uuidSet
 
-	sourceIndex, skipBackupBinlog, err := bm.ChoosePod(ctx, orderedPods)
+	sourceIndex, doBackupBinlog, err := bm.ChoosePod(ctx, orderedPods)
 	if err != nil {
 		return fmt.Errorf("failed to choose source instance: %w", err)
 	}
@@ -154,7 +155,7 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 	}
 
 	// dump and upload binlog for the second or later backups
-	if !skipBackupBinlog {
+	if doBackupBinlog {
 		if err := bm.backupBinlog(ctx, op); err != nil {
 			// since the full backup has succeeded, we should continue
 			ev := event.BackupNoBinlog.ToEvent(bm.clusterRef)
@@ -227,25 +228,25 @@ func (bm *BackupManager) GetUUIDSet(ctx context.Context, pods []*corev1.Pod) (ma
 }
 
 // ChoosePod chooses a pod to take a backup from.
-// It returns the index of the chosen pod and whether the backupBinlog should be skipped.
+// It returns the index of the chosen pod and whether backupBinlog should be called.
 func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int, bool, error) {
 	currentPrimaryIndex := int(bm.cluster.Status.CurrentPrimaryIndex)
 	lastBackup := &bm.cluster.Status.Backup
 	// if this is the first time
 	if lastBackup.Time.IsZero() {
-		if len(pods) == 1 {
-			return 0, true, nil
-		}
-
 		for i := range pods {
 			if i == currentPrimaryIndex {
 				continue
 			}
 			if podIsReady(pods[i]) {
-				return i, true, nil
+				return i, false, nil
 			}
 		}
-		return currentPrimaryIndex, true, nil
+		if podIsReady(pods[currentPrimaryIndex]) {
+			return currentPrimaryIndex, false, nil
+		} else {
+			return 0, false, errors.New("No ready pod exists")
+		}
 	}
 
 	lastIndex := lastBackup.SourceIndex
@@ -254,19 +255,19 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 	if len(choosableIndexes) == 0 {
 		bm.log.Info("the server_uuid of all pods has changed or some pods are not ready")
 		bm.warnings = append(bm.warnings, "skip binlog backups because some binlog files may be missing")
-		if len(pods) == 1 {
-			return 0, true, nil
-		}
-
 		for i := range pods {
 			if i == currentPrimaryIndex {
 				continue
 			}
 			if podIsReady(pods[i]) {
-				return i, true, nil
+				return i, false, nil
 			}
 		}
-		return currentPrimaryIndex, true, nil
+		if podIsReady(pods[currentPrimaryIndex]) {
+			return currentPrimaryIndex, false, nil
+		} else {
+			return 0, false, errors.New("No ready pod exists")
+		}
 	}
 
 	replicas := []int{}
@@ -275,14 +276,14 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 			continue
 		}
 		if i == lastIndex {
-			return i, false, nil
+			return i, true, nil
 		}
 		replicas = append(replicas, i)
 	}
 	if len(replicas) != 0 {
-		return replicas[0], false, nil
+		return replicas[0], true, nil
 	}
-	return currentPrimaryIndex, false, nil
+	return currentPrimaryIndex, true, nil
 }
 
 func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error {
