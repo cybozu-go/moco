@@ -157,9 +157,9 @@ A -->|"yes"| B
 A -->|"no"| C["x ← Get the indexes of the pod whose server_uuid has not changed"] --> D
 
 B{Are replicas available?}
-B -->|"yes"| B1["return\nreplicaIdx\nskipBackupBinlog=true"]
+B -->|"yes"| B1["return\nreplicaIdx\ndoBackupBinlog=false"]
 style B1 fill:#c1ffff
-B -->|"no"| B2["return\nprimaryIdx\nskipBackupBinlog=true"]
+B -->|"no"| B2["return\nprimaryIdx\ndoBackupBinlog=false"]
 style B2 fill:#ffffc1
 
 D{"Is x empty?"}
@@ -168,21 +168,26 @@ style E fill:#ffc1c1
 D -->|"no"| G
 
 F{"Are replicas available?"}
-F -->|"yes"| F1["return\nreplicaIdx\nskipBackupBinlog=true"]
+F -->|"yes"| F1["return\nreplicaIdx\ndoBackupBinlog=false"]
 style F1 fill:#ffc1c1
-F -->|"no"| F2["return\nprimaryIdx\nskipBackupBinlog=true"]
+F -->|"no"| F2["return\nprimaryIdx\ndoBackupBinlog=false"]
 style F2 fill:#ffc1c1
 
 G{"Are there replica indexes in x?"}
 G -->|"yes"| H
-G -->|"no"| G1["return\nprimaryIdx\nskipBackupBinlog=false"]
+G -->|"no"| G1["return\nprimaryIdx\ndoBackupBinlog=true"]
 style G1 fill:#ffffc1
 
 H{"Is lastIndex included in x?"}
-H -->|"yes"| H1["return\nlastIdx\nskipBackupBinlog=false"]
+H -->|"yes"| I
+H -->|"no"| H1["return\nreplicaIdx\ndoBackupBinlog=true"]
 style H1 fill:#c1ffff
-H -->|"no"| H2["return\nreplicaIdx\nskipBackupBinlog=false"]
-style H2 fill:#c1ffff
+
+I{"Is lastIndex primary?"}
+I -->|"yes"| I1["return\nreplicaIdx\ndoBackupBinlog=true"]
+style I1 fill:#c1ffff
+I -->|"no"| I2["return\nlastIdx\ndoBackupBinlog=true"]
+style I2 fill:#c1ffff
 ```
 
 ### Restore
