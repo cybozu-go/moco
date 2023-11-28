@@ -1499,6 +1499,90 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}, 5).Should(BeTrue())
 	})
 
+	It("should reconcile a pod disruption budget when backup cron job is running", func() {
+		cluster := testNewMySQLCluster("test")
+		// use existing backup policy
+		cluster.Spec.BackupPolicyName = pointer.String("test-policy")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		var cj *batchv1.CronJob
+		var pdb *policyv1.PodDisruptionBudget
+		Eventually(func() error {
+			cj = &batchv1.CronJob{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
+				return err
+			}
+			pdb = &policyv1.PodDisruptionBudget{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb); err != nil {
+				return err
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("update cronJob Active status, backup cronJob started")
+		cj = &batchv1.CronJob{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj)
+		Expect(err).NotTo(HaveOccurred())
+
+		cj.Status.Active = []corev1.ObjectReference{{Name: "test"}}
+
+		err = k8sClient.Status().Update(ctx, cj)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cj = &batchv1.CronJob{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj)
+			if err != nil {
+				return err
+			}
+			if cj.Status.Active == nil {
+				return fmt.Errorf("backup cronJob is not started")
+			}
+
+			pdb = &policyv1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
+			if err != nil {
+				return err
+			}
+			if pdb.Spec.MaxUnavailable.IntVal != cluster.Spec.Replicas {
+				return fmt.Errorf("PodDisruptionBudget MaxUnavailable is no equal Replica Count.")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("update cronJob Active status to nil, backup cronJob exited")
+		cj = &batchv1.CronJob{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj)
+		Expect(err).NotTo(HaveOccurred())
+
+		cj.Status.Active = nil
+
+		err = k8sClient.Status().Update(ctx, cj)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cj = &batchv1.CronJob{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj)
+			if err != nil {
+				return err
+			}
+			if cj.Status.Active != nil {
+				return fmt.Errorf("backup cronJob is started")
+			}
+
+			pdb = &policyv1.PodDisruptionBudget{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
+			if err != nil {
+				return err
+			}
+			if pdb.Spec.MaxUnavailable.IntVal == cluster.Spec.Replicas {
+				return fmt.Errorf("PodDisruptionBudget MaxUnavailable is equal Replica Count.")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
 	It("should have a correct status.reconcileInfo value", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
