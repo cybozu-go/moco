@@ -34,6 +34,8 @@ var config struct {
 	backupImage             string
 	fluentBitImage          string
 	exporterImage           string
+	pvcSyncAnnotationKeys   []string
+	pvcSyncLabelKeys        []string
 	interval                time.Duration
 	maxConcurrentReconciles int
 	qps                     int
@@ -103,6 +105,8 @@ func init() {
 	fs.StringVar(&config.backupImage, "backup-image", defaultBackupImage, "The image of moco-backup container")
 	fs.StringVar(&config.fluentBitImage, "fluent-bit-image", moco.FluentBitImage, "The image of fluent-bit sidecar container")
 	fs.StringVar(&config.exporterImage, "mysqld-exporter-image", moco.ExporterImage, "The image of mysqld_exporter sidecar container")
+	fs.StringSliceVar(&config.pvcSyncAnnotationKeys, "pvc-sync-annotation-keys", []string{}, "The keys of annotations from MySQLCluster's volumeClaimTemplates to be synced to the PVC")
+	fs.StringSliceVar(&config.pvcSyncLabelKeys, "pvc-sync-label-keys", []string{}, "The keys of labels from MySQLCluster's volumeClaimTemplates to be synced to the PVC")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 	fs.IntVar(&config.maxConcurrentReconciles, "max-concurrent-reconciles", 8, "The maximum number of concurrent reconciles which can be run")
 	// The default QPS is 20.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/metrics"
@@ -23,15 +24,18 @@ var (
 	ErrReduceVolumeSize = errors.New("cannot reduce volume size")
 )
 
-// reconcilePVC resizes the PVC as needed.
-// Since the PVC template of the StatefulSet is unchangeable, the following steps are required to resize the PVC
+// reconcilePVC syncs the PVC and volumeClaimTemplate labels and annotations and resizes the PVC as needed.
+// The synchronization of labels and annotations always happens, regardless of the StatefulSet's state.
+// Subsequently, the PVC is resized, if necessary.
 //
-//  1. Rewrite PVC object requested volume size.
-//  2. Delete StatefulSet object for "--cascade=orphan" option.
-//  3. The StatefulSet will be re-created.
+// As the PVC template of the StatefulSet is unchangeable, the resizing of the PVC requires the following steps:
 //
-// This function rewrites the PVC volume size.
-// StatefulSet deletion and re-creation is done by reconcileV1StatefulSet().
+//  1. Rewrite PVC object's requested volume size.
+//  2. Delete StatefulSet object with "--cascade=orphan" option.
+//  3. The StatefulSet is recreated.
+//
+// This function first syncs the PVC labels and annotations with those of volumeClaimTemplate and then resizes the PVC volume size.
+// The deletion and recreation of the StatefulSet are managed by reconcileV1StatefulSet().
 // Therefore, this function should be called before reconcileV1StatefulSet().
 func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
@@ -42,6 +46,10 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Requ
 		return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
 	} else if apierrors.IsNotFound(err) {
 		return nil
+	}
+
+	if err := r.syncPVCLabelAndAnnotationValues(ctx, cluster, &sts); err != nil {
+		return err
 	}
 
 	if r.isUpdatingStatefulSet(&sts) {
@@ -243,4 +251,71 @@ func (*MySQLClusterReconciler) isUpdatingStatefulSet(sts *appsv1.StatefulSet) bo
 	}
 
 	return false
+}
+
+// syncPVCLabelAndAnnotationValues compares the label and annotation values set in the MySQLCluster's VolumeClaimTemplates with those of the PVC,
+// and updates the PVC's label and annotation if there are differences.
+// The keys to be synced are defined in MySQLClusterReconciler's PVCSyncLabelKeys and PVCSyncAnnotationKeys.
+// Does not perform additions and deletions of labels and annotations.
+func (r *MySQLClusterReconciler) syncPVCLabelAndAnnotationValues(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) error {
+	if len(r.PVCSyncAnnotationKeys) == 0 && len(r.PVCSyncLabelKeys) == 0 {
+		return nil
+	}
+
+	selector, err := metav1.LabelSelectorAsSelector(sts.Spec.Selector)
+	if err != nil {
+		return fmt.Errorf("failed to parse selector: %w", err)
+	}
+
+	var deployedPVCs corev1.PersistentVolumeClaimList
+	if err := r.Client.List(ctx, &deployedPVCs, client.MatchingLabelsSelector{Selector: selector}); err != nil {
+		return fmt.Errorf("failed to list PVCs: %w", err)
+	}
+
+	var templatePVCSet = make(map[string]mocov1beta2.PersistentVolumeClaim, len(cluster.Spec.VolumeClaimTemplates))
+	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
+		name := fmt.Sprintf("%s-%s", pvc.Name, sts.Name)
+		templatePVCSet[name] = pvc
+	}
+
+	for _, pvc := range deployedPVCs.Items {
+		index := strings.LastIndex(pvc.Name, "-")
+		if index == -1 {
+			continue
+		}
+
+		name := pvc.Name[:index]
+		template, ok := templatePVCSet[name]
+		if !ok {
+			continue
+		}
+
+		var isUpdate bool
+
+		for _, key := range r.PVCSyncLabelKeys {
+			if value, ok := template.Labels[key]; ok {
+				if pvc.Labels[key] != value {
+					pvc.Labels[key] = value
+					isUpdate = true
+				}
+			}
+		}
+
+		for _, key := range r.PVCSyncAnnotationKeys {
+			if value, ok := template.Annotations[key]; ok {
+				if pvc.Annotations[key] != value {
+					pvc.Annotations[key] = value
+					isUpdate = true
+				}
+			}
+		}
+
+		if isUpdate {
+			if err := r.Client.Update(ctx, &pvc); err != nil {
+				return fmt.Errorf("failed to update PVC: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
