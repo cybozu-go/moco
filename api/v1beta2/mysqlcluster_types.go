@@ -624,6 +624,10 @@ type BackupStatus struct {
 	// SourceUUID is the `server_uuid` of the backup source instance.
 	SourceUUID string `json:"sourceUUID"`
 
+	// UUIDSet is the `server_uuid` set of all candidate instances for the backup source.
+	// +optional
+	UUIDSet map[string]string `json:"uuidSet"`
+
 	// BinlogFilename is the binlog filename that the backup source instance was writing to
 	// at the backup.
 	BinlogFilename string `json:"binlogFilename"`

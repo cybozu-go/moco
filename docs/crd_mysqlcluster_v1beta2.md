@@ -29,6 +29,7 @@ BackupStatus represents the status of the last successful backup.
 | elapsed | Elapsed is the time spent on the backup. | [metav1.Duration](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration) | true |
 | sourceIndex | SourceIndex is the ordinal of the backup source instance. | int | true |
 | sourceUUID | SourceUUID is the `server_uuid` of the backup source instance. | string | true |
+| uuidSet | UUIDSet is the `server_uuid` set of all candidate instances for the backup source. | map[string]string | true |
 | binlogFilename | BinlogFilename is the binlog filename that the backup source instance was writing to at the backup. | string | true |
 | gtidSet | GTIDSet is the GTID set of the full dump of database. | string | true |
 | dumpSize | DumpSize is the size in bytes of a full dump of database stored in an object storage bucket. | int64 | true |

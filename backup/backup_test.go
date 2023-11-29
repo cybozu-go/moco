@@ -2,6 +2,9 @@ package backup
 
 import (
 	"context"
+	"errors"
+	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -12,94 +15,247 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type choosePodMockOp struct {
+type getUUIDSetMockOp struct {
 	closed bool
 	uuid   string
 }
 
-func (o *choosePodMockOp) Ping() error {
+func (o *getUUIDSetMockOp) Ping() error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) Close() {
+func (o *getUUIDSetMockOp) Close() {
 	o.closed = true
 }
 
-func (o *choosePodMockOp) GetServerStatus(_ context.Context, st *bkop.ServerStatus) error {
+func (o *getUUIDSetMockOp) GetServerStatus(_ context.Context, st *bkop.ServerStatus) error {
 	st.UUID = o.uuid
 	return nil
 }
 
-func (o *choosePodMockOp) DumpFull(ctx context.Context, dir string) error {
+func (o *getUUIDSetMockOp) DumpFull(ctx context.Context, dir string) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) GetBinlogs(_ context.Context) ([]string, error) {
+func (o *getUUIDSetMockOp) GetBinlogs(_ context.Context) ([]string, error) {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) DumpBinlog(ctx context.Context, dir string, binlogName string, filterGTID string) error {
+func (o *getUUIDSetMockOp) DumpBinlog(ctx context.Context, dir string, binlogName string, filterGTID string) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) PrepareRestore(_ context.Context) error {
+func (o *getUUIDSetMockOp) PrepareRestore(_ context.Context) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) LoadDump(ctx context.Context, dir string) error {
+func (o *getUUIDSetMockOp) LoadDump(ctx context.Context, dir string) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
+func (o *getUUIDSetMockOp) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
 	panic("not implemented")
 }
 
-func (o *choosePodMockOp) FinishRestore(_ context.Context) error {
+func (o *getUUIDSetMockOp) FinishRestore(_ context.Context) error {
 	panic("not implemented")
 }
 
-func TestChoosePod(t *testing.T) {
-	makePod := func(ready bool) *corev1.Pod {
-		pod := &corev1.Pod{}
-		if !ready {
-			return pod
-		}
-		pod.Status.Conditions = []corev1.PodCondition{{
-			Type:   corev1.PodReady,
-			Status: corev1.ConditionTrue,
-		}}
+func makePod(ready bool) *corev1.Pod {
+	pod := &corev1.Pod{}
+	if !ready {
 		return pod
 	}
+	pod.Status.Conditions = []corev1.PodCondition{{
+		Type:   corev1.PodReady,
+		Status: corev1.ConditionTrue,
+	}}
+	return pod
+}
 
-	makePod1 := func(ready bool) []*corev1.Pod {
-		return []*corev1.Pod{makePod(ready)}
-	}
-	makePod3 := func(ready0, ready1, ready2 bool) []*corev1.Pod {
-		return []*corev1.Pod{makePod(ready0), makePod(ready1), makePod(ready2)}
-	}
+func makePod1(ready bool) []*corev1.Pod {
+	return []*corev1.Pod{makePod(ready)}
+}
 
-	var lastOp *choosePodMockOp
+func makePod3(ready0, ready1, ready2 bool) []*corev1.Pod {
+	return []*corev1.Pod{makePod(ready0), makePod(ready1), makePod(ready2)}
+}
+
+func TestGetUUIDSet(t *testing.T) {
+	var lastOp *getUUIDSetMockOp
 	newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
-		lastOp = &choosePodMockOp{uuid: "123"}
+		lastOp = &getUUIDSetMockOp{uuid: "123"}
 		return lastOp, nil
 	}
 
-	makeBM := func(replicas, current int, bkup mocov1beta2.BackupStatus) *BackupManager {
+	testCases := []struct {
+		name string
+		pods []*corev1.Pod
+
+		expected map[string]string
+	}{
+		{
+			name:     "empty",
+			pods:     []*corev1.Pod{},
+			expected: map[string]string{},
+		},
+		{
+			name:     "single-not-ready",
+			pods:     makePod1(false),
+			expected: map[string]string{},
+		},
+		{
+			name:     "single-ready",
+			pods:     makePod1(true),
+			expected: map[string]string{"0": "123"},
+		},
+		{
+			name:     "triple-not-ready",
+			pods:     makePod3(false, false, false),
+			expected: map[string]string{},
+		},
+		{
+			name:     "triple-1st-ready",
+			pods:     makePod3(true, false, false),
+			expected: map[string]string{"0": "123"},
+		},
+		{
+			name:     "triple-2nd-ready",
+			pods:     makePod3(false, true, false),
+			expected: map[string]string{"1": "123"},
+		},
+		{
+			name:     "triple-3rd-ready",
+			pods:     makePod3(false, false, true),
+			expected: map[string]string{"2": "123"},
+		},
+		{
+			name:     "triple-all-ready",
+			pods:     makePod3(true, true, true),
+			expected: map[string]string{"0": "123", "1": "123", "2": "123"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lastOp = nil
+			bm := &BackupManager{
+				cluster: &mocov1beta2.MySQLCluster{},
+				status: bkop.ServerStatus{
+					UUID: "123",
+				},
+			}
+			uuids, err := bm.GetUUIDSet(context.Background(), tc.pods)
+			if lastOp != nil && !lastOp.closed {
+				t.Error("op was not closed")
+			}
+			if err != nil {
+				t.Error("unexpected error", err)
+			}
+			if !reflect.DeepEqual(uuids, tc.expected) {
+				t.Errorf("unexpected uuids %v, expected %v", uuids, tc.expected)
+			}
+		})
+
+	}
+}
+
+func TestGetIdxsWithUnchangedUUID(t *testing.T) {
+	testCases := []struct {
+		name    string
+		current map[string]string
+		last    map[string]string
+
+		expectIdxs []int
+	}{
+		{
+			name:       "single-uuid-not-changed",
+			current:    map[string]string{"0": "uuid-0"},
+			last:       map[string]string{"0": "uuid-0"},
+			expectIdxs: []int{0},
+		},
+		{
+			name:       "single-uuid-changed",
+			current:    map[string]string{"0": "uuid-0"},
+			last:       map[string]string{"0": "uuid-a"},
+			expectIdxs: []int{},
+		},
+		{
+			name:       "triple-uuid-not-changed",
+			current:    map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"},
+			last:       map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"},
+			expectIdxs: []int{0, 1, 2},
+		},
+		{
+			name:       "triple-some-uuid-changed",
+			current:    map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"},
+			last:       map[string]string{"0": "uuid-0", "1": "uuid-a", "2": "uuid-2"},
+			expectIdxs: []int{0, 2},
+		},
+		{
+			name:       "triple-all-uuid-changed",
+			current:    map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"},
+			last:       map[string]string{"0": "uuid-a", "1": "uuid-b", "2": "uuid-c"},
+			expectIdxs: []int{},
+		},
+		{
+			name:       "triple-some-uuid-changed-or-not-exist-1",
+			current:    map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"},
+			last:       map[string]string{"0": "uuid-a", "2": "uuid-2"},
+			expectIdxs: []int{2},
+		},
+		{
+			name:       "triple-some-uuid-changed-or-not-exist-2",
+			current:    map[string]string{"0": "uuid-0", "2": "uuid-2"},
+			last:       map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-2"},
+			expectIdxs: []int{2},
+		},
+		{
+			name:       "triple-with-invalid-index",
+			current:    map[string]string{"0": "uuid-0", "1": "uuid-1", "hoge": "uuid-2"},
+			last:       map[string]string{"0": "uuid-0", "fuga": "uuid-1", "2": "uuid-2"},
+			expectIdxs: []int{0},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			idxs := getIdxsWithUnchangedUUID(tc.current, tc.last)
+			if !reflect.DeepEqual(idxs, tc.expectIdxs) {
+				t.Errorf("unexpected indexes %v, expected %v", idxs, tc.expectIdxs)
+			}
+		})
+	}
+}
+
+func TestChoosePod(t *testing.T) {
+	makeBM := func(replicas, current int, bkup mocov1beta2.BackupStatus, pods []*corev1.Pod) *BackupManager {
 		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Spec.Replicas = int32(replicas)
 		cluster.Status.CurrentPrimaryIndex = current
 		cluster.Status.Backup = bkup
+		uuidSet := make(map[string]string)
+		for i, pod := range pods {
+			for _, c := range pod.Status.Conditions {
+				if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+					uuidSet[strconv.Itoa(i)] = "uuid-" + strconv.Itoa(i)
+				}
+			}
+		}
+
 		return &BackupManager{
 			log:     logr.Discard(),
 			cluster: cluster,
+			uuidSet: uuidSet,
 		}
 	}
 
-	makeBS := func(idx int, uuid string) mocov1beta2.BackupStatus {
+	makeBS := func(sourceIdx int, uuidSet map[string]string) mocov1beta2.BackupStatus {
 		return mocov1beta2.BackupStatus{
 			Time:        metav1.Now(),
-			SourceIndex: idx,
-			SourceUUID:  uuid,
+			SourceIndex: sourceIdx,
+			SourceUUID:  uuidSet[strconv.Itoa(sourceIdx)],
+			UUIDSet:     uuidSet,
 		}
 	}
 
@@ -110,37 +266,207 @@ func TestChoosePod(t *testing.T) {
 		bkup     mocov1beta2.BackupStatus
 		pods     []*corev1.Pod
 
-		expectIdx int
+		err            error
+		expectIdx      int
+		doBackupBinlog bool
+		warnings       int
 	}{
-		{"single", 1, 0, mocov1beta2.BackupStatus{}, makePod1(true), 0},
-		{"single-not-ready", 1, 0, mocov1beta2.BackupStatus{}, makePod1(false), 0},
-		{"triple-ready", 3, 0, mocov1beta2.BackupStatus{}, makePod3(true, false, true), 2},
-		{"triple-not-ready", 3, 1, mocov1beta2.BackupStatus{}, makePod3(false, true, false), 1},
-		{"single-2nd", 1, 0, makeBS(0, "123"), makePod1(true), 0},
-		{"single-2nd-uuid-changed", 1, 0, makeBS(0, "abc"), makePod1(true), 0},
-		{"single-2nd-not-ready", 1, 0, makeBS(0, "123"), makePod1(false), 0},
-		{"triple-2nd", 3, 0, makeBS(1, "123"), makePod3(true, true, true), 1},
-		{"triple-2nd-uuid-changed", 3, 0, makeBS(1, "abc"), makePod3(true, true, true), 2},
-		{"triple-2nd-not-ready", 3, 0, makeBS(1, "123"), makePod3(true, false, true), 2},
-		{"triple-2nd-primary", 3, 1, makeBS(1, "123"), makePod3(true, true, true), 0},
-		{"triple-2nd-all-not-ready", 3, 0, makeBS(1, "123"), makePod3(true, false, false), 0},
+		{
+			name:           "single",
+			replicas:       1,
+			current:        0,
+			bkup:           mocov1beta2.BackupStatus{},
+			pods:           makePod1(true),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       0,
+		},
+		{
+			name:           "single-not-ready",
+			replicas:       1,
+			current:        0,
+			bkup:           mocov1beta2.BackupStatus{},
+			pods:           makePod1(false),
+			err:            errors.New("no ready pod exists"),
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       0,
+		},
+		{
+			name:           "triple-ready",
+			replicas:       3,
+			current:        0,
+			bkup:           mocov1beta2.BackupStatus{},
+			pods:           makePod3(true, false, true),
+			err:            nil,
+			expectIdx:      2,
+			doBackupBinlog: false,
+			warnings:       0,
+		},
+		{
+			name:           "triple-some-not-ready",
+			replicas:       3,
+			current:        1,
+			bkup:           mocov1beta2.BackupStatus{},
+			pods:           makePod3(false, true, false),
+			err:            nil,
+			expectIdx:      1,
+			doBackupBinlog: false,
+			warnings:       0,
+		},
+		{
+			name:           "triple-all-not-ready",
+			replicas:       3,
+			current:        1,
+			bkup:           mocov1beta2.BackupStatus{},
+			pods:           makePod3(false, false, false),
+			err:            errors.New("no ready pod exists"),
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       0,
+		},
+		{
+			name:           "single-2nd",
+			replicas:       1,
+			current:        0,
+			bkup:           makeBS(0, map[string]string{"0": "uuid-0"}),
+			pods:           makePod1(true),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "single-2nd-uuid-changed",
+			replicas:       1,
+			current:        0,
+			bkup:           makeBS(0, map[string]string{"0": "uuid-a"}),
+			pods:           makePod1(true),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       1,
+		},
+		{
+			name:           "single-2nd-not-ready",
+			replicas:       1,
+			current:        0,
+			bkup:           makeBS(0, map[string]string{"0": "uuid-0"}),
+			pods:           makePod1(false),
+			err:            errors.New("no ready pod exists"),
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       1,
+		},
+		{
+			name:           "triple-2nd",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}),
+			pods:           makePod3(true, true, true),
+			err:            nil,
+			expectIdx:      1,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "triple-2nd-uuid-changed",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-b", "2": "uuid-2"}),
+			pods:           makePod3(true, true, true),
+			err:            nil,
+			expectIdx:      2,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "triple-2nd-last-index-not-ready",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}),
+			pods:           makePod3(true, false, true),
+			err:            nil,
+			expectIdx:      2,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "triple-2nd-primary",
+			replicas:       3,
+			current:        1,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}),
+			pods:           makePod3(true, true, true),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "triple-2nd-all-not-ready",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-1", "2": "uuid-2"}),
+			pods:           makePod3(false, false, false),
+			err:            errors.New("no ready pod exists"),
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       1,
+		},
+		{
+			name:           "triple-2nd-replica-uuid-changed",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-0", "1": "uuid-a", "2": "uuid-b"}),
+			pods:           makePod3(true, true, true),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: true,
+			warnings:       0,
+		},
+		{
+			name:           "triple-2nd-some-not-ready-and-uuid-changed-1",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(1, map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}),
+			pods:           makePod3(true, false, true),
+			err:            nil,
+			expectIdx:      2,
+			doBackupBinlog: false,
+			warnings:       1,
+		},
+		{
+			name:           "triple-2nd-some-not-ready-and-uuid-changed-2",
+			replicas:       3,
+			current:        0,
+			bkup:           makeBS(0, map[string]string{"0": "uuid-a", "1": "uuid-1", "2": "uuid-b"}),
+			pods:           makePod3(true, false, false),
+			err:            nil,
+			expectIdx:      0,
+			doBackupBinlog: false,
+			warnings:       1,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			lastOp = nil
-			bm := makeBM(tc.replicas, tc.current, tc.bkup)
-			idx, err := bm.ChoosePod(context.Background(), tc.pods)
-			if lastOp != nil && !lastOp.closed {
-				t.Error("op was not closed")
-			}
+			bm := makeBM(tc.replicas, tc.current, tc.bkup, tc.pods)
+			idx, doBackupBinlog, err := bm.ChoosePod(context.Background(), tc.pods)
 			if err != nil {
-				t.Error("unexpected error", err)
-				return
+				if errors.Is(err, tc.err) {
+					t.Error("unexpected error", err)
+					return
+				}
 			}
-
 			if idx != tc.expectIdx {
 				t.Errorf("unexpected index %d, expected %d", idx, tc.expectIdx)
+			}
+			if doBackupBinlog != tc.doBackupBinlog {
+				t.Errorf("unexpected doBackupBinlog %v, expected %v", doBackupBinlog, tc.doBackupBinlog)
+			}
+			if len(bm.warnings) != tc.warnings {
+				t.Errorf("unexpected warnings %d, expected %d", len(bm.warnings), tc.warnings)
 			}
 		})
 	}

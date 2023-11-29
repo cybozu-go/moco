@@ -145,6 +145,51 @@ Finally, the Job updates MySQLCluster status field with the following informatio
 - The maximum usage of the working directory
 - Warnings, if any
 
+When executing an incremental backup, the backup source must be a pod whose server_uuid has not changed since the last backup.
+If the server_uuid has changed, the pod may be missing some of the binlogs generated since the last backup.
+
+The following is how to choose a pod to be the backup source.
+
+```mermaid
+flowchart TD
+A{"first time?"}
+A -->|"yes"| B
+A -->|"no"| C["x ← Get the indexes of the pod whose server_uuid has not changed"] --> D
+
+B{Are replicas available?}
+B -->|"yes"| B1["return\nreplicaIdx\ndoBackupBinlog=false"]
+style B1 fill:#c1ffff
+B -->|"no"| B2["return\nprimaryIdx\ndoBackupBinlog=false"]
+style B2 fill:#ffffc1
+
+D{"Is x empty?"}
+D -->|"yes"| E["add warning to bm.warnings"] --> F
+style E fill:#ffc1c1
+D -->|"no"| G
+
+F{"Are replicas available?"}
+F -->|"yes"| F1["return\nreplicaIdx\ndoBackupBinlog=false"]
+style F1 fill:#ffc1c1
+F -->|"no"| F2["return\nprimaryIdx\ndoBackupBinlog=false"]
+style F2 fill:#ffc1c1
+
+G{"Are there replica indexes in x?"}
+G -->|"yes"| H
+G -->|"no"| G1["return\nprimaryIdx\ndoBackupBinlog=true"]
+style G1 fill:#ffffc1
+
+H{"Is lastIndex included in x?"}
+H -->|"yes"| I
+H -->|"no"| H1["return\nreplicaIdx\ndoBackupBinlog=true"]
+style H1 fill:#c1ffff
+
+I{"Is lastIndex primary?"}
+I -->|"yes"| I1["return\nreplicaIdx\ndoBackupBinlog=true"]
+style I1 fill:#c1ffff
+I -->|"no"| I2["return\nlastIdx\ndoBackupBinlog=true"]
+style I2 fill:#c1ffff
+```
+
 ### Restore
 
 To restore MySQL data from a backup, users need to create a new MySQLCluster with appropriate `spec.restore` field.

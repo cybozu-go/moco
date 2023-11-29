@@ -120,6 +120,13 @@ func (in *BackupStatus) DeepCopyInto(out *BackupStatus) {
 	*out = *in
 	in.Time.DeepCopyInto(&out.Time)
 	out.Elapsed = in.Elapsed
+	if in.UUIDSet != nil {
+		in, out := &in.UUIDSet, &out.UUIDSet
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.Warnings != nil {
 		in, out := &in.Warnings, &out.Warnings
 		*out = make([]string, len(*in))
