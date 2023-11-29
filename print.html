@@ -1152,6 +1152,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>elapsed</td><td>Elapsed is the time spent on the backup.</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">metav1.Duration</a></td><td>true</td></tr>
 <tr><td>sourceIndex</td><td>SourceIndex is the ordinal of the backup source instance.</td><td>int</td><td>true</td></tr>
 <tr><td>sourceUUID</td><td>SourceUUID is the <code>server_uuid</code> of the backup source instance.</td><td>string</td><td>true</td></tr>
+<tr><td>uuidSet</td><td>UUIDSet is the <code>server_uuid</code> set of all candidate instances for the backup source.</td><td>map[string]string</td><td>true</td></tr>
 <tr><td>binlogFilename</td><td>BinlogFilename is the binlog filename that the backup source instance was writing to at the backup.</td><td>string</td><td>true</td></tr>
 <tr><td>gtidSet</td><td>GTIDSet is the GTID set of the full dump of database.</td><td>string</td><td>true</td></tr>
 <tr><td>dumpSize</td><td>DumpSize is the size in bytes of a full dump of database stored in an object storage bucket.</td><td>int64</td><td>true</td></tr>
@@ -2148,6 +2149,47 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <li>The maximum usage of the working directory</li>
 <li>Warnings, if any</li>
 </ul>
+<p>When executing an incremental backup, the backup source must be a pod whose server_uuid has not changed since the last backup.
+If the server_uuid has changed, the pod may be missing some of the binlogs generated since the last backup.</p>
+<p>The following is how to choose a pod to be the backup source.</p>
+<pre><code class="language-mermaid">flowchart TD
+A{&quot;first time?&quot;}
+A --&gt;|&quot;yes&quot;| B
+A --&gt;|&quot;no&quot;| C[&quot;x ← Get the indexes of the pod whose server_uuid has not changed&quot;] --&gt; D
+
+B{Are replicas available?}
+B --&gt;|&quot;yes&quot;| B1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+style B1 fill:#c1ffff
+B --&gt;|&quot;no&quot;| B2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+style B2 fill:#ffffc1
+
+D{&quot;Is x empty?&quot;}
+D --&gt;|&quot;yes&quot;| E[&quot;add warning to bm.warnings&quot;] --&gt; F
+style E fill:#ffc1c1
+D --&gt;|&quot;no&quot;| G
+
+F{&quot;Are replicas available?&quot;}
+F --&gt;|&quot;yes&quot;| F1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+style F1 fill:#ffc1c1
+F --&gt;|&quot;no&quot;| F2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+style F2 fill:#ffc1c1
+
+G{&quot;Are there replica indexes in x?&quot;}
+G --&gt;|&quot;yes&quot;| H
+G --&gt;|&quot;no&quot;| G1[&quot;return\nprimaryIdx\ndoBackupBinlog=true&quot;]
+style G1 fill:#ffffc1
+
+H{&quot;Is lastIndex included in x?&quot;}
+H --&gt;|&quot;yes&quot;| I
+H --&gt;|&quot;no&quot;| H1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+style H1 fill:#c1ffff
+
+I{&quot;Is lastIndex primary?&quot;}
+I --&gt;|&quot;yes&quot;| I1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+style I1 fill:#c1ffff
+I --&gt;|&quot;no&quot;| I2[&quot;return\nlastIdx\ndoBackupBinlog=true&quot;]
+style I2 fill:#c1ffff
+</code></pre>
 <h3 id="restore-1"><a class="header" href="#restore-1">Restore</a></h3>
 <p>To restore MySQL data from a backup, users need to create a new MySQLCluster with appropriate <code>spec.restore</code> field.
 <code>spec.restore</code> needs to provide at least the following information:</p>

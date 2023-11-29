@@ -266,6 +266,47 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <li>The maximum usage of the working directory</li>
 <li>Warnings, if any</li>
 </ul>
+<p>When executing an incremental backup, the backup source must be a pod whose server_uuid has not changed since the last backup.
+If the server_uuid has changed, the pod may be missing some of the binlogs generated since the last backup.</p>
+<p>The following is how to choose a pod to be the backup source.</p>
+<pre><code class="language-mermaid">flowchart TD
+A{&quot;first time?&quot;}
+A --&gt;|&quot;yes&quot;| B
+A --&gt;|&quot;no&quot;| C[&quot;x ← Get the indexes of the pod whose server_uuid has not changed&quot;] --&gt; D
+
+B{Are replicas available?}
+B --&gt;|&quot;yes&quot;| B1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+style B1 fill:#c1ffff
+B --&gt;|&quot;no&quot;| B2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+style B2 fill:#ffffc1
+
+D{&quot;Is x empty?&quot;}
+D --&gt;|&quot;yes&quot;| E[&quot;add warning to bm.warnings&quot;] --&gt; F
+style E fill:#ffc1c1
+D --&gt;|&quot;no&quot;| G
+
+F{&quot;Are replicas available?&quot;}
+F --&gt;|&quot;yes&quot;| F1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+style F1 fill:#ffc1c1
+F --&gt;|&quot;no&quot;| F2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+style F2 fill:#ffc1c1
+
+G{&quot;Are there replica indexes in x?&quot;}
+G --&gt;|&quot;yes&quot;| H
+G --&gt;|&quot;no&quot;| G1[&quot;return\nprimaryIdx\ndoBackupBinlog=true&quot;]
+style G1 fill:#ffffc1
+
+H{&quot;Is lastIndex included in x?&quot;}
+H --&gt;|&quot;yes&quot;| I
+H --&gt;|&quot;no&quot;| H1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+style H1 fill:#c1ffff
+
+I{&quot;Is lastIndex primary?&quot;}
+I --&gt;|&quot;yes&quot;| I1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+style I1 fill:#c1ffff
+I --&gt;|&quot;no&quot;| I2[&quot;return\nlastIdx\ndoBackupBinlog=true&quot;]
+style I2 fill:#c1ffff
+</code></pre>
 <h3 id="restore"><a class="header" href="#restore">Restore</a></h3>
 <p>To restore MySQL data from a backup, users need to create a new MySQLCluster with appropriate <code>spec.restore</code> field.
 <code>spec.restore</code> needs to provide at least the following information:</p>
