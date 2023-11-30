@@ -955,7 +955,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 
 	var maxUnavailable intstr.IntOrString
 	if backupCronJobIsRnning {
-		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas))
+		maxUnavailable = intstr.FromInt(0)
 	} else {
 		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas / 2))
 	}
