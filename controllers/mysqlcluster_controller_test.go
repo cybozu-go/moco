@@ -1576,8 +1576,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if err != nil {
 				return err
 			}
-			if pdb.Spec.MaxUnavailable.IntVal == cluster.Spec.Replicas {
-				return fmt.Errorf("PodDisruptionBudget MaxUnavailable is equal Replica Count.")
+			if pdb.Spec.MaxUnavailable.IntVal == 0 {
+				return fmt.Errorf("PodDisruptionBudget MaxUnavailable is equal 0.")
 			}
 			return nil
 		}).Should(Succeed())
