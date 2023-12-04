@@ -942,7 +942,23 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 		return client.IgnoreNotFound(err)
 	}
 
-	maxUnavailable := intstr.FromInt(int(cluster.Spec.Replicas / 2))
+	backupCronJobIsRunning := false
+	// check if backup cronjob is running
+	if cluster.Spec.BackupPolicyName != nil {
+		cj := &batchv1.CronJob{}
+		if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj); err == nil {
+			if cj.Status.Active != nil {
+				backupCronJobIsRunning = true
+			}
+		}
+	}
+
+	var maxUnavailable intstr.IntOrString
+	if backupCronJobIsRunning {
+		maxUnavailable = intstr.FromInt(0)
+	} else {
+		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas / 2))
+	}
 
 	pdbApplyConfig := policyv1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
 		WithLabels(labelSet(cluster, false)).
