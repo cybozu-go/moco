@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.34
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.
