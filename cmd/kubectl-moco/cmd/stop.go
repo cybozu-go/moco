@@ -51,6 +51,7 @@ func stopClustering(ctx context.Context, name string) error {
 	cluster.Annotations[constants.AnnClusteringStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
+		fmt.Fprintf(os.Stdout, "The clustering is already stopped.")
 		return nil
 	}
 
@@ -90,6 +91,7 @@ func stopReconciliation(ctx context.Context, name string) error {
 	cluster.Annotations[constants.AnnReconciliationStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
+		fmt.Fprintf(os.Stdout, "The reconciliation is already stopped.")
 		return nil
 	}
 
