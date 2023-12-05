@@ -33,11 +33,12 @@ jobs:
         run: |
           result="$(./tag_exists moco/mysqld_exporter mysqld_exporter)"
           if [ "$result" = ok ]; then
-            exit 1
+            exit 0
           fi
           echo "TAG=$(cat ./mysqld_exporter/TAG)" >> $GITHUB_ENV
 
       - uses: docker/build-push-action@v5
+        if: env.TAG != null
         with:
           context: containers/mysqld_exporter/.
           platforms: linux/amd64,linux/arm64

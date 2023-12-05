@@ -33,11 +33,12 @@ jobs:
         run: |
           result="$(./tag_exists moco/fluent-bit fluent-bit)"
           if [ "$result" = ok ]; then
-            exit 1
+            exit 0
           fi
           echo "TAG=$(cat ./fluent-bit/TAG)" >> $GITHUB_ENV
 
       - uses: docker/build-push-action@v5
+        if: env.TAG != null
         with:
           context: containers/fluent-bit/.
           platforms: linux/amd64,linux/arm64
