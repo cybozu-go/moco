@@ -13,6 +13,10 @@ on:
       - '**.md'
       - "containers/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   cache-version: 1
 
