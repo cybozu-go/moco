@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -405,7 +405,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
+		cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
 		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithRequests(corev1.ResourceList{
 			corev1.ResourceMemory: resource.MustParse("500Mi"),
 		})
@@ -669,7 +669,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should reconcile statefulset", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.ReplicationSourceSecretName = pointer.String("source-secret")
+		cluster.Spec.ReplicationSourceSecretName = ptr.To[string]("source-secret")
 		cluster.Spec.PodTemplate.Annotations = map[string]string{"foo": "bar"}
 		cluster.Spec.PodTemplate.Labels = map[string]string{"foo": "baz"}
 
@@ -837,7 +837,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
 		cluster.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
-		cluster.Spec.MaxDelaySeconds = pointer.Int(20)
+		cluster.Spec.MaxDelaySeconds = ptr.To[int](20)
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.DisableSlowQueryLogContainer = true
@@ -917,7 +917,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Create(ctx, userCM)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster.Spec.MySQLConfigMapName = pointer.String(userCM.Name)
+		cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
 
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -961,7 +961,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
 				Expect(c.LivenessProbe).NotTo(BeNil())
-				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(pointer.Int64(200)))
+				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(ptr.To[int64](200)))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 			case constants.AgentContainerName:
@@ -1019,7 +1019,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster.Spec.MaxDelaySeconds = pointer.Int(0)
+		cluster.Spec.MaxDelaySeconds = ptr.To[int](0)
 
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -1095,7 +1095,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should reconcile backup related resources", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.BackupPolicyName = pointer.String("test-policy")
+		cluster.Spec.BackupPolicyName = ptr.To[string]("test-policy")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1103,13 +1103,13 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		bp := &mocov1beta2.BackupPolicy{}
 		bp.Namespace = "test"
 		bp.Name = "test-policy"
-		bp.Spec.ActiveDeadlineSeconds = pointer.Int64(100)
-		bp.Spec.BackoffLimit = pointer.Int32(1)
+		bp.Spec.ActiveDeadlineSeconds = ptr.To[int64](100)
+		bp.Spec.BackoffLimit = ptr.To[int32](1)
 		bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-		bp.Spec.StartingDeadlineSeconds = pointer.Int64(10)
+		bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
 		bp.Spec.Schedule = "*/5 * * * *"
-		bp.Spec.SuccessfulJobsHistoryLimit = pointer.Int32(1)
-		bp.Spec.FailedJobsHistoryLimit = pointer.Int32(2)
+		bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
+		bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
 		jc := &bp.Spec.JobConfig
 		jc.Threads = 3
 		jc.ServiceAccountName = "foo"
@@ -1117,12 +1117,12 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
+		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
 		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
 			{
 				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
 					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
-						Name: pointer.String("bucket-config"),
+						Name: ptr.To[string]("bucket-config"),
 					},
 				},
 			},
@@ -1132,7 +1132,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
 			{
-				Name: pointer.String("test"),
+				Name: ptr.To[string]("test"),
 				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
 					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 				},
@@ -1140,8 +1140,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
 			{
-				Name:      pointer.String("test"),
-				MountPath: pointer.String("/path/to/dir"),
+				Name:      ptr.To[string]("test"),
+				MountPath: ptr.To[string]("/path/to/dir"),
 			},
 		}
 		jc.BucketConfig.BucketName = "mybucket"
@@ -1173,14 +1173,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(cj.Labels).NotTo(BeEmpty())
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
-		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(pointer.Int64(10)))
+		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(ptr.To[int64](10)))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(1)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(2)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](2)))
 		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
 		js := &cj.Spec.JobTemplate.Spec
-		Expect(js.ActiveDeadlineSeconds).To(Equal(pointer.Int64(100)))
-		Expect(js.BackoffLimit).To(Equal(pointer.Int32(1)))
+		Expect(js.ActiveDeadlineSeconds).To(Equal(ptr.To[int64](100)))
+		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](1)))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
@@ -1246,7 +1246,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.EnvFrom = nil
 		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
 			HostPath: &corev1ac.HostPathVolumeSourceApplyConfiguration{
-				Path: pointer.String("/host"),
+				Path: ptr.To[string]("/host"),
 			},
 		}
 		jc.BucketConfig.BucketName = "mybucket2"
@@ -1269,8 +1269,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(pointer.Int32(3)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(pointer.Int32(1)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](3)))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
 		js = &cj.Spec.JobTemplate.Spec
 		Expect(js.ActiveDeadlineSeconds).To(BeNil())
 		Expect(js.BackoffLimit).To(BeNil())
@@ -1354,12 +1354,12 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: pointer.String("TEST"), Value: pointer.String("123")}}
+		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
 		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
 			{
 				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
 					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
-						Name: pointer.String("bucket-config"),
+						Name: ptr.To[string]("bucket-config"),
 					},
 				},
 			},
@@ -1369,7 +1369,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
 			{
-				Name: pointer.String("test"),
+				Name: ptr.To[string]("test"),
 				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
 					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 				},
@@ -1377,8 +1377,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}
 		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
 			{
-				Name:      pointer.String("test"),
-				MountPath: pointer.String("/path/to/dir"),
+				Name:      ptr.To[string]("test"),
+				MountPath: ptr.To[string]("/path/to/dir"),
 			},
 		}
 		jc.BucketConfig.BucketName = "mybucket"
@@ -1410,7 +1410,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(job.Labels).NotTo(BeEmpty())
 		Expect(job.OwnerReferences).NotTo(BeEmpty())
 		js := &job.Spec
-		Expect(js.BackoffLimit).To(Equal(pointer.Int32(0)))
+		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](0)))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
@@ -1502,7 +1502,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {
 		cluster := testNewMySQLCluster("test")
 		// use existing backup policy
-		cluster.Spec.BackupPolicyName = pointer.String("test-policy")
+		cluster.Spec.BackupPolicyName = ptr.To[string]("test-policy")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1817,7 +1817,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should sets ConditionStatefulSetReady to be false when status of StatefulSet does not found", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.MySQLConfigMapName = pointer.String("foobarhoge")
+		cluster.Spec.MySQLConfigMapName = ptr.To[string]("foobarhoge")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1997,7 +1997,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setting configmap name to be invalid")
-		cluster.Spec.MySQLConfigMapName = pointer.String("foobarhoge")
+		cluster.Spec.MySQLConfigMapName = ptr.To[string]("foobarhoge")
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 

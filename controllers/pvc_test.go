@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -104,7 +104,7 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 			pvc.Name = fmt.Sprintf("%s-%s-%d", pvc.Name, cluster.PrefixedName(), i)
 			pvc.Namespace = cluster.Namespace
 			pvc.Labels = sts.Spec.Selector.MatchLabels
-			pvc.Spec.StorageClassName = pointer.String("default")
+			pvc.Spec.StorageClassName = ptr.To[string]("default")
 			pvcs = append(pvcs, &pvc)
 		}
 	}
@@ -114,7 +114,7 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 			Name: "default",
 		},
 		Provisioner:          "kubernetes.io/no-provisioner",
-		AllowVolumeExpansion: pointer.Bool(true),
+		AllowVolumeExpansion: ptr.To[bool](true),
 	}
 
 	client := fake.NewClientBuilder().
@@ -170,7 +170,7 @@ func TestNeedResizePVC(t *testing.T) {
 						Name: "new-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: pointer.String("default"),
+						StorageClassName: ptr.To[string]("default"),
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
 						},
@@ -221,7 +221,7 @@ func TestNeedResizePVC(t *testing.T) {
 						Name: "new-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: pointer.String("default"),
+						StorageClassName: ptr.To[string]("default"),
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
 						},
@@ -299,7 +299,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: pointer.Int32(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					constants.LabelAppName:      constants.AppNameMySQL,
@@ -313,7 +313,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 						Name: "mysql-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: pointer.String("default"),
+						StorageClassName: ptr.To[string]("default"),
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: size},
 						},
