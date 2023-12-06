@@ -39,7 +39,7 @@ import (
 	policyv1ac "k8s.io/client-go/applyconfigurations/policy/v1"
 	rbacv1ac "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -129,7 +129,7 @@ func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r cli
 
 	return &orig, r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
 		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
+		Force:        ptr.To[bool](true),
 	})
 }
 
@@ -898,7 +898,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 	err = r.Patch(ctx, patch, client.Apply, &client.PatchOptions{
 		FieldManager: fieldManager,
-		Force:        pointer.Bool(true),
+		Force:        ptr.To[bool](true),
 	})
 	if err != nil {
 		if needRecreate {
@@ -1157,7 +1157,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 							WithRestartPolicy(corev1.RestartPolicyNever).
 							WithServiceAccountName(bp.Spec.JobConfig.ServiceAccountName).
 							WithVolumes(&corev1ac.VolumeApplyConfiguration{
-								Name:                           pointer.String("work"),
+								Name:                           ptr.To[string]("work"),
 								VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*jc.WorkVolume.DeepCopy()),
 							}).
 							WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
@@ -1461,7 +1461,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 						WithRestartPolicy(corev1.RestartPolicyNever).
 						WithServiceAccountName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
 						WithVolumes(&corev1ac.VolumeApplyConfiguration{
-							Name:                           pointer.String("work"),
+							Name:                           ptr.To[string]("work"),
 							VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*cluster.Spec.Restore.JobConfig.WorkVolume.DeepCopy()),
 						}).
 						WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {

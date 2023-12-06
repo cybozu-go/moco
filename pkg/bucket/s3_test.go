@@ -49,7 +49,7 @@ var _ = Describe("S3Bucket", func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		client := s3.NewFromConfig(cfg,
-			s3.WithEndpointResolver(s3.EndpointResolverFromURL("http://localhost:9000")),
+			WithEndpointURL("http://localhost:9000"),
 			WithPathStyle(),
 		)
 

@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -77,28 +77,28 @@ var _ = Describe("BackupPolicy Webhook", func() {
 
 	It("should deny BackupPolicy with invalid backoffLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.BackoffLimit = pointer.Int32(-1)
+		r.Spec.BackoffLimit = ptr.To[int32](-1)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny BackupPolicy with invalid successfulJobsHistoryLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.SuccessfulJobsHistoryLimit = pointer.Int32(-1)
+		r.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](-1)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny BackupPolicy with invalid failedJobsHistoryLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.FailedJobsHistoryLimit = pointer.Int32(-1)
+		r.Spec.FailedJobsHistoryLimit = ptr.To[int32](-1)
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should delete BackupPolicy", func() {
 		cluster := makeMySQLCluster()
-		cluster.Spec.BackupPolicyName = pointer.String("no-test")
+		cluster.Spec.BackupPolicyName = ptr.To[string]("no-test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -112,7 +112,7 @@ var _ = Describe("BackupPolicy Webhook", func() {
 
 	It("should NOT delete BackupPolicy which is referenced by MySQLCluster", func() {
 		cluster := makeMySQLCluster()
-		cluster.Spec.BackupPolicyName = pointer.String("test")
+		cluster.Spec.BackupPolicyName = ptr.To[string]("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 

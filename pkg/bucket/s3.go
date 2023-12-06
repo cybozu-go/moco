@@ -37,7 +37,7 @@ func WithRegion(region string) func(*s3.Options) {
 // WithEndpointURL specifies the endpoint of S3 API.
 func WithEndpointURL(u string) func(*s3.Options) {
 	return func(o *s3.Options) {
-		o.EndpointResolver = s3.EndpointResolverFromURL(u)
+		o.BaseEndpoint = aws.String(u)
 	}
 }
 

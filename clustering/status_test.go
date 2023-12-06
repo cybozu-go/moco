@@ -10,7 +10,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/dbop"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const testPrimaryHostname = "moco-test-0.moco-test.ns.svc"
@@ -41,7 +41,7 @@ func (b *ssBuilder) build() *StatusSet {
 	cluster.Spec.ServerIDBase = 10
 	cluster.Status.CurrentPrimaryIndex = b.primaryIndex
 	if b.isIntermediate {
-		cluster.Spec.ReplicationSourceSecretName = pointer.String("hoge")
+		cluster.Spec.ReplicationSourceSecretName = ptr.To[string]("hoge")
 	}
 	if b.toRestore {
 		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{}
