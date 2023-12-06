@@ -927,6 +927,46 @@ $ kubectl delete --grace-period=1 pods moco-test-0
 </code></pre>
 <p>Depending on your Kubernetes version, StatefulSet controller may create a pending Pod before PVC gets deleted.
 Delete such pending Pods until PVC is actually removed.</p>
+<h3 id="stop-clustering-and-reconciliation"><a class="header" href="#stop-clustering-and-reconciliation">Stop Clustering and Reconciliation</a></h3>
+<p>In MOCO, you can optionally stop the clustering and reconciliation of a MySQLCluster.</p>
+<p>To stop clustering and reconciliation, use the following commands.</p>
+<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLSUTER_NAME&gt;
+$ kubectl moco stop reconciliation &lt;CLSUTER_NAME&gt;
+</code></pre>
+<p>To resume the stopped clustering and reconciliation, use the following commands.</p>
+<pre><code class="language-console">$ kubectl moco start clustering &lt;CLSUTER_NAME&gt;
+$ kubectl moco start reconciliation &lt;CLSUTER_NAME&gt;
+</code></pre>
+<p>You could use this feature in the following cases:</p>
+<ol>
+<li>To stop the replication of a MySQLCluster and perform a manual operation to align the GTID
+<ul>
+<li>Run the <code>kubectl moco stop clustering</code> command on the MySQLCluster where you want to stop the replication</li>
+</ul>
+</li>
+<li>To suppress the full update of MySQLCluster that occurs during the upgrade of MOCO
+<ul>
+<li>Run the <code>kubectl moco stop reconciliation</code> command on the MySQLCluster on which you want to suppress the update</li>
+</ul>
+</li>
+</ol>
+<p>To check whether clustering and reconciliation are stopped, use <code>kubectl get mysqlcluster</code>.
+Moreover, while clustering is stopped, <code>AVAILABLE</code> and <code>HEALTHY</code> values will be <code>Unknown</code>.</p>
+<pre><code class="language-console">$ kubectl get mysqlcluster
+NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUSTERING ACTIVE   RECONCILE ACTIVE   LAST BACKUP
+test   Unknown     Unknown   0         3                                   False               False              &lt;no value&gt;
+</code></pre>
+<p>The MOCO controller outputs the following metrics to indicate that clustering has been stopped.
+1 if the cluster is clustering or reconciliation stopped, 0 otherwise.</p>
+<pre><code class="language-text">moco_cluster_clustering_stopped{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
+moco_cluster_reconciliation_stopped{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
+</code></pre>
+<p>During the stop of clustering, monitoring of the cluster from MOCO will be halted, and the value of the following metrics will become NaN.</p>
+<pre><code class="language-text">moco_cluster_available{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
+moco_cluster_healthy{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
+moco_cluster_ready_replicas{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
+moco_cluster_errant_replicas{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
 <p>There are pre-built <code>mysqld</code> container images for MOCO on <a href="https://github.com/cybozu-go/moco/pkgs/container/moco%2Fmysql"><code>ghcr.io/cybozu-go/moco/mysql</code></a>.
@@ -1530,6 +1570,8 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>failover_total</code></td><td>The number of times MOCO changed the failed primary instance</td><td>Counter</td></tr>
 <tr><td><code>replicas</code></td><td>The number of mysqld instances in the cluster</td><td>Gauge</td></tr>
 <tr><td><code>ready_replicas</code></td><td>The number of ready mysqld Pods in the cluster</td><td>Gauge</td></tr>
+<tr><td><code>clustering_stopped</code></td><td>1 if the cluster is clustering stopped, 0 otherwise</td><td>Gauge</td></tr>
+<tr><td><code>reconciliation_stopped</code></td><td>1 if the cluster is reconciliation stopped, 0 otherwise</td><td>Gauge</td></tr>
 <tr><td><code>errant_replicas</code></td><td>The number of mysqld instances that have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a></td><td>Gauge</td></tr>
 <tr><td><code>processing_time_seconds</code></td><td>The length of time in seconds processing the cluster</td><td>Histogram</td></tr>
 <tr><td><code>volume_resized_total</code></td><td>The number of successful volume resizes</td><td>Counter</td></tr>
