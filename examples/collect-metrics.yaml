@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.34
+        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
