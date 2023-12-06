@@ -27,6 +27,7 @@ type ClusterManager interface {
 	UpdateNoStart(types.NamespacedName, string)
 	Stop(types.NamespacedName)
 	StopAll()
+	Pause(types.NamespacedName)
 }
 
 func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, af AgentFactory, log logr.Logger) ClusterManager {
@@ -121,4 +122,18 @@ func (m *clusterManager) StopAll() {
 
 	m.wg.Wait()
 	m.stopped = true
+}
+
+// Pause halts the manager process for the cluster.
+// Unlike Stop, the metrics held by the manager are not deleted.
+func (m *clusterManager) Pause(name types.NamespacedName) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := name.String()
+	p, ok := m.processes[key]
+	if ok {
+		p.Pause()
+		delete(m.processes, key)
+	}
 }

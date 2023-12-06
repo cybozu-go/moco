@@ -17,8 +17,10 @@ const (
 
 // annotation keys and values
 const (
-	AnnDemote        = "moco.cybozu.com/demote"
-	AnnSecretVersion = "moco.cybozu.com/secret-version"
+	AnnDemote                = "moco.cybozu.com/demote"
+	AnnSecretVersion         = "moco.cybozu.com/secret-version"
+	AnnClusteringStopped     = "moco.cybozu.com/clustering-stopped"
+	AnnReconciliationStopped = "moco.cybozu.com/reconciliation-stopped"
 )
 
 // MySQLClusterFinalizer is the finalizer specifier for MySQLCluster.

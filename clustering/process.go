@@ -3,6 +3,7 @@ package clustering
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -49,10 +50,12 @@ type managerProcess struct {
 	agentf   AgentFactory
 	name     types.NamespacedName
 	cancel   func()
+	pause    bool
 
 	ch            chan string
 	metrics       metricsSet
 	deleteMetrics func()
+	pauseMetrics  func()
 }
 
 func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func()) *managerProcess {
@@ -101,6 +104,12 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			metrics.BackupWorkDirUsage.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupWarnings.DeleteLabelValues(name.Name, name.Namespace)
 		},
+		pauseMetrics: func() {
+			metrics.AvailableVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
+			metrics.HealthyVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
+			metrics.ReadyReplicasVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
+			metrics.ErrantReplicasVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
+		},
 	}
 }
 
@@ -115,10 +124,22 @@ func (p *managerProcess) Cancel() {
 	p.cancel()
 }
 
+// Pause pauses the manager process.
+// Unlike Cancel, it does not delete metrics.
+// Also, it sets NaN to some metrics.
+func (p *managerProcess) Pause() {
+	p.pause = true
+	p.cancel()
+}
+
 func (p *managerProcess) Start(ctx context.Context, rootLog logr.Logger, interval time.Duration) {
 	tick := time.NewTicker(interval)
 	defer func() {
 		tick.Stop()
+		if p.pause {
+			p.pauseMetrics()
+			return
+		}
 		p.deleteMetrics()
 	}()
 
@@ -265,6 +286,15 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionInitialized, initialized))
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionAvailable, available))
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionHealthy, healthy))
+
+		meta.SetStatusCondition(&cluster.Status.Conditions,
+			metav1.Condition{
+				Type:    mocov1beta2.ConditionClusteringActive,
+				Status:  metav1.ConditionTrue,
+				Reason:  "ClusteringActive",
+				Message: "clustering is active",
+			},
+		)
 
 		if available == metav1.ConditionTrue {
 			p.metrics.available.Set(1)

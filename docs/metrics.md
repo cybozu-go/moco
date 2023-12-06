@@ -26,6 +26,8 @@ All these metrics are prefixed with `moco_cluster_` and have `name` and `namespa
 | `failover_total`                    | The number of times MOCO changed the failed primary instance           | Counter   |
 | `replicas`                          | The number of mysqld instances in the cluster                          | Gauge     |
 | `ready_replicas`                    | The number of ready mysqld Pods in the cluster                         | Gauge     |
+| `clustering_stopped`                | 1 if the cluster is clustering stopped, 0 otherwise                    | Gauge     |
+| `reconciliation_stopped`            | 1 if the cluster is reconciliation stopped, 0 otherwise                | Gauge     |
 | `errant_replicas`                   | The number of mysqld instances that have [errant transactions][errant] | Gauge     |
 | `processing_time_seconds`           | The length of time in seconds processing the cluster                   | Histogram |
 | `volume_resized_total`              | The number of successful volume resizes                                | Counter   |

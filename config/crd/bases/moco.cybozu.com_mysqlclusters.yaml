@@ -30,6 +30,12 @@ spec:
     - jsonPath: .status.errantReplicas
       name: Errant replicas
       type: integer
+    - jsonPath: .status.conditions[?(@.type=='ClusteringActive')].status
+      name: Clustering Active
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='ReconciliationActive')].status
+      name: Reconcile Active
+      type: string
     - jsonPath: .status.backup.time
       name: Last backup
       type: string
