@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 
@@ -31,11 +32,13 @@ import (
 
 func TestReconcilePVC(t *testing.T) {
 	tests := []struct {
-		name        string
-		cluster     *mocov1beta2.MySQLCluster
-		setupClient func(*testing.T) client.Client
-		wantSize    resource.Quantity
-		wantMetrics string
+		name            string
+		cluster         *mocov1beta2.MySQLCluster
+		setupClient     func(*testing.T) client.Client
+		wantSize        resource.Quantity
+		wantLabels      map[string]string
+		wantAnnotations map[string]string
+		wantMetrics     string
 	}{
 		{
 			name:    "resize succeeded",
@@ -46,10 +49,81 @@ func TestReconcilePVC(t *testing.T) {
 				return setupMockClient(t, cluster, sts)
 			},
 			wantSize: resource.MustParse("2Gi"),
+			wantLabels: map[string]string{
+				"app.kubernetes.io/created-by": "moco",
+				"app.kubernetes.io/instance":   "mysql-cluster",
+				"app.kubernetes.io/name":       "mysql",
+			},
 			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
 # TYPE moco_cluster_volume_resized_total counter
 moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 `,
+		},
+		{
+			name: "label synced",
+			cluster: func() *mocov1beta2.MySQLCluster {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				cluster.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"need-update": "updated",
+					"foo":         "updated",
+				}
+				return cluster
+			}(),
+			setupClient: func(t *testing.T) client.Client {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				cluster.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"need-update": "not-updated",
+					"foo":         "not-updated",
+				}
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("2Gi"))
+				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"need-update": "not-updated",
+					"foo":         "not-updated",
+				}
+				return setupMockClient(t, cluster, sts)
+			},
+			wantSize: resource.MustParse("2Gi"),
+			wantLabels: map[string]string{
+				"app.kubernetes.io/created-by": "moco",
+				"app.kubernetes.io/instance":   "mysql-cluster",
+				"app.kubernetes.io/name":       "mysql",
+				"need-update":                  "updated",
+				"foo":                          "not-updated",
+			},
+		},
+		{
+			name: "annotation synced",
+			cluster: func() *mocov1beta2.MySQLCluster {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				cluster.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
+					"need-update": "updated",
+					"foo":         "updated",
+				}
+				return cluster
+			}(),
+			setupClient: func(t *testing.T) client.Client {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				cluster.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
+					"need-update": "not-updated",
+					"foo":         "not-updated",
+				}
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("2Gi"))
+				sts.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
+					"need-update": "not-updated",
+					"foo":         "not-updated",
+				}
+				return setupMockClient(t, cluster, sts)
+			},
+			wantSize: resource.MustParse("2Gi"),
+			wantLabels: map[string]string{
+				"app.kubernetes.io/created-by": "moco",
+				"app.kubernetes.io/instance":   "mysql-cluster",
+				"app.kubernetes.io/name":       "mysql",
+			},
+			wantAnnotations: map[string]string{
+				"need-update": "updated",
+				"foo":         "not-updated",
+			},
 		},
 	}
 
@@ -58,7 +132,11 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			registry := prometheus.NewRegistry()
-			r := &MySQLClusterReconciler{Client: tt.setupClient(t)}
+			r := &MySQLClusterReconciler{
+				Client:                tt.setupClient(t),
+				PVCSyncAnnotationKeys: []string{"need-update"},
+				PVCSyncLabelKeys:      []string{"need-update"},
+			}
 
 			metrics.Register(registry)
 
@@ -77,7 +155,16 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 			if !pvc.Spec.Resources.Requests.Storage().Equal(tt.wantSize) {
 				t.Errorf("unexpected PVC size: got: %s, want: %s", pvc.Spec.Resources.Requests.Storage().String(), tt.wantSize.String())
 			}
+			if diff := cmp.Diff(tt.wantLabels, pvc.Labels); len(diff) != 0 {
+				t.Errorf("unexpected PVC labels: %s", diff)
+			}
+			if diff := cmp.Diff(tt.wantAnnotations, pvc.Annotations); len(diff) != 0 {
+				t.Errorf("unexpected PVC annotations: %s", diff)
+			}
 
+			if len(tt.wantMetrics) == 0 {
+				return
+			}
 			if err := testutil.GatherAndCompare(registry, strings.NewReader(tt.wantMetrics), "moco_cluster_volume_resized_total"); err != nil {
 				t.Errorf("metrics comparison failed: %v", err)
 			}
@@ -103,7 +190,12 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 		for i := int32(0); i < *sts.Spec.Replicas; i++ {
 			pvc.Name = fmt.Sprintf("%s-%s-%d", pvc.Name, cluster.PrefixedName(), i)
 			pvc.Namespace = cluster.Namespace
-			pvc.Labels = sts.Spec.Selector.MatchLabels
+
+			labels := make(map[string]string)
+			maps.Copy(labels, pvc.Labels)
+			maps.Copy(labels, sts.Spec.Selector.MatchLabels)
+			pvc.Labels = labels
+
 			pvc.Spec.StorageClassName = ptr.To[string]("default")
 			pvcs = append(pvcs, &pvc)
 		}

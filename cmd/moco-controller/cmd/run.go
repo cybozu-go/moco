@@ -104,6 +104,8 @@ func subMain(ns, addr string, port int) error {
 		FluentBitImage:          config.fluentBitImage,
 		ExporterImage:           config.exporterImage,
 		SystemNamespace:         ns,
+		PVCSyncAnnotationKeys:   config.pvcSyncAnnotationKeys,
+		PVCSyncLabelKeys:        config.pvcSyncLabelKeys,
 		ClusterManager:          clusterMgr,
 		MaxConcurrentReconciles: config.maxConcurrentReconciles,
 	}).SetupWithManager(mgr); err != nil {

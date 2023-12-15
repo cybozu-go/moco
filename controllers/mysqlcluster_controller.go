@@ -143,6 +143,8 @@ type MySQLClusterReconciler struct {
 	FluentBitImage          string
 	ExporterImage           string
 	SystemNamespace         string
+	PVCSyncAnnotationKeys   []string
+	PVCSyncLabelKeys        []string
 	ClusterManager          clustering.ClusterManager
 	MaxConcurrentReconciles int
 }
