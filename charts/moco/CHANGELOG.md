@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2023-12-20
+### Changed
+- Bump appVersion to 0.20.0 [#627](https://github.com/cybozu-go/moco/pull/627)
+
 ## [0.9.0] - 2023-11-14
 ### Changed
 - Bump appVersion to 0.19.0 [#610](https://github.com/cybozu-go/moco/pull/610)
@@ -133,7 +137,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.9.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.10.0...HEAD
+[0.10.0]: https://github.com/cybozu-go/moco/compare/chart-v0.9.0...chart-v0.10.0
 [0.9.0]: https://github.com/cybozu-go/moco/compare/chart-v0.8.0...chart-v0.9.0
 [0.8.0]: https://github.com/cybozu-go/moco/compare/chart-v0.7.0...chart-v0.8.0
 [0.7.0]: https://github.com/cybozu-go/moco/compare/chart-v0.6.0...chart-v0.7.0
