@@ -5,6 +5,31 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2023-12-19
+
+### Breaking Changes
+
+#### ⚠️ Removal of Deprecated APIs
+The MOCO API version v1beta1 have been removed.
+You must ensure that all MOCO custom resources are stored in etcd at v1beta2 before upgrading.
+
+### Added
+- Support MySQL v8.0.35 [#614](https://github.com/cybozu-go/moco/pull/614) [#617](https://github.com/cybozu-go/moco/pull/617)
+- Upgrade fluent-bit container to 2.2.0.1 [#615](https://github.com/cybozu-go/moco/pull/615) [#618](https://github.com/cybozu-go/moco/pull/618)
+- Sync PVC labels and annotations [#613](https://github.com/cybozu-go/moco/pull/613)
+
+### Fixed
+- fix wrong error message [#607](https://github.com/cybozu-go/moco/pull/607)
+- Fix binlog backup algorithm not to be missing [#604](https://github.com/cybozu-go/moco/pull/604)
+- Set PDB maxUnavailable equal to 0 when executing backup jobs [#612](https://github.com/cybozu-go/moco/pull/612)
+- Stop reconciliation and clustering[#578](https://github.com/cybozu-go/moco/pull/578)
+
+### Changed
+
+- The API version v1beta1 is removed. [#602](https://github.com/cybozu-go/moco/pull/602)
+- CI: Enable cancel-in-progress. [#619](https://github.com/cybozu-go/moco/pull/619)
+- Update dependencies [#616](https://github.com/cybozu-go/moco/pull/616) [#620] (https://github.com/cybozu-go/moco/pull/620) [#621](https://github.com/cybozu-go/moco/pull/621)
+
 ## [0.19.0] - 2023-11-14
 
 ### Breaking Changes
@@ -525,7 +550,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/cybozu-go/moco/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/cybozu-go/moco/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/cybozu-go/moco/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/cybozu-go/moco/compare/v0.17.0...v0.18.0
