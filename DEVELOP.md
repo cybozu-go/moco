@@ -30,6 +30,8 @@ MOCO supports multiple MySQL versions.
 The three MySQL versions always used by CI are Cybozu internal use version, the latest, and one version before the latest.
 Other supported MySQL versions will be [tested only in Weekly](.github/workflows/weekly.yaml).
 
+To run an e2e test for a PR, comment the PR with `/test`. This is only valid for comments from accounts with "OWNER", "COLLABORATOR" or "CONTRIBUTOR" privileges.
+
 ## Generated files
 
 Some files in the repository are auto-generated.
