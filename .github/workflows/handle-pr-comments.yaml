@@ -12,7 +12,7 @@ permissions:
 jobs:
   trigger_e2e:
     name: "Trigger e2e test"
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test') && contains('["OWNER", "COLLABORATOR", "CONTRIBUTOR"]', github.event.comment.author_association)
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test') && contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association)
     runs-on: ubuntu-22.04
     steps:
       - name: create reaction
