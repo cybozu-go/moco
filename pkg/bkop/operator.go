@@ -3,6 +3,7 @@ package bkop
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -62,7 +63,7 @@ func NewOperator(host string, port int, user, password string, threads int) (Ope
 	cfg.User = user
 	cfg.Passwd = password
 	cfg.Net = "tcp"
-	cfg.Addr = fmt.Sprintf("%s:%d", host, port)
+	cfg.Addr = net.JoinHostPort(host, fmt.Sprint(port))
 	cfg.InterpolateParams = true
 	cfg.ParseTime = true
 	cfg.Timeout = 5 * time.Second
