@@ -1,4 +1,4 @@
-FROM quay.io/cybozu/ubuntu-dev:22.04 AS builder
+FROM ghcr.io/cybozu/ubuntu-dev:22.04 AS builder
 
 ARG MYSQL_VERSION=8.0.33
 
@@ -20,7 +20,7 @@ RUN cd tmp/ \
     && make -j 20 \
     && make install
 
-FROM quay.io/cybozu/ubuntu:22.04
+FROM ghcr.io/cybozu/ubuntu:22.04
 
 COPY --from=builder /usr/local/mysql/LICENSE /usr/local/mysql/LICENSE
 COPY --from=builder /usr/local/mysql/bin /usr/local/mysql/bin
