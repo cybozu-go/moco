@@ -1,7 +1,7 @@
 # Fluent Bit container image
 
 # Stage1: build from source
-FROM quay.io/cybozu/ubuntu-dev:22.04 AS builder
+FROM ghcr.io/cybozu/ubuntu-dev:22.04 AS builder
 
 ARG FLUENT_BIT_VERSION=2.2.0
 
@@ -64,7 +64,7 @@ RUN cmake -DFLB_RELEASE=On \
     && cp LICENSE /fluent-bit/
 
 # Stage2: setup runtime container
-FROM quay.io/cybozu/ubuntu:22.04
+FROM ghcr.io/cybozu/ubuntu:22.04
 
 COPY --from=builder /fluent-bit /fluent-bit
 
