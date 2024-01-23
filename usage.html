@@ -571,6 +571,34 @@ spec:
   backupPolicyName: daily  # The policy name
 ...
 </code></pre>
+<blockquote>
+<p><strong>Note:</strong> If you want to specify the ObjectBucket name in a ConfigMap or Secret, you can use <code>envFrom</code> and specify the environment variable name in <code>jobConfig.bucketConfig.bucketName</code> as follows.
+This behavior is tested.</p>
+</blockquote>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  jobConfig:
+    bucketConfig:
+      bucketName: &quot;$(BUCKET_NAME)&quot;
+      endpointURL: http://minio.default.svc:9000
+      usePathStyle: true
+    envFrom:
+    - configMapRef:
+        name: bucket-name
+...
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup
+  name: bucket-name
+data:
+  BUCKET_NAME: moco
+</code></pre>
 <p>MOCO creates a <a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">CronJob</a> for each MySQLCluster that has <code>spec.backupPolicyName</code>.</p>
 <p>The CronJob's name is <code>moco-backup-</code> + the name of MySQLCluster.
 For the above example, a CronJob named <code>moco-backup-foo</code> is created in <code>default</code> namespace.</p>
