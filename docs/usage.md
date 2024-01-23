@@ -457,6 +457,35 @@ spec:
 ...
 ```
 
+>**Note:** If you want to specify the ObjectBucket name in a ConfigMap or Secret, you can use `envFrom` and specify the environment variable name in `jobConfig.bucketConfig.bucketName` as follows.
+>This behavior is tested.
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  jobConfig:
+    bucketConfig:
+      bucketName: "$(BUCKET_NAME)"
+      endpointURL: http://minio.default.svc:9000
+      usePathStyle: true
+    envFrom:
+    - configMapRef:
+        name: bucket-name
+...
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup
+  name: bucket-name
+data:
+  BUCKET_NAME: moco
+```
+
 MOCO creates a [CronJob][] for each MySQLCluster that has `spec.backupPolicyName`.
 
 The CronJob's name is `moco-backup-` + the name of MySQLCluster.

@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backup
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: backup
+  name: backup-owner
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  namespace: backup
+  name: daily
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    env:
+      - name: AWS_ACCESS_KEY_ID
+        value: minioadmin
+      - name: AWS_SECRET_ACCESS_KEY
+        value: minioadmin
+    bucketConfig:
+      bucketName: "$(BUCKET_NAME)"
+      endpointURL: http://minio.default.svc:9000
+      usePathStyle: true
+    envFrom:
+    - configMapRef:
+        name: bucket-name
+    workVolume:
+      emptyDir: {}
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: backup
+  name: source
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 3
+  backupPolicyName: daily
+  podTemplate:
+    spec:
+      containers:
+        - name: mysqld
+          image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup
+  name: bucket-name
+data:
+  BUCKET_NAME: moco
