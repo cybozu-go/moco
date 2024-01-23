@@ -249,8 +249,15 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 		}
 	}
 
-	lastIndex := lastBackup.SourceIndex
-	choosableIndexes := getIdxsWithUnchangedUUID(bm.uuidSet, lastBackup.UUIDSet)
+	var choosableIndexes []int
+	// for backward compatibility
+	// if lastBackup.UUIDSet is empty, use lastBackup.SourceUUID
+	if len(lastBackup.UUIDSet) == 0 {
+		s := map[string]string{strconv.Itoa(lastBackup.SourceIndex): lastBackup.SourceUUID}
+		choosableIndexes = getIdxsWithUnchangedUUID(bm.uuidSet, s)
+	} else {
+		choosableIndexes = getIdxsWithUnchangedUUID(bm.uuidSet, lastBackup.UUIDSet)
+	}
 
 	if len(choosableIndexes) == 0 {
 		bm.log.Info("the server_uuid of all pods has changed or some pods are not ready")
@@ -271,6 +278,7 @@ func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int
 	}
 
 	replicas := []int{}
+	lastIndex := lastBackup.SourceIndex
 	for _, i := range choosableIndexes {
 		if i == currentPrimaryIndex {
 			continue
