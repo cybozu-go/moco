@@ -1115,8 +1115,7 @@ This is because modification of <code>volumeClaimTemplates</code> in StatefulSet
 </blockquote>
 <p>When re-creating a StatefulSet, moco-controller supports no operation except for volume expansion as described below.
 It simply re-creates the StatefulSet.
-However, if the labels and annotations on the PVC and the <code>.spec.volumeClaimTemplates</code> in the MySQLCluster have identical keys,
-the labels and annotations on the PVC are updated with the values from the <code>.spec.volumeClaimTemplates</code>.</p>
+However, by specifying the <code>--pvc-sync-annotation-keys</code> and <code>--pvc-sync-label-keys</code> flags in the controller, you can designate the annotations and labels to be synchronized from <code>.spec.volumeClaimTemplates</code> to PVC during the recreation of the StatefulSet.</p>
 <p>For all other labels and annotations, given the potential side effects, such updates must be performed by the user themselves.
 This guideline is essential to prevent potential side-effects if entities other than the moco-controller are manipulating the PVC's metadata.</p>
 <h3 id="metrics-1"><a class="header" href="#metrics-1">Metrics</a></h3>
