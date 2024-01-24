@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.20.1] - 2024-01-24
+
+### Fixed
+- issue-604: Added backward compatibility [#640](https://github.com/cybozu-go/moco/pull/640)
+- Use net.JoinHostPort when constructing ip address: [#631](https://github.com/cybozu-go/moco/pull/631)
+
+### Changed
+- ci: Convert e2e to workflow_dispatch [#623](https://github.com/cybozu-go/moco/pull/623)
+- Migrate to ghcr.io [#635](https://github.com/cybozu-go/moco/pull/635)
+
 ## [0.20.0] - 2023-12-19
 
 ### Breaking Changes
@@ -550,7 +560,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.1...HEAD
+[0.20.1]: https://github.com/cybozu-go/moco/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/cybozu-go/moco/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/cybozu-go/moco/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/cybozu-go/moco/compare/v0.18.0...v0.18.1
