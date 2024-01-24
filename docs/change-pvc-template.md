@@ -13,8 +13,7 @@ Re-creation StatefulSet is done with the same behavior as `kubectl delete sts mo
 
 When re-creating a StatefulSet, moco-controller supports no operation except for volume expansion as described below.
 It simply re-creates the StatefulSet.
-However, if the labels and annotations on the PVC and the `.spec.volumeClaimTemplates` in the MySQLCluster have identical keys,
-the labels and annotations on the PVC are updated with the values from the `.spec.volumeClaimTemplates`.
+However, by specifying the `--pvc-sync-annotation-keys` and `--pvc-sync-label-keys` flags in the controller, you can designate the annotations and labels to be synchronized from `.spec.volumeClaimTemplates` to PVC during the recreation of the StatefulSet.
 
 For all other labels and annotations, given the potential side effects, such updates must be performed by the user themselves.
 This guideline is essential to prevent potential side-effects if entities other than the moco-controller are manipulating the PVC's metadata.
