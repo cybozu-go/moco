@@ -84,3 +84,14 @@ jobs:
         with:
           name: logs-upgrade.tar.gz
           path: e2e/logs.tar.gz
+
+  finish-e2e:
+    name: Confirm finishing all tests
+    runs-on: ubuntu-22.04
+    needs:
+    - dbtest
+    - e2e
+    - e2e-mysql
+    - upgrade
+    steps:
+      - run: echo "OK"
