@@ -50,7 +50,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set +e
           # if exists PR refs/pull/<pull_request_number>/merge
           # if not exists PR → github.ref
           PR_number=$(gh pr view --json number -q .number)
