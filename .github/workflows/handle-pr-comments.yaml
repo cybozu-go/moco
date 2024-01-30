@@ -10,31 +10,9 @@ permissions:
   actions: write
 
 jobs:
-  check_permission:
-    name: "Check permission"
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test')
-    runs-on: ubuntu-22.04
-    outputs:
-      permission: ${{ steps.check_permission.outputs.permission }}
-    steps:
-      - name: check permission
-        id: check_permission
-        run: |
-          # https://docs.github.com/en/graphql/reference/enums#commentauthorassociation
-          allow_permissions=("OWNER", "COLLABORATOR", "MEMBER")
-          echo "user association is ${{ github.event.comment.author_association }}"
-          if echo "${allow_permissions[@]}" | grep -qw "${{ github.event.comment.author_association }}"; then
-            echo "allow"
-            echo "permission=allow" >> $GITHUB_OUTPUT
-          else
-            echo "deny"
-            echo "To trigger the e2e test, the user must be an OWNER, COLLABORATOR, or MEMBER."
-            echo "permission=deny" >> $GITHUB_OUTPUT
-          fi
   trigger_e2e:
     name: "Trigger e2e test"
-    needs: check_permission
-    if: ${{ needs.check_permission.outputs.permission == 'allow' }}
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/test') && contains('["OWNER", "COLLABORATOR", "MEMBER"]', github.event.comment.author_association)
     runs-on: ubuntu-22.04
     steps:
       - name: create reaction
