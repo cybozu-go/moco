@@ -9,10 +9,6 @@ on:
       k8s-version:
         required: true
         type: string
-      ref:
-        required: false
-        type: string
-        default: ${{ github.ref }}
 
 jobs:
   e2e:
@@ -20,8 +16,6 @@ jobs:
       group: moco
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
       - uses: actions/setup-go@v4
         with:
           go-version-file: go.mod
