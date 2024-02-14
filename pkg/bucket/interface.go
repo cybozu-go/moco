@@ -14,5 +14,7 @@ type Bucket interface {
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 
 	// List lists the matching object keys that have `prefix`.
+	// The prefix argument must end in /. (e.g. "foo/bar/").
+	// If / is not at the end, both ojbects xx-1/bar and xx-11/bar are taken.
 	List(ctx context.Context, prefix string) ([]string, error)
 }
