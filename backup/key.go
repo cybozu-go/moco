@@ -14,5 +14,5 @@ func calcKey(clusterNS, clusterName, filename string, dt time.Time) string {
 }
 
 func calcPrefix(clusterNS, clusterName string) string {
-	return path.Join(prefix, clusterNS, clusterName)
+	return path.Join(prefix, clusterNS, clusterName) + "/"
 }

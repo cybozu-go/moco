@@ -115,4 +115,39 @@ var _ = Describe("GCSBucket", func() {
 
 		fmt.Println(string(data))
 	})
+
+	It("should put objects and get list of objects up to delimiter", func() {
+		b, err := NewGCSBucket(ctx, "test", option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
+		Expect(err).NotTo(HaveOccurred())
+
+		err = b.Put(ctx, "foo1/bar", strings.NewReader("01234567890123456789"), 128<<20)
+		Expect(err).NotTo(HaveOccurred())
+
+		r, err := b.Get(ctx, "foo1/bar")
+		Expect(err).NotTo(HaveOccurred())
+		defer r.Close()
+
+		err = b.Put(ctx, "foo11/bar", strings.NewReader("01234567890123456789"), 128<<20)
+		Expect(err).NotTo(HaveOccurred())
+
+		r, err = b.Get(ctx, "foo11/bar")
+		Expect(err).NotTo(HaveOccurred())
+		defer r.Close()
+
+		data, err := io.ReadAll(r)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(data).To(Equal([]byte("01234567890123456789")))
+
+		keys, err := b.List(ctx, "foo1")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(keys).To(HaveLen(2))
+
+		// prefix with delimiter
+		keys, err = b.List(ctx, "foo1/")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(keys).To(HaveLen(1))
+
+	})
+
 })
