@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.20.2] - 2024-03-08
+
+### Fixed
+- Add / delimiter to the end of path in calcPrefix [#648](https://github.com/cybozu-go/moco/pull/648)
+
+
 ## [0.20.1] - 2024-01-24
 
 ### Fixed
@@ -560,7 +566,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.2...HEAD
+[0.20.2]: https://github.com/cybozu-go/moco/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/cybozu-go/moco/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/cybozu-go/moco/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/cybozu-go/moco/compare/v0.18.1...v0.19.0
