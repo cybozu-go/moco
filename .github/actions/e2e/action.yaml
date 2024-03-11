@@ -1,0 +1,40 @@
+name: End-to-End Tests
+description: 'An action to run End-to-End Tests'
+
+inputs:
+  mysql-version:
+    description: 'MySQL version'
+    required: true
+  k8s-version:
+    description: 'K8s version'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v4
+      with:
+        go-version-file: go.mod
+        cache: true
+    - run: |
+        swapon > swapon.txt
+        sudo swapoff -a
+        cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
+      shell: bash
+    - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
+      shell: bash
+    - name: Setup test cluster
+      run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
+      working-directory: e2e
+      shell: bash
+    - run: make test
+      working-directory: e2e
+      shell: bash
+    - run: make logs
+      working-directory: e2e
+      if: always()
+      shell: bash
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: logs-${{ inputs.k8s-version }}-${{ inputs.mysql-version }}.tar.gz
+        path: e2e/logs.tar.gz
