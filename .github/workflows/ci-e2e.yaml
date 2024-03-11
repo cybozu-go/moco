@@ -4,14 +4,8 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore:
-      - '**.md'
-      - "containers/**"
   pull_request:
     types: [opened, synchronize]
-    paths-ignore:
-      - '**.md'
-      - "containers/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,9 +25,22 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.28", "8.0.34", "8.0.35"]
-    uses: ./.github/workflows/dbtest.yaml
-    with:
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check and output changed files
+        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        id: changed-files
+        with:
+          files_ignore_yaml: |
+            docs:
+              - '**.md'
+            containers:
+              - "containers/**"
+      - uses: ./.github/actions/dbtest
+        with:
+          mysql-version: ${{ matrix.mysql-version }}
+        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
 
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
@@ -41,10 +48,24 @@ jobs:
       matrix:
         mysql-version: ["8.0.35"]
         k8s-version: ["1.25.9", "1.26.4", "1.27.1"]
-    uses: ./.github/workflows/e2e.yaml
-    with:
-      k8s-version: ${{ matrix.k8s-version }}
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on:
+      group: moco
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check and output changed files
+        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        id: changed-files
+        with:
+          files_ignore_yaml: |
+            docs:
+              - '**.md'
+            containers:
+              - "containers/**"
+      - uses: ./.github/actions/e2e
+        with:
+          k8s-version: ${{ matrix.k8s-version }}
+          mysql-version: ${{ matrix.mysql-version }}
+        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
 
   e2e-mysql:
     name: Supported MySQL versions End-to-End Tests
@@ -52,10 +73,24 @@ jobs:
       matrix:
         mysql-version: ["8.0.28", "8.0.34", "8.0.35"]
         k8s-version: ["1.27.1"]
-    uses: ./.github/workflows/e2e.yaml
-    with:
-      k8s-version: ${{ matrix.k8s-version }}
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on:
+      group: moco
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check and output changed files
+        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        id: changed-files
+        with:
+          files_ignore_yaml: |
+            docs:
+              - '**.md'
+            containers:
+              - "containers/**"
+      - uses: ./.github/actions/e2e
+        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
+        with:
+          k8s-version: ${{ matrix.k8s-version }}
+          mysql-version: ${{ matrix.mysql-version }}
 
   upgrade:
     name: Upgrade Test
@@ -63,27 +98,17 @@ jobs:
       group: moco
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - name: Check and output changed files
+        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        id: changed-files
         with:
-          go-version-file: go.mod
-          cache: true
-      - run: |
-          swapon > swapon.txt
-          sudo swapoff -a
-          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-      - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
-      - run: make start KIND_CONFIG=kind-config_actions.yaml
-        working-directory: e2e
-      - run: make test-upgrade
-        working-directory: e2e
-      - run: make logs
-        working-directory: e2e
-        if: always()
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: logs-upgrade.tar.gz
-          path: e2e/logs.tar.gz
+          files_ignore_yaml: |
+            docs:
+              - '**.md'
+            containers:
+              - "containers/**"
+      - uses: ./.github/actions/upgrade
+        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
 
   finish-e2e:
     name: Confirm finishing all tests
