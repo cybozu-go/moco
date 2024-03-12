@@ -18,9 +18,12 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32", "8.0.33", "8.0.34", "8.0.35"]
-    uses: ./.github/workflows/dbtest.yaml
-    with:
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/dbtest.yaml
+      with:
+        mysql-version: ${{ matrix.mysql-version }}
 
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
@@ -28,10 +31,14 @@ jobs:
       matrix:
         mysql-version: ["8.0.35"]
         k8s-version: ["1.25.9", "1.26.4", "1.27.1"]
-    uses: ./.github/workflows/e2e.yaml
-    with:
-      k8s-version: ${{ matrix.k8s-version }}
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on:
+      group: moco
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/e2e.yaml
+      with:
+        k8s-version: ${{ matrix.k8s-version }}
+        mysql-version: ${{ matrix.mysql-version }}
 
   e2e-mysql:
     name: Supported MySQL versions End-to-End Tests
@@ -39,35 +46,19 @@ jobs:
       matrix:
         mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32", "8.0.33", "8.0.34", "8.0.35"]
         k8s-version: ["1.27.1"]
-    uses: ./.github/workflows/e2e.yaml
-    with:
-      k8s-version: ${{ matrix.k8s-version }}
-      mysql-version: ${{ matrix.mysql-version }}
+    runs-on:
+      group: moco
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/e2e.yaml
+      with:
+        k8s-version: ${{ matrix.k8s-version }}
+        mysql-version: ${{ matrix.mysql-version }}
 
   upgrade:
     name: Upgrade Test
     runs-on:
       group: moco
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
-        with:
-          go-version-file: go.mod
-          cache: true
-      - run: |
-          swapon > swapon.txt
-          sudo swapoff -a
-          cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
-      - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
-      - run: make start KIND_CONFIG=kind-config_actions.yaml
-        working-directory: e2e
-      - run: make test-upgrade
-        working-directory: e2e
-      - run: make logs
-        working-directory: e2e
-        if: always()
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: logs-upgrade.tar.gz
-          path: e2e/logs.tar.gz
+    - uses: actions/checkout@v4
+    - uses: ./.github/actions/upgrade

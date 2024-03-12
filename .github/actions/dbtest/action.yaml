@@ -1,0 +1,21 @@
+name: Integration tests with MySQL
+description: 'An action to run integration tests with MySQL'
+
+inputs:
+  mysql-version:
+    description: 'MySQL version'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-go@v4
+      with:
+        go-version-file: go.mod
+        cache: true
+    - run: make setup
+      shell: bash
+    - run: make test-bkop MYSQL_VERSION=${{ inputs.mysql-version }}
+      shell: bash
+    - run: make test-dbop MYSQL_VERSION=${{ inputs.mysql-version }}
+      shell: bash
