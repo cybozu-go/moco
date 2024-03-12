@@ -32,11 +32,9 @@ jobs:
         uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
         id: changed-files
         with:
-          files_ignore_yaml: |
-            docs:
-              - '**.md'
-            containers:
-              - "containers/**"
+          files_ignore: |
+            **.md
+            containers/**
       - uses: ./.github/actions/dbtest
         with:
           mysql-version: ${{ matrix.mysql-version }}
@@ -56,11 +54,9 @@ jobs:
         uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
         id: changed-files
         with:
-          files_ignore_yaml: |
-            docs:
-              - '**.md'
-            containers:
-              - "containers/**"
+          files_ignore: |
+            **.md
+            containers/**
       - uses: ./.github/actions/e2e
         with:
           k8s-version: ${{ matrix.k8s-version }}
@@ -81,11 +77,9 @@ jobs:
         uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
         id: changed-files
         with:
-          files_ignore_yaml: |
-            docs:
-              - '**.md'
-            containers:
-              - "containers/**"
+          files_ignore: |
+            **.md
+            containers/**
       - uses: ./.github/actions/e2e
         if: ${{steps.changed-files.outputs.any_changed}} == 'true'
         with:
@@ -102,11 +96,9 @@ jobs:
         uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
         id: changed-files
         with:
-          files_ignore_yaml: |
-            docs:
-              - '**.md'
-            containers:
-              - "containers/**"
+          files_ignore: |
+            **.md
+            containers/**
       - uses: ./.github/actions/upgrade
         if: ${{steps.changed-files.outputs.any_changed}} == 'true'
 
