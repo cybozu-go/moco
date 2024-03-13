@@ -37,10 +37,20 @@ This document proposes to add a reconciler that dynamically sets `.partition` to
 
 ### When creating MySQLCluster
 
-Until MySQLCluster successfully starts for the first time, the moco-controller applies StatefulSet without setting `.partition`.
+Until MySQLCluster successfully starts for the first time, applies StatefulSet without setting `.partition`.
 This is done to prevent a situation where a user-corrected StatefulSet, due to misconfigurations like image issues, does not roll out due to partition.
 
-To determine if MySQLCluster has successfully started for the first time, the following condition is used:
+### When updating MySQLCluster
+
+When MySQLCluster is updated, set the same value as `.spec.replicas` to `.partition` of StatefulSet in MutatingWebhook.
+At this time, the following conditions must be met:
+
+1. `Initialized` in `.status.conditions` of MySQLCluster is `True`
+2. If the update difference of StatefulSet is only `.partition`, do not update `.partition`
+
+#### `Initialized` in `.status.conditions` of MySQLCluster is `True`
+
+This check is done to confirm whether the Pod of MySQLCluster is running normally.
 
 ```yaml
 status:
@@ -54,46 +64,29 @@ status:
 
 `Initialized` indicates that the cluster state of MySQLCluster is not Cloning.
 If `Initialized` is `True`, it means Pods under StatefulSet have started successfully.
-When applying StatefulSet, the moco-controller checks if `Initialized` is `True` and sets `.partition` only in that case.
+If the Pod spec is incorrect, `Initialized` will not become `True`, and `.partition` will not be set in StatefulSet.
+When applying StatefulSet, the MutatingWebhook checks if `Initialized` is `True` and sets `.partition` only in that case.
 
-### When updating MySQLCluster
+#### If the update difference of StatefulSet is only `.partition`, do not update `.partition`
 
-When MySQLCluster is updated, moco-controller sets the same value as `.spec.replicas` to `.partition` of StatefulSet
-only when `Healthy` of `.status.conditions` of MySQLCluster is `True` when updating StatefulSet.
-As a result, updates to `.spec.template` of StatefulSet will not propagate to child Pods, so rolling updates will not be executed.
+The update of `.partition` of StatefulSet will be performed by the reconciler described later.
+At this time, do not overwrite `.partition` in MutatingWebhook.
 
-The newly added reconciler watches the update of StatefulSet.
-When the update of `.spec.template` of StatefulSet is made, it will be in the following state.
+### Checking the state of StatefulSet when performing rolling updates
 
-```yaml
-...
-spec:
-  replicas: 3
-  updateStrategy:
-    rollingUpdate:
-      partition: 3
-    type: RollingUpdate
-...
-status:
-  currentReplicas: 3
-  currentRevision: foo-b99dd8d65
-  updateRevision: foo-5bd5bc5986
-...
-```
+The new reconciler will subtract `.partition` of StatefulSet.
+This reconciler only updates `.partition` for StatefulSet.
+The reconciler watches the state of StatefulSet and MySQLCluster and determines the timing of subtracting `.partition`.
 
-In this state, you can see that the update of StatefulSet is being staged because `.currentRevision` and `.updateRevision` are different.
-When the newly added reconciler detects this state, it realizes the rolling update
-The reconciler checks the state of MySQLCluster when detecting this state and, if it's operating normally, decreases `.partition` by 1 and updates StatefulSet.
+If the following conditions are met, the reconciler will subtract one from `.partition`.
 
-### Checking the state of Pods when performing rolling updates
+1. `Healthy` in `.status.conditions` of MySQLCluster is `True`
+2. `.status.currentRevision` and `.status.updateRevision` of StatefulSet are different
 
-When reducing `.partition` of StatefulSet by 1,
-it confirms that `Healthy` of `.status.conditions` of MySQLCluster is `True`.
+Until `.partition` becomes 0, the reconciler will continue to subtract from `.partition`.
+When the subtraction is successful, the reconciler outputs it as an Event.
 
-`Healthy` being `True` indicates that the cluster state of MySQL is Healthy, and all MySQL Pods are Ready.
-
-If any of the conditions are not met, do not reduce `.partition` of StatefulSet and skip the execution of the rolling update.
-This check process is realized by regularly requeueing in the reconciler.
+After confirming that the MySQLCluster is `Healthy`, you can safely perform a rolling update by subtracting the `.partition`.
 
 ### Forcing rolling updates
 
