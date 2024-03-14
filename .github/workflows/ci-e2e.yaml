@@ -33,7 +33,7 @@ jobs:
         id: changed-files
         with:
           files_ignore: |
-            **.md
+            **/*.md
             containers/**
       - uses: ./.github/actions/dbtest
         with:
@@ -55,7 +55,7 @@ jobs:
         id: changed-files
         with:
           files_ignore: |
-            **.md
+            **/*.md
             containers/**
       - uses: ./.github/actions/e2e
         with:
@@ -78,7 +78,7 @@ jobs:
         id: changed-files
         with:
           files_ignore: |
-            **.md
+            **/*.md
             containers/**
       - uses: ./.github/actions/e2e
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -97,7 +97,7 @@ jobs:
         id: changed-files
         with:
           files_ignore: |
-            **.md
+            **/*.md
             containers/**
       - uses: ./.github/actions/upgrade
         if: steps.changed-files.outputs.any_changed == 'true'
