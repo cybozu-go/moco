@@ -38,7 +38,7 @@ jobs:
       - uses: ./.github/actions/dbtest
         with:
           mysql-version: ${{ matrix.mysql-version }}
-        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true'
 
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
@@ -61,7 +61,7 @@ jobs:
         with:
           k8s-version: ${{ matrix.k8s-version }}
           mysql-version: ${{ matrix.mysql-version }}
-        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true'
 
   e2e-mysql:
     name: Supported MySQL versions End-to-End Tests
@@ -81,7 +81,7 @@ jobs:
             **.md
             containers/**
       - uses: ./.github/actions/e2e
-        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           k8s-version: ${{ matrix.k8s-version }}
           mysql-version: ${{ matrix.mysql-version }}
@@ -100,7 +100,7 @@ jobs:
             **.md
             containers/**
       - uses: ./.github/actions/upgrade
-        if: ${{steps.changed-files.outputs.any_changed}} == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true'
 
   finish-e2e:
     name: Confirm finishing all tests
