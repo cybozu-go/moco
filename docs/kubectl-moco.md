@@ -69,3 +69,20 @@ Fetch the credential information of a specified user
 ## `kubectl moco switchover CLUSTER_NAME`
 
 Switch the primary instance to one of the replicas.
+
+
+## Stop or start clustering and reconciliation
+
+Read [Stop Clustering and Reconciliation](./usage.md#Stop-Clustering-and-Reconciliation).
+
+### `kubectl moco stop clustering CLUSTER_NAME`
+Stop the clustering of the specified MySQLCluster.
+
+### `kubectl moco start clustering CLUSTER_NAME`
+Start the clustering of the specified MySQLCluster.
+
+### `kubectl moco stop reconciliation CLUSTER_NAME`
+Stop the reconciliation of the specified MySQLCluster.
+
+### `kubectl moco start reconciliation CLUSTER_NAME`
+Start the reconciliation of the specified MySQLCluster.
