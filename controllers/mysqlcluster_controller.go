@@ -656,6 +656,16 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 			WithTargetPort(intstr.FromString(constants.MySQLXPortName)),
 	)
 
+	if headless {
+		svc.Spec.WithPorts(
+			corev1ac.ServicePort().
+				WithName(constants.MySQLAdminPortName).
+				WithProtocol(corev1.ProtocolTCP).
+				WithPort(constants.MySQLAdminPort).
+				WithTargetPort(intstr.FromString(constants.MySQLAdminPortName)),
+		)
+	}
+
 	if err := setControllerReferenceWithService(cluster, svc, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
 	}
