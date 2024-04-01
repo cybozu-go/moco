@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
-        k8s-version: [ "1.27.1" ]
+        k8s-version: [ "1.28.7" ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
