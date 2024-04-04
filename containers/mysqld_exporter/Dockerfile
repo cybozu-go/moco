@@ -3,7 +3,7 @@
 # Stage1: build from source
 FROM ghcr.io/cybozu/golang:1.19-jammy AS build
 
-ARG MYSQLD_EXPORTER_VERSION=v0.15.0
+ARG MYSQLD_EXPORTER_VERSION=v0.15.1
 
 RUN git clone -b ${MYSQLD_EXPORTER_VERSION} --depth 1 https://github.com/prometheus/mysqld_exporter \
     && make -C mysqld_exporter build
