@@ -3,7 +3,7 @@ module github.com/cybozu-go/moco
 go 1.22.2
 
 require (
-	cloud.google.com/go/storage v1.35.1
+	cloud.google.com/go/storage v1.40.0
 	github.com/aws/aws-sdk-go-v2 v1.23.5
 	github.com/aws/aws-sdk-go-v2/config v1.25.11
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.9
@@ -27,14 +27,14 @@ require (
 	google.golang.org/api v0.152.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.33.0
-	k8s.io/api v0.27.8
-	k8s.io/apimachinery v0.27.8
-	k8s.io/cli-runtime v0.27.8
-	k8s.io/client-go v0.27.8
+	k8s.io/api v0.28.8
+	k8s.io/apimachinery v0.28.8
+	k8s.io/cli-runtime v0.28.8
+	k8s.io/client-go v0.28.8
 	k8s.io/klog/v2 v2.110.1
-	k8s.io/kubectl v0.27.8
-	k8s.io/utils v0.0.0-20231127182322-b307cd553661
-	sigs.k8s.io/controller-runtime v0.15.3
+	k8s.io/kubectl v0.28.8
+	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
+	sigs.k8s.io/controller-runtime v0.17.2
 )
 
 require (
