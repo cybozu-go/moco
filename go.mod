@@ -4,30 +4,30 @@ go 1.22.2
 
 require (
 	cloud.google.com/go/storage v1.40.0
-	github.com/aws/aws-sdk-go-v2 v1.23.5
-	github.com/aws/aws-sdk-go-v2/config v1.25.11
-	github.com/aws/aws-sdk-go-v2/credentials v1.16.9
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.15.4
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.47.2
+	github.com/aws/aws-sdk-go-v2 v1.26.0
+	github.com/aws/aws-sdk-go-v2/config v1.27.10
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.10
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.16.14
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.53.1
 	github.com/cybozu-go/moco-agent v0.10.0
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/stdr v1.2.2
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/go-cmp v0.6.0
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.30.0
-	github.com/prometheus/client_golang v1.17.0
-	github.com/prometheus/client_model v0.5.0
-	github.com/prometheus/common v0.45.0
+	github.com/onsi/ginkgo v2.17.1
+	github.com/onsi/gomega v1.32.0
+	github.com/prometheus/client_golang v1.19.0
+	github.com/prometheus/client_model v0.6.1
+	github.com/prometheus/common v0.52.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	go.uber.org/zap v1.26.0
-	google.golang.org/api v0.152.0
-	google.golang.org/grpc v1.59.0
+	go.uber.org/zap v1.27.0
+	google.golang.org/api v0.172.0
+	google.golang.org/grpc v1.63.0
 	google.golang.org/protobuf v1.33.0
-	k8s.io/api v0.28.8
+	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.28.8
 	k8s.io/cli-runtime v0.28.8
 	k8s.io/client-go v0.28.8
