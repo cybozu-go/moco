@@ -48,6 +48,7 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 | affinity                  | object | `{}`                                          | affinity used by moco-controller.                                |
 | tolerations               | list   | `[]`                                          | tolerations used by moco-controller.                             |
 | topologySpreadConstraints | list   | `[]`                                          | topologySpreadConstraints used by moco-controller.               |
+| priorityClassName         | string | `""`                                          | PriorityClass used by moco-controller.                           |
 
 ## Generate Manifests
 

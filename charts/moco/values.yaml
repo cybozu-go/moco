@@ -26,3 +26,6 @@ tolerations: []
 
 # topologySpreadConstraints -- topologySpreadConstraints used by moco-controller.
 topologySpreadConstraints: []
+
+# priorityClassName -- PriorityClass used by moco-controller.
+priorityClassName: ""

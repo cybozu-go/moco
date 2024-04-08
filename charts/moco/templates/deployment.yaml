@@ -68,6 +68,9 @@ spec:
             - mountPath: /grpc-cert
               name: grpc-cert
               readOnly: true
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ quote . }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
       serviceAccountName: moco-controller-manager
