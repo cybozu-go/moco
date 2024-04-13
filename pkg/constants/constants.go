@@ -65,6 +65,8 @@ const (
 	MocoInitDataDirFlag = "--data-dir"
 	// MocoInitConfDirFlag is flag for conf dir.
 	MocoInitConfDirFlag = "--conf-dir"
+	// MocoMySQLDLocalhostFlag is flag for localhost bind.
+	MocoMySQLDLocalhostFlag = "--mysqld-localhost"
 )
 
 const LowerCaseTableNamesConfKey = "lower_case_table_names"

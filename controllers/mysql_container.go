@@ -134,6 +134,8 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		c.WithArgs(fmt.Sprintf("--log-rotation-schedule=%s", cluster.Spec.LogRotationSchedule))
 	}
 
+	c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+
 	c.WithVolumeMounts(
 		corev1ac.VolumeMount().
 			WithName(constants.RunVolumeName).
@@ -327,6 +329,7 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 			filepath.Join(constants.SharedPath, constants.InitCommand),
 			fmt.Sprintf("%s=%s", constants.MocoInitDataDirFlag, constants.MySQLDataPath),
 			fmt.Sprintf("%s=%s", constants.MocoInitConfDirFlag, constants.MySQLInitConfPath),
+			fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost),
 			fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
 		).WithEnv(
 		corev1ac.EnvVar().
