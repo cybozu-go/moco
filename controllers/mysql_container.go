@@ -134,7 +134,9 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		c.WithArgs(fmt.Sprintf("--log-rotation-schedule=%s", cluster.Spec.LogRotationSchedule))
 	}
 
-	c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+	if cluster.Spec.MySQLDLocalHost {
+		c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+	}
 
 	c.WithVolumeMounts(
 		corev1ac.VolumeMount().
@@ -322,24 +324,30 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(ctx context.Context, cluste
 }
 
 func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, cluster *mocov1beta2.MySQLCluster, image string) (*corev1ac.ContainerApplyConfiguration, error) {
+	cmd := []string{
+		filepath.Join(constants.SharedPath, constants.InitCommand),
+		fmt.Sprintf("%s=%s", constants.MocoInitDataDirFlag, constants.MySQLDataPath),
+		fmt.Sprintf("%s=%s", constants.MocoInitConfDirFlag, constants.MySQLInitConfPath),
+		fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
+	}
+
+	if cluster.Spec.MySQLDLocalHost {
+		cmd = append(cmd, fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+	}
+
 	c := corev1ac.Container().
 		WithName(constants.InitContainerName).
 		WithImage(image).
-		WithCommand(
-			filepath.Join(constants.SharedPath, constants.InitCommand),
-			fmt.Sprintf("%s=%s", constants.MocoInitDataDirFlag, constants.MySQLDataPath),
-			fmt.Sprintf("%s=%s", constants.MocoInitConfDirFlag, constants.MySQLInitConfPath),
-			fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost),
-			fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
-		).WithEnv(
-		corev1ac.EnvVar().
-			WithName(constants.PodNameEnvKey).
-			WithValueFrom(corev1ac.EnvVarSource().
-				WithFieldRef(corev1ac.ObjectFieldSelector().
-					WithAPIVersion("v1").
-					WithFieldPath("metadata.name")),
-			),
-	).WithVolumeMounts(
+		WithCommand(cmd...).
+		WithEnv(
+			corev1ac.EnvVar().
+				WithName(constants.PodNameEnvKey).
+				WithValueFrom(corev1ac.EnvVarSource().
+					WithFieldRef(corev1ac.ObjectFieldSelector().
+						WithAPIVersion("v1").
+						WithFieldPath("metadata.name")),
+				),
+		).WithVolumeMounts(
 		corev1ac.VolumeMount().
 			WithName(constants.MySQLDataVolumeName).
 			WithMountPath(constants.MySQLDataPath),
