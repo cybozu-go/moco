@@ -2144,13 +2144,13 @@ spec:
                   description: 'MaxDelaySeconds configures the readiness probe of '
                   minimum: 0
                   type: integer
-                mysqldLocalHost:
-                  description: MySQLDLocalHost configures mysqld interface to bin
-                  type: boolean
                 mysqlConfigMapName:
                   description: 'MySQLConfigMapName is a `ConfigMap` name of MySQL '
                   nullable: true
                   type: string
+                mysqldLocalHost:
+                  description: MySQLDLocalHost configures mysqld interface to bin
+                  type: boolean
                 podTemplate:
                   description: PodTemplate is a `Pod` template for MySQL server c
                   properties:
