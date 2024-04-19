@@ -79,8 +79,8 @@ spec:
                 description: 'MySQLConfigMapName is a `ConfigMap` name of MySQL '
                 nullable: true
                 type: string
-              mysqldLocalHost:
-                description: MySQLDLocalHost configures mysqld interface to bin
+              agentUseLocalhost:
+                description: AgentUseLocalhost configures mysqld interface to bin
                 type: boolean
               podTemplate:
                 description: PodTemplate is a `Pod` template for MySQL server c

@@ -134,8 +134,8 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		c.WithArgs(fmt.Sprintf("--log-rotation-schedule=%s", cluster.Spec.LogRotationSchedule))
 	}
 
-	if cluster.Spec.MySQLDLocalHost {
-		c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+	if cluster.Spec.AgentUseLocalhost {
+		c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.AgentUseLocalhost))
 	}
 
 	c.WithVolumeMounts(
@@ -331,8 +331,8 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 		fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
 	}
 
-	if cluster.Spec.MySQLDLocalHost {
-		cmd = append(cmd, fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.MySQLDLocalHost))
+	if cluster.Spec.AgentUseLocalhost {
+		cmd = append(cmd, fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.AgentUseLocalhost))
 	}
 
 	c := corev1ac.Container().
