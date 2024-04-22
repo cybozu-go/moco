@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.35"]
-        k8s-version: ["1.25.9", "1.26.4", "1.27.1"]
+        k8s-version: ["1.25.16", "1.26.14", "1.27.11"]
     runs-on:
       group: moco
     steps:
@@ -68,7 +68,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.28", "8.0.34", "8.0.35"]
-        k8s-version: ["1.27.1"]
+        k8s-version: ["1.27.11"]
     runs-on:
       group: moco
     steps:
