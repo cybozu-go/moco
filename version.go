@@ -8,5 +8,5 @@ const (
 	FluentBitImage = "ghcr.io/cybozu-go/moco/fluent-bit:3.0.2.1"
 
 	// ExporterImage is the image for mysqld_exporter sidecar container.
-	ExporterImage = "ghcr.io/cybozu-go/moco/mysqld_exporter:0.15.0.2"
+	ExporterImage = "ghcr.io/cybozu-go/moco/mysqld_exporter:0.15.1.1"
 )
