@@ -55,6 +55,9 @@ spec:
           spec:
             description: MySQLClusterSpec defines the desired state of MySQ
             properties:
+              agentUseLocalhost:
+                description: 'AgentUseLocalhost configures the mysqld interface '
+                type: boolean
               backupPolicyName:
                 description: The name of BackupPolicy custom resource in the sa
                 nullable: true
@@ -79,9 +82,6 @@ spec:
                 description: 'MySQLConfigMapName is a `ConfigMap` name of MySQL '
                 nullable: true
                 type: string
-              agentUseLocalhost:
-                description: AgentUseLocalhost configures mysqld interface to bin
-                type: boolean
               podTemplate:
                 description: PodTemplate is a `Pod` template for MySQL server c
                 properties:
