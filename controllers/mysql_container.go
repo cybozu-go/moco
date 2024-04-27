@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -128,14 +129,14 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 		WithImage(r.AgentImage)
 
 	if cluster.Spec.MaxDelaySeconds != nil {
-		c.WithArgs(fmt.Sprintf("--max-delay=%ds", *cluster.Spec.MaxDelaySeconds))
+		c.WithArgs("--max-delay", fmt.Sprintf("%ds", *cluster.Spec.MaxDelaySeconds))
 	}
 	if cluster.Spec.LogRotationSchedule != "" {
-		c.WithArgs(fmt.Sprintf("--log-rotation-schedule=%s", cluster.Spec.LogRotationSchedule))
+		c.WithArgs("--log-rotation-schedule", cluster.Spec.LogRotationSchedule)
 	}
 
 	if cluster.Spec.AgentUseLocalhost {
-		c.WithArgs(fmt.Sprintf("%s=%t", constants.MocoMySQLDLocalhostFlag, cluster.Spec.AgentUseLocalhost))
+		c.WithArgs(constants.MocoMySQLDLocalhostFlag, strconv.FormatBool(cluster.Spec.AgentUseLocalhost))
 	}
 
 	c.WithVolumeMounts(

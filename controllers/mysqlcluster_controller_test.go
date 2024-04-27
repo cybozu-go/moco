@@ -840,6 +840,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster.Spec.MaxDelaySeconds = ptr.To[int](20)
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
+		cluster.Spec.AgentUseLocalhost = true
 		cluster.Spec.DisableSlowQueryLogContainer = true
 		cluster.Spec.PodTemplate.OverwriteContainers = []mocov1beta2.OverwriteContainer{
 			{
@@ -967,6 +968,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
+				Expect(c.Args).To(ContainElements("--mysqld-localhost", "true"))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 			case constants.ExporterContainerName:
