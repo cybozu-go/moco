@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/dbtest.yaml
+    - uses: ./.github/actions/dbtest
       with:
         mysql-version: ${{ matrix.mysql-version }}
 
@@ -35,7 +35,7 @@ jobs:
       group: moco
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/e2e.yaml
+    - uses: ./.github/actions/e2e
       with:
         k8s-version: ${{ matrix.k8s-version }}
         mysql-version: ${{ matrix.mysql-version }}
@@ -50,7 +50,7 @@ jobs:
       group: moco
     steps:
     - uses: actions/checkout@v4
-    - uses: ./.github/actions/e2e.yaml
+    - uses: ./.github/actions/e2e
       with:
         k8s-version: ${{ matrix.k8s-version }}
         mysql-version: ${{ matrix.mysql-version }}
