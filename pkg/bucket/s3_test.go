@@ -45,11 +45,11 @@ var _ = Describe("S3Bucket", func() {
 				AccessKeyID:     "minioadmin",
 				SecretAccessKey: "minioadmin",
 				Source:          "minio default credentials",
-			},
-		}))
+			}}))
 		Expect(err).NotTo(HaveOccurred())
 		client := s3.NewFromConfig(cfg,
 			WithEndpointURL("http://localhost:9000"),
+			WithRegion("us-east-1"),
 			WithPathStyle(),
 		)
 
@@ -69,6 +69,7 @@ var _ = Describe("S3Bucket", func() {
 	It("should put and get objects", func() {
 		os.Setenv("AWS_ACCESS_KEY_ID", "minioadmin")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+		os.Setenv("AWS_REGION", "us-east-1")
 
 		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
@@ -102,6 +103,7 @@ var _ = Describe("S3Bucket", func() {
 	It("should put unseekable objects", func() {
 		os.Setenv("AWS_ACCESS_KEY_ID", "minioadmin")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+		os.Setenv("AWS_REGION", "us-east-1")
 
 		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
@@ -141,6 +143,7 @@ var _ = Describe("S3Bucket", func() {
 	It("should put objects and get list of objects up to delimiter", func() {
 		os.Setenv("AWS_ACCESS_KEY_ID", "minioadmin")
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+		os.Setenv("AWS_REGION", "us-east-1")
 
 		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())

@@ -16,7 +16,7 @@ on:
 
 jobs:
   filter:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
     steps:
@@ -41,14 +41,14 @@ jobs:
   tests:
     if: ${{ (github.event_name == 'pull_request') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
-    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-20.04' }}
+    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
-        k8s-version: [ "1.27.1" ]
+        k8s-version: [ "1.29.4" ]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
@@ -107,7 +107,7 @@ jobs:
   build:
     if: ${{ (github.ref == 'refs/heads/main') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
-    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-20.04' }}
+    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}

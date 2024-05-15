@@ -263,7 +263,7 @@ func TestNeedResizePVC(t *testing.T) {
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To[string]("default"),
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
 						},
 					},
@@ -282,7 +282,7 @@ func TestNeedResizePVC(t *testing.T) {
 				pvc := mocov1beta2.PersistentVolumeClaim{
 					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
 					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-						WithStorageClassName("default").WithResources(corev1ac.ResourceRequirements().
+						WithStorageClassName("default").WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
 					)),
 				}
@@ -299,7 +299,7 @@ func TestNeedResizePVC(t *testing.T) {
 				pvc := mocov1beta2.PersistentVolumeClaim{
 					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
 					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-						WithStorageClassName("default").WithResources(corev1ac.ResourceRequirements().
+						WithStorageClassName("default").WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
 					)),
 				}
@@ -314,7 +314,7 @@ func TestNeedResizePVC(t *testing.T) {
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To[string]("default"),
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
 						},
 					},
@@ -374,7 +374,7 @@ func newMySQLClusterWithVolumeSize(size resource.Quantity) *mocov1beta2.MySQLClu
 				{
 					ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-						WithStorageClassName("default").WithResources(corev1ac.ResourceRequirements().
+						WithStorageClassName("default").WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{corev1.ResourceStorage: size}),
 					)),
 				},
@@ -406,7 +406,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: ptr.To[string]("default"),
-						Resources: corev1.ResourceRequirements{
+						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: size},
 						},
 					},

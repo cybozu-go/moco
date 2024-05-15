@@ -20,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -67,16 +69,20 @@ func subMain(ns, addr string, port int) error {
 	restCfg.Burst = int(restCfg.QPS * 1.5)
 
 	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
-		Scheme:                  scheme,
-		MetricsBindAddress:      config.metricsAddr,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: config.metricsAddr,
+		},
 		HealthProbeBindAddress:  config.probeAddr,
 		PprofBindAddress:        config.pprofAddr,
 		LeaderElection:          true,
 		LeaderElectionID:        config.leaderElectionID,
 		LeaderElectionNamespace: ns,
-		Host:                    addr,
-		Port:                    port,
-		CertDir:                 config.certDir,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    addr,
+			Port:    port,
+			CertDir: config.certDir,
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

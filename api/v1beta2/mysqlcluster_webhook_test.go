@@ -35,10 +35,8 @@ func makeMySQLCluster() *mocov1beta2.MySQLCluster {
 					},
 					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
 						WithStorageClassName("default").
-						WithResources(corev1ac.ResourceRequirements().
-							WithRequests(corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("1Gi"),
-							})),
+						WithResources(
+							corev1ac.VolumeResourceRequirements().WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")})),
 					),
 				},
 			},
@@ -462,7 +460,7 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
 				*corev1ac.PersistentVolumeClaimSpec().
 					WithStorageClassName("default").
-					WithResources(corev1ac.ResourceRequirements().
+					WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						}),
@@ -477,7 +475,7 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
 				*corev1ac.PersistentVolumeClaimSpec().
 					WithStorageClassName("not-support-volume-expansion").
-					WithResources(corev1ac.ResourceRequirements().
+					WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						}),
@@ -509,7 +507,7 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
 				*corev1ac.PersistentVolumeClaimSpec().
 					WithStorageClassName("default").
-					WithResources(corev1ac.ResourceRequirements().
+					WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						}),
@@ -524,7 +522,7 @@ var _ = Describe("MySQLCluster Webhook", func() {
 			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(
 				*corev1ac.PersistentVolumeClaimSpec().
 					WithStorageClassName("not-support-volume-expansion").
-					WithResources(corev1ac.ResourceRequirements().
+					WithResources(corev1ac.VolumeResourceRequirements().
 						WithRequests(corev1.ResourceList{
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						}),

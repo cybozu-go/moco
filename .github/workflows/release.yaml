@@ -6,7 +6,7 @@ on:
 jobs:
   build-moco:
     name: Push Container Image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Set up QEMU
@@ -45,7 +45,7 @@ jobs:
         cache-to: type=gha,mode=max
   build-moco-backup:
     name: Push Container Image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Set up QEMU
@@ -84,10 +84,10 @@ jobs:
   release:
     name: Release on GitHub
     needs: [build-moco, build-moco-backup]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
     - name: GoReleaser

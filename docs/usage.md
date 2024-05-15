@@ -36,6 +36,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [Failover](#failover)
   - [Upgrading mysql version](#upgrading-mysql-version)
   - [Re-initializing an errant replica](#re-initializing-an-errant-replica)
+  - [Stop Clustering and Reconciliation](#stop-clustering-and-reconciliation)
 
 ## Basics
 
@@ -428,13 +429,13 @@ spec:
       value: minioadmin
     - name: AWS_SECRET_ACCESS_KEY
       value: minioadmin
-
-    # bucketName is required.  Other fields are optional.
+    # bucketName is required. Other fields are optional.
+    # If backendType is s3 (default), specify the region of the bucket via region filed or AWS_REGION environment variable.
     bucketConfig:
       bucketName: moco
+      region: us-east-1
       endpointURL: http://minio.default.svc:9000
       usePathStyle: true
-
     # MOCO uses a filesystem volume to store data temporarily.
     workVolume:
       # Using emptyDir as a working directory is NOT recommended.
@@ -470,6 +471,7 @@ spec:
   jobConfig:
     bucketConfig:
       bucketName: "$(BUCKET_NAME)"
+      region: us-east-1
       endpointURL: http://minio.default.svc:9000
       usePathStyle: true
     envFrom:
@@ -573,6 +575,7 @@ spec:
         value: minioadmin
       bucketConfig:
         bucketName: moco
+        region: us-east-1
         endpointURL: http://minio.default.svc:9000
         usePathStyle: true
       workVolume:

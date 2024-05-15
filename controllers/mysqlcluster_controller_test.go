@@ -9,6 +9,8 @@ import (
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,9 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const (
@@ -51,9 +51,13 @@ func testNewMySQLCluster(ns string) *mocov1beta2.MySQLCluster {
 		{
 			ObjectMeta: mocov1beta2.ObjectMeta{Name: "mysql-data"},
 			Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-				WithStorageClassName("hoge").WithResources(corev1ac.ResourceRequirements().
-				WithRequests(corev1.ResourceList{corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI)}),
-			)),
+				WithStorageClassName("hoge").
+				WithResources(
+					corev1ac.VolumeResourceRequirements().WithRequests(
+						corev1.ResourceList{corev1.ResourceStorage: *resource.NewQuantity(1<<30, resource.BinarySI)},
+					),
+				),
+			),
 		},
 	}
 	return cluster
@@ -102,9 +106,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:             scheme,
-			LeaderElection:     false,
-			MetricsBindAddress: "0",
+			Scheme:         scheme,
+			LeaderElection: false,
+			Metrics: metricsserver.Options{
+				BindAddress: "0",
+			},
 		})
 		Expect(err).ToNot(HaveOccurred())
 
