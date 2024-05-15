@@ -1,6 +1,6 @@
 module github.com/cybozu-go/moco
 
-go 1.21
+go 1.22.3
 
 require (
 	cloud.google.com/go/storage v1.35.1

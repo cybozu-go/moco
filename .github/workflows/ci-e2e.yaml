@@ -24,7 +24,7 @@ jobs:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.34", "8.0.35"]
+        mysql-version: ["8.0.35", "8.0.36", "8.0.37"]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +44,8 @@ jobs:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.35"]
-        k8s-version: ["1.25.9", "1.26.4", "1.27.1"]
+        mysql-version: ["8.0.37"]
+        k8s-version: ["1.28.9", "1.29.4", "1.30.0"]
     runs-on:
       group: moco
     steps:
@@ -67,8 +67,8 @@ jobs:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.34", "8.0.35"]
-        k8s-version: ["1.27.1"]
+        mysql-version: ["8.0.35", "8.0.36", "8.0.37"]
+        k8s-version: ["1.30.0"]
     runs-on:
       group: moco
     steps:

@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.21-jammy as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.22-jammy as builder
 
 ARG TARGETARCH
 
@@ -20,13 +20,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.0.35.1 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.0.37.1 as mysql
 
 # the backup image
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.0.35-1
+ARG MYSQLSH_VERSION=8.0.37-1
 
 COPY --from=builder /work/moco-backup /moco-backup
 
