@@ -117,6 +117,11 @@ type MySQLClusterSpec struct {
 	// If set to true, the sidecar container is not added. The default is false.
 	// +optional
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
+
+	// AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name.
+	// During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also
+	// communicate with mysqld over localhost when acting as a sidecar.
+	AgentUseLocalhost bool `json:"agentUseLocalhost,omitempty"`
 }
 
 func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {

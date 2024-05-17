@@ -2124,6 +2124,9 @@ spec:
             spec:
               description: MySQLClusterSpec defines the desired state of MySQ
               properties:
+                agentUseLocalhost:
+                  description: 'AgentUseLocalhost configures the mysqld interface '
+                  type: boolean
                 backupPolicyName:
                   description: The name of BackupPolicy custom resource in the sa
                   nullable: true
