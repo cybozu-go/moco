@@ -251,6 +251,7 @@
 <tr><td>backupPolicyName</td><td>The name of BackupPolicy custom resource in the same namespace. If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.</td><td>*string</td><td>false</td></tr>
 <tr><td>restore</td><td>Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable.</td><td>*<a href="#restorespec">RestoreSpec</a></td><td>false</td></tr>
 <tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named &quot;slow-log&quot; to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false.</td><td>bool</td><td>false</td></tr>
+<tr><td>agentUseLocalhost</td><td>AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name. During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also communicate with mysqld over localhost when acting as a sidecar.</td><td>bool</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
