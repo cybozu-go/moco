@@ -167,6 +167,8 @@ func Generate(userConf map[string]string, memTotal int64) string {
 	delete(mysqldConf, opaqueKey)
 	delete(mysqldConf, "log_bin")
 	delete(mysqldConf, "log_error")
+	delete(mysqldConf, "skip_log_bin")
+	delete(mysqldConf, "disable_log_bin")
 
 	conf := make(map[string]map[string]string)
 	conf["mysqld"] = mysqldConf

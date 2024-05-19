@@ -13,6 +13,7 @@ func TestGenerator(t *testing.T) {
 	t.Run("loose", testLoose)
 	t.Run("buffer-pool-size", testBufferPoolSize)
 	t.Run("opaque", testOpaque)
+	t.Run("disable-user-params", testDisableUserParams)
 }
 
 //go:embed testdata/nil.cnf
@@ -77,5 +78,16 @@ performance-schema-instrument='wait/lock/metadata/sql/mdl=OFF'
 	if !cmp.Equal(opaqueCnf, actual) {
 		t.Error("not matched", cmp.Diff(opaqueCnf, actual))
 	}
+}
 
+func testDisableUserParams(t *testing.T) {
+	actual := Generate(map[string]string{
+		"log_bin":         "/path/to/file",
+		"log_error":       "/path/to/file",
+		"skip-log-bin":    "1",
+		"disable-log-bin": "1",
+	}, 100<<20)
+	if !cmp.Equal(nilCnf, actual) {
+		t.Error("not matched", cmp.Diff(nilCnf, actual))
+	}
 }
