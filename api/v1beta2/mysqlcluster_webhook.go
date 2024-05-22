@@ -10,6 +10,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -60,7 +61,18 @@ var _ webhook.CustomValidator = &mySQLClusterAdmission{}
 func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	cluster := obj.(*MySQLCluster)
 
-	warns, errs := cluster.Spec.validateCreate()
+	var errs field.ErrorList
+
+	// The names for StatefulSet and CronJob must be 52 characters or less.
+	// MOCO uses "moco-" as a prefix for StatefulSet names and "moco-backup-" for CronJob names.
+	// Therefore, the cluster name must be 40 characters or less.
+	// refs: https://github.com/kubernetes/kubernetes/issues/64023
+	if len(cluster.Name) > 40 {
+		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("name"), cluster.Name, "required name must be 40 characters or less"))
+	}
+
+	warns, createErrs := cluster.Spec.validateCreate()
+	errs = append(errs, createErrs...)
 	if len(errs) == 0 {
 		return warns, nil
 	}
