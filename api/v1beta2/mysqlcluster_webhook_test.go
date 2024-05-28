@@ -544,4 +544,15 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		err = k8sClient.Update(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
+
+	It("should deny long name", func() {
+		r := makeMySQLCluster()
+		r.Name = "mycluster-1234567890123456789012345678901" // 41 characters
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+
+		r.Name = "mycluster-123456789012345678901234567890" // 40 characters
+		err = k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
 })
