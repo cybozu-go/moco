@@ -84,6 +84,7 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | restore | Restore is the specification to perform Point-in-Time-Recovery from existing cluster. If this field is not null, MOCO restores the data as specified and create a new cluster with the data.  This field is not editable. | *[RestoreSpec](#restorespec) | false |
 | disableSlowQueryLogContainer | DisableSlowQueryLogContainer controls whether to add a sidecar container named \"slow-log\" to output slow logs as the containers output. If set to true, the sidecar container is not added. The default is false. | bool | false |
 | agentUseLocalhost | AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name. During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also communicate with mysqld over localhost when acting as a sidecar. | bool | false |
+| offline | Offline sets the cluster offline, releasing compute resources. Data is not removed. | bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

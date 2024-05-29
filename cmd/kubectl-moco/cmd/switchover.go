@@ -30,6 +30,10 @@ func switchover(ctx context.Context, name string) error {
 		return err
 	}
 
+	if cluster.Spec.Offline {
+		return errors.New("offline cluster is not able to switch")
+	}
+
 	if cluster.Spec.Replicas == 1 {
 		return errors.New("single-instance cluster is not able to switch")
 	}

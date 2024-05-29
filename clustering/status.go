@@ -50,6 +50,7 @@ const (
 	StateDegraded
 	StateFailed
 	StateLost
+	StateOffline
 )
 
 // String returns a unique string for each ClusterState.
@@ -71,6 +72,8 @@ func (s ClusterState) String() string {
 		return "Failed"
 	case StateLost:
 		return "Lost"
+	case StateOffline:
+		return "Offline"
 	}
 
 	panic(int(s))
@@ -107,6 +110,8 @@ func (ss *StatusSet) Close() {
 // It may also set `ss.NeedSwitch` and `ss.Candidate` for switchover.
 func (ss *StatusSet) DecideState() {
 	switch {
+	case isOffline(ss):
+		ss.State = StateOffline
 	case isCloning(ss):
 		ss.State = StateCloning
 	case isRestoring(ss):
@@ -160,7 +165,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		return nil, fmt.Errorf("failed to list Pods: %w", err)
 	}
 
-	if int(cluster.Spec.Replicas) != len(pods.Items) {
+	if !cluster.Spec.Offline && int(cluster.Spec.Replicas) != len(pods.Items) {
 		return nil, fmt.Errorf("too few pods; only %d pods exist", len(pods.Items))
 	}
 	ss.Pods = make([]*corev1.Pod, cluster.Spec.Replicas)
@@ -545,6 +550,10 @@ func isLost(ss *StatusSet) bool {
 	}
 
 	return okReplicas <= (int(ss.Cluster.Spec.Replicas) / 2)
+}
+
+func isOffline(ss *StatusSet) bool {
+	return ss.Cluster.Spec.Offline
 }
 
 func needSwitch(pod *corev1.Pod) bool {

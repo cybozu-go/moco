@@ -102,6 +102,10 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 		return fmt.Errorf("failed to get pod list: %w", err)
 	}
 
+	if bm.cluster.Spec.Offline {
+		return fmt.Errorf("cluster is configured to be offline %s/%s", bm.cluster.Namespace, bm.cluster.Name)
+	}
+
 	if len(pods.Items) != int(bm.cluster.Spec.Replicas) {
 		return fmt.Errorf("too few Pods for %s/%s", bm.cluster.Namespace, bm.cluster.Name)
 	}

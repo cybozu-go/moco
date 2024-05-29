@@ -122,6 +122,10 @@ type MySQLClusterSpec struct {
 	// During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also
 	// communicate with mysqld over localhost when acting as a sidecar.
 	AgentUseLocalhost bool `json:"agentUseLocalhost,omitempty"`
+
+	// Offline sets the cluster offline, releasing compute resources. Data is not removed.
+	// +optional
+	Offline bool `json:"offline,omitempty"`
 }
 
 func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {

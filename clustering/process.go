@@ -187,6 +187,8 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 
 	logFromContext(ctx).Info("cluster state is " + ss.State.String())
 	switch ss.State {
+	case StateOffline:
+		return false, nil
 	case StateCloning:
 		if p.isCloning(ctx, ss) {
 			return false, nil
@@ -281,6 +283,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 		case StateFailed:
 		case StateLost:
 		case StateIncomplete:
+		case StateOffline:
 		}
 
 		meta.SetStatusCondition(&cluster.Status.Conditions, updateCond(mocov1beta2.ConditionInitialized, initialized))
@@ -309,7 +312,7 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 
 		var syncedReplicas int
 		for _, pod := range ss.Pods {
-			if isPodReady(pod) {
+			if pod != nil && isPodReady(pod) {
 				syncedReplicas++
 			}
 		}

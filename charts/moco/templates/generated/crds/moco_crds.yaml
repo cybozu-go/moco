@@ -2244,6 +2244,9 @@ spec:
                   description: 'MySQLConfigMapName is a `ConfigMap` name of MySQL '
                   nullable: true
                   type: string
+                offline:
+                  description: Offline sets the cluster offline, releasing comput
+                  type: boolean
                 podTemplate:
                   description: PodTemplate is a `Pod` template for MySQL server c
                   properties:
