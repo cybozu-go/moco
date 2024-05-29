@@ -12,6 +12,10 @@ resources:
     cpu: 100m
     memory: 20Mi
 
+crds:
+  # crds.enabled -- Install and update CRDs as part of the Helm chart.
+  enabled: true
+
 # extraArgs -- Additional command line flags to pass to moco-controller binary.
 extraArgs: []
 

@@ -63,8 +63,10 @@ manifests: controller-gen kustomize yq ## Generate WebhookConfiguration, Cluster
 	mkdir -p charts/moco/templates/generated/crds/
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd -o config/crd/tests # Outputs static CRDs for use with Envtest.
-	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds | $(YQ) e "." - > charts/moco/templates/generated/crds/moco_crds.yaml
 	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/templates | $(YQ) e "." - > charts/moco/templates/generated/generated.yaml
+	echo '{{- if .Values.crds.enabled }}' > charts/moco/templates/generated/crds/moco_crds.yaml
+	$(KUSTOMIZE) build config/kustomize-to-helm/overlays/crds | $(YQ) e "." - >> charts/moco/templates/generated/crds/moco_crds.yaml
+	echo '{{- end }}' >> charts/moco/templates/generated/crds/moco_crds.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
