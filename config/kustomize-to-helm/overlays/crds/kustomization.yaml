@@ -7,5 +7,8 @@ patchesStrategicMerge:
 commonLabels:
   app.kubernetes.io/name: moco
 
+commonAnnotations:
+  helm.sh/resource-policy: keep
+
 transformers:
   - label-transformer.yaml

@@ -1,8 +1,10 @@
+{{- if .Values.crds.enabled }}
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
+    helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -2058,6 +2060,7 @@ metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
     controller-gen.kubebuilder.io/version: v0.13.0
+    helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
@@ -7873,3 +7876,4 @@ spec:
       storage: true
       subresources:
         status: {}
+{{- end }}
