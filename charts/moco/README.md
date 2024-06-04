@@ -39,10 +39,11 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 ## Values
 
 | Key                       | Type   | Default                                       | Description                                                      |
-|---------------------------|--------|-----------------------------------------------|------------------------------------------------------------------|
+| ------------------------- | ------ | --------------------------------------------- | ---------------------------------------------------------------- |
 | image.repository          | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.                                    |
 | image.tag                 | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                                           |
 | resources                 | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.                               |
+| crds.enabled              | bool   | `true`                                        | Install and update CRDs as part of the Helm chart.               |
 | extraArgs                 | list   | `[]`                                          | Additional command line flags to pass to moco-controller binary. |
 | nodeSelector              | object | `{}`                                          | nodeSelector used by moco-controller.                            |
 | affinity                  | object | `{}`                                          | affinity used by moco-controller.                                |
@@ -58,12 +59,23 @@ You can use the `helm template` command to render manifests.
 $ helm template --namespace moco-system moco moco/moco
 ```
 
-## Upgrade CRDs
+## CRD considerations
 
-There is no support at this time for upgrading or deleting CRDs using Helm.
-Users must manually upgrade the CRD if there is a change in the CRD used by MOCO.
+### Installing or updating CRDs
 
-https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#install-a-crd-declaration-before-using-the-resource
+MOCO Helm Chart installs or updates CRDs by default. If you want to manage CRDs on your own, turn off the `crds.enabled` parameter.
+
+### Removing CRDs
+
+Helm does not remove the CRDs due to the [`helm.sh/resource-policy: keep` annotation](https://helm.sh/docs/howto/charts_tips_and_tricks/#tell-helm-not-to-uninstall-a-resource).
+When uninstalling, please remove the CRDs manually.
+
+## Migrate to v0.11.0 or higher
+
+Chart version v0.11.0 introduces the `crds.enabled` parameter.
+
+When updating to a new chart from chart v0.10.x or lower, you **MUST** leave this parameter `true` (the default value).
+If you turn off this option when updating, the CRD will be removed, causing data loss.
 
 ## Migrate to v0.3.0
 
