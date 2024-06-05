@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Caution
+This release introduces the `crds.enabled` parameter to the Helm Chart.
+
+When updating to a new chart from chart v0.10.x or lower, you **MUST** leave this parameter `true` (the default value).
+If you turn off this option when updating, the CRD will be removed, causing data loss.
+
+### Changed
+- chart: add value to set a PriorityClass [#661](https://github.com/cybozu-go/moco/pull/661)
+- Helm chart CRDs optional and not deleted on uninstall [#684](https://github.com/cybozu-go/moco/pull/684), [685](https://github.com/cybozu-go/moco/pull/685)
+
+### Contributors
+- @fgeorgeanybox
+- @vholer
+
 ## [0.10.2] - 2024-03-08
 ### Changed
 - Bump appVersion to 0.20.2 [#650](https://github.com/cybozu-go/moco/pull/650)
