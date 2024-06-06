@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/component: moco-controller
     {{- include "moco.labels" . | nindent 4 }}
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/component: moco-controller
@@ -27,6 +27,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -75,6 +76,10 @@ spec:
         runAsNonRoot: true
       serviceAccountName: moco-controller-manager
       terminationGracePeriodSeconds: 10
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
