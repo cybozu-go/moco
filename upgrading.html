@@ -210,7 +210,7 @@ complete updating data.</p>
 <h3 id="downgrading"><a class="header" href="#downgrading">Downgrading</a></h3>
 <p>MySQL 8.0 does not support any kind of downgrading.</p>
 <p>ref: https://dev.mysql.com/doc/refman/8.0/en/downgrading.html</p>
-<p>Internally, MySQL has a version called &quot;data dictionary (DD) version&quot;.
+<p>Internally, MySQL has a version called "data dictionary (DD) version".
 If two MySQL versions have the same DD version, they are considered to have data compatibility.</p>
 <p>ref: https://github.com/mysql/mysql-server/blob/mysql-8.0.24/sql/dd/dd_version.h#L209</p>
 <p>Nevertheless, DD versions do change from time to time between revisions of MySQL 8.0.
@@ -231,7 +231,7 @@ If a Pod that is not being updated are deleted, StatefulSet controller restores 
 from the old template.</p>
 <p>This means that, if the cluster is Healthy, MySQL is assured to be updated one by one
 from the instance of the largest ordinal to the smallest.</p>
-<p>refs: </p>
+<p>refs:</p>
 <ul>
 <li>https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#rolling-updates</li>
 <li>https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#rolling-update</li>

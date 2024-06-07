@@ -235,6 +235,7 @@
 <li><a href="#failover">Failover</a></li>
 <li><a href="#upgrading-mysql-version">Upgrading mysql version</a></li>
 <li><a href="#re-initializing-an-errant-replica">Re-initializing an errant replica</a></li>
+<li><a href="#stop-clustering-and-reconciliation">Stop Clustering and Reconciliation</a></li>
 </ul>
 </li>
 </ul>
@@ -264,10 +265,10 @@ spec:
   replicas: 3
   podTemplate:
     spec:
-      # Make the data directory writable. If moco-init fails with &quot;Permission denied&quot;, uncomment the following settings.
+      # Make the data directory writable. If moco-init fails with "Permission denied", uncomment the following settings.
       # securityContext:
       #   fsGroup: 10000
-      #   fsGroupChangePolicy: &quot;OnRootMismatch&quot;  # available since k8s 1.20
+      #   fsGroupChangePolicy: "OnRootMismatch"  # available since k8s 1.20
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -281,23 +282,23 @@ spec:
                 operator: In
                 values:
                 - test
-            topologyKey: &quot;kubernetes.io/hostname&quot;
+            topologyKey: "kubernetes.io/hostname"
       containers:
-      # At least a container named &quot;mysqld&quot; must be defined.
+      # At least a container named "mysqld" must be defined.
       - name: mysqld
         image: ghcr.io/cybozu-go/moco/mysql:8.0.35
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
           limits:
-            cpu: &quot;10&quot;
-            memory: &quot;10Gi&quot;
+            cpu: "10"
+            memory: "10Gi"
   volumeClaimTemplates:
-  # At least a PVC named &quot;mysql-data&quot; must be defined.
+  # At least a PVC named "mysql-data" must be defined.
   - metadata:
       name: mysql-data
     spec:
-      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 1Gi
@@ -378,7 +379,7 @@ spec:
   - metadata:
       name: mysql-data
     spec:
-      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 1Gi
@@ -397,8 +398,8 @@ metadata:
   namespace: foo
   name: mycnf
 data:
-  long_query_time: &quot;5&quot;
-  innodb_buffer_pool_size: &quot;10G&quot;
+  long_query_time: "5"
+  innodb_buffer_pool_size: "10G"
 ---
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
@@ -486,9 +487,9 @@ Pre-built binaries are available on <a href="https://github.com/cybozu-go/moco/r
 </ul>
 <p><code>moco-writable</code> cannot edit tables in <code>mysql</code> database, though.</p>
 <p>You can create other users and grant them certain privileges as either <code>moco-writable</code> or <code>moco-admin</code>.</p>
-<pre><code class="language-console">$ kubectl moco mysql -u moco-writable test -- -e &quot;CREATE USER 'foo'@'%' IDENTIFIED BY 'bar'&quot;
-$ kubectl moco mysql -u moco-writable test -- -e &quot;CREATE DATABASE db1&quot;
-$ kubectl moco mysql -u moco-writable test -- -e &quot;GRANT ALL ON db1.* TO 'foo'@'%'&quot;
+<pre><code class="language-console">$ kubectl moco mysql -u moco-writable test -- -e "CREATE USER 'foo'@'%' IDENTIFIED BY 'bar'"
+$ kubectl moco mysql -u moco-writable test -- -e "CREATE DATABASE db1"
+$ kubectl moco mysql -u moco-writable test -- -e "GRANT ALL ON db1.* TO 'foo'@'%'"
 </code></pre>
 <h3 id="connecting-to-mysqld-over-network"><a class="header" href="#connecting-to-mysqld-over-network">Connecting to <code>mysqld</code> over network</a></h3>
 <p>MOCO prepares two Services for each MySQLCluster.
@@ -536,7 +537,7 @@ metadata:
   name: daily
 spec:
   # Backup schedule.  Any CRON format is allowed.
-  schedule: &quot;@daily&quot;
+  schedule: "@daily"
 
   jobConfig:
     # An existing ServiceAccount name is required.
@@ -546,13 +547,13 @@ spec:
       value: minioadmin
     - name: AWS_SECRET_ACCESS_KEY
       value: minioadmin
-
-    # bucketName is required.  Other fields are optional.
+    # bucketName is required. Other fields are optional.
+    # If backendType is s3 (default), specify the region of the bucket via region filed or AWS_REGION environment variable.
     bucketConfig:
       bucketName: moco
+      region: us-east-1
       endpointURL: http://minio.default.svc:9000
       usePathStyle: true
-
     # MOCO uses a filesystem volume to store data temporarily.
     workVolume:
       # Using emptyDir as a working directory is NOT recommended.
@@ -583,7 +584,8 @@ metadata:
 spec:
   jobConfig:
     bucketConfig:
-      bucketName: &quot;$(BUCKET_NAME)&quot;
+      bucketName: "$(BUCKET_NAME)"
+      region: us-east-1
       endpointURL: http://minio.default.svc:9000
       usePathStyle: true
     envFrom:
@@ -657,7 +659,7 @@ spec:
     sourceNamespace: backup
 
     # The restore point-in-time in RFC3339 format.
-    restorePoint: &quot;2021-05-26T12:34:56Z&quot;
+    restorePoint: "2021-05-26T12:34:56Z"
 
     # jobConfig is the same in BackupPolicy
     jobConfig:
@@ -669,6 +671,7 @@ spec:
         value: minioadmin
       bucketConfig:
         bucketName: moco
+        region: us-east-1
         endpointURL: http://minio.default.svc:9000
         usePathStyle: true
       workVolume:
@@ -816,14 +819,14 @@ test   Unknown     Unknown   0         3                                   False
 </code></pre>
 <p>The MOCO controller outputs the following metrics to indicate that clustering has been stopped.
 1 if the cluster is clustering or reconciliation stopped, 0 otherwise.</p>
-<pre><code class="language-text">moco_cluster_clustering_stopped{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
-moco_cluster_reconciliation_stopped{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
+<pre><code class="language-text">moco_cluster_clustering_stopped{name="mycluster", namespace="mynamesapce"} 1
+moco_cluster_reconciliation_stopped{name="mycluster", namespace="mynamesapce"} 1
 </code></pre>
 <p>During the stop of clustering, monitoring of the cluster from MOCO will be halted, and the value of the following metrics will become NaN.</p>
-<pre><code class="language-text">moco_cluster_available{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
-moco_cluster_healthy{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
-moco_cluster_ready_replicas{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
-moco_cluster_errant_replicas{name=&quot;test&quot;,namespace=&quot;default&quot;} NaN
+<pre><code class="language-text">moco_cluster_available{name="test",namespace="default"} NaN
+moco_cluster_healthy{name="test",namespace="default"} NaN
+moco_cluster_ready_replicas{name="test",namespace="default"} NaN
+moco_cluster_errant_replicas{name="test",namespace="default"} NaN
 </code></pre>
 
                     </main>

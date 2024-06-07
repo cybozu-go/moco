@@ -195,8 +195,8 @@ However, by specifying the <code>--pvc-sync-annotation-keys</code> and <code>--p
 This guideline is essential to prevent potential side-effects if entities other than the moco-controller are manipulating the PVC's metadata.</p>
 <h3 id="metrics"><a class="header" href="#metrics">Metrics</a></h3>
 <p>The success or failure of the re-creating a StatefulSet is notified to the user in the following metrics:</p>
-<pre><code class="language-text">moco_cluster_statefulset_recreate_total{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 3
-moco_cluster_statefulset_recreate_errors_total{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
+<pre><code class="language-text">moco_cluster_statefulset_recreate_total{name="mycluster", namespace="mynamesapce"} 3
+moco_cluster_statefulset_recreate_errors_total{name="mycluster", namespace="mynamesapce"} 1
 </code></pre>
 <p>If a StatefulSet fails to recreate, the metrics in <code>moco_cluster_statefulset_recreate_errors_total</code> is incremented after each reconcile,
 so users can notice anomalies by monitoring this metrics.</p>
@@ -215,8 +215,8 @@ For example, if you are using <a href="https://github.com/topolvm/pvc-autoresize
 In this case, moco-controller will only update if the actual PVC size is smaller than the PVC size after the change.</p>
 <h3 id="metrics-1"><a class="header" href="#metrics-1">Metrics</a></h3>
 <p>The success or failure of the PVC resizing is notified to the user in the following metrics:</p>
-<pre><code class="language-text">moco_cluster_volume_resized_total{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 4
-moco_cluster_volume_resized_errors_total{name=&quot;mycluster&quot;, namespace=&quot;mynamesapce&quot;} 1
+<pre><code class="language-text">moco_cluster_volume_resized_total{name="mycluster", namespace="mynamesapce"} 4
+moco_cluster_volume_resized_errors_total{name="mycluster", namespace="mynamesapce"} 1
 </code></pre>
 <p>This metrics is incremented if the volume size change succeeds or fails.
 If fails to volume size changed, the metrics in <code>moco_cluster_volume_resized_errors_total</code> is incremented after each reconcile,
@@ -251,7 +251,7 @@ so users can notice anomalies by monitoring this metrics.</p>
     - metadata:
         name: mysql-data
       spec:
-        accessModes: [ &quot;ReadWriteOnce&quot; ]
+        accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
 -           storage: 1Gi

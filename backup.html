@@ -243,7 +243,7 @@ The backups are stored in a S3-compatible object storage bucket.</p>
 <li>Backup data should be stored in an object storage.</li>
 <li>Backups should be taken from a replica instance as much as possible.</li>
 </ul>
-<p>These &quot;should's&quot; are mostly in terms of money or performance.</p>
+<p>These "should's" are mostly in terms of money or performance.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <h3 id="backup-file-keys"><a class="header" href="#backup-file-keys">Backup file keys</a></h3>
 <p>Backup files are stored in an object storage bucket with the following keys.</p>
@@ -309,41 +309,41 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 If the server_uuid has changed, the pod may be missing some of the binlogs generated since the last backup.</p>
 <p>The following is how to choose a pod to be the backup source.</p>
 <pre><code class="language-mermaid">flowchart TD
-A{&quot;first time?&quot;}
-A --&gt;|&quot;yes&quot;| B
-A --&gt;|&quot;no&quot;| C[&quot;x ← Get the indexes of the pod whose server_uuid has not changed&quot;] --&gt; D
+A{"first time?"}
+A --&gt;|"yes"| B
+A --&gt;|"no"| C["x ← Get the indexes of the pod whose server_uuid has not changed"] --&gt; D
 
 B{Are replicas available?}
-B --&gt;|&quot;yes&quot;| B1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+B --&gt;|"yes"| B1["return\nreplicaIdx\ndoBackupBinlog=false"]
 style B1 fill:#c1ffff
-B --&gt;|&quot;no&quot;| B2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+B --&gt;|"no"| B2["return\nprimaryIdx\ndoBackupBinlog=false"]
 style B2 fill:#ffffc1
 
-D{&quot;Is x empty?&quot;}
-D --&gt;|&quot;yes&quot;| E[&quot;add warning to bm.warnings&quot;] --&gt; F
+D{"Is x empty?"}
+D --&gt;|"yes"| E["add warning to bm.warnings"] --&gt; F
 style E fill:#ffc1c1
-D --&gt;|&quot;no&quot;| G
+D --&gt;|"no"| G
 
-F{&quot;Are replicas available?&quot;}
-F --&gt;|&quot;yes&quot;| F1[&quot;return\nreplicaIdx\ndoBackupBinlog=false&quot;]
+F{"Are replicas available?"}
+F --&gt;|"yes"| F1["return\nreplicaIdx\ndoBackupBinlog=false"]
 style F1 fill:#ffc1c1
-F --&gt;|&quot;no&quot;| F2[&quot;return\nprimaryIdx\ndoBackupBinlog=false&quot;]
+F --&gt;|"no"| F2["return\nprimaryIdx\ndoBackupBinlog=false"]
 style F2 fill:#ffc1c1
 
-G{&quot;Are there replica indexes in x?&quot;}
-G --&gt;|&quot;yes&quot;| H
-G --&gt;|&quot;no&quot;| G1[&quot;return\nprimaryIdx\ndoBackupBinlog=true&quot;]
+G{"Are there replica indexes in x?"}
+G --&gt;|"yes"| H
+G --&gt;|"no"| G1["return\nprimaryIdx\ndoBackupBinlog=true"]
 style G1 fill:#ffffc1
 
-H{&quot;Is lastIndex included in x?&quot;}
-H --&gt;|&quot;yes&quot;| I
-H --&gt;|&quot;no&quot;| H1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+H{"Is lastIndex included in x?"}
+H --&gt;|"yes"| I
+H --&gt;|"no"| H1["return\nreplicaIdx\ndoBackupBinlog=true"]
 style H1 fill:#c1ffff
 
-I{&quot;Is lastIndex primary?&quot;}
-I --&gt;|&quot;yes&quot;| I1[&quot;return\nreplicaIdx\ndoBackupBinlog=true&quot;]
+I{"Is lastIndex primary?"}
+I --&gt;|"yes"| I1["return\nreplicaIdx\ndoBackupBinlog=true"]
 style I1 fill:#c1ffff
-I --&gt;|&quot;no&quot;| I2[&quot;return\nlastIdx\ndoBackupBinlog=true&quot;]
+I --&gt;|"no"| I2["return\nlastIdx\ndoBackupBinlog=true"]
 style I2 fill:#c1ffff
 </code></pre>
 <h3 id="restore"><a class="header" href="#restore">Restore</a></h3>
@@ -405,7 +405,7 @@ If not specified, it will be defaults to <code>s3</code>.</p>
 kind: BackupPolicy
 ...
 spec:
-  schedule: &quot;@daily&quot;
+  schedule: "@daily"
   jobConfig:
     serviceAccountName: backup-owner
     env:

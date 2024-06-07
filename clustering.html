@@ -252,7 +252,7 @@ Likewise, if a replica Pod is ready, the <code>mysqld</code> is assured read-onl
 <ul>
 <li><code>spec.replicationSourceSecretName</code> is set.</li>
 <li><code>status.cloned</code> is false.</li>
-<li>The cloning result exists and is not &quot;Completed&quot; <em>or</em> there is no cloning result and the instance has no data.</li>
+<li>The cloning result exists and is not "Completed" <em>or</em> there is no cloning result and the instance has no data.</li>
 <li>(note: if the primary has some data and has no cloning result, the instance was used to be a replica and then promoted to the primary.)</li>
 </ul>
 </li>
@@ -362,7 +362,7 @@ It stops when MySQLCluster resource is deleted.</p>
 <ul>
 <li><code>True</code> if the cluster state is Healthy.</li>
 <li>otherwise, <code>False</code>.</li>
-<li>The <code>Reason</code> field is set to the cluster state such as &quot;Failed&quot; or &quot;Incomplete&quot;.</li>
+<li>The <code>Reason</code> field is set to the cluster state such as "Failed" or "Incomplete".</li>
 </ul>
 </li>
 <li>Set the number of ready replica Pods to <code>status.syncedReplicas</code>.</li>
