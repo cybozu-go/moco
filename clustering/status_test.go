@@ -161,7 +161,7 @@ func (b *mysqlBuilder) build() *dbop.MySQLInstanceStatus {
 	}
 	if len(b.sourceHost) > 0 {
 		st.ReplicaStatus = &dbop.ReplicaStatus{
-			MasterHost: b.sourceHost,
+			SourceHost: b.sourceHost,
 		}
 	}
 	st.ReplicaHosts = b.replicaHosts

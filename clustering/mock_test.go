@@ -265,10 +265,10 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 
 	if o.mysql.status.ReplicaStatus != nil {
 		var oldi *mockMySQL
-		if o.mysql.status.ReplicaStatus.MasterHost == source.Host {
+		if o.mysql.status.ReplicaStatus.SourceHost == source.Host {
 			oldi = si
 		} else {
-			oldi = o.factory.getInstance(o.mysql.status.ReplicaStatus.MasterHost)
+			oldi = o.factory.getInstance(o.mysql.status.ReplicaStatus.SourceHost)
 			if oldi == nil {
 				panic(oldi)
 			}
@@ -292,10 +292,10 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 
 	gtid, _ := testGetGTID(source.Host)
 	o.mysql.status.ReplicaStatus = &dbop.ReplicaStatus{
-		MasterHost:       source.Host,
-		RetrievedGtidSet: gtid,
-		SlaveIORunning:   "Yes",
-		SlaveSQLRunning:  "Yes",
+		SourceHost:        source.Host,
+		RetrievedGtidSet:  gtid,
+		ReplicaIORunning:  "Yes",
+		ReplicaSQLRunning: "Yes",
 	}
 	o.mysql.status.GlobalVariables.SemiSyncSlaveEnabled = semisync
 	return setPodReadiness(ctx, o.cluster.PodName(o.index), true)
@@ -315,7 +315,7 @@ func (o *mockOperator) ConfigurePrimary(ctx context.Context, waitForCount int) e
 	return nil
 }
 
-// StopReplicaIOThread executes `STOP SLAVE IO_THREAD`.
+// StopReplicaIOThread executes `STOP REPLICA IO_THREAD`.
 func (o *mockOperator) StopReplicaIOThread(ctx context.Context) error {
 	if o.failing {
 		return errors.New("mysqld is down")
@@ -326,7 +326,7 @@ func (o *mockOperator) StopReplicaIOThread(ctx context.Context) error {
 	if o.mysql.status.ReplicaStatus == nil {
 		return nil
 	}
-	o.mysql.status.ReplicaStatus.SlaveIORunning = "No"
+	o.mysql.status.ReplicaStatus.ReplicaIORunning = "No"
 	return setPodReadiness(ctx, o.cluster.PodName(o.index), false)
 }
 
@@ -352,12 +352,12 @@ func (o *mockOperator) WaitForGTID(_ context.Context, gtidSet string, _ int) err
 		o.mysql.status.GlobalVariables.ExecutedGTID = gtidSet
 		return nil
 	}
-	if o.mysql.status.ReplicaStatus.SlaveIORunning == "Yes" {
-		primary := o.factory.getInstance(o.mysql.status.ReplicaStatus.MasterHost)
+	if o.mysql.status.ReplicaStatus.ReplicaIORunning == "Yes" {
+		primary := o.factory.getInstance(o.mysql.status.ReplicaStatus.SourceHost)
 		if primary == nil {
 			return errors.New("waitForGTID: primary not found")
 		}
-		primaryGTID, _ := testGetGTID(o.mysql.status.ReplicaStatus.MasterHost)
+		primaryGTID, _ := testGetGTID(o.mysql.status.ReplicaStatus.SourceHost)
 		if primaryGTID == gtidSet {
 			testSetGTID(o.Name(), gtidSet)
 			o.mysql.status.GlobalVariables.ExecutedGTID = gtidSet
@@ -383,7 +383,7 @@ func (o *mockOperator) SetReadOnly(ctx context.Context, readonly bool) error {
 	}
 
 	if o.mysql.status.ReplicaStatus != nil {
-		primary := o.factory.getInstance(o.mysql.status.ReplicaStatus.MasterHost)
+		primary := o.factory.getInstance(o.mysql.status.ReplicaStatus.SourceHost)
 		if primary == nil {
 			return errors.New("setReadOnly: primary not found")
 		}

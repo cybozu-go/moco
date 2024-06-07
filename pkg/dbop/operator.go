@@ -46,7 +46,7 @@ type Operator interface {
 	// For asynchronous replication, this method should not be called.
 	ConfigurePrimary(ctx context.Context, waitForCount int) error
 
-	// StopReplicaIOThread executes `STOP SLAVE IO_THREAD`.
+	// StopReplicaIOThread executes `STOP REPLICA IO_THREAD`.
 	StopReplicaIOThread(context.Context) error
 
 	// WaitForGTID waits for `mysqld` to execute all GTIDs in `gtidSet`.

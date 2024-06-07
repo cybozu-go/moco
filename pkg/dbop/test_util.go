@@ -31,7 +31,7 @@ var startupMycnf = map[string]string{
 	"collation_server":         "utf8mb4_unicode_ci",
 	"default_time_zone":        "+0:00",
 	"disabled_storage_engines": "MyISAM",
-	"skip_slave_start":         "ON",
+	"skip_replica_start":       "ON",
 	"enforce_gtid_consistency": "ON",
 	"gtid_mode":                "ON",
 }
@@ -98,7 +98,11 @@ func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
 	}
 
 	// clear executed_gtid_set
-	db.MustExec(`RESET MASTER`)
+	if strings.HasPrefix(testMySQLImage, "mysql:8.4") {
+		db.MustExec(`RESET BINARY LOGS AND GTIDS`)
+	} else {
+		db.MustExec(`RESET MASTER`)
+	}
 	db.Close()
 	return nil
 }

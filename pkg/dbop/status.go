@@ -20,8 +20,8 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 	}
 	status.GlobalVariables = *globalVariablesStatus
 
-	if err := o.db.Select(&status.ReplicaHosts, `SHOW SLAVE HOSTS`); err != nil {
-		return nil, fmt.Errorf("failed to get slave hosts: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
+	if err := o.db.Select(&status.ReplicaHosts, `SHOW REPLICAS`); err != nil {
+		return nil, fmt.Errorf("failed to get replica hosts: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 
 	replicaStatus, err := o.getReplicaStatus(ctx)
@@ -50,13 +50,13 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariabl
 
 func (o *operator) getReplicaStatus(ctx context.Context) (*ReplicaStatus, error) {
 	status := &ReplicaStatus{}
-	err := o.db.GetContext(ctx, status, `SHOW SLAVE STATUS`)
+	err := o.db.GetContext(ctx, status, `SHOW REPLICA STATUS`)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// slave status can be empty for non-replica servers
+			// replica status can be empty for non-replica servers
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get slave status: %w", err)
+		return nil, fmt.Errorf("failed to get replica status: %w", err)
 	}
 	return status, nil
 }

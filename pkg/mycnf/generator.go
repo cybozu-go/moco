@@ -111,7 +111,7 @@ var ConstMycnf = map[string]map[string]string{
 		"enforce_gtid_consistency": "ON", // This must be set before gtid_mode.
 		"gtid_mode":                "ON",
 		"binlog_format":            "ROW",
-		"log_slave_updates":        "ON",
+		"log_replica_updates":      "ON",
 		"relay_log_recovery":       "OFF", // Turning this on would risk the loss of transaction in case of chained failures
 
 		"mysqlx_port": strconv.Itoa(constants.MySQLXPort),
@@ -119,9 +119,9 @@ var ConstMycnf = map[string]map[string]string{
 
 		"pid_file": filepath.Join(constants.RunPath, "mysqld.pid"),
 
-		"read_only":        "ON",
-		"super_read_only":  "ON",
-		"skip_slave_start": "ON",
+		"read_only":          "ON",
+		"super_read_only":    "ON",
+		"skip_replica_start": "ON",
 
 		// Optimizing locks for semisync replication. Available from 8.0.23.
 		"loose_replication_optimize_for_static_plugin_config": "ON",

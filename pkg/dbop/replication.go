@@ -8,10 +8,22 @@ import (
 const semiSyncMasterTimeout = 24 * 60 * 60 * 1000
 
 func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, semisync bool) error {
-	if _, err := o.db.ExecContext(ctx, `STOP SLAVE`); err != nil {
+	if _, err := o.db.ExecContext(ctx, `STOP REPLICA`); err != nil {
 		return fmt.Errorf("failed to stop replica: %w", err)
 	}
-	if _, err := o.db.NamedExecContext(ctx, `CHANGE MASTER TO MASTER_HOST = :Host, MASTER_PORT = :Port, MASTER_USER = :User, MASTER_PASSWORD = :Password, MASTER_AUTO_POSITION = 1, GET_MASTER_PUBLIC_KEY = 1`, primary); err != nil {
+	var version string
+	if err := o.db.GetContext(ctx, &version, `SELECT SUBSTRING_INDEX(VERSION(), '.', 2)`); err != nil {
+		return fmt.Errorf("failed to get version: %w", err)
+	}
+	var cmd string
+	if version == "8.4" {
+		cmd = `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
+	} else if version == "8.0" {
+		cmd = `CHANGE MASTER TO MASTER_HOST = :Host, MASTER_PORT = :Port, MASTER_USER = :User, MASTER_PASSWORD = :Password, MASTER_AUTO_POSITION = 1, GET_MASTER_PUBLIC_KEY = 1`
+	} else {
+		return fmt.Errorf("unsupported version: %s", version)
+	}
+	if _, err := o.db.NamedExecContext(ctx, cmd, primary); err != nil {
 		return fmt.Errorf("failed to change primary: %w", err)
 	}
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_slave_enabled=?", semisync); err != nil {
@@ -20,7 +32,7 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_enabled=OFF"); err != nil {
 		return fmt.Errorf("failed to disable rpl_semi_sync_master_enabled: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, `START SLAVE`); err != nil {
+	if _, err := o.db.ExecContext(ctx, `START REPLICA`); err != nil {
 		return fmt.Errorf("failed to start replica: %w", err)
 	}
 	return nil
@@ -40,7 +52,7 @@ func (o *operator) ConfigurePrimary(ctx context.Context, waitForCount int) error
 }
 
 func (o *operator) StopReplicaIOThread(ctx context.Context) error {
-	if _, err := o.db.ExecContext(ctx, `STOP SLAVE IO_THREAD`); err != nil {
+	if _, err := o.db.ExecContext(ctx, `STOP REPLICA IO_THREAD`); err != nil {
 		return fmt.Errorf("failed to stop replica IO thread: %w", err)
 	}
 	return nil
@@ -67,10 +79,10 @@ func (o *operator) SetReadOnly(ctx context.Context, readOnly bool) error {
 		return nil
 	}
 
-	if _, err := o.db.ExecContext(ctx, "STOP SLAVE"); err != nil {
+	if _, err := o.db.ExecContext(ctx, "STOP REPLICA"); err != nil {
 		return fmt.Errorf("failed to stop replica: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "RESET SLAVE"); err != nil {
+	if _, err := o.db.ExecContext(ctx, "RESET REPLICA"); err != nil {
 		return fmt.Errorf("failed to stop replica: %w", err)
 	}
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL read_only=0"); err != nil {
