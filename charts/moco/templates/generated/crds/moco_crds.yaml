@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.15.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -187,6 +187,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -249,6 +257,14 @@ spec:
                                           type: string
                                         type: object
                                     type: object
+                                  matchLabelKeys:
+                                    items:
+                                      type: string
+                                    type: array
+                                  mismatchLabelKeys:
+                                    items:
+                                      type: string
+                                    type: array
                                   namespaceSelector:
                                     description: LabelSelectorApplyConfiguration represents an decl
                                     properties:
@@ -314,6 +330,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -376,6 +400,14 @@ spec:
                                           type: string
                                         type: object
                                     type: object
+                                  matchLabelKeys:
+                                    items:
+                                      type: string
+                                    type: array
+                                  mismatchLabelKeys:
+                                    items:
+                                      type: string
+                                    type: array
                                   namespaceSelector:
                                     description: LabelSelectorApplyConfiguration represents an decl
                                     properties:
@@ -857,16 +889,8 @@ spec:
                                             type: string
                                         type: object
                                       resources:
-                                        description: 'ResourceRequirementsApplyConfiguration represents '
+                                        description: VolumeResourceRequirementsApplyConfiguration repre
                                         properties:
-                                          claims:
-                                            items:
-                                              description: ResourceClaimApplyConfiguration represents an decl
-                                              properties:
-                                                name:
-                                                  type: string
-                                              type: object
-                                            type: array
                                           limits:
                                             additionalProperties:
                                               anyOf:
@@ -910,6 +934,8 @@ spec:
                                             type: object
                                         type: object
                                       storageClassName:
+                                        type: string
+                                      volumeAttributesClassName:
                                         type: string
                                       volumeMode:
                                         description: PersistentVolumeMode describes how a volume is int
@@ -1088,6 +1114,41 @@ spec:
                                 items:
                                   description: VolumeProjectionApplyConfiguration represents an d
                                   properties:
+                                    clusterTrustBundle:
+                                      description: ClusterTrustBundleProjectionApplyConfiguration rep
+                                      properties:
+                                        labelSelector:
+                                          description: LabelSelectorApplyConfiguration represents an decl
+                                          properties:
+                                            matchExpressions:
+                                              items:
+                                                description: LabelSelectorRequirementApplyConfiguration represe
+                                                properties:
+                                                  key:
+                                                    type: string
+                                                  operator:
+                                                    description: 'A label selector operator is the set of operators '
+                                                    type: string
+                                                  values:
+                                                    items:
+                                                      type: string
+                                                    type: array
+                                                type: object
+                                              type: array
+                                            matchLabels:
+                                              additionalProperties:
+                                                type: string
+                                              type: object
+                                          type: object
+                                        name:
+                                          type: string
+                                        optional:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                        signerName:
+                                          type: string
+                                      type: object
                                     configMap:
                                       description: ConfigMapProjectionApplyConfiguration represents a
                                       properties:
@@ -1578,16 +1639,8 @@ spec:
                                           type: string
                                       type: object
                                     resources:
-                                      description: 'ResourceRequirementsApplyConfiguration represents '
+                                      description: VolumeResourceRequirementsApplyConfiguration repre
                                       properties:
-                                        claims:
-                                          items:
-                                            description: ResourceClaimApplyConfiguration represents an decl
-                                            properties:
-                                              name:
-                                                type: string
-                                            type: object
-                                          type: array
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -1631,6 +1684,8 @@ spec:
                                           type: object
                                       type: object
                                     storageClassName:
+                                      type: string
+                                    volumeAttributesClassName:
                                       type: string
                                     volumeMode:
                                       description: PersistentVolumeMode describes how a volume is int
@@ -1807,6 +1862,41 @@ spec:
                               items:
                                 description: VolumeProjectionApplyConfiguration represents an d
                                 properties:
+                                  clusterTrustBundle:
+                                    description: ClusterTrustBundleProjectionApplyConfiguration rep
+                                    properties:
+                                      labelSelector:
+                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        properties:
+                                          matchExpressions:
+                                            items:
+                                              description: LabelSelectorRequirementApplyConfiguration represe
+                                              properties:
+                                                key:
+                                                  type: string
+                                                operator:
+                                                  description: 'A label selector operator is the set of operators '
+                                                  type: string
+                                                values:
+                                                  items:
+                                                    type: string
+                                                  type: array
+                                              type: object
+                                            type: array
+                                          matchLabels:
+                                            additionalProperties:
+                                              type: string
+                                            type: object
+                                        type: object
+                                      name:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                      path:
+                                        type: string
+                                      signerName:
+                                        type: string
+                                    type: object
                                   configMap:
                                     description: ConfigMapProjectionApplyConfiguration represents a
                                     properties:
@@ -2059,7 +2149,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.15.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -2350,6 +2440,14 @@ spec:
                                                   type: string
                                                 type: object
                                             type: object
+                                          matchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
+                                          mismatchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
                                           namespaceSelector:
                                             description: LabelSelectorApplyConfiguration represents an decl
                                             properties:
@@ -2412,6 +2510,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -2477,6 +2583,14 @@ spec:
                                                   type: string
                                                 type: object
                                             type: object
+                                          matchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
+                                          mismatchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
                                           namespaceSelector:
                                             description: LabelSelectorApplyConfiguration represents an decl
                                             properties:
@@ -2539,6 +2653,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -2711,6 +2833,13 @@ spec:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
                                         type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
+                                        type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
                                         properties:
@@ -2759,6 +2888,13 @@ spec:
                                           scheme:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
+                                        type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
                                         type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
@@ -2988,6 +3124,9 @@ spec:
                                     description: ResourceList is a set of (resource name, quantity)
                                     type: object
                                 type: object
+                              restartPolicy:
+                                description: ContainerRestartPolicy is the restart policy for a
+                                type: string
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents an de
                                 properties:
@@ -3339,6 +3478,13 @@ spec:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
                                         type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
+                                        type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
                                         properties:
@@ -3387,6 +3533,13 @@ spec:
                                           scheme:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
+                                        type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
                                         type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
@@ -3616,6 +3769,9 @@ spec:
                                     description: ResourceList is a set of (resource name, quantity)
                                     type: object
                                 type: object
+                              restartPolicy:
+                                description: ContainerRestartPolicy is the restart policy for a
+                                type: string
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents an de
                                 properties:
@@ -3972,6 +4128,13 @@ spec:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
                                         type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
+                                        type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
                                         properties:
@@ -4020,6 +4183,13 @@ spec:
                                           scheme:
                                             description: URIScheme identifies the scheme used for connectio
                                             type: string
+                                        type: object
+                                      sleep:
+                                        description: SleepActionApplyConfiguration represents an declar
+                                        properties:
+                                          seconds:
+                                            format: int64
+                                            type: integer
                                         type: object
                                       tcpSocket:
                                         description: TCPSocketActionApplyConfiguration represents an de
@@ -4249,6 +4419,9 @@ spec:
                                     description: ResourceList is a set of (resource name, quantity)
                                     type: object
                                 type: object
+                              restartPolicy:
+                                description: ContainerRestartPolicy is the restart policy for a
+                                type: string
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents an de
                                 properties:
@@ -4924,16 +5097,8 @@ spec:
                                                 type: string
                                             type: object
                                           resources:
-                                            description: 'ResourceRequirementsApplyConfiguration represents '
+                                            description: VolumeResourceRequirementsApplyConfiguration repre
                                             properties:
-                                              claims:
-                                                items:
-                                                  description: ResourceClaimApplyConfiguration represents an decl
-                                                  properties:
-                                                    name:
-                                                      type: string
-                                                  type: object
-                                                type: array
                                               limits:
                                                 additionalProperties:
                                                   anyOf:
@@ -4977,6 +5142,8 @@ spec:
                                                 type: object
                                             type: object
                                           storageClassName:
+                                            type: string
+                                          volumeAttributesClassName:
                                             type: string
                                           volumeMode:
                                             description: PersistentVolumeMode describes how a volume is int
@@ -5155,6 +5322,41 @@ spec:
                                     items:
                                       description: VolumeProjectionApplyConfiguration represents an d
                                       properties:
+                                        clusterTrustBundle:
+                                          description: ClusterTrustBundleProjectionApplyConfiguration rep
+                                          properties:
+                                            labelSelector:
+                                              description: LabelSelectorApplyConfiguration represents an decl
+                                              properties:
+                                                matchExpressions:
+                                                  items:
+                                                    description: LabelSelectorRequirementApplyConfiguration represe
+                                                    properties:
+                                                      key:
+                                                        type: string
+                                                      operator:
+                                                        description: 'A label selector operator is the set of operators '
+                                                        type: string
+                                                      values:
+                                                        items:
+                                                          type: string
+                                                        type: array
+                                                    type: object
+                                                  type: array
+                                                matchLabels:
+                                                  additionalProperties:
+                                                    type: string
+                                                  type: object
+                                              type: object
+                                            name:
+                                              type: string
+                                            optional:
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            signerName:
+                                              type: string
+                                          type: object
                                         configMap:
                                           description: ConfigMapProjectionApplyConfiguration represents a
                                           properties:
@@ -5738,6 +5940,14 @@ spec:
                                                   type: string
                                                 type: object
                                             type: object
+                                          matchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
+                                          mismatchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
                                           namespaceSelector:
                                             description: LabelSelectorApplyConfiguration represents an decl
                                             properties:
@@ -5800,6 +6010,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -5865,6 +6083,14 @@ spec:
                                                   type: string
                                                 type: object
                                             type: object
+                                          matchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
+                                          mismatchLabelKeys:
+                                            items:
+                                              type: string
+                                            type: array
                                           namespaceSelector:
                                             description: LabelSelectorApplyConfiguration represents an decl
                                             properties:
@@ -5927,6 +6153,14 @@ spec:
                                               type: string
                                             type: object
                                         type: object
+                                      matchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
+                                      mismatchLabelKeys:
+                                        items:
+                                          type: string
+                                        type: array
                                       namespaceSelector:
                                         description: LabelSelectorApplyConfiguration represents an decl
                                         properties:
@@ -6408,16 +6642,8 @@ spec:
                                                 type: string
                                             type: object
                                           resources:
-                                            description: 'ResourceRequirementsApplyConfiguration represents '
+                                            description: VolumeResourceRequirementsApplyConfiguration repre
                                             properties:
-                                              claims:
-                                                items:
-                                                  description: ResourceClaimApplyConfiguration represents an decl
-                                                  properties:
-                                                    name:
-                                                      type: string
-                                                  type: object
-                                                type: array
                                               limits:
                                                 additionalProperties:
                                                   anyOf:
@@ -6461,6 +6687,8 @@ spec:
                                                 type: object
                                             type: object
                                           storageClassName:
+                                            type: string
+                                          volumeAttributesClassName:
                                             type: string
                                           volumeMode:
                                             description: PersistentVolumeMode describes how a volume is int
@@ -6639,6 +6867,41 @@ spec:
                                     items:
                                       description: VolumeProjectionApplyConfiguration represents an d
                                       properties:
+                                        clusterTrustBundle:
+                                          description: ClusterTrustBundleProjectionApplyConfiguration rep
+                                          properties:
+                                            labelSelector:
+                                              description: LabelSelectorApplyConfiguration represents an decl
+                                              properties:
+                                                matchExpressions:
+                                                  items:
+                                                    description: LabelSelectorRequirementApplyConfiguration represe
+                                                    properties:
+                                                      key:
+                                                        type: string
+                                                      operator:
+                                                        description: 'A label selector operator is the set of operators '
+                                                        type: string
+                                                      values:
+                                                        items:
+                                                          type: string
+                                                        type: array
+                                                    type: object
+                                                  type: array
+                                                matchLabels:
+                                                  additionalProperties:
+                                                    type: string
+                                                  type: object
+                                              type: object
+                                            name:
+                                              type: string
+                                            optional:
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            signerName:
+                                              type: string
+                                          type: object
                                         configMap:
                                           description: ConfigMapProjectionApplyConfiguration represents a
                                           properties:
@@ -7129,16 +7392,8 @@ spec:
                                               type: string
                                           type: object
                                         resources:
-                                          description: 'ResourceRequirementsApplyConfiguration represents '
+                                          description: VolumeResourceRequirementsApplyConfiguration repre
                                           properties:
-                                            claims:
-                                              items:
-                                                description: ResourceClaimApplyConfiguration represents an decl
-                                                properties:
-                                                  name:
-                                                    type: string
-                                                type: object
-                                              type: array
                                             limits:
                                               additionalProperties:
                                                 anyOf:
@@ -7182,6 +7437,8 @@ spec:
                                               type: object
                                           type: object
                                         storageClassName:
+                                          type: string
+                                        volumeAttributesClassName:
                                           type: string
                                         volumeMode:
                                           description: PersistentVolumeMode describes how a volume is int
@@ -7358,6 +7615,41 @@ spec:
                                   items:
                                     description: VolumeProjectionApplyConfiguration represents an d
                                     properties:
+                                      clusterTrustBundle:
+                                        description: ClusterTrustBundleProjectionApplyConfiguration rep
+                                        properties:
+                                          labelSelector:
+                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            properties:
+                                              matchExpressions:
+                                                items:
+                                                  description: LabelSelectorRequirementApplyConfiguration represe
+                                                  properties:
+                                                    key:
+                                                      type: string
+                                                    operator:
+                                                      description: 'A label selector operator is the set of operators '
+                                                      type: string
+                                                    values:
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  type: object
+                                                type: array
+                                              matchLabels:
+                                                additionalProperties:
+                                                  type: string
+                                                type: object
+                                            type: object
+                                          name:
+                                            type: string
+                                          optional:
+                                            type: boolean
+                                          path:
+                                            type: string
+                                          signerName:
+                                            type: string
+                                        type: object
                                       configMap:
                                         description: ConfigMapProjectionApplyConfiguration represents a
                                         properties:
@@ -7661,16 +7953,8 @@ spec:
                                 type: string
                             type: object
                           resources:
-                            description: 'ResourceRequirementsApplyConfiguration represents '
+                            description: VolumeResourceRequirementsApplyConfiguration repre
                             properties:
-                              claims:
-                                items:
-                                  description: ResourceClaimApplyConfiguration represents an decl
-                                  properties:
-                                    name:
-                                      type: string
-                                  type: object
-                                type: array
                               limits:
                                 additionalProperties:
                                   anyOf:
@@ -7714,6 +7998,8 @@ spec:
                                 type: object
                             type: object
                           storageClassName:
+                            type: string
+                          volumeAttributesClassName:
                             type: string
                           volumeMode:
                             description: PersistentVolumeMode describes how a volume is int

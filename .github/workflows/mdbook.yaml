@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     name: Build book
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - run: make book
@@ -18,7 +18,7 @@ jobs:
         retention-days: 1
   publish:
     name: Publish book on GitHub Pages
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: build
     steps:
     - uses: actions/checkout@v4

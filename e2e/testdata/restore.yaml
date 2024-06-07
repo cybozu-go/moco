@@ -17,6 +17,8 @@ spec:
           value: minioadmin
         - name: AWS_SECRET_ACCESS_KEY
           value: minioadmin
+        - name: AWS_REGION
+          value: us-east-1
       bucketConfig:
         bucketName: moco
         endpointURL: http://minio.default.svc:9000
