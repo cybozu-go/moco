@@ -47,9 +47,9 @@ Likewise, MOCO configures [`rpl_semi_sync_master_wait_for_slave_count`](https://
 
 MOCO also disables [`relay_log_recovery`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery) because enabling it would drop the relay logs on replicas.
 
-`mysqld` always starts with `super_read_only=1` to prevent erroneous writes, and with `skip_slave_start` to prevent misconfigured replication.
+`mysqld` always starts with `super_read_only=1` to prevent erroneous writes, and with `skip_replica_start` to prevent misconfigured replication.
 
-[`moco-agent`][agent], a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues `RESET MASTER` to clear [executed GTID set](https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed).
+[`moco-agent`][agent], a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues `RESET MASTER | RESET BINARY LOGS AND GTIDS` to clear [executed GTID set](https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed).
 
 `moco-agent` also provides a readiness probe for `mysqld` container.  If a replica instance does not start replication threads or is too delayed to execute transactions, the container and the Pod will be determined as unready.
 
@@ -156,8 +156,8 @@ MOCO gathers the information from `kube-apiserver` and `mysqld` as follows:
 - Pod resources
     - If some of the Pods are missing, MOCO does nothing.
 - `mysqld`
-    - `SHOW SLAVE HOSTS` (on the primary)
-    - `SHOW SLAVE STATUS` (on the replicas)
+    - `SHOW REPLICAS` (on the primary)
+    - `SHOW REPLICA STATUS` (on the replicas)
     - Global variables such as `gtid_executed` or `super_read_only`
     - Result of CLONE from `performance_schema.clone_status` table
 
