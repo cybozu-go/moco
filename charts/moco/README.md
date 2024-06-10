@@ -40,8 +40,11 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 
 | Key                       | Type   | Default                                       | Description                                                      |
 | ------------------------- | ------ | --------------------------------------------- | ---------------------------------------------------------------- |
+| replicaCount              | number | `2`                                           | Number of controller replicas.                                   |
 | image.repository          | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.                                    |
+| image.pullPolicy          | string | `IfNotPresent`                                | MOCO image pulling policy.                                       |
 | image.tag                 | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                                           |
+| imagePullSecrets          | list   | `[]`                                          | Secrets for pulling MOCO image from private repository.          |
 | resources                 | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.                               |
 | crds.enabled              | bool   | `true`                                        | Install and update CRDs as part of the Helm chart.               |
 | extraArgs                 | list   | `[]`                                          | Additional command line flags to pass to moco-controller binary. |

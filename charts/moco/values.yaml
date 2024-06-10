@@ -1,10 +1,19 @@
+# replicaCount -- Number of controller replicas.
+replicaCount: 2
+
 image:
   # image.repository -- MOCO image repository to use.
   repository: ghcr.io/cybozu-go/moco
 
+  # image.pullPolicy -- MOCO image pulling policy.
+  pullPolicy: IfNotPresent
+
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
   tag:  # 0.20.2
+
+# imagePullSecrets -- Secrets for pulling MOCO image from private repository.
+imagePullSecrets: []
 
 # resources -- resources used by moco-controller.
 resources:
