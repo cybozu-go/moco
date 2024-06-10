@@ -203,8 +203,11 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 </code></pre>
 <h2 id="values"><a class="header" href="#values">Values</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td>replicaCount</td><td>number</td><td><code>2</code></td><td>Number of controller replicas.</td></tr>
 <tr><td>image.repository</td><td>string</td><td><code>"ghcr.io/cybozu-go/moco"</code></td><td>MOCO image repository to use.</td></tr>
+<tr><td>image.pullPolicy</td><td>string</td><td><code>IfNotPresent</code></td><td>MOCO image pulling policy.</td></tr>
 <tr><td>image.tag</td><td>string</td><td><code>{{ .Chart.AppVersion }}</code></td><td>MOCO image tag to use.</td></tr>
+<tr><td>imagePullSecrets</td><td>list</td><td><code>[]</code></td><td>Secrets for pulling MOCO image from private repository.</td></tr>
 <tr><td>resources</td><td>object</td><td><code>{"requests":{"cpu":"100m","memory":"20Mi"}}</code></td><td>resources used by moco-controller.</td></tr>
 <tr><td>crds.enabled</td><td>bool</td><td><code>true</code></td><td>Install and update CRDs as part of the Helm chart.</td></tr>
 <tr><td>extraArgs</td><td>list</td><td><code>[]</code></td><td>Additional command line flags to pass to moco-controller binary.</td></tr>
