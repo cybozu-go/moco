@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -76,7 +77,13 @@ var _ = Describe("Operator", func() {
 		opRe.(operator).db.MustExec(`DROP USER 'root'@'localhost'`)
 		opRe.(operator).db.MustExec(`DROP USER 'root'@'%'`)
 		opRe.(operator).db.MustExec(`FLUSH LOCAL PRIVILEGES`)
-		opRe.(operator).db.MustExec(`RESET MASTER`)
+
+		mysqlVersion := os.Getenv("MYSQL_VERSION")
+		if strings.HasPrefix(mysqlVersion, "8.4") {
+			opRe.(operator).db.MustExec(`RESET BINARY LOGS AND GTIDS`)
+		} else {
+			opRe.(operator).db.MustExec(`RESET MASTER`)
+		}
 		opRe.(operator).db.MustExec(`SET GLOBAL super_read_only=1`)
 
 		baseDir, err = os.MkdirTemp("", "")
