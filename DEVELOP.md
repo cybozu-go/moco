@@ -8,7 +8,7 @@
 - [Adding or dropping supported software versions](#adding-or-dropping-supported-software-versions)
 - [Updating moco-agent](#updating-moco-agent)
 - [Updating fluent-bit](#updating-fluent-bit)
-- [Updating mysqld_exporter](#updating-mysqld_exporter)
+- [Updating mysqld\_exporter](#updating-mysqld_exporter)
 
 ## Running tests
 
@@ -88,23 +88,23 @@ MySQL versions appear twice:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32", "8.0.33", "8.0.34", "8.0.35"]
+        mysql-version: ["8.0.35", "8.0.36", "8.0.37"]
 ...
   # Matrix tests for the latest MySQL version on different Kubernetes versions.
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.35"]
-        k8s-version: ["1.19.11", "1.20.7", "1.21.1"]
+        mysql-version: ["8.0.37"]
+        k8s-version: ["1.27.13", "1.28.9", "1.29.4"]
 ...
   # Matrix tests for different MySQL versions on the latest supported Kubernetes version.
   e2e-mysql:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.18", "8.0.25", "8.0.26", "8.0.27", "8.0.28", "8.0.30", "8.0.31", "8.0.32", "8.0.33", "8.0.34", "8.0.35"]
-        k8s-version: ["1.21.1"]
+        mysql-version: ["8.0.35", "8.0.36", "8.0.37"]
+        k8s-version: ["1.29.4"]
 ```
 
 ## Updating moco-agent

@@ -5,11 +5,51 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2024-06-11
+
+### Added
+- Add composite actions of e2e and dbtest [#652](https://github.com/cybozu-go/moco/pull/652)
+- Add mysql-admin port to the headless service [#658](https://github.com/cybozu-go/moco/pull/658)
+- feat(chart): add value to set a PriorityClass [#661](https://github.com/cybozu-go/moco/pull/661)
+- Add MySQL 8.0.36 container image [#667](https://github.com/cybozu-go/moco/pull/667)
+- Add MySQL 8.0.37 [#671](https://github.com/cybozu-go/moco/pull/671)
+- Add caution for updating chart to v0.11.x [#685](https://github.com/cybozu-go/moco/pull/685)
+- Build and release Moco controller/backup images for arm64 [#681](https://github.com/cybozu-go/moco/pull/681)
+- Add basic Helm chart values [#687](https://github.com/cybozu-go/moco/pull/687)
+- update dependency and add support mysql & k8s ver [#676](https://github.com/cybozu-go/moco/pull/676)
+
+### Fixed
+- Fix changed-files args [#653](https://github.com/cybozu-go/moco/pull/653)
+- fix changed-files action [#655](https://github.com/cybozu-go/moco/pull/655)
+- Fix specifying paths of files_ignore in ci-e2e workflow [#656](https://github.com/cybozu-go/moco/pull/656)
+- Fix init container arguments [#663](https://github.com/cybozu-go/moco/pull/663)
+- Fix up generated [#663](https://github.com/cybozu-go/moco/pull/663)
+- Fix generated code [#663](https://github.com/cybozu-go/moco/pull/663)
+- Fix weekly ci to use composite actions [#674](https://github.com/cybozu-go/moco/pull/674)
+
+### Changed
+- Bump chart version to 0.10.2 [#651](https://github.com/cybozu-go/moco/pull/651)
+- Use composite actions and changed-files action [#652](https://github.com/cybozu-go/moco/pull/652)
+- Bump google.golang.org/protobuf from 1.31.0 to 1.33.0 [#654](https://github.com/cybozu-go/moco/pull/654)
+- Use moco-agent localhost argument [#663](https://github.com/cybozu-go/moco/pull/663)
+- Don't break old moco-agent with new parameter [#663](https://github.com/cybozu-go/moco/pull/663)
+- Change name to agentUseLocalhost [#663](https://github.com/cybozu-go/moco/pull/663)
+- Bump golang.org/x/net from 0.18.0 to 0.23.0 [#663](https://github.com/cybozu-go/moco/pull/663)
+- Update mysql_exporter v0.15.1 [#666](https://github.com/cybozu-go/moco/pull/666)
+- Update fluent-bit v3.0.2 container image [#665](https://github.com/cybozu-go/moco/pull/665)
+- Use original parameter passing [#671](https://github.com/cybozu-go/moco/pull/671)
+- update version.go for new image [#669](https://github.com/cybozu-go/moco/pull/669)
+- Update mock-backup tools version [#672](https://github.com/cybozu-go/moco/pull/672)
+- Rebuild for eary version containers [#670](https://github.com/cybozu-go/moco/pull/670)
+- Option to to use localhost instead of pod name [#662](https://github.com/cybozu-go/moco/pull/662)
+- Prevent disabling of binlog [#678](https://github.com/cybozu-go/moco/pull/678)
+- Limit cluster name length [#679](https://github.com/cybozu-go/moco/pull/679)
+- Helm chart CRDs optional and not deleted on uninstall [#684](https://github.com/cybozu-go/moco/pull/684)
+
 ## [0.20.2] - 2024-03-08
 
 ### Fixed
 - Add / delimiter to the end of path in calcPrefix [#648](https://github.com/cybozu-go/moco/pull/648)
-
 
 ## [0.20.1] - 2024-01-24
 
@@ -566,7 +606,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.2...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/cybozu-go/moco/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/cybozu-go/moco/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/cybozu-go/moco/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/cybozu-go/moco/compare/v0.19.0...v0.20.0
