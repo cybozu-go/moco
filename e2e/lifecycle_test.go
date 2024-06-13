@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -284,20 +283,6 @@ var _ = Context("lifecycle", func() {
 
 	It("should delete clusters", func() {
 		kubectlSafe(nil, "delete", "-n", "foo", "mysqlclusters", "--all")
-
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "foo", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
+		verifyAllPodsDeleted("foo")
 	})
 })

@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -98,20 +96,6 @@ var _ = Context("failure", func() {
 
 	It("should delete clusters", func() {
 		kubectlSafe(nil, "delete", "-n", "failure", "mysqlclusters", "--all")
-
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "failure", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
+		verifyAllPodsDeleted("failure")
 	})
 })

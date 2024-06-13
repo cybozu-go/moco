@@ -138,14 +138,6 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 
 	It("should delete clusters", func() {
 		kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
-
-		Eventually(func(g Gomega) {
-			out, err := kubectl(nil, "get", "-n", "backup", "pod", "-o", "json")
-			g.Expect(err).NotTo(HaveOccurred())
-			pods := &corev1.PodList{}
-			err = json.Unmarshal(out, pods)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(len(pods.Items)).To(BeNumerically(">", 0), "wait until all Pods are deleted")
-		}).Should(Succeed())
+		verifyAllPodsDeleted("backup")
 	})
 })
