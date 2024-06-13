@@ -26,7 +26,7 @@ runs:
       run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
       working-directory: e2e
       shell: bash
-    - run: make test
+    - run: make test MYSQL_VERSION=${{ inputs.mysql-version }}
       working-directory: e2e
       shell: bash
     - run: make logs
