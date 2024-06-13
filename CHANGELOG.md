@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## [0.21.0] - 2024-06-13
+
+### Notable changed:
+Due to an update of the github.com/aws/aws-sdk-go-v2 library, users must specify the region of the bucket in their BackupPolicy if the bucketConfig.backendType is s3 or not specified. If the region is not specified, the backup/restore job will crash.
+ref: aws/aws-sdk-go-v2#2502
+
+### Added
+- Add mysql-admin port to the headless service [#658](https://github.com/cybozu-go/moco/pull/658)
+- Add option to to use localhost instead of pod name to CRD [#663](https://github.com/cybozu-go/moco/pull/663) (@vsliouniaev)
+- Add support for MySQL 8.0.36,8.0.37 and K8s 1.28,1.29 [#676](https://github.com/cybozu-go/moco/pull/676),[#667](https://github.com/cybozu-go/moco/pull/667),[#671](https://github.com/cybozu-go/moco/pull/671)
+- Add to prevent disabling of binlog in MySQL cnf generator [#678](https://github.com/cybozu-go/moco/pull/678)
+- Add check for limit cluster name length [#679](https://github.com/cybozu-go/moco/pull/679)
+- Add ARM64 processor adaptation [#681](https://github.com/cybozu-go/moco/pull/681) (@vholer)
+
+### Changed
+- Bump google.golang.org/protobuf from 1.31.0 to 1.33.0 [#654](https://github.com/cybozu-go/moco/pull/654)
+- Bump golang.org/x/net from 0.18.0 to 0.23.0 [#653](https://github.com/cybozu-go/moco/pull/653)
+- Bump fluent-bit 3.0.2 for MOCO [#665](https://github.com/cybozu-go/moco/pull/665)
+- Bump mysql_exporter v0.15.1 [#666](https://github.com/cybozu-go/moco/pull/666)
+- Bump moco-backup tools version [#672](https://github.com/cybozu-go/moco/pull/672)
+- Update go.mod for the latest moco-agent [#690](https://github.com/cybozu-go/moco/pull/690)
+
 
 ## [0.20.2] - 2024-03-08
 
@@ -566,7 +588,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.20.2...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/cybozu-go/moco/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/cybozu-go/moco/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/cybozu-go/moco/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/cybozu-go/moco/compare/v0.19.0...v0.20.0
