@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2024-06-14
 ### Caution
 This release introduces the `crds.enabled` parameter to the Helm Chart.
 
@@ -14,9 +15,10 @@ If you turn off this option when updating, the CRD will be removed, causing data
 ### Changed
 - chart: add value to set a PriorityClass [#661](https://github.com/cybozu-go/moco/pull/661)
 - Helm chart CRDs optional and not deleted on uninstall [#684](https://github.com/cybozu-go/moco/pull/684), [685](https://github.com/cybozu-go/moco/pull/685)
+- Add basic Helm chart values [#687](https://github.com/cybozu-go/moco/pull/687)
 
 ### Contributors
-- @fgeorgeanybox
+- @npdgm
 - @vholer
 
 ## [0.10.2] - 2024-03-08
@@ -159,7 +161,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.10.2...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.11.0...HEAD
+[0.11.0]: https://github.com/cybozu-go/moco/compare/chart-v0.10.2...chart-v0.11.0
 [0.10.2]: https://github.com/cybozu-go/moco/compare/chart-v0.10.1...chart-v0.10.2
 [0.10.1]: https://github.com/cybozu-go/moco/compare/chart-v0.10.0...chart-v0.10.1
 [0.10.0]: https://github.com/cybozu-go/moco/compare/chart-v0.9.0...chart-v0.10.0
