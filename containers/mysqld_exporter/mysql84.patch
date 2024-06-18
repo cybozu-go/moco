@@ -1,0 +1,63 @@
+patch for MySQL 8.4
+https://github.com/prometheus/mysqld_exporter/commit/f6a64d768c6d0e182ab70733c07f6d8781d4fa0c?diff=split&w=0
+
+diff --git a/collector/slave_hosts.go b/collector/slave_hosts.go
+index d473c3c..b95110e 100644
+--- a/collector/slave_hosts.go
++++ b/collector/slave_hosts.go
+@@ -31,7 +31,8 @@ const (
+ 	// timestamps. %s will be replaced by the database and table name.
+ 	// The second column allows gets the server timestamp at the exact same
+ 	// time the query is run.
+-	slaveHostsQuery = "SHOW SLAVE HOSTS"
++	slaveHostsQuery   = "SHOW SLAVE HOSTS"
++	showReplicasQuery = "SHOW REPLICAS"
+ )
+ 
+ // Metric descriptors.
+@@ -63,9 +64,15 @@ func (ScrapeSlaveHosts) Version() float64 {
+ 
+ // Scrape collects data from database connection and sends it over channel as prometheus metric.
+ func (ScrapeSlaveHosts) Scrape(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric, logger log.Logger) error {
+-	slaveHostsRows, err := db.QueryContext(ctx, slaveHostsQuery)
+-	if err != nil {
+-		return err
++	var (
++		slaveHostsRows *sql.Rows
++		err            error
++	)
++	// Try the both syntax for MySQL 8.0 and MySQL 8.4
++	if slaveHostsRows, err = db.QueryContext(ctx, slaveHostsQuery); err != nil {
++		if slaveHostsRows, err = db.QueryContext(ctx, showReplicasQuery); err != nil {
++			return err
++		}
+ 	}
+ 	defer slaveHostsRows.Close()
+ 
+diff --git a/collector/slave_status.go b/collector/slave_status.go
+index 36dda33..b798465 100644
+--- a/collector/slave_status.go
++++ b/collector/slave_status.go
+@@ -30,7 +30,7 @@ const (
+ 	slaveStatus = "slave_status"
+ )
+ 
+-var slaveStatusQueries = [2]string{"SHOW ALL SLAVES STATUS", "SHOW SLAVE STATUS"}
++var slaveStatusQueries = [3]string{"SHOW ALL SLAVES STATUS", "SHOW SLAVE STATUS", "SHOW REPLICA STATUS"}
+ var slaveStatusQuerySuffixes = [3]string{" NONBLOCKING", " NOLOCK", ""}
+ 
+ func columnIndex(slaveCols []string, colName string) int {
+@@ -113,7 +113,13 @@ func (ScrapeSlaveStatus) Scrape(ctx context.Context, db *sql.DB, ch chan<- prome
+ 		}
+ 
+ 		masterUUID := columnValue(scanArgs, slaveCols, "Master_UUID")
++		if masterUUID == "" {
++			masterUUID = columnValue(scanArgs, slaveCols, "Source_UUID")
++		}
+ 		masterHost := columnValue(scanArgs, slaveCols, "Master_Host")
++		if masterHost == "" {
++			masterHost = columnValue(scanArgs, slaveCols, "Source_Host")
++		}
+ 		channelName := columnValue(scanArgs, slaveCols, "Channel_Name")       // MySQL & Percona
+ 		connectionName := columnValue(scanArgs, slaveCols, "Connection_name") // MariaDB
+ 
