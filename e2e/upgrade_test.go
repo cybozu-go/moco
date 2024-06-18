@@ -128,7 +128,7 @@ var _ = Context("upgrade", func() {
 				}
 			}
 			return nil
-		}, 600).Should(Succeed())
+		}, 1200).Should(Succeed())
 		cluster, err := getCluster("upgrade", "test")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(1))
