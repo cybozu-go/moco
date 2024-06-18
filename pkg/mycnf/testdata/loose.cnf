@@ -47,7 +47,6 @@ log_slow_extra = ON
 long_query_time = 2
 loose_binlog_transaction_compression = ON
 loose_innodb_validate_tablespace_paths = ON
-loose_mysql_native_password = ON
 loose_replication_optimize_for_static_plugin_config = ON
 loose_replication_sender_observe_commit_only = OFF
 loose_temptable_use_mmap = ON

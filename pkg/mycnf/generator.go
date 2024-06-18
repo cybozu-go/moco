@@ -94,9 +94,6 @@ var DefaultMycnf = map[string]string{
 	// Disabled because of https://bugs.mysql.com/bug.php?id=104573
 	// The undo log truncate always fails on replica instances of `super_read_only = 1`.
 	"innodb_undo_log_truncate": "OFF",
-
-	// Disabled by default in MySQL 8.4
-	"loose_mysql_native_password": "ON",
 }
 
 // ConstMycnf is the mysqld configurations that MOCO applies forcibly.
