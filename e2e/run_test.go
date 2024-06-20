@@ -220,3 +220,21 @@ func verifyPVCSize(ns string, clusterName string) {
 		return nil
 	}).Should(Succeed())
 }
+
+// verifyAllPodsDeleted validates that the namespace has no pods.
+func verifyAllPodsDeleted(namespace string) {
+	Eventually(func() error {
+		out, err := kubectl(nil, "get", "-n", namespace, "pod", "-o", "json")
+		if err != nil {
+			return err
+		}
+		pods := &corev1.PodList{}
+		if err := json.Unmarshal(out, pods); err != nil {
+			return err
+		}
+		if len(pods.Items) > 0 {
+			return errors.New("wait until all Pods are deleted")
+		}
+		return nil
+	}).Should(Succeed())
+}

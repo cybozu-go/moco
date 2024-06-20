@@ -705,10 +705,14 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return fmt.Errorf("failed to get StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
 	}
 
+	replicas := cluster.Spec.Replicas
+	if cluster.Spec.Offline {
+		replicas = 0
+	}
 	sts := appsv1ac.StatefulSet(cluster.PrefixedName(), cluster.Namespace).
 		WithLabels(labelSet(cluster, false)).
 		WithSpec(appsv1ac.StatefulSetSpec().
-			WithReplicas(cluster.Spec.Replicas).
+			WithReplicas(replicas).
 			WithSelector(metav1ac.LabelSelector().
 				WithMatchLabels(labelSet(cluster, false))).
 			WithPodManagementPolicy(appsv1.ParallelPodManagement).
@@ -972,7 +976,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	pdb.Namespace = cluster.Namespace
 	pdb.Name = cluster.PrefixedName()
 
-	if cluster.Spec.Replicas < 3 {
+	if cluster.Spec.Offline || cluster.Spec.Replicas < 3 {
 		err := r.Delete(ctx, pdb)
 		if err == nil {
 			log.Info("removed pod disruption budget")

@@ -1717,6 +1717,45 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		}).Should(Succeed())
 	})
 
+	It("should scale down statefulset when offline", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			sts := &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != cluster.Spec.Replicas {
+				return fmt.Errorf("replica count should match cluster")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting cluster offline")
+		Eventually(func() error {
+			cluster2 := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), cluster2); err != nil {
+				return err
+			}
+			cluster2.Spec.Offline = true
+			return k8sClient.Update(ctx, cluster2)
+		}).Should(Succeed())
+
+		By("checking statefulset is scaled down")
+		Eventually(func() error {
+			sts := &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 0 {
+				return fmt.Errorf("replica count should be 0 for offline cluster")
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
 	It("should sets ConditionStatefulSetReady to be true when StatefulSet is ready", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
@@ -1754,7 +1793,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return fmt.Errorf("condition does not exists")
 			}
 			if conditionStatefulSetReady.Status != metav1.ConditionTrue {
-				return fmt.Errorf("condition is not false")
+				return fmt.Errorf("condition is not true")
 			}
 			return nil
 		}).Should(Succeed())

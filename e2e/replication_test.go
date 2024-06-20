@@ -347,35 +347,8 @@ var _ = Context("replication", func() {
 	It("should delete clusters", func() {
 		kubectlSafe(nil, "delete", "-n", "donor", "mysqlclusters", "--all")
 		kubectlSafe(nil, "delete", "-n", "repl", "mysqlclusters", "--all")
+		verifyAllPodsDeleted("donor")
+		verifyAllPodsDeleted("repl")
 
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "donor", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
-
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "repl", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
 	})
 })
