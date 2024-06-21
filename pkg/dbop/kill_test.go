@@ -54,7 +54,9 @@ var _ = Describe("kill", func() {
 		var procs2 []Process
 		err = op.(*operator).db.Select(&procs2, `SELECT ID, USER, HOST FROM information_schema.PROCESSLIST`)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(len(procs) - len(procs2)).To(Equal(1))
+		Eventually(func() int {
+			return len(procs) - len(procs2)
+		}).Should(BeNumerically("==", 1))
 
 		fooFound = false
 		for _, p := range procs2 {
