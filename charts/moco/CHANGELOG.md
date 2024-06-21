@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2024-06-21
+### Changed
+- Bump appVersion to 0.22.1 [#700](https://github.com/cybozu-go/moco/pull/700)
+
 ## [0.11.0] - 2024-06-14
 ### Caution
 This release introduces the `crds.enabled` parameter to the Helm Chart.
@@ -161,7 +165,8 @@ TEST SUITE: None
 
 This is the first release.
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.11.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/chart-v0.12.0...HEAD
+[0.12.0]: https://github.com/cybozu-go/moco/compare/chart-v0.11.0...chart-v0.12.0
 [0.11.0]: https://github.com/cybozu-go/moco/compare/chart-v0.10.2...chart-v0.11.0
 [0.10.2]: https://github.com/cybozu-go/moco/compare/chart-v0.10.1...chart-v0.10.2
 [0.10.1]: https://github.com/cybozu-go/moco/compare/chart-v0.10.0...chart-v0.10.1
