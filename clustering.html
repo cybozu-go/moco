@@ -224,8 +224,8 @@ Initially, <code>status.currentPrimaryIndex</code> is zero and therefore the ind
 <p>For semi-synchronous replication, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout"><code>rpl_semi_sync_master_timeout</code></a> long enough so that it never degrades to asynchronous replication.</p>
 <p>Likewise, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_for_slave_count"><code>rpl_semi_sync_master_wait_for_slave_count</code></a> to (<code>spec.replicas</code> - 1 / 2) to make sure that at least half of replica instances have the same commit as the primary.  e.g., If <code>spec.replicas</code> is 5, <code>rpl_semi_sync_master_wait_for_slave_count</code> will be set to 2.</p>
 <p>MOCO also disables <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery"><code>relay_log_recovery</code></a> because enabling it would drop the relay logs on replicas.</p>
-<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_slave_start</code> to prevent misconfigured replication.</p>
-<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
+<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_replica_start</code> to prevent misconfigured replication.</p>
+<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER | RESET BINARY LOGS AND GTIDS</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
 <p><code>moco-agent</code> also provides a readiness probe for <code>mysqld</code> container.  If a replica instance does not start replication threads or is too delayed to execute transactions, the container and the Pod will be determined as unready.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p>Currently, MOCO does not re-initialize data after the primary instance fails.</p>
@@ -334,8 +334,8 @@ It stops when MySQLCluster resource is deleted.</p>
 </li>
 <li><code>mysqld</code>
 <ul>
-<li><code>SHOW SLAVE HOSTS</code> (on the primary)</li>
-<li><code>SHOW SLAVE STATUS</code> (on the replicas)</li>
+<li><code>SHOW REPLICAS</code> (on the primary)</li>
+<li><code>SHOW REPLICA STATUS</code> (on the replicas)</li>
 <li>Global variables such as <code>gtid_executed</code> or <code>super_read_only</code></li>
 <li>Result of CLONE from <code>performance_schema.clone_status</code> table</li>
 </ul>

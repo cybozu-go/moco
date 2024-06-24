@@ -506,7 +506,7 @@ spec:
       containers:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.0
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -594,7 +594,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.35  # must be the same version as the donor
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.0  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -997,7 +997,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.0
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
@@ -1059,7 +1059,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.0
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
@@ -1072,17 +1072,17 @@ You can find it under <a href="https://github.com/cybozu-go/moco/tree/main/conta
 <li><code>sleep</code> command must exist in one of the <code>PATH</code> directories.</li>
 </ul>
 <h2 id="how-to-build-mysqld"><a class="header" href="#how-to-build-mysqld">How to build <code>mysqld</code></a></h2>
-<p>On Ubuntu 20.04, you can build the source code as follows:</p>
+<p>On Ubuntu 22.04, you can build the source code as follows:</p>
 <pre><code class="language-console">$ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
     cmake libncurses5-dev libjemalloc-dev libnuma-dev libaio-dev pkg-config
-$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
-$ tar -x -z -f mysql-boost-8.0.20.tar.gz
-$ cd mysql-8.0.20
+$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.0.tar.gz
+$ tar -x -z -f mysql-8.4.0.tar.gz
+$ cd mysql-8.4.0
 $ mkdir bld
 $ cd bld
 $ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
-    -DWITH_BOOST=$(ls -d ../boost/boost_*) -DWITH_NUMA=1 -DWITH_JEMALLOC=1
+    -DWITH_NUMA=1 -DWITH_JEMALLOC=1
 $ make -j $(nproc)
 $ make install
 </code></pre>
@@ -1185,7 +1185,7 @@ so users can notice anomalies by monitoring this metrics.</p>
       spec:
         containers:
         - name: mysqld
-          image: ghcr.io/cybozu-go/moco/mysql:8.0.30
+          image: ghcr.io/cybozu-go/moco/mysql:8.4.0
     volumeClaimTemplates:
     - metadata:
         name: mysql-data
@@ -1243,7 +1243,7 @@ mysqlcluster.moco.cybozu.com/test   True        True      1         3           
 </ul>
 <h2 id="multi-threaded-replication"><a class="header" href="#multi-threaded-replication">Multi-threaded replication</a></h2>
 <p><em>Status: not fixed as of MOCO v0.9.5</em></p>
-<p>If you use MOCO with MySQL version 8.0.25 or earlier, you should not configure the replicas with <code>slave_parallel_workers</code> &gt; 1.
+<p>If you use MOCO with MySQL version 8.0.25 or earlier, you should not configure the replicas with <code>replica_parallel_workers</code> &gt; 1.
 Multi-threaded replication will cause the replica to fail to resume after the crash.</p>
 <p>This issue is registered as <a href="https://github.com/cybozu-go/moco/issues/322">#322</a> and will be addressed at no distant date.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="custom-resources"><a class="header" href="#custom-resources">Custom resources</a></h1>
@@ -1947,8 +1947,8 @@ Initially, <code>status.currentPrimaryIndex</code> is zero and therefore the ind
 <p>For semi-synchronous replication, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout"><code>rpl_semi_sync_master_timeout</code></a> long enough so that it never degrades to asynchronous replication.</p>
 <p>Likewise, MOCO configures <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_for_slave_count"><code>rpl_semi_sync_master_wait_for_slave_count</code></a> to (<code>spec.replicas</code> - 1 / 2) to make sure that at least half of replica instances have the same commit as the primary.  e.g., If <code>spec.replicas</code> is 5, <code>rpl_semi_sync_master_wait_for_slave_count</code> will be set to 2.</p>
 <p>MOCO also disables <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery"><code>relay_log_recovery</code></a> because enabling it would drop the relay logs on replicas.</p>
-<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_slave_start</code> to prevent misconfigured replication.</p>
-<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
+<p><code>mysqld</code> always starts with <code>super_read_only=1</code> to prevent erroneous writes, and with <code>skip_replica_start</code> to prevent misconfigured replication.</p>
+<p><a href="https://github.com/cybozu-go/moco-agent"><code>moco-agent</code></a>, a sidecar container for MOCO, initializes MySQL users and plugins.  At the end of the initialization, it issues <code>RESET MASTER | RESET BINARY LOGS AND GTIDS</code> to clear <a href="https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html#sysvar_gtid_executed">executed GTID set</a>.</p>
 <p><code>moco-agent</code> also provides a readiness probe for <code>mysqld</code> container.  If a replica instance does not start replication threads or is too delayed to execute transactions, the container and the Pod will be determined as unready.</p>
 <h2 id="limitations-1"><a class="header" href="#limitations-1">Limitations</a></h2>
 <p>Currently, MOCO does not re-initialize data after the primary instance fails.</p>
@@ -2057,8 +2057,8 @@ It stops when MySQLCluster resource is deleted.</p>
 </li>
 <li><code>mysqld</code>
 <ul>
-<li><code>SHOW SLAVE HOSTS</code> (on the primary)</li>
-<li><code>SHOW SLAVE STATUS</code> (on the replicas)</li>
+<li><code>SHOW REPLICAS</code> (on the primary)</li>
+<li><code>SHOW REPLICA STATUS</code> (on the replicas)</li>
 <li>Global variables such as <code>gtid_executed</code> or <code>super_read_only</code></li>
 <li>Result of CLONE from <code>performance_schema.clone_status</code> table</li>
 </ul>
@@ -2258,7 +2258,7 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <p>MOCO then creates a tarball of the dump and puts it to an object storage bucket.</p>
 <p>To retrieve transactions since the last backup until now, <code>mysqlbinlog</code> is used with these flags:</p>
 <ul>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-master"><code>--read-from-remote-master=BINLOG-DUMP-GTIDS</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-source"><code>--read-from-remote-source=BINLOG-DUMP-GTIDS</code></a></li>
 <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_exclude-gtids"><code>--exclude-gtids=&lt;the GTID of the last backup&gt;</code></a></li>
 <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_to-last-log"><code>--to-last-log</code></a></li>
 </ul>
@@ -2269,7 +2269,7 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <li>The time spent on the backup</li>
 <li>The ordinal of the backup source instance</li>
 <li><code>server_uuid</code> of the instance (to check whether the instance was re-initialized or not)</li>
-<li>The binlog filename in <code>SHOW MASTER STATUS</code> output.</li>
+<li>The binlog filename in <code>SHOW MASTER STATUS | SHOW BINARY LOG STATUS</code> output.</li>
 <li>The size of the tarball of the dumped files</li>
 <li>The size of the tarball of the binlog files</li>
 <li>The maximum usage of the working directory</li>

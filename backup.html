@@ -288,7 +288,7 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <p>MOCO then creates a tarball of the dump and puts it to an object storage bucket.</p>
 <p>To retrieve transactions since the last backup until now, <code>mysqlbinlog</code> is used with these flags:</p>
 <ul>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-master"><code>--read-from-remote-master=BINLOG-DUMP-GTIDS</code></a></li>
+<li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-source"><code>--read-from-remote-source=BINLOG-DUMP-GTIDS</code></a></li>
 <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_exclude-gtids"><code>--exclude-gtids=&lt;the GTID of the last backup&gt;</code></a></li>
 <li><a href="https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_to-last-log"><code>--to-last-log</code></a></li>
 </ul>
@@ -299,7 +299,7 @@ The dump is compressed with <a href="https://facebook.github.io/zstd/">zstd comp
 <li>The time spent on the backup</li>
 <li>The ordinal of the backup source instance</li>
 <li><code>server_uuid</code> of the instance (to check whether the instance was re-initialized or not)</li>
-<li>The binlog filename in <code>SHOW MASTER STATUS</code> output.</li>
+<li>The binlog filename in <code>SHOW MASTER STATUS | SHOW BINARY LOG STATUS</code> output.</li>
 <li>The size of the tarball of the dumped files</li>
 <li>The size of the tarball of the binlog files</li>
 <li>The maximum usage of the working directory</li>
