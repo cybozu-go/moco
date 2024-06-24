@@ -127,7 +127,7 @@ MOCO then creates a tarball of the dump and puts it to an object storage bucket.
 
 To retrieve transactions since the last backup until now, `mysqlbinlog` is used with these flags:
 
-- [`--read-from-remote-master=BINLOG-DUMP-GTIDS`](https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-master)
+- [`--read-from-remote-source=BINLOG-DUMP-GTIDS`](https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_read-from-remote-source)
 - [`--exclude-gtids=<the GTID of the last backup>`](https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_exclude-gtids)
 - [`--to-last-log`](https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_to-last-log)
 
@@ -139,7 +139,7 @@ Finally, the Job updates MySQLCluster status field with the following informatio
 - The time spent on the backup
 - The ordinal of the backup source instance
 - `server_uuid` of the instance (to check whether the instance was re-initialized or not)
-- The binlog filename in `SHOW MASTER STATUS` output.
+- The binlog filename in `SHOW MASTER STATUS | SHOW BINARY LOG STATUS` output.
 - The size of the tarball of the dumped files
 - The size of the tarball of the binlog files
 - The maximum usage of the working directory

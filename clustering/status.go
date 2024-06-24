@@ -377,7 +377,7 @@ func isHealthy(ss *StatusSet) bool {
 		if ist.ReplicaStatus == nil {
 			return false
 		}
-		if ist.ReplicaStatus.MasterHost != primaryHostname {
+		if ist.ReplicaStatus.SourceHost != primaryHostname {
 			return false
 		}
 		ss.Candidates = append(ss.Candidates, i)
@@ -481,7 +481,7 @@ func isDegraded(ss *StatusSet) bool {
 		if ist.ReplicaStatus == nil {
 			continue
 		}
-		if ist.ReplicaStatus.MasterHost != primaryHostname {
+		if ist.ReplicaStatus.SourceHost != primaryHostname {
 			continue
 		}
 		if ist.IsErrant {

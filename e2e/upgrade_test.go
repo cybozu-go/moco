@@ -19,8 +19,8 @@ import (
 var upgradeYAML string
 
 const (
-	mysqlVersionOld = "8.0.18"
-	mysqlVersionNew = "8.0.25"
+	mysqlVersionOld = "8.0.28"
+	mysqlVersionNew = "8.4.0"
 )
 
 var _ = Context("upgrade", func() {
@@ -128,7 +128,7 @@ var _ = Context("upgrade", func() {
 				}
 			}
 			return nil
-		}, 600).Should(Succeed())
+		}, 1200).Should(Succeed())
 		cluster, err := getCluster("upgrade", "test")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cluster.Status.CurrentPrimaryIndex).To(Equal(1))

@@ -427,7 +427,7 @@ func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *S
 		User:     string(secret.Data[constants.CloneSourceUserKey]),
 		Password: string(secret.Data[constants.CloneSourcePasswordKey]),
 	}
-	if pst.ReplicaStatus == nil || pst.ReplicaStatus.SlaveIORunning != "Yes" || pst.ReplicaStatus.MasterHost != ai.Host {
+	if pst.ReplicaStatus == nil || pst.ReplicaStatus.ReplicaIORunning != "Yes" || pst.ReplicaStatus.SourceHost != ai.Host {
 		redo = true
 		log.Info("start replication", "instance", ss.Primary, "semisync", false)
 		if err := op.ConfigureReplica(ctx, ai, false); err != nil {
@@ -443,7 +443,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	op := ss.DBOps[ss.Primary]
 
 	// wait for all retrieved transactions to be executed if this used to be an intermediate replica
-	if pst.ReplicaStatus != nil && pst.ReplicaStatus.SlaveIORunning == "Yes" {
+	if pst.ReplicaStatus != nil && pst.ReplicaStatus.ReplicaIORunning == "Yes" {
 		redo = true
 		log.Info("stop replica IO thread", "instance", ss.Primary)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
@@ -484,7 +484,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		if st.ReplicaStatus == nil {
 			return
 		}
-		if st.ReplicaStatus.SlaveIORunning != "Yes" {
+		if st.ReplicaStatus.ReplicaIORunning != "Yes" {
 			return
 		}
 		log.Info("stop replica IO thread", "instance", index)
@@ -567,7 +567,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		Password: ss.Password.Replicator(),
 	}
 	semisync := ss.Cluster.Spec.ReplicationSourceSecretName == nil
-	if st.ReplicaStatus == nil || st.ReplicaStatus.SlaveIORunning != "Yes" || st.ReplicaStatus.MasterHost != ai.Host || st.GlobalVariables.SemiSyncSlaveEnabled != semisync {
+	if st.ReplicaStatus == nil || st.ReplicaStatus.ReplicaIORunning != "Yes" || st.ReplicaStatus.SourceHost != ai.Host || st.GlobalVariables.SemiSyncSlaveEnabled != semisync {
 		redo = true
 		log.Info("start replication", "instance", index, "semisync", semisync)
 		if err := op.ConfigureReplica(ctx, ai, semisync); err != nil {

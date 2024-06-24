@@ -92,7 +92,7 @@ var _ = Describe("replication", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = ops[1].WaitForGTID(ctx, st0.GlobalVariables.ExecutedGTID, 1)
 		Expect(err).To(MatchError(ErrTimeout))
-		_, err = ops[1].db.Exec(`START SLAVE`)
+		_, err = ops[1].db.Exec(`START REPLICA`)
 		Expect(err).NotTo(HaveOccurred())
 		err = ops[1].WaitForGTID(ctx, st0.GlobalVariables.ExecutedGTID, 0)
 		Expect(err).NotTo(HaveOccurred())

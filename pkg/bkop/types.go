@@ -9,7 +9,7 @@ type ServerStatus struct {
 	CurrentBinlog string
 }
 
-type showMasterStatus struct {
+type showBinaryLogStatus struct {
 	File            string `db:"File"`
 	Position        int64  `db:"Position"`
 	BinlogDoDB      string `db:"Binlog_Do_DB"`

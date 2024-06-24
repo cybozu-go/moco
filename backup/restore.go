@@ -123,7 +123,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 		st := &bkop.ServerStatus{}
 		if err := op.GetServerStatus(ctx, st); err != nil {
 			rm.log.Error(err, "failed to get server status")
-			// SHOW MASTER STATUS fails due to the insufficient privileges,
+			// SHOW MASTER STATUS | SHOW BINARY LOG STATUS fails due to the insufficient privileges,
 			// if this restore process connects a target database before moco-agent grants privileges to moco-admin.
 			// In this case, the restore process panics and retries from the beginning.
 			panic(ErrBadConnection)

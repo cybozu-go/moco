@@ -442,7 +442,7 @@ var _ = Describe("manager", func() {
 			Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
 			Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
 			Expect(st.ReplicaStatus).NotTo(BeNil())
-			Expect(st.ReplicaStatus.SlaveIORunning).To(Equal("Yes"))
+			Expect(st.ReplicaStatus.ReplicaIORunning).To(Equal("Yes"))
 		}
 
 		Expect(of.getKillConnectionsCount(cluster.PodHostname(0))).To(Equal(0)) // connection should not be killed
@@ -537,9 +537,9 @@ var _ = Describe("manager", func() {
 			Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
 			Expect(st.ReplicaStatus).NotTo(BeNil())
 			if i == newPrimary {
-				Expect(st.ReplicaStatus.MasterHost).To(Equal("external"))
+				Expect(st.ReplicaStatus.SourceHost).To(Equal("external"))
 			} else {
-				Expect(st.ReplicaStatus.MasterHost).To(Equal(cluster.PodHostname(newPrimary)))
+				Expect(st.ReplicaStatus.SourceHost).To(Equal(cluster.PodHostname(newPrimary)))
 			}
 		}
 
@@ -597,7 +597,7 @@ var _ = Describe("manager", func() {
 				Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
 				Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeTrue())
 				Expect(st.ReplicaStatus).NotTo(BeNil())
-				Expect(st.ReplicaStatus.MasterHost).To(Equal(cluster.PodHostname(newPrimary)))
+				Expect(st.ReplicaStatus.SourceHost).To(Equal(cluster.PodHostname(newPrimary)))
 			}
 		}
 	})
@@ -856,7 +856,7 @@ var _ = Describe("manager", func() {
 		st1 := of.getInstanceStatus(cluster.PodHostname(1))
 		Expect(st1).NotTo(BeNil())
 		if st1.ReplicaHosts != nil {
-			Expect(st1.ReplicaStatus.SlaveIORunning).NotTo(Equal("Yes"))
+			Expect(st1.ReplicaStatus.ReplicaIORunning).NotTo(Equal("Yes"))
 		}
 
 		for i := 0; i < 5; i++ {

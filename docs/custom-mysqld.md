@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.0.35
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.0
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.
@@ -29,19 +29,19 @@ You should keep the following points:
 
 ## How to build `mysqld`
 
-On Ubuntu 20.04, you can build the source code as follows:
+On Ubuntu 22.04, you can build the source code as follows:
 
 ```console
 $ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
     cmake libncurses5-dev libjemalloc-dev libnuma-dev libaio-dev pkg-config
-$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
-$ tar -x -z -f mysql-boost-8.0.20.tar.gz
-$ cd mysql-8.0.20
+$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.0.tar.gz
+$ tar -x -z -f mysql-8.4.0.tar.gz
+$ cd mysql-8.4.0
 $ mkdir bld
 $ cd bld
 $ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
-    -DWITH_BOOST=$(ls -d ../boost/boost_*) -DWITH_NUMA=1 -DWITH_JEMALLOC=1
+    -DWITH_NUMA=1 -DWITH_JEMALLOC=1
 $ make -j $(nproc)
 $ make install
 ```

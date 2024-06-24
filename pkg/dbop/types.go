@@ -41,13 +41,13 @@ type GlobalVariables struct {
 	SemiSyncSlaveEnabled  bool   `db:"@@rpl_semi_sync_slave_enabled"`
 }
 
-// ReplicaHost defines the columns from `SHOW SLAVE HOSTS`
+// ReplicaHost defines the columns from `SHOW REPLICAS`
 type ReplicaHost struct {
-	ServerID    int32  `db:"Server_id"`
+	ServerID    int32  `db:"Server_Id"`
 	Host        string `db:"Host"`
 	Port        int    `db:"Port"`
-	SourceID    int32  `db:"Master_id"`
-	ReplicaUUID string `db:"Slave_UUID"`
+	SourceID    int32  `db:"Source_Id"`
+	ReplicaUUID string `db:"Replica_UUID"`
 
 	// the following fields don't appear normally
 	User     string `db:"User"`
@@ -56,26 +56,26 @@ type ReplicaHost struct {
 
 // ReplicaStatus defines the observed state of a replica
 type ReplicaStatus struct {
-	LastIoErrno      int    `db:"Last_IO_Errno"`
-	LastIoError      string `db:"Last_IO_Error"`
-	LastSQLErrno     int    `db:"Last_SQL_Errno"`
-	LastSQLError     string `db:"Last_SQL_Error"`
-	MasterHost       string `db:"Master_Host"`
-	RetrievedGtidSet string `db:"Retrieved_Gtid_Set"`
-	ExecutedGtidSet  string `db:"Executed_Gtid_Set"`
-	SlaveIORunning   string `db:"Slave_IO_Running"`
-	SlaveSQLRunning  string `db:"Slave_SQL_Running"`
+	LastIoErrno       int    `db:"Last_IO_Errno"`
+	LastIoError       string `db:"Last_IO_Error"`
+	LastSQLErrno      int    `db:"Last_SQL_Errno"`
+	LastSQLError      string `db:"Last_SQL_Error"`
+	SourceHost        string `db:"Source_Host"`
+	RetrievedGtidSet  string `db:"Retrieved_Gtid_Set"`
+	ExecutedGtidSet   string `db:"Executed_Gtid_Set"`
+	ReplicaIORunning  string `db:"Replica_IO_Running"`
+	ReplicaSQLRunning string `db:"Replica_SQL_Running"`
 
 	// All of variables from here are NOT used in MOCO's reconcile
-	SlaveIOState              string        `db:"Slave_IO_State"`
-	MasterUser                string        `db:"Master_User"`
-	MasterPort                int           `db:"Master_Port"`
+	ReplicaIOState            string        `db:"Replica_IO_State"`
+	SourceUser                string        `db:"Source_User"`
+	SourcePort                int           `db:"Source_Port"`
 	ConnectRetry              int           `db:"Connect_Retry"`
-	MasterLogFile             string        `db:"Master_Log_File"`
-	ReadMasterLogPos          int           `db:"Read_Master_Log_Pos"`
+	SourceLogFile             string        `db:"Source_Log_File"`
+	ReadSourceLogPos          int           `db:"Read_Source_Log_Pos"`
 	RelayLogFile              string        `db:"Relay_Log_File"`
 	RelayLogPos               int           `db:"Relay_Log_Pos"`
-	RelayMasterLogFile        string        `db:"Relay_Master_Log_File"`
+	RelaySourceLogFile        string        `db:"Relay_Source_Log_File"`
 	ReplicateDoDB             string        `db:"Replicate_Do_DB"`
 	ReplicateIgnoreDB         string        `db:"Replicate_Ignore_DB"`
 	ReplicateDoTable          string        `db:"Replicate_Do_Table"`
@@ -85,38 +85,38 @@ type ReplicaStatus struct {
 	LastErrno                 int           `db:"Last_Errno"`
 	LastError                 string        `db:"Last_Error"`
 	SkipCounter               int           `db:"Skip_Counter"`
-	ExecMasterLogPos          int           `db:"Exec_Master_Log_Pos"`
+	ExecSourceLogPos          int           `db:"Exec_Source_Log_Pos"`
 	RelayLogSpace             int           `db:"Relay_Log_Space"`
 	UntilCondition            string        `db:"Until_Condition"`
 	UntilLogFile              string        `db:"Until_Log_File"`
 	UntilLogPos               int           `db:"Until_Log_Pos"`
-	MasterSSLAllowed          string        `db:"Master_SSL_Allowed"`
-	MasterSSLCAFile           string        `db:"Master_SSL_CA_File"`
-	MasterSSLCAPath           string        `db:"Master_SSL_CA_Path"`
-	MasterSSLCert             string        `db:"Master_SSL_Cert"`
-	MasterSSLCipher           string        `db:"Master_SSL_Cipher"`
-	MasterSSLKey              string        `db:"Master_SSL_Key"`
-	SecondsBehindMaster       sql.NullInt64 `db:"Seconds_Behind_Master"`
-	MasterSSLVerifyServerCert string        `db:"Master_SSL_Verify_Server_Cert"`
+	SourceSSLAllowed          string        `db:"Source_SSL_Allowed"`
+	SourceSSLCAFile           string        `db:"Source_SSL_CA_File"`
+	SourceSSLCAPath           string        `db:"Source_SSL_CA_Path"`
+	SourceSSLCert             string        `db:"Source_SSL_Cert"`
+	SourceSSLCipher           string        `db:"Source_SSL_Cipher"`
+	SourceSSLKey              string        `db:"Source_SSL_Key"`
+	SecondsBehindSource       sql.NullInt64 `db:"Seconds_Behind_Source"`
+	SourceSSLVerifyServerCert string        `db:"Source_SSL_Verify_Server_Cert"`
 	ReplicateIgnoreServerIds  string        `db:"Replicate_Ignore_Server_Ids"`
-	MasterServerID            int           `db:"Master_Server_Id"`
-	MasterUUID                string        `db:"Master_UUID"`
-	MasterInfoFile            string        `db:"Master_Info_File"`
+	SourceServerID            int           `db:"Source_Server_Id"`
+	SourceUUID                string        `db:"Source_UUID"`
+	SourceInfoFile            string        `db:"Source_Info_File"`
 	SQLDelay                  int           `db:"SQL_Delay"`
 	SQLRemainingDelay         sql.NullInt64 `db:"SQL_Remaining_Delay"`
-	SlaveSQLRunningState      string        `db:"Slave_SQL_Running_State"`
-	MasterRetryCount          int           `db:"Master_Retry_Count"`
-	MasterBind                string        `db:"Master_Bind"`
+	ReplicaSQLRunningState    string        `db:"Replica_SQL_Running_State"`
+	SourceRetryCount          int           `db:"Source_Retry_Count"`
+	SourceBind                string        `db:"Source_Bind"`
 	LastIOErrorTimestamp      string        `db:"Last_IO_Error_Timestamp"`
 	LastSQLErrorTimestamp     string        `db:"Last_SQL_Error_Timestamp"`
-	MasterSSLCrl              string        `db:"Master_SSL_Crl"`
-	MasterSSLCrlpath          string        `db:"Master_SSL_Crlpath"`
+	SourceSSLCrl              string        `db:"Source_SSL_Crl"`
+	SourceSSLCrlpath          string        `db:"Source_SSL_Crlpath"`
 	AutoPosition              string        `db:"Auto_Position"`
 	ReplicateRewriteDB        string        `db:"Replicate_Rewrite_DB"`
 	ChannelName               string        `db:"Channel_Name"`
-	MasterTLSVersion          string        `db:"Master_TLS_Version"`
-	Masterpublickeypath       string        `db:"Master_public_key_path"`
-	Getmasterpublickey        string        `db:"Get_master_public_key"`
+	SourceTLSVersion          string        `db:"Source_TLS_Version"`
+	Sourcepublickeypath       string        `db:"Source_public_key_path"`
+	GetSourcepublickey        string        `db:"Get_Source_public_key"`
 	NetworkNamespace          string        `db:"Network_Namespace"`
 }
 
@@ -124,7 +124,7 @@ func (rs *ReplicaStatus) IsRunning() bool {
 	if rs == nil {
 		return false
 	}
-	return rs.SlaveIORunning == "Yes" && rs.SlaveSQLRunning == "Yes"
+	return rs.ReplicaIORunning == "Yes" && rs.ReplicaSQLRunning == "Yes"
 }
 
 // CloneStatus defines the observed clone status of a MySQL instance
