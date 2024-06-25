@@ -4,14 +4,27 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
-## [0.22.1] - 2024-06-21
+
+## [0.23.1] - 2024-06-25
+
+### ⚠️ Breaking Changes
+ - Support MySQL 8.4.0 [#686](https://github.com/cybozu-go/moco/issues/686)
+   - With MySQL 8.4 support, MOCO no longer runs on MySQL 8.0.22 or earlier
+
+### ⚠️ End support for older versions
+ - MySQL versions supported after this release are 8.0.28, 8.0.36, 8.0.37 and 8.4.0
 
 ## Added
+ - Add kubectl moco stop/start clustering description [#649](https://github.com/cybozu-go/moco/pull/649)
+
  - MySQLClusters can now be taken offline without deleting data [#659](https://github.com/cybozu-go/moco/issues/659)
    - Our thanks to [@vsliouniaev](https://github.com/vsliouniaev) for the contribution
 
  - mysqld_exporter now supports MySQL 8.4 [#686](https://github.com/cybozu-go/moco/issues/686)
-   - MOCO will support MySQL 8.4 from the next version
+
+## [0.22.1] - 2024-06-21
+
+This release was canceled due to an operational error.
 
 ## [0.21.1] - 2024-06-13
 
@@ -602,8 +615,9 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.22.1...HEAD
-[0.22.1]: https://github.com/cybozu-go/moco/compare/v0.21.2...v0.22.1
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.23.1...HEAD
+[0.23.1]: https://github.com/cybozu-go/moco/compare/v0.21.1...v0.23.1
+[0.22.1]: https://github.com/cybozu-go/moco/compare/v0.21.1...v0.22.1
 [0.21.1]: https://github.com/cybozu-go/moco/compare/v0.20.2...v0.21.1
 [0.20.2]: https://github.com/cybozu-go/moco/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/cybozu-go/moco/compare/v0.20.0...v0.20.1
