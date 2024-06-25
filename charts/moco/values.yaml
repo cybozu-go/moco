@@ -10,7 +10,7 @@ image:
 
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
-  tag:  # 0.22.1
+  tag:  # 0.23.1
 
 # imagePullSecrets -- Secrets for pulling MOCO image from private repository.
 imagePullSecrets: []
