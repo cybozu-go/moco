@@ -34,17 +34,23 @@ It should look like:
 
     ```console
     # Set VERSION and confirm it. It should not have "v" prefix.
-    $ VERSION=1.2.3
+    # Patch version starts with 0
+    $ VERSION=x.y.z
     $ echo $VERSION
     ```
 
 2. Make a new branch from the latest `main` with `git neco dev bump-v$VERSION`.
+
+    ```console
+    $ git neco dev "bump-v$VERSION"
+    ```
+
 3. Update version strings in `kustomization.yaml` and `version.go`.
 4. Edit `CHANGELOG.md` for the new version ([example][]).
 5. Commit the change and create a pull request:
 
     ```console
-    $ git commit -a -m "Bump version to $VERSION"
+    $ git commit -a -m "Bump version to v$VERSION"
     $ git neco review
     ```
 
@@ -53,7 +59,7 @@ It should look like:
 
     ```console
     # Set VERSION again.
-    $ VERSION=1.2.3
+    $ VERSION=x.y.z
     $ echo $VERSION
 
     $ git checkout main
@@ -78,12 +84,17 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 
     ```console
     # Set variables. They should not have "v" prefix.
-    $ APPVERSION=1.2.3 # MOCO version
-    $ CHARTVERSION=4.5.6
+    $ APPVERSION=x.y.z # MOCO version
+    $ CHARTVERSION=a.b.c
     $ echo $APPVERSION $CHARTVERSION
     ```
 
 2. Make a new branch from the latest `main` with `git neco dev bump-chart-v$CHARTVERSION`.
+
+    ```console
+    $ git neco dev "bump-chart-v$VERSION"
+    ```
+
 3. Update version strings:
 
     ```console
@@ -96,7 +107,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 5. Commit the change and create a pull request:
 
     ```console
-    $ git commit -a -m "Bump chart version to $CHARTVERSION"
+    $ git commit -a -m "Bump chart version to v$CHARTVERSION"
     $ git neco review
     ```
 
@@ -105,7 +116,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 
     ```console
     # Set CHARTVERSION again.
-    $ CHARTVERSION=4.5.6
+    $ CHARTVERSION=a.b.c
     $ echo $CHARTVERSION
 
     $ git checkout main
