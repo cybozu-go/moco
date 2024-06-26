@@ -34,7 +34,7 @@ ref: aws/aws-sdk-go-v2#2502
 
 ### Added
 - Add mysql-admin port to the headless service [#658](https://github.com/cybozu-go/moco/pull/658)
-- Add option to to use localhost instead of pod name to CRD [#663](https://github.com/cybozu-go/moco/pull/663) (@vsliouniaev)
+- Add option to to use localhost instead of pod name to CRD [#662](https://github.com/cybozu-go/moco/pull/662) (@vsliouniaev)
 - Add support for MySQL 8.0.36,8.0.37 and K8s 1.28,1.29 [#676](https://github.com/cybozu-go/moco/pull/676),[#667](https://github.com/cybozu-go/moco/pull/667),[#671](https://github.com/cybozu-go/moco/pull/671)
 - Add to prevent disabling of binlog in MySQL cnf generator [#678](https://github.com/cybozu-go/moco/pull/678)
 - Add check for limit cluster name length [#679](https://github.com/cybozu-go/moco/pull/679)
