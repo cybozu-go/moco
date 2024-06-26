@@ -72,10 +72,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	if r.isStatefulSetRolloutComplete(sts) {
-		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
-	}
-
 	ready, err := r.isRolloutReady(ctx, cluster, sts)
 	if err != nil {
 		log.Error(err, "failed to check if rollout is ready")
@@ -138,31 +134,9 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (bool, error) {
 	log := crlog.FromContext(ctx)
 
-	if !r.isMySQLClusterHealthy(cluster) {
-		log.Info("MySQLCluster is not healthy", "name", cluster.Name, "namespace", cluster.Namespace)
-		return false, nil
-	}
-
-	ready, err := r.areAllChildPodsRolloutReady(ctx, sts)
+	podList, err := r.getSortedPodList(ctx, sts)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if all child pods are ready: %w", err)
-	}
-
-	return ready, nil
-}
-
-func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context.Context, sts *appsv1.StatefulSet) (bool, error) {
-	log := crlog.FromContext(ctx)
-
-	podList := &corev1.PodList{}
-	listOpts := []client.ListOption{
-		client.InNamespace(sts.Namespace),
-		client.MatchingLabels(sts.Spec.Selector.MatchLabels),
-	}
-
-	err := r.Client.List(ctx, podList, listOpts...)
-	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get pod list: %w", err)
 	}
 
 	var replicas int32
@@ -177,28 +151,84 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 		return false, nil
 	}
 
+	nextRolloutTarget := r.nextRolloutTargetIndex(sts)
+	if nextRolloutTarget < 0 {
+		return false, nil
+	}
+
+	// If not all Pods are ready, the MySQLCluster becomes Unhealthy.
+	// Even if the MySQLCluster is not healthy, the rollout continues if the rollout target Pod is not ready.
+	// This is because there is an expectation that restarting the Not Ready Pod might improve its state.
+	if podutils.IsPodReady(&podList.Items[nextRolloutTarget]) && !r.isMySQLClusterHealthy(cluster) {
+		log.Info("MySQLCluster is not healthy", "name", cluster.Name, "namespace", cluster.Namespace)
+		return false, nil
+	}
+
+	ready, err := r.areAllChildPodsRolloutReady(ctx, sts, podList)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if all child pods are ready: %w", err)
+	}
+
+	return ready, nil
+}
+
+// getSortedPodList returns a sorted child pod list.
+// The list is sorted by pod name with ascending order.
+func (r *StatefulSetPartitionReconciler) getSortedPodList(ctx context.Context, sts *appsv1.StatefulSet) (*corev1.PodList, error) {
+	podList := &corev1.PodList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(sts.Namespace),
+		client.MatchingLabels(sts.Spec.Selector.MatchLabels),
+	}
+
+	err := r.Client.List(ctx, podList, listOpts...)
+	if err != nil {
+		return nil, err
+	}
+
 	sort.Slice(podList.Items, func(i, j int) bool {
 		return podList.Items[i].Name < podList.Items[j].Name
 	})
 
-	lastIndex := len(podList.Items) - 1
-	latestRevision := podList.Items[lastIndex].Labels[appsv1.ControllerRevisionHashLabelKey]
+	return podList, nil
+}
+
+func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context.Context, sts *appsv1.StatefulSet, sortedPodList *corev1.PodList) (bool, error) {
+	log := crlog.FromContext(ctx)
+
+	lastIndex := len(sortedPodList.Items) - 1
+	latestRevision := sortedPodList.Items[lastIndex].Labels[appsv1.ControllerRevisionHashLabelKey]
 	revisionCounts := make(map[string]int)
 
-	for _, pod := range podList.Items {
+	for _, pod := range sortedPodList.Items {
+		revision := pod.Labels[appsv1.ControllerRevisionHashLabelKey]
+		revisionCounts[revision]++
+	}
+
+	nextRolloutTarget := r.nextRolloutTargetIndex(sts)
+
+	// Proceed with the rollout for the next Pod to be rolled out, even if it is not Ready.
+	// We expect that the Pod's state will improve by being updated through the rollout.
+	// All other Pods must be Ready.
+	for _, pod := range append(sortedPodList.Items[:nextRolloutTarget], sortedPodList.Items[nextRolloutTarget+1:]...) {
 		if !podutils.IsPodAvailable(&pod, 5, metav1.Now()) {
 			log.Info("Pod is not ready", "name", pod.Name, "namespace", pod.Namespace)
 			return false, nil
 		}
-		revision := pod.Labels[appsv1.ControllerRevisionHashLabelKey]
-		revisionCounts[revision]++
 	}
 
 	partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
 	expectedPodsCount := int(*sts.Spec.Replicas) - int(partition)
 
-	// If there is only one revision and expectedPodsCount is 0 or less, it means there are no Pods in the middle of a rollout.
-	if expectedPodsCount <= 0 && len(revisionCounts) == 1 {
+	// If there is only one revision, it means there are no Pods in the middle of a rollout.
+	if len(revisionCounts) == 1 {
+		return true, nil
+	}
+
+	// If there is only one pod with the latest revision and that pod is NotReady,
+	// the rollout is considered to have failed.
+	// In this case, the pod must be updated unconditionally.
+	if revisionCounts[latestRevision] == 1 && !podutils.IsPodReady(&sortedPodList.Items[lastIndex]) && nextRolloutTarget == lastIndex {
 		return true, nil
 	}
 
@@ -213,6 +243,17 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 // isMySQLClusterHealthy checks the health status of a given MySQLCluster.
 func (r *StatefulSetPartitionReconciler) isMySQLClusterHealthy(cluster *mocov1beta2.MySQLCluster) bool {
 	return meta.IsStatusConditionTrue(cluster.Status.Conditions, mocov1beta2.ConditionHealthy)
+}
+
+// nextRolloutTargetIndex returns the index of the next rollout target Pod.
+// The index is calculated by subtracting 1 from the current partition.
+// If there is no rollout target, it returns -1.
+func (r *StatefulSetPartitionReconciler) nextRolloutTargetIndex(sts *appsv1.StatefulSet) int {
+	if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+		return -1
+	}
+
+	return int(*sts.Spec.UpdateStrategy.RollingUpdate.Partition) - 1
 }
 
 // getMySQLCluster retrieves the MySQLCluster release that owns a given StatefulSet.
@@ -231,35 +272,6 @@ func (r *StatefulSetPartitionReconciler) getMySQLCluster(ctx context.Context, st
 	}
 
 	return nil, fmt.Errorf("StatefulSet %s/%s has no owner reference to MySQLCluster", sts.Namespace, sts.Name)
-}
-
-// isStatefulSetRolloutComplete returns true if the StatefulSet is update completed.
-func (r *StatefulSetPartitionReconciler) isStatefulSetRolloutComplete(sts *appsv1.StatefulSet) bool {
-	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
-		return false
-	}
-
-	if sts.Status.ObservedGeneration == 0 || sts.Generation > sts.Status.ObservedGeneration {
-		return false
-	}
-
-	if sts.Spec.Replicas != nil && sts.Status.ReadyReplicas < *sts.Spec.Replicas {
-		return false
-	}
-
-	if sts.Spec.UpdateStrategy.RollingUpdate != nil {
-		if sts.Spec.Replicas != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
-			if sts.Status.UpdatedReplicas < (*sts.Spec.Replicas - *sts.Spec.UpdateStrategy.RollingUpdate.Partition) {
-				return false
-			}
-		}
-	}
-
-	if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-		return false
-	}
-
-	return true
 }
 
 // needPartitionUpdate returns true if the StatefulSet needs to update partition.
