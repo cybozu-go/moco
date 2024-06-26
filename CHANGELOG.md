@@ -42,7 +42,7 @@ ref: aws/aws-sdk-go-v2#2502
 
 ### Changed
 - Bump google.golang.org/protobuf from 1.31.0 to 1.33.0 [#654](https://github.com/cybozu-go/moco/pull/654)
-- Bump golang.org/x/net from 0.18.0 to 0.23.0 [#653](https://github.com/cybozu-go/moco/pull/653)
+- Bump golang.org/x/net from 0.18.0 to 0.23.0 [#663](https://github.com/cybozu-go/moco/pull/663)
 - Bump fluent-bit 3.0.2 for MOCO [#665](https://github.com/cybozu-go/moco/pull/665)
 - Bump mysql_exporter v0.15.1 [#666](https://github.com/cybozu-go/moco/pull/666)
 - Bump moco-backup tools version [#672](https://github.com/cybozu-go/moco/pull/672)
