@@ -9,7 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Breaking Changes
  - Support MySQL 8.4.0 [#686](https://github.com/cybozu-go/moco/issues/686)
-   - With MySQL 8.4 support, MOCO no longer runs on MySQL 8.0.22 or earlier
+   - With MySQL 8.4 support, MOCO no longer runs on MySQL 8.0.25 or earlier
 
 ### ⚠️ End support for older versions
  - MySQL versions supported after this release are 8.0.28, 8.0.36, 8.0.37 and 8.4.0
