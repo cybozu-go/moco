@@ -27,24 +27,7 @@ Pods with a pod number smaller than the partition value are not updated, and eve
 
 ### When Creating a StatefulSet
 
-When creating a StatefulSet, MOCO injects a partition into the StatefulSet using a MutatingAdmissionWebhook.
-The partition to be set is the same as the number of replicas of the StatefulSet.
-
-```yaml
-replicas: 3
-...
-updateStrategy:
-  type: RollingUpdate
-  rollingUpdate:
-    partition: 3
-...
-```
-
-### Updating Partitions
-
-MOCO monitors the rollout status of the StatefulSet and the status of MySQLCluster.
-If the update of pods based on the current partition value is completed successfully and the containers are Running, and the status of MySQLCluster is Healthy, MOCO decrements the partition of the StatefulSet by 1.
-This operation is repeated until the partition value reaches 0.
+When creating a StatefulSet, MOCO does not assign a partition.
 
 ### When Updating a StatefulSet
 
@@ -54,6 +37,22 @@ When a StatefulSet is updated, MOCO determines the contents of the StatefulSet u
     * The MutatingAdmissionWebhook does nothing.
 2. If fields other than the partition of the StatefulSet are updated
     * The MutatingAdmissionWebhook updates the partition of the StatefulSet to the same value as the replica using MutatingAdmissionWebhook.
+
+    ```yaml
+    replicas: 3
+    ...
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        partition: 3
+    ...
+    ```
+
+### Updating Partitions
+
+MOCO monitors the rollout status of the StatefulSet and the status of MySQLCluster.
+If the update of pods based on the current partition value is completed successfully and the containers are Running, and the status of MySQLCluster is Healthy, MOCO decrements the partition of the StatefulSet by 1.
+This operation is repeated until the partition value reaches 0.
 
 ### Forcefully Rolling Out
 
