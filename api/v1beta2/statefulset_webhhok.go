@@ -22,7 +22,7 @@ func SetupStatefulSetWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-apps-v1-statefulset,mutating=true,failurePolicy=fail,sideEffects=None,groups=apps,resources=statefulsets,verbs=create;update,versions=v1,name=statefulset.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-apps-v1-statefulset,mutating=true,failurePolicy=fail,sideEffects=None,groups=apps,resources=statefulsets,verbs=update,versions=v1,name=statefulset.kb.io,admissionReviewVersions=v1
 
 type StatefulSetDefaulter struct{}
 
