@@ -23,6 +23,9 @@ func (o *operator) KillConnections(ctx context.Context) error {
 		if p.Host == "localhost" {
 			continue
 		}
+		if p.User == "system user" {
+			continue
+		}
 
 		if _, err := o.db.ExecContext(ctx, `KILL CONNECTION ?`, p.ID); err != nil && !isNoSuchThread(err) {
 			return fmt.Errorf("failed to kill connection %d for %s from %s: %w", p.ID, p.User, p.Host, err)
