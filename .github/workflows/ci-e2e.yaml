@@ -14,11 +14,7 @@ concurrency:
 env:
   cache-version: 1
 
-# CI tests with the Cybozu internal use version plus the latest and one previous MySQL version.
-# Other MySQL supported versions tested weekly.
-# see: weekly.yaml
-#
-# NOTE: Current Cybozu internal use version is 8.0.28.
+# CI tests with supported MySQL version.
 jobs:
   dbtest:
     name: Integration tests with MySQL
