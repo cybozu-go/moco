@@ -26,10 +26,6 @@ To run these tests, use the following make targets respectively:
 3. `make envtest`
 4. Read [`e2e/README.md`](e2e/README.md)
 
-MOCO supports multiple MySQL versions.
-The three MySQL versions always used by CI are Cybozu internal use version, the latest, and one version before the latest.
-Other supported MySQL versions will be [tested only in Weekly](.github/workflows/weekly.yaml).
-
 ## Generated files
 
 Some files in the repository are auto-generated.
