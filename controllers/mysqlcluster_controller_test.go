@@ -243,7 +243,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return fmt.Errorf("the user secret is not reconciled yet")
 			}
 			return nil
-		})
+		}).Should(Succeed())
 	})
 
 	It("should create certificate and copy secret", func() {
