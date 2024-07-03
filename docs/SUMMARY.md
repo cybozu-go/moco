@@ -13,6 +13,7 @@
     - [Building your own imge](custom-mysqld.md)
     - [Customize system container](customize-system-container.md)
     - [Change volumeClaimTemplates](change-pvc-template.md)
+    - [Rollout strategy](rolling-update-strategy.md)
 - [Known issues](known_issues.md)
 
 # References

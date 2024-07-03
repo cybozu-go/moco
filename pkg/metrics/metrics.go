@@ -30,6 +30,10 @@ var (
 
 	ClusteringStoppedVec     *prometheus.GaugeVec
 	ReconciliationStoppedVec *prometheus.GaugeVec
+
+	CurrentReplicasVec      *prometheus.GaugeVec
+	UpdatedReplicasVec      *prometheus.GaugeVec
+	LastPartitionUpdatedVec *prometheus.GaugeVec
 )
 
 // Backup related metrics
@@ -220,4 +224,28 @@ func Register(registry prometheus.Registerer) {
 		Help:      "Indicates if reconciliation has stopped",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(ReconciliationStoppedVec)
+
+	CurrentReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "current_replicas",
+		Help:      "The number of current replicas",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(CurrentReplicasVec)
+
+	UpdatedReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "updated_replicas",
+		Help:      "The number of updated replicas",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(UpdatedReplicasVec)
+
+	LastPartitionUpdatedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "last_partition_updated",
+		Help:      "The timestamp of the last successful partition update",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(LastPartitionUpdatedVec)
 }
