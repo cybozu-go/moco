@@ -151,12 +151,36 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 	log.Info("begin switchover the primary", "current", ss.Primary, "next", ss.Candidate)
 
 	pdb := ss.DBOps[ss.Primary]
-	if err := pdb.SetReadOnly(ctx, true); err != nil {
-		return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
-	}
-	time.Sleep(100 * time.Millisecond)
-	if err := pdb.KillConnections(ctx); err != nil {
-		return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
+
+	// SetReadOnly waits for a running DML.
+	// Therefore, if it waits for a long time, deleteGracePeriodSeconds may be reached.
+	// To avoid this, execute killConnections after a certain period of time.
+	done := make(chan error)
+	go func() {
+		done <- pdb.SetReadOnly(ctx, true)
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
+		}
+		time.Sleep(100 * time.Millisecond)
+		if err := pdb.KillConnections(ctx); err != nil {
+			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
+		}
+	case <-time.After(15 * time.Second):
+		log.Info("setReadOnly is taking too long, kill connections", "instance", ss.Primary)
+		if err := pdb.KillConnections(ctx); err != nil {
+			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
+		}
+		err := <-done
+		if err != nil {
+			return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
+		}
+		time.Sleep(100 * time.Millisecond)
+		if err := pdb.KillConnections(ctx); err != nil {
+			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
+		}
 	}
 	pst, err := pdb.GetStatus(ctx)
 	if err != nil {
