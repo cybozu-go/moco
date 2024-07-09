@@ -154,7 +154,7 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 	// SetReadOnly waits for a running DML.
 	// Therefore, if it waits for a long time, deleteGracePeriodSeconds may be reached.
 	// To avoid this, execute killConnections after a certain period of time.
-	done := make(chan error)
+	done := make(chan error, 1)
 	go func() {
 		done <- pdb.SetReadOnly(ctx, true)
 	}()
