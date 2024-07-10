@@ -162,6 +162,10 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 	select {
 	case err := <-done:
 		if err != nil {
+			// If SetReadOnly fails, kill connections and retry switchover.
+			if kerr := pdb.KillConnections(ctx); kerr != nil {
+				return fmt.Errorf("failed to make instance %d read-only: %w, and failed to kill connections: %w", ss.Primary, err, kerr)
+			}
 			return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
 		}
 		time.Sleep(100 * time.Millisecond)
