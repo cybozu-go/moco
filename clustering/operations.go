@@ -167,7 +167,7 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 		if err := pdb.KillConnections(ctx); err != nil {
 			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
 		}
-	case <-time.After(switchOverTimeoutSeconds):
+	case <-time.After(switchOverTimeoutSeconds * time.Second):
 		log.Info("setReadOnly is taking too long, kill connections", "instance", ss.Primary)
 		if err := pdb.KillConnections(ctx); err != nil {
 			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
