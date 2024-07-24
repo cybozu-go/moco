@@ -105,6 +105,10 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
+		err = k8sClient.Update(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(r.Spec.Replicas))
+
 		r.Annotations = map[string]string{constants.AnnForceRollingUpdate: "true"}
 		err = k8sClient.Update(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
