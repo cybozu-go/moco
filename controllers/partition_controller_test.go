@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -29,6 +30,7 @@ func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(cluster, mocov1beta2.GroupVersion.WithKind("MySQLCluster")),
 			},
+			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: ptr.To[int32](cluster.Spec.Replicas),
@@ -82,7 +84,7 @@ func testNewPods(sts *appsv1.StatefulSet) []*corev1.Pod {
 	return pods
 }
 
-func rolloutPods(ctx context.Context, rev1 int, rev2 int) {
+func rolloutPods(ctx context.Context, sts *appsv1.StatefulSet, rev1 int, rev2 int) {
 	pods := &corev1.PodList{}
 	err := k8sClient.List(ctx, pods, client.InNamespace("partition"), client.MatchingLabels(map[string]string{"foo": "bar"}))
 	Expect(err).NotTo(HaveOccurred())
@@ -104,6 +106,39 @@ func rolloutPods(ctx context.Context, rev1 int, rev2 int) {
 		}
 
 		err = k8sClient.Update(ctx, &pod)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			newSts := &appsv1.StatefulSet{}
+			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: sts.Namespace, Name: sts.Name}, newSts)
+			if err != nil {
+				return err
+			}
+			if rev1 == 0 {
+				newSts.Status = appsv1.StatefulSetStatus{
+					CurrentRevision: "rev2",
+					UpdateRevision:  "rev2",
+					Replicas:        int32(rev1) + int32(rev2),
+					UpdatedReplicas: int32(rev2),
+				}
+			} else if rev2 == 0 {
+				newSts.Status = appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev1",
+					Replicas:        int32(rev1) + int32(rev2),
+					UpdatedReplicas: int32(rev1),
+				}
+			} else {
+				newSts.Status = appsv1.StatefulSetStatus{
+					CurrentRevision: "rev1",
+					UpdateRevision:  "rev2",
+					Replicas:        int32(rev1) + int32(rev2),
+					UpdatedReplicas: int32(rev2),
+				}
+			}
+			newSts.Status.ObservedGeneration = newSts.Generation
+			return k8sClient.Status().Update(ctx, newSts)
+		})
 		Expect(err).NotTo(HaveOccurred())
 	}
 }
@@ -163,6 +198,7 @@ var _ = Describe("StatefulSet reconciler", func() {
 				Reason: "healthy",
 			},
 		)
+		cluster.Status.ReconcileInfo.Generation = 1
 		err = k8sClient.Status().Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -170,7 +206,7 @@ var _ = Describe("StatefulSet reconciler", func() {
 		err = k8sClient.Create(ctx, sts)
 		Expect(err).NotTo(HaveOccurred())
 		sts.Status = appsv1.StatefulSetStatus{
-			ObservedGeneration: 2,
+			ObservedGeneration: 1,
 			CurrentRevision:    "rev1",
 			UpdateRevision:     "rev1",
 			Replicas:           3,
@@ -211,16 +247,16 @@ var _ = Describe("StatefulSet reconciler", func() {
 
 			switch *sts.Spec.UpdateStrategy.RollingUpdate.Partition {
 			case 3:
-				rolloutPods(ctx, 2, 1)
+				rolloutPods(ctx, sts, 2, 1)
 			case 2:
-				rolloutPods(ctx, 1, 2)
+				rolloutPods(ctx, sts, 1, 2)
 			case 1:
-				rolloutPods(ctx, 0, 3)
+				rolloutPods(ctx, sts, 0, 3)
 			case 0:
 				return nil
 			}
 
-			return errors.New("unexpected partition")
+			return fmt.Errorf("unexpected partition: %d", *sts.Spec.UpdateStrategy.RollingUpdate.Partition)
 		}).Should(Succeed())
 
 		events := &corev1.EventList{}

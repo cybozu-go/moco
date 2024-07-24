@@ -197,7 +197,7 @@ var _ = Context("partition_test", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sts.Spec.UpdateStrategy.RollingUpdate).NotTo(BeNil())
 		Expect(sts.Spec.UpdateStrategy.RollingUpdate.Partition).NotTo(BeNil())
-		Expect(*sts.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(1)))
+		Expect(*sts.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(2)))
 	})
 
 	It("should rollback succeed", func() {
