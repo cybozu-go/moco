@@ -189,6 +189,7 @@ This document describes how and when MOCO updates them.</p>
 <ul>
 <li><a href="#statefulset">StatefulSet</a></li>
 <li><a href="#when-the-statefulset-is-not-updated">When the StatefulSet is <em>not</em> updated</a></li>
+<li><a href="#status-about-statefulset">Status about StatefulSet</a></li>
 <li><a href="#secrets">Secrets</a></li>
 <li><a href="#certificate">Certificate</a></li>
 <li><a href="#service">Service</a></li>
@@ -203,6 +204,7 @@ This document describes how and when MOCO updates them.</p>
 <li><a href="#job">Job</a></li>
 </ul>
 </li>
+<li><a href="#status-of-reconcliation">Status of Reconcliation</a></li>
 </ul>
 <h2 id="reconciler-versions"><a class="header" href="#reconciler-versions">Reconciler versions</a></h2>
 <p>MOCO's reconciliation routine should be consistent to avoid frequent updates.</p>
@@ -263,9 +265,10 @@ and the <code>spec.replicaServiceTemplate</code> configures the Service for the 
 <p>The following fields in Service <code>spec</code> may not be customized, though.</p>
 <ul>
 <li><code>clusterIP</code></li>
-<li><code>ports</code></li>
 <li><code>selector</code></li>
 </ul>
+<p>The <code>ports</code> field in the Service <code>spec</code> is also customizable.
+However, for the <code>mysql</code> and <code>mysqlx</code> ports, MOCO overwrites the fixed value to the <code>port</code>, <code>protocol</code> and <code>targetPort</code> fields.</p>
 <h3 id="configmap"><a class="header" href="#configmap">ConfigMap</a></h3>
 <p>MOCO creates and updates a ConfigMap for <code>my.cnf</code>.
 The name of this ConfigMap is calculated from the contents of <code>my.cnf</code> that may be changed by users.</p>
