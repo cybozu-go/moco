@@ -8,6 +8,7 @@ This document describes how and when MOCO updates them.
 - [Clustering related resources](#clustering-related-resources)
   - [StatefulSet](#statefulset)
   - [When the StatefulSet is _not_ updated](#when-the-statefulset-is-not-updated)
+  - [Status about StatefulSet](#status-about-statefulset)
   - [Secrets](#secrets)
   - [Certificate](#certificate)
   - [Service](#service)
@@ -17,6 +18,7 @@ This document describes how and when MOCO updates them.
 - [Backup and restore related resources](#backup-and-restore-related-resources)
   - [CronJob](#cronjob)
   - [Job](#job)
+- [Status of Reconcliation](#status-of-reconcliation)
 
 ## Reconciler versions
 
@@ -97,8 +99,10 @@ and the `spec.replicaServiceTemplate` configures the Service for the replica mys
 The following fields in Service `spec` may not be customized, though.
 
 - `clusterIP`
-- `ports`
 - `selector`
+
+The `ports` field in the Service `spec` is also customizable.
+However, for the `mysql` and `mysqlx` ports, MOCO overwrites the fixed value to the `port`, `protocol` and `targetPort` fields.
 
 ### ConfigMap
 

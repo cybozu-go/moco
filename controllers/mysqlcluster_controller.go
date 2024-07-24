@@ -643,18 +643,42 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 
 	svc.Spec.WithSelector(selector)
 
-	svc.Spec.WithPorts(
-		corev1ac.ServicePort().
-			WithName(constants.MySQLPortName).
+	portExists := func(portName string) (int, bool) {
+		for i := range svc.Spec.Ports {
+			if svc.Spec.Ports[i].Name != nil && *svc.Spec.Ports[i].Name == portName {
+				return i, true
+			}
+		}
+		return -1, false
+	}
+
+	if i, ok := portExists(constants.MySQLPortName); ok {
+		svc.Spec.Ports[i].
 			WithProtocol(corev1.ProtocolTCP).
 			WithPort(constants.MySQLPort).
-			WithTargetPort(intstr.FromString(constants.MySQLPortName)),
-		corev1ac.ServicePort().
-			WithName(constants.MySQLXPortName).
+			WithTargetPort(intstr.FromString(constants.MySQLPortName))
+	} else {
+		svc.Spec.WithPorts(
+			corev1ac.ServicePort().
+				WithName(constants.MySQLPortName).
+				WithProtocol(corev1.ProtocolTCP).
+				WithPort(constants.MySQLPort).
+				WithTargetPort(intstr.FromString(constants.MySQLPortName)))
+	}
+
+	if i, ok := portExists(constants.MySQLXPortName); ok {
+		svc.Spec.Ports[i].
 			WithProtocol(corev1.ProtocolTCP).
 			WithPort(constants.MySQLXPort).
-			WithTargetPort(intstr.FromString(constants.MySQLXPortName)),
-	)
+			WithTargetPort(intstr.FromString(constants.MySQLXPortName))
+	} else {
+		svc.Spec.WithPorts(
+			corev1ac.ServicePort().
+				WithName(constants.MySQLXPortName).
+				WithProtocol(corev1.ProtocolTCP).
+				WithPort(constants.MySQLXPort).
+				WithTargetPort(intstr.FromString(constants.MySQLXPortName)))
+	}
 
 	if headless {
 		svc.Spec.WithPorts(

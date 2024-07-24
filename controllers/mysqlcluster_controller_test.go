@@ -532,6 +532,48 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(primary.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "primary"))
 		Expect(replica.Spec.Selector).To(HaveKeyWithValue("moco.cybozu.com/role", "replica"))
 
+		Expect(headless.Spec.Ports).To(HaveLen(3))
+		Expect(primary.Spec.Ports).To(HaveLen(2))
+		Expect(replica.Spec.Ports).To(HaveLen(2))
+
+		Expect(headless.Spec.Ports[0].Name).To(Equal(constants.MySQLPortName))
+		Expect(headless.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[0].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(headless.Spec.Ports[0].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(headless.Spec.Ports[0].NodePort).To(Equal(int32(0)))
+		Expect(headless.Spec.Ports[1].Name).To(Equal(constants.MySQLXPortName))
+		Expect(headless.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(headless.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(headless.Spec.Ports[1].NodePort).To(Equal(int32(0)))
+		Expect(headless.Spec.Ports[2].Name).To(Equal(constants.MySQLAdminPortName))
+		Expect(headless.Spec.Ports[2].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[2].Port).To(Equal(int32(constants.MySQLAdminPort)))
+		Expect(headless.Spec.Ports[2].TargetPort).To(Equal(intstr.FromString(constants.MySQLAdminPortName)))
+		Expect(headless.Spec.Ports[2].NodePort).To(Equal(int32(0)))
+
+		Expect(primary.Spec.Ports[0].Name).To(Equal(constants.MySQLPortName))
+		Expect(primary.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(primary.Spec.Ports[0].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(primary.Spec.Ports[0].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(primary.Spec.Ports[0].NodePort).To(Equal(int32(0)))
+		Expect(primary.Spec.Ports[1].Name).To(Equal(constants.MySQLXPortName))
+		Expect(primary.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(primary.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(primary.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(primary.Spec.Ports[1].NodePort).To(Equal(int32(0)))
+
+		Expect(replica.Spec.Ports[0].Name).To(Equal(constants.MySQLPortName))
+		Expect(replica.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(replica.Spec.Ports[0].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(replica.Spec.Ports[0].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(replica.Spec.Ports[0].NodePort).To(Equal(int32(0)))
+		Expect(replica.Spec.Ports[1].Name).To(Equal(constants.MySQLXPortName))
+		Expect(replica.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(replica.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(replica.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(replica.Spec.Ports[1].NodePort).To(Equal(int32(0)))
+
 		Expect(headless.Spec.PublishNotReadyAddresses).To(BeTrue())
 
 		Eventually(func() error {
@@ -588,15 +630,38 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				return err
 			}
 
-			svcSpec := mocov1beta2.ServiceSpecApplyConfiguration(*corev1ac.ServiceSpec().
-				WithType(corev1.ServiceTypeLoadBalancer).
-				WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyTypeLocal))
+			primarySvcSpec := mocov1beta2.ServiceSpecApplyConfiguration(*corev1ac.ServiceSpec().
+				WithType(corev1.ServiceTypeNodePort).
+				WithPorts(
+					corev1ac.ServicePort().
+						WithName(constants.MySQLPortName).
+						WithNodePort(31111),
+					corev1ac.ServicePort().
+						WithName(constants.MySQLXPortName).
+						WithNodePort(32222),
+					corev1ac.ServicePort().
+						WithName("extra1").
+						WithProtocol(corev1.ProtocolUDP).
+						WithPort(11111).
+						WithTargetPort(intstr.FromInt32(11111))))
 
 			cluster.Spec.PrimaryServiceTemplate = &mocov1beta2.ServiceTemplate{
-				Spec: &svcSpec,
+				Spec: &primarySvcSpec,
 			}
+
+			replicaSvcSpec := mocov1beta2.ServiceSpecApplyConfiguration(*corev1ac.ServiceSpec().
+				WithType(corev1.ServiceTypeLoadBalancer).
+				WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyTypeLocal).
+				WithAllocateLoadBalancerNodePorts(false).
+				WithPorts(
+					corev1ac.ServicePort().
+						WithName("extra2").
+						WithProtocol(corev1.ProtocolUDP).
+						WithPort(22222).
+						WithTargetPort(intstr.FromInt32(22222))))
+
 			cluster.Spec.ReplicaServiceTemplate = &mocov1beta2.ServiceTemplate{
-				Spec: &svcSpec,
+				Spec: &replicaSvcSpec,
 			}
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
@@ -606,7 +671,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test-primary"}, primary); err != nil {
 				return err
 			}
-			if primary.Spec.Type != corev1.ServiceTypeLoadBalancer {
+			if primary.Spec.Type != corev1.ServiceTypeNodePort {
 				return errors.New("service type is not updated")
 			}
 
@@ -624,7 +689,60 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		headless = &corev1.Service{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, headless)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(headless.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
 		Expect(headless.Spec.ExternalTrafficPolicy).NotTo(Equal(corev1.ServiceExternalTrafficPolicyTypeLocal))
+
+		Expect(headless.Spec.Ports).To(HaveLen(3))
+		Expect(primary.Spec.Ports).To(HaveLen(3))
+		Expect(replica.Spec.Ports).To(HaveLen(3))
+
+		Expect(headless.Spec.Ports[0].Name).To(Equal(constants.MySQLPortName))
+		Expect(headless.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[0].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(headless.Spec.Ports[0].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(headless.Spec.Ports[0].NodePort).To(Equal(int32(0)))
+		Expect(headless.Spec.Ports[1].Name).To(Equal(constants.MySQLXPortName))
+		Expect(headless.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(headless.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(headless.Spec.Ports[1].NodePort).To(Equal(int32(0)))
+		Expect(headless.Spec.Ports[2].Name).To(Equal(constants.MySQLAdminPortName))
+		Expect(headless.Spec.Ports[2].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(headless.Spec.Ports[2].Port).To(Equal(int32(constants.MySQLAdminPort)))
+		Expect(headless.Spec.Ports[2].TargetPort).To(Equal(intstr.FromString(constants.MySQLAdminPortName)))
+		Expect(headless.Spec.Ports[2].NodePort).To(Equal(int32(0)))
+
+		Expect(primary.Spec.Ports[0].Name).To(Equal(constants.MySQLPortName))
+		Expect(primary.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(primary.Spec.Ports[0].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(primary.Spec.Ports[0].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(primary.Spec.Ports[0].NodePort).To(Equal(int32(31111)))
+		Expect(primary.Spec.Ports[1].Name).To(Equal(constants.MySQLXPortName))
+		Expect(primary.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(primary.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(primary.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(primary.Spec.Ports[1].NodePort).To(Equal(int32(32222)))
+		Expect(primary.Spec.Ports[2].Name).To(Equal("extra1"))
+		Expect(primary.Spec.Ports[2].Protocol).To(Equal(corev1.ProtocolUDP))
+		Expect(primary.Spec.Ports[2].Port).To(Equal(int32(11111)))
+		Expect(primary.Spec.Ports[2].TargetPort).To(Equal(intstr.FromInt32(11111)))
+		Expect(primary.Spec.Ports[2].NodePort).NotTo(Equal(int32(0))) // random port
+
+		Expect(replica.Spec.Ports[0].Name).To(Equal("extra2"))
+		Expect(replica.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolUDP))
+		Expect(replica.Spec.Ports[0].Port).To(Equal(int32(22222)))
+		Expect(replica.Spec.Ports[0].TargetPort).To(Equal(intstr.FromInt32(22222)))
+		Expect(replica.Spec.Ports[0].NodePort).To(Equal(int32(0)))
+		Expect(replica.Spec.Ports[1].Name).To(Equal(constants.MySQLPortName))
+		Expect(replica.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(replica.Spec.Ports[1].Port).To(Equal(int32(constants.MySQLPort)))
+		Expect(replica.Spec.Ports[1].TargetPort).To(Equal(intstr.FromString(constants.MySQLPortName)))
+		Expect(replica.Spec.Ports[1].NodePort).To(Equal(int32(0)))
+		Expect(replica.Spec.Ports[2].Name).To(Equal(constants.MySQLXPortName))
+		Expect(replica.Spec.Ports[2].Protocol).To(Equal(corev1.ProtocolTCP))
+		Expect(replica.Spec.Ports[2].Port).To(Equal(int32(constants.MySQLXPort)))
+		Expect(replica.Spec.Ports[2].TargetPort).To(Equal(intstr.FromString(constants.MySQLXPortName)))
+		Expect(replica.Spec.Ports[2].NodePort).To(Equal(int32(0)))
 
 		// Edit Service again should succeed
 		Eventually(func() error {
