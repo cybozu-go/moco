@@ -822,12 +822,12 @@ $ kubectl moco mysql -u moco-admin <CLSUTER_NAME> -- -e "SET GLOBAL super_read_o
 You can check whether the cluster is read-only with the following command.
 
 ```console
-$ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SHOW GLOBAL VARIABLES like 'super_read_only'"
-+-----------------+-------+
-| Variable_name   | Value |
-+-----------------+-------+
-| super_read_only | ON    |
-+-----------------+-------+
+$ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SELECT @@super_read_only"
++-------------------+
+| @@super_read_only |
++-------------------+
+|                 1 |
++-------------------+
 ```
 
 If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.
