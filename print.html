@@ -456,6 +456,7 @@ Available Commands:
 <li><a href="usage.html#upgrading-mysql-version">Upgrading mysql version</a></li>
 <li><a href="usage.html#re-initializing-an-errant-replica">Re-initializing an errant replica</a></li>
 <li><a href="usage.html#stop-clustering-and-reconciliation">Stop Clustering and Reconciliation</a></li>
+<li><a href="usage.html#set-to-read-only">Set to Read Only</a></li>
 </ul>
 </li>
 </ul>
@@ -1047,6 +1048,24 @@ moco_cluster_reconciliation_stopped{name="mycluster", namespace="mynamesapce"} 1
 moco_cluster_healthy{name="test",namespace="default"} NaN
 moco_cluster_ready_replicas{name="test",namespace="default"} NaN
 moco_cluster_errant_replicas{name="test",namespace="default"} NaN
+</code></pre>
+<h3 id="set-to-read-only"><a class="header" href="#set-to-read-only">Set to Read Only</a></h3>
+<p>When you want to set MOCO's MySQL to read-only, use the the following commands.</p>
+<p>MOCO makes the primary instance writable in the clustering process.
+Therefore, please be sure to stop clustering when you set it to read-only.</p>
+<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLSUTER_NAME&gt;
+$ kubectl moco mysql -u moco-admin &lt;CLSUTER_NAME&gt; -- -e "SET GLOBAL super_read_only=1"
+</code></pre>
+<p>You can check whether the cluster is read-only with the following command.</p>
+<pre><code class="language-console">$ kubectl moco mysql -it &lt;CLSUTER_NAME&gt; -- -e "SELECT @@super_read_only"
++-------------------+
+| @@super_read_only |
++-------------------+
+|                 1 |
++-------------------+
+</code></pre>
+<p>If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.</p>
+<pre><code class="language-console">$ kubectl moco start clustering &lt;CLSUTER_NAME&gt;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="building-custom-image-of-mysqld"><a class="header" href="#building-custom-image-of-mysqld">Building custom image of <code>mysqld</code></a></h1>
