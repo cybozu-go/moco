@@ -37,6 +37,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [Upgrading mysql version](#upgrading-mysql-version)
   - [Re-initializing an errant replica](#re-initializing-an-errant-replica)
   - [Stop Clustering and Reconciliation](#stop-clustering-and-reconciliation)
+  - [Set to Read Only](#set-to-read-only)
 
 ## Basics
 
@@ -804,4 +805,33 @@ moco_cluster_available{name="test",namespace="default"} NaN
 moco_cluster_healthy{name="test",namespace="default"} NaN
 moco_cluster_ready_replicas{name="test",namespace="default"} NaN
 moco_cluster_errant_replicas{name="test",namespace="default"} NaN
+```
+
+### Set to Read Only
+
+When you want to set MOCO's MySQL to read-only, use the the following commands.
+
+MOCO makes the primary instance writable in the clustering process.
+Therefore, please be sure to stop clustering when you set it to read-only.
+
+```console
+$ kubectl moco stop clustering <CLSUTER_NAME>
+$ kubectl moco mysql -u moco-admin <CLSUTER_NAME> -- -e "SET GLOBAL super_read_only=1"
+```
+
+You can check whether the cluster is read-only with the following command.
+
+```console
+$ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SHOW GLOBAL VARIABLES like 'super_read_only'"
++-----------------+-------+
+| Variable_name   | Value |
++-----------------+-------+
+| super_read_only | ON    |
++-----------------+-------+
+```
+
+If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.
+
+```console
+$ kubectl moco start clustering <CLSUTER_NAME>
 ```
