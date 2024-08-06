@@ -744,6 +744,10 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 				WithType(appsv1.RollingUpdateStatefulSetStrategyType)).
 			WithServiceName(cluster.HeadlessServiceName()))
 
+	if isForceRollingUpdate(cluster) {
+		sts.WithAnnotations(map[string]string{constants.AnnForceRollingUpdate: "true"})
+	}
+
 	volumeClaimTemplates := make([]*corev1ac.PersistentVolumeClaimApplyConfiguration, 0, len(cluster.Spec.VolumeClaimTemplates))
 	for _, v := range cluster.Spec.VolumeClaimTemplates {
 		pvc := v.ToCoreV1()
@@ -1702,6 +1706,9 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 
 	metrics.ClusteringStoppedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 	metrics.ReconciliationStoppedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	metrics.CurrentReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	metrics.UpdatedReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	metrics.LastPartitionUpdatedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 
 	return nil
 }
@@ -1853,6 +1860,10 @@ func isReconciliationStopped(cluster *mocov1beta2.MySQLCluster) bool {
 
 func isClusteringStopped(cluster *mocov1beta2.MySQLCluster) bool {
 	return cluster.Annotations[constants.AnnClusteringStopped] == "true"
+}
+
+func isForceRollingUpdate(cluster *mocov1beta2.MySQLCluster) bool {
+	return cluster.Annotations[constants.AnnForceRollingUpdate] == "true"
 }
 
 func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *corev1ac.ConfigMapApplyConfiguration, scheme *runtime.Scheme) error {

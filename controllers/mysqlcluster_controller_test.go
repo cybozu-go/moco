@@ -793,6 +793,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	It("should reconcile statefulset", func() {
 		cluster := testNewMySQLCluster("test")
+		cluster.Annotations = map[string]string{constants.AnnForceRollingUpdate: "true"}
 		cluster.Spec.ReplicationSourceSecretName = ptr.To[string]("source-secret")
 		cluster.Spec.PodTemplate.Annotations = map[string]string{"foo": "bar"}
 		cluster.Spec.PodTemplate.Labels = map[string]string{"foo": "baz"}
@@ -820,6 +821,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 		By("checking new statefulset")
 		Expect(sts.OwnerReferences).NotTo(BeEmpty())
+		Expect(sts.Annotations).To(HaveKeyWithValue(constants.AnnForceRollingUpdate, "true"))
 		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("foo", "bar"))
 		Expect(sts.Spec.Template.Labels).To(HaveKeyWithValue("foo", "baz"))
 		Expect(sts.Spec.Replicas).NotTo(BeNil())

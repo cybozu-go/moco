@@ -50,7 +50,7 @@ endif
 	$(KUBECTL) apply -f minio.yaml
 	$(KUBECTL) apply -f minio-tls.yaml
 	$(KUBECTL) apply -f fake-gcs-server.yaml
-	$(KUBECTL) wait --timeout=60s --for=condition=Ready --all pods
+	$(KUBECTL) wait --timeout=90s --for=condition=Ready --all pods
 
 .PHONY: test
 test:
