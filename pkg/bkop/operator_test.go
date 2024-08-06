@@ -168,7 +168,7 @@ var _ = Describe("Operator", func() {
 
 		err = opRe.PrepareRestore(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		err = opRe.LoadDump(ctx, dumpDir)
+		err = opRe.LoadDump(ctx, dumpDir, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		var restoredGTID string
@@ -180,7 +180,7 @@ var _ = Describe("Operator", func() {
 		err = os.MkdirAll(tmpDir, 0755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = opRe.LoadBinlog(ctx, binlogDir, tmpDir, restorePoint)
+		err = opRe.LoadBinlog(ctx, binlogDir, tmpDir, restorePoint, "")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(restoredGTID).To(Equal(dumpGTID))
 		var maxID int

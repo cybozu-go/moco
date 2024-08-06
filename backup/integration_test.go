@@ -151,7 +151,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bs.WorkDirUsage).To(BeNumerically(">", 0))
 		Expect(bs.Warnings).To(BeEmpty())
 
-		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bs.Time.Time)
+		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bs.Time.Time, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -240,7 +240,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bs.WorkDirUsage).To(BeNumerically(">", 0))
 		Expect(bs.Warnings).To(BeEmpty())
 
-		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, restorePoint)
+		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, restorePoint, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = rm.Restore(ctx)
@@ -292,7 +292,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(bc.contents).To(HaveLen(3))
 
-		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bt)
+		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bt, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = rm.Restore(ctx)
