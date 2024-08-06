@@ -12,7 +12,7 @@ import (
 )
 
 var restoreCmd = &cobra.Command{
-	Use:   "restore BUCKET SOURCE_NAMESPACE SOURCE_NAME NAMESPACE NAME YYYYMMDD-hhmmss",
+	Use:   "restore BUCKET SOURCE_NAMESPACE SOURCE_NAME NAMESPACE NAME YYYYMMDD-hhmmss SCHEMA",
 	Short: "restore MySQL data from a backup",
 	Long: `Restore MySQL data from a backup.
 
@@ -21,8 +21,10 @@ SOURCE_NAMESPACE: The source MySQLCluster's namespace.
 SOURCE_NAME:      The source MySQLCluster's name.
 NAMESPACE:        The target MySQLCluster's namespace.
 NAME:             The target MySQLCluster's name.
-YYYYMMDD-hhmmss:  The point-in-time to restore data.  e.g. 20210523-150423`,
-	Args: cobra.ExactArgs(6),
+YYYYMMDD-hhmmss:  The point-in-time to restore data.  e.g. 20210523-150423
+SCHEMA:           The target schema to restore.  If SCHEMA is empty, all schemas are restored.`,
+
+	Args: cobra.ExactArgs(7),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		maxRetry := 3
 		for i := 0; i < maxRetry; i++ {
@@ -54,6 +56,7 @@ func runRestore(cmd *cobra.Command, args []string) (e error) {
 	srcName := args[2]
 	namespace := args[3]
 	name := args[4]
+	schema := args[6]
 
 	restorePoint, err := time.Parse(constants.BackupTimeFormat, args[5])
 	if err != nil {
@@ -75,7 +78,8 @@ func runRestore(cmd *cobra.Command, args []string) (e error) {
 		namespace, name,
 		mysqlPassword,
 		commonArgs.threads,
-		restorePoint)
+		restorePoint,
+		schema)
 	if err != nil {
 		return fmt.Errorf("failed to create a restore manager: %w", err)
 	}
