@@ -566,6 +566,10 @@ type RestoreSpec struct {
 
 	// Specifies parameters for restore Pod.
 	JobConfig `json:"jobConfig"`
+
+	// Schema is the name of the schema to restore.
+	// If empty, all schemas are restored.
+	Schema string `json:"schema,omitempty"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
