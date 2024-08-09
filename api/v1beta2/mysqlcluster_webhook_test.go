@@ -423,6 +423,7 @@ var _ = Describe("MySQLCluster Webhook", func() {
 					EndpointURL: "https://foo.bar.svc:9000",
 				},
 			},
+			Schema: "db1",
 		}
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())

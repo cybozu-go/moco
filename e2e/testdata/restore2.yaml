@@ -2,7 +2,7 @@ apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
   namespace: backup
-  name: target
+  name: target2
 spec:
   mysqlConfigMapName: mycnf
   replicas: 1
@@ -10,6 +10,7 @@ spec:
     sourceName: source
     sourceNamespace: backup
     restorePoint: "{{ .RestorePoint }}"
+    schema: "test2"
     jobConfig:
       serviceAccountName: backup-owner
       env:

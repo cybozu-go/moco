@@ -42,11 +42,12 @@ type RestoreManager struct {
 	keyPrefix    string
 	restorePoint time.Time
 	workDir      string
+	schema       string
 }
 
 var ErrBadConnection = errors.New("the connection hasn't reflected the latest user's privileges")
 
-func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time) (*RestoreManager, error) {
+func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time, schema string) (*RestoreManager, error) {
 	log := zap.New(zap.WriteTo(os.Stderr), zap.StacktraceLevel(zapcore.DPanicLevel))
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -74,6 +75,7 @@ func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, 
 		keyPrefix:    prefix,
 		restorePoint: restorePoint,
 		workDir:      dir,
+		schema:       schema,
 	}, nil
 }
 
@@ -254,7 +256,7 @@ func (rm *RestoreManager) loadDump(ctx context.Context, op bkop.Operator, key st
 		return fmt.Errorf("failed to untar dump file: %w", err)
 	}
 
-	return op.LoadDump(ctx, dumpDir)
+	return op.LoadDump(ctx, dumpDir, rm.schema)
 }
 
 func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key string) error {
@@ -317,5 +319,5 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 		os.RemoveAll(tmpDir)
 	}()
 
-	return op.LoadBinlog(ctx, binlogDir, tmpDir, rm.restorePoint)
+	return op.LoadBinlog(ctx, binlogDir, tmpDir, rm.restorePoint, rm.schema)
 }

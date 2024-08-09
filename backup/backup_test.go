@@ -49,11 +49,11 @@ func (o *getUUIDSetMockOp) PrepareRestore(_ context.Context) error {
 	panic("not implemented")
 }
 
-func (o *getUUIDSetMockOp) LoadDump(ctx context.Context, dir string) error {
+func (o *getUUIDSetMockOp) LoadDump(ctx context.Context, dir string, schema string) error {
 	panic("not implemented")
 }
 
-func (o *getUUIDSetMockOp) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
+func (o *getUUIDSetMockOp) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time, schema string) error {
 	panic("not implemented")
 }
 
