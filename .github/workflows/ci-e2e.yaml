@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check and output changed files
-        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        uses: tj-actions/changed-files@a29e8b565651ce417abb5db7164b4a2ad8b6155c # v44.4.0
         id: changed-files
         with:
           files_ignore: |
@@ -41,13 +41,13 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.4.0"]
-        k8s-version: ["1.27.13", "1.28.9", "1.29.4"]
+        k8s-version: ["1.27.13", "1.28.9", "1.29.4", "1.30.0"]
     runs-on:
       group: moco
     steps:
       - uses: actions/checkout@v4
       - name: Check and output changed files
-        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        uses: tj-actions/changed-files@a29e8b565651ce417abb5db7164b4a2ad8b6155c # v44.4.0
         id: changed-files
         with:
           files_ignore: |
@@ -64,13 +64,13 @@ jobs:
     strategy:
       matrix:
         mysql-version: ["8.0.28", "8.0.36", "8.0.37", "8.4.0"]
-        k8s-version: ["1.29.4"]
+        k8s-version: ["1.30.0"]
     runs-on:
       group: moco
     steps:
       - uses: actions/checkout@v4
       - name: Check and output changed files
-        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        uses: tj-actions/changed-files@a29e8b565651ce417abb5db7164b4a2ad8b6155c # v44.4.0
         id: changed-files
         with:
           files_ignore: |
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check and output changed files
-        uses: tj-actions/changed-files@7fc073d92265804a8d4e4982b637dee053daf6c5 # v42.0.7
+        uses: tj-actions/changed-files@a29e8b565651ce417abb5db7164b4a2ad8b6155c # v44.4.0
         id: changed-files
         with:
           files_ignore: |

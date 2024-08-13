@@ -33,7 +33,7 @@ runs:
       working-directory: e2e
       if: always()
       shell: bash
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       if: always()
       with:
         name: logs-${{ inputs.k8s-version }}-${{ inputs.mysql-version }}.tar.gz
