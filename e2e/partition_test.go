@@ -32,6 +32,9 @@ var forceRollingUpdateApplyYAML string
 //go:embed testdata/partition_image_pull_backoff.yaml
 var imagePullBackoffApplyYAML string
 
+//go:embed testdata/partition_volume_template.yaml
+var volumeTemplateApplyYAML string
+
 var _ = Context("partition_test", func() {
 	if doUpgrade {
 		return
@@ -158,6 +161,55 @@ var _ = Context("partition_test", func() {
 		partitionUpdatedMetric := findMetric(partitionUpdatedMf, map[string]string{"namespace": "partition", "name": "test"})
 		Expect(partitionUpdatedMetric).NotTo(BeNil())
 		Expect(updatedReplicasMetric.GetGauge().GetValue()).To(BeNumerically(">", 0))
+	})
+
+	It("should volume template change succeed", func() {
+		// add labels to the volume template and pods.
+		kubectlSafe(fillTemplate(volumeTemplateApplyYAML), "apply", "-f", "-")
+		Eventually(func() error {
+			out, err := kubectl(nil, "get", "-n", "partition", "pod", "-o", "json")
+			if err != nil {
+				return err
+			}
+			pods := &corev1.PodList{}
+			if err := json.Unmarshal(out, pods); err != nil {
+				return err
+			}
+
+			for _, pod := range pods.Items {
+				_, ok := pod.Labels["foo"]
+				if !ok {
+					return fmt.Errorf("pod %s is not changed", pod.Name)
+				}
+			}
+
+			cluster, err := getCluster("partition", "test")
+			if err != nil {
+				return err
+			}
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == metav1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+
+			return errors.New("no health condition")
+		}).WithTimeout(time.Minute * 10).Should(Succeed())
+	})
+
+	It("should recreate statefulset", func() {
+		out, err := kubectl(nil, "get", "-n", "partition", "statefulset", "moco-test", "-o", "json")
+		Expect(err).NotTo(HaveOccurred())
+		sts := &appsv1.StatefulSet{}
+		err = json.Unmarshal(out, sts)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sts.Spec.UpdateStrategy.RollingUpdate).NotTo(BeNil())
+		Expect(*sts.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(int32(0)))
+		Expect(sts.Spec.VolumeClaimTemplates[0].Labels["foo"]).To(Equal("bar"))
 	})
 
 	It("should image pull backoff", func() {
