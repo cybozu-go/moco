@@ -27,7 +27,7 @@ Pods with a pod number smaller than the partition value are not updated, and eve
 
 ### When Creating a StatefulSet
 
-When creating a StatefulSet, MOCO does not assign a partition.
+When creating a StatefulSet, MOCO updates the partition of the StatefulSet to the same value as the replica using MutatingAdmissionWebhook.
 
 ### When Updating a StatefulSet
 

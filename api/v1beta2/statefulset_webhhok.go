@@ -22,7 +22,7 @@ func SetupStatefulSetWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-apps-v1-statefulset,mutating=true,failurePolicy=fail,sideEffects=None,groups=apps,resources=statefulsets,verbs=update,versions=v1,name=statefulset.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-apps-v1-statefulset,mutating=true,failurePolicy=fail,sideEffects=None,groups=apps,resources=statefulsets,verbs=create;update,versions=v1,name=statefulset.kb.io,admissionReviewVersions=v1
 
 type StatefulSetDefaulter struct{}
 
@@ -40,7 +40,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, obj runtime.Object) er
 		return fmt.Errorf("failed to get admission request from context: %w", err)
 	}
 
-	if req.Operation != admissionv1.Update {
+	if req.Operation != admissionv1.Update && req.Operation != admissionv1.Create {
 		return nil
 	}
 
@@ -61,6 +61,10 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, obj runtime.Object) er
 		sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
 			Partition: ptr.To[int32](*sts.Spec.Replicas),
 		}
+		return nil
+	}
+
+	if req.OldObject.Raw == nil {
 		return nil
 	}
 

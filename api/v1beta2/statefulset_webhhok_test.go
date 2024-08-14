@@ -75,7 +75,7 @@ func deleteStatefulSet() error {
 	return nil
 }
 
-var _ = Describe("MySQLCluster Webhook", func() {
+var _ = Describe("StatefulSet Webhook", func() {
 	ctx := context.TODO()
 
 	BeforeEach(func() {
@@ -83,15 +83,18 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should not set partition when creating StatefulSet", func() {
+	It("should set partition when creating StatefulSet", func() {
 		r := makeStatefulSet()
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(r.Spec.UpdateStrategy.RollingUpdate).To(BeNil())
+		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(r.Spec.Replicas))
 	})
 
 	It("should set partition when updating StatefulSet", func() {
 		r := makeStatefulSet()
+		r.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
+			Partition: ptr.To[int32](2),
+		}
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
