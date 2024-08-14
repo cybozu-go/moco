@@ -142,7 +142,6 @@ func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, clu
 
 	if sts.Spec.Replicas == &sts.Status.UpdatedReplicas {
 		// In this case, a rolling update has been completed.
-		// Update the partition to the initial value (`sts.spec.replicas`) and finish the reconciliation.
 		return true, nil
 	}
 
@@ -214,10 +213,10 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 	// Proceed with the rollout for the next Pod to be rolled out, even if it is not Ready.
 	// We expect that the Pod'excludeNextRolloutTagetPodList state will improve by being updated through the rollout.
 	// All other Pods must be Ready.
-	excludeNextRolloutTagetPodList := make([]corev1.Pod, 0, len(sortedPodList.Items)-1)
-	excludeNextRolloutTagetPodList = append(excludeNextRolloutTagetPodList, sortedPodList.Items[:nextRolloutTarget]...)
-	excludeNextRolloutTagetPodList = append(excludeNextRolloutTagetPodList, sortedPodList.Items[nextRolloutTarget+1:]...)
-	for _, pod := range excludeNextRolloutTagetPodList {
+	for i, pod := range sortedPodList.Items {
+		if i == nextRolloutTarget {
+			continue
+		}
 		if pod.DeletionTimestamp != nil {
 			log.Info("Pod is in the process of being terminated", "name", pod.Name, "namespace", pod.Namespace)
 			return false
