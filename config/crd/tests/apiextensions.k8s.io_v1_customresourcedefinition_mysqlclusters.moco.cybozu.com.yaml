@@ -1070,6 +1070,15 @@ spec:
                               properties:
                                 allowPrivilegeEscalation:
                                   type: boolean
+                                appArmorProfile:
+                                  description: AppArmorProfileApplyConfiguration represents
+                                    an de
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  type: object
                                 capabilities:
                                   description: CapabilitiesApplyConfiguration represents
                                     an decla
@@ -1260,6 +1269,9 @@ spec:
                                     type: string
                                   readOnly:
                                     type: boolean
+                                  recursiveReadOnly:
+                                    description: RecursiveReadOnlyMode describes recursive-readonly
+                                    type: string
                                   subPath:
                                     type: string
                                   subPathExpr:
@@ -1785,6 +1797,15 @@ spec:
                               properties:
                                 allowPrivilegeEscalation:
                                   type: boolean
+                                appArmorProfile:
+                                  description: AppArmorProfileApplyConfiguration represents
+                                    an de
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  type: object
                                 capabilities:
                                   description: CapabilitiesApplyConfiguration represents
                                     an decla
@@ -1977,6 +1998,9 @@ spec:
                                     type: string
                                   readOnly:
                                     type: boolean
+                                  recursiveReadOnly:
+                                    description: RecursiveReadOnlyMode describes recursive-readonly
+                                    type: string
                                   subPath:
                                     type: string
                                   subPathExpr:
@@ -2502,6 +2526,15 @@ spec:
                               properties:
                                 allowPrivilegeEscalation:
                                   type: boolean
+                                appArmorProfile:
+                                  description: AppArmorProfileApplyConfiguration represents
+                                    an de
+                                  properties:
+                                    localhostProfile:
+                                      type: string
+                                    type:
+                                      type: string
+                                  type: object
                                 capabilities:
                                   description: CapabilitiesApplyConfiguration represents
                                     an decla
@@ -2692,6 +2725,9 @@ spec:
                                     type: string
                                   readOnly:
                                     type: boolean
+                                  recursiveReadOnly:
+                                    description: RecursiveReadOnlyMode describes recursive-readonly
+                                    type: string
                                   subPath:
                                     type: string
                                   subPathExpr:
@@ -2783,6 +2819,15 @@ spec:
                         description: PodSecurityContextApplyConfiguration represents
                           an
                         properties:
+                          appArmorProfile:
+                            description: AppArmorProfileApplyConfiguration represents
+                              an de
+                            properties:
+                              localhostProfile:
+                                type: string
+                              type:
+                                type: string
+                            type: object
                           fsGroup:
                             format: int64
                             type: integer
@@ -3876,6 +3921,8 @@ spec:
                                 type: integer
                             type: object
                         type: object
+                      trafficDistribution:
+                        type: string
                       type:
                         description: 'Service Type string describes ingress methods
                           for '
@@ -3994,6 +4041,8 @@ spec:
                                 type: integer
                             type: object
                         type: object
+                      trafficDistribution:
+                        type: string
                       type:
                         description: 'Service Type string describes ingress methods
                           for '
@@ -4623,6 +4672,9 @@ spec:
                               type: string
                             readOnly:
                               type: boolean
+                            recursiveReadOnly:
+                              description: RecursiveReadOnlyMode describes recursive-readonly
+                              type: string
                             subPath:
                               type: string
                             subPathExpr:

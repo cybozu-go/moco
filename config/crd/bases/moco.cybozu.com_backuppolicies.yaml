@@ -659,6 +659,9 @@ spec:
                           type: string
                         readOnly:
                           type: boolean
+                        recursiveReadOnly:
+                          description: RecursiveReadOnlyMode describes recursive-readonly
+                          type: string
                         subPath:
                           type: string
                         subPathExpr:
