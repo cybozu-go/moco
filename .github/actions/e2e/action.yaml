@@ -8,6 +8,9 @@ inputs:
   k8s-version:
     description: 'K8s version'
     required: true
+  name:
+    description: 'Name of the action'
+    required: true
 runs:
   using: "composite"
   steps:
@@ -36,5 +39,5 @@ runs:
     - uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: logs-${{ inputs.k8s-version }}-${{ inputs.mysql-version }}.tar.gz
+        name: logs-${{inputs.name}}-${{ inputs.k8s-version }}-${{ inputs.mysql-version }}.tar.gz
         path: e2e/logs.tar.gz

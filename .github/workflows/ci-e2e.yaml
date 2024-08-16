@@ -57,6 +57,7 @@ jobs:
         with:
           k8s-version: ${{ matrix.k8s-version }}
           mysql-version: ${{ matrix.mysql-version }}
+          name: k8s-version-e2e
         if: steps.changed-files.outputs.any_changed == 'true'
 
   e2e-mysql:
@@ -81,6 +82,7 @@ jobs:
         with:
           k8s-version: ${{ matrix.k8s-version }}
           mysql-version: ${{ matrix.mysql-version }}
+          name: mysql-version-e2e
 
   upgrade:
     name: Upgrade Test
