@@ -113,6 +113,9 @@ rules:
       - ""
     resources:
       - configmaps
+      - secrets
+      - serviceaccounts
+      - services
     verbs:
       - create
       - delete
@@ -125,6 +128,9 @@ rules:
       - ""
     resources:
       - configmaps/status
+      - secrets/status
+      - serviceaccounts/status
+      - services/status
     verbs:
       - get
   - apiGroups:
@@ -139,15 +145,6 @@ rules:
       - ""
     resources:
       - persistentvolumeclaims
-    verbs:
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - ""
-    resources:
       - pods
     verbs:
       - get
