@@ -569,6 +569,11 @@ type RestoreSpec struct {
 
 	// Schema is the name of the schema to restore.
 	// If empty, all schemas are restored.
+	// This is used for `mysqlbinlog` option `--database`.
+	// Thus, this option changes behavior depending on binlog_format.
+	// For more information, please read the following documentation.
+	// https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_database
+	// +optional
 	Schema string `json:"schema,omitempty"`
 }
 
