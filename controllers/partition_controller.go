@@ -211,7 +211,7 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 	nextRolloutTarget := r.nextRolloutTargetIndex(sts)
 
 	// Proceed with the rollout for the next Pod to be rolled out, even if it is not Ready.
-	// We expect that the Pod'excludeNextRolloutTagetPodList state will improve by being updated through the rollout.
+	// Expect that the Pod state will improve by being updated through the rollout.
 	// All other Pods must be Ready.
 	for i, pod := range sortedPodList.Items {
 		if i == nextRolloutTarget {
