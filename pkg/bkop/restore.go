@@ -21,7 +21,7 @@ func (o operator) PrepareRestore(ctx context.Context) error {
 	return nil
 }
 
-func (o operator) LoadDump(ctx context.Context, dir string) error {
+func (o operator) LoadDump(ctx context.Context, dir string, schema string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s", o.user, net.JoinHostPort(o.host, fmt.Sprint(o.port))),
 		"-p" + o.password,
@@ -38,6 +38,9 @@ func (o operator) LoadDump(ctx context.Context, dir string) error {
 		"--deferTableIndexes=all",
 		"--updateGtidSet=replace",
 	}
+	if schema != "" {
+		args = append(args, "--includeSchemas="+schema)
+	}
 
 	cmd := exec.CommandContext(ctx, "mysqlsh", args...)
 	cmd.Stdout = os.Stdout
@@ -45,7 +48,7 @@ func (o operator) LoadDump(ctx context.Context, dir string) error {
 	return cmd.Run()
 }
 
-func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
+func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time, schema string) error {
 	dirents, err := os.ReadDir(binlogDir)
 	if err != nil {
 		return err
@@ -88,6 +91,9 @@ func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, rest
 	//mysqlbinlog --stop-datetime="2021-05-13 10:45:00" log/binlog.000001 log/binlog.000002
 	// | mysql --binary-mode -h moco-single-primary.bar.svc -u moco-admin -p
 	binlogArgs := append([]string{"--stop-datetime=" + restorePoint.Format("2006-01-02 15:04:05")}, binlogFiles...)
+	if schema != "" {
+		binlogArgs = append(binlogArgs, "--database="+schema)
+	}
 	binlogCmd := exec.CommandContext(ctx, "mysqlbinlog", binlogArgs...)
 	binlogCmd.Stdout = pw
 	binlogCmd.Stderr = os.Stderr

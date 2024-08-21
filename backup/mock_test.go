@@ -97,7 +97,7 @@ func (o *mockOperator) PrepareRestore(_ context.Context) error {
 	return nil
 }
 
-func (o *mockOperator) LoadDump(ctx context.Context, dir string) error {
+func (o *mockOperator) LoadDump(ctx context.Context, dir string, schema string) error {
 	if !o.prepared {
 		return errors.New("not prepared")
 	}
@@ -105,7 +105,7 @@ func (o *mockOperator) LoadDump(ctx context.Context, dir string) error {
 	return err
 }
 
-func (o *mockOperator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time) error {
+func (o *mockOperator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time, schema string) error {
 	if !o.prepared {
 		return errors.New("not prepared")
 	}

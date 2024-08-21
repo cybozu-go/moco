@@ -7880,6 +7880,9 @@ spec:
                       description: RestorePoint is the target date and time to restor
                       format: date-time
                       type: string
+                    schema:
+                      description: Schema is the name of the schema to restore.
+                      type: string
                     sourceName:
                       description: SourceName is the name of the source `MySQLCluster
                       minLength: 1

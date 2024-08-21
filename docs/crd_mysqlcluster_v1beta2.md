@@ -173,6 +173,7 @@ RestoreSpec represents a set of parameters for Point-in-Time Recovery.
 | sourceNamespace | SourceNamespace is the namespace of the source `MySQLCluster`. | string | true |
 | restorePoint | RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. \"2006-01-02T15:04:05Z\" | [metav1.Time](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time) | true |
 | jobConfig | Specifies parameters for restore Pod. | [JobConfig](#jobconfig) | true |
+| schema | Schema is the name of the schema to restore. If empty, all schemas are restored. This is used for `mysqlbinlog` option `--database`. Thus, this option changes behavior depending on binlog_format. For more information, please read the following documentation. https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_database | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -23,8 +23,11 @@ var makeBucketYAML string
 //go:embed testdata/backup.yaml
 var backupYAML string
 
-//go:embed testdata/restore.yaml
-var restoreYAML string
+//go:embed testdata/restore1.yaml
+var restore1YAML string
+
+//go:embed testdata/restore2.yaml
+var restore2YAML string
 
 var _ = Context("backup", func() {
 	if doUpgrade {
@@ -58,11 +61,17 @@ var _ = Context("backup", func() {
 		}).Should(Succeed())
 
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
-			"-e", "CREATE DATABASE test")
+			"-e", "CREATE DATABASE test1")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
-			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
+			"-D", "test1", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
-			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+			"-D", "test1", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
+			"-e", "CREATE DATABASE test2")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
+			"-D", "test2", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
+			"-D", "test2", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
 	})
 
 	It("should take a full dump", func() {
@@ -81,14 +90,20 @@ var _ = Context("backup", func() {
 
 	It("should take an incremental backup", func() {
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
-			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('bbb')")
+			"-D", "test1", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('bbb')")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
+			"-D", "test2", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('bbb')")
 		time.Sleep(1100 * time.Millisecond)
 		restorePoint = time.Now().UTC()
 		time.Sleep(1100 * time.Millisecond)
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
-			"-D", "test", "--init_command=SET autocommit=1", "-e", "FLUSH LOCAL BINARY LOGS")
+			"-D", "test1", "--init_command=SET autocommit=1", "-e", "FLUSH LOCAL BINARY LOGS")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
-			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('ccc')")
+			"-D", "test1", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('ccc')")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
+			"-D", "test2", "--init_command=SET autocommit=1", "-e", "FLUSH LOCAL BINARY LOGS")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
+			"-D", "test2", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('ccc')")
 		time.Sleep(100 * time.Millisecond)
 
 		kubectlSafe(nil, "-n", "backup", "create", "job", "--from=cronjob/moco-backup-source", "backup-2")
@@ -111,7 +126,7 @@ var _ = Context("backup", func() {
 	It("should destroy the source then restore the backup data", func() {
 		kubectlSafe(nil, "-n", "backup", "delete", "mysqlclusters", "source")
 
-		tmpl, err := template.New("").Parse(restoreYAML)
+		tmpl, err := template.New("").Parse(restore1YAML)
 		Expect(err).NotTo(HaveOccurred())
 		buf := new(bytes.Buffer)
 		err = tmpl.Execute(buf, struct {
@@ -125,18 +140,57 @@ var _ = Context("backup", func() {
 
 		kubectlSafe(buf.Bytes(), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
-			cluster, err := getCluster("backup", "target")
+			cluster, err := getCluster("backup", "target1")
 			g.Expect(err).NotTo(HaveOccurred())
 			condHealthy, err := getClusterCondition(cluster, mocov1beta2.ConditionHealthy)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue), "target is not healthy")
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue), "target1 is not healthy")
 		}).Should(Succeed())
 
-		out := kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target", "--",
-			"-N", "-D", "test", "-e", "SELECT COUNT(*) FROM t")
+		out := kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target1", "--",
+			"-N", "-D", "test1", "-e", "SELECT COUNT(*) FROM t")
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
+
+		out = kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target1", "--",
+			"-N", "-e", "SHOW DATABASES LIKE 'test%'")
+		databases := strings.Fields(string(out))
+		Expect(databases).Should(ConsistOf("test1", "test2"))
+	})
+
+	It("should restore only test2 schema", func() {
+		tmpl, err := template.New("").Parse(restore2YAML)
+		Expect(err).NotTo(HaveOccurred())
+		buf := new(bytes.Buffer)
+		err = tmpl.Execute(buf, struct {
+			MySQLVersion string
+			RestorePoint string
+		}{
+			mysqlVersion,
+			restorePoint.Format(time.RFC3339),
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		kubectlSafe(buf.Bytes(), "apply", "-f", "-")
+		Eventually(func(g Gomega) {
+			cluster, err := getCluster("backup", "target2")
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := getClusterCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue), "target2 is not healthy")
+		}).Should(Succeed())
+
+		out := kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target2", "--",
+			"-N", "-D", "test2", "-e", "SELECT COUNT(*) FROM t")
+		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(count).To(Equal(2))
+
+		out = kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target2", "--",
+			"-N", "-e", "SHOW DATABASES LIKE 'test%'")
+		databases := strings.Fields(string(out))
+		Expect(databases).Should(ConsistOf("test2"))
 	})
 
 	It("should delete clusters", func() {
