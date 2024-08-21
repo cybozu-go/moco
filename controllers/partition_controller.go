@@ -218,21 +218,21 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 			continue
 		}
 		if pod.DeletionTimestamp != nil {
-			log.Info("Pod is in the process of being terminated", "name", pod.Name, "namespace", pod.Namespace)
+			log.Info("Pod is in the process of being terminated", "pod", pod.Name)
 			return false
 		}
 		if !podutils.IsPodAvailable(&pod, 5, metav1.Now()) {
-			log.Info("Pod is not ready", "name", pod.Name, "namespace", pod.Namespace)
+			log.Info("Pod is not ready", "pod", pod.Name)
 			return false
 		}
 		for _, c := range pod.Status.InitContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "namespace", pod.Namespace, "container", c.Name)
+			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
 				return false
 			}
 		}
 		for _, c := range pod.Status.ContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "namespace", pod.Namespace, "container", c.Name)
+			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
 				return false
 			}
