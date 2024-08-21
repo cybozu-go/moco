@@ -1407,6 +1407,7 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 <tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. "2006-01-02T15:04:05Z"</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="crd_mysqlcluster_v1beta2.html#jobconfig">JobConfig</a></td><td>true</td></tr>
+<tr><td>schema</td><td>Schema is the name of the schema to restore. If empty, all schemas are restored. This is used for <code>mysqlbinlog</code> option <code>--database</code>. Thus, this option changes behavior depending on binlog_format. For more information, please read the following documentation. https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_database</td><td>string</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
