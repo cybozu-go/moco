@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 )
@@ -58,6 +60,9 @@ var _ = Context("partition_test", func() {
 			}
 			return errors.New("no health condition")
 		}).Should(Succeed())
+
+		kubectlSafe(nil, "moco", "-n", "partition", "mysql", "-u", "moco-writable", "test", "--",
+			"-e", "CREATE DATABASE test")
 	})
 
 	It("should pod template change succeed", func() {
@@ -290,6 +295,55 @@ var _ = Context("partition_test", func() {
 			}
 			return errors.New("partition is not 0")
 		}).Should(Succeed())
+	})
+
+	It("should not start rollout when mysql cluster is unhealthy", func() {
+		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(ctx, time.Minute*10)
+		defer cancel()
+
+		go wait.PollUntilContextCancel(ctx, time.Second*5, true, func(ctx context.Context) (bool, error) {
+			kubectlSafe(nil, "exec", "-n", "partition", "moco-test-0", "-c", "mysqld", "--", "kill", "1")
+			return true, nil
+		})
+
+		// cpu request 2m -> 1m
+		kubectlSafe(fillTemplate(partitionTestYAML), "apply", "-f", "-")
+		Eventually(func() error {
+			cluster, err := getCluster("partition", "test")
+			if err != nil {
+				return err
+			}
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				// Confirming that the cluster becomes unhealthy
+				if cond.Status == metav1.ConditionFalse {
+					return nil
+				}
+				return fmt.Errorf("cluster is healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
+		}).Should(Succeed())
+
+		Consistently(func() error {
+			out, err := kubectl(nil, "get", "-n", "partition", "statefulset", "moco-test", "-o", "json")
+			if err != nil {
+				return err
+			}
+			sts := &appsv1.StatefulSet{}
+			if err := json.Unmarshal(out, sts); err != nil {
+				return err
+			}
+			if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+				return errors.New("partition is nil")
+			}
+			if *sts.Spec.UpdateStrategy.RollingUpdate.Partition == int32(3) {
+				return nil
+			}
+			return errors.New("partition is not 3")
+		}).WithTimeout(time.Minute * 1).Should(Succeed())
 	})
 
 	It("should pod template change succeed with force rolling update", func() {
