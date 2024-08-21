@@ -58,7 +58,6 @@ func deleteStatefulSet() error {
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
-
 	if err != nil {
 		return err
 	}
