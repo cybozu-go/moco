@@ -23,6 +23,7 @@ type MySQLInstanceStatus struct {
 var statusGlobalVars = []string{
 	"@@server_uuid",
 	"@@gtid_executed",
+	"@@gtid_purged",
 	"@@read_only",
 	"@@super_read_only",
 	"@@rpl_semi_sync_master_wait_for_slave_count",
@@ -34,6 +35,7 @@ var statusGlobalVars = []string{
 type GlobalVariables struct {
 	UUID                  string `db:"@@server_uuid"`
 	ExecutedGTID          string `db:"@@gtid_executed"`
+	PurgedGTID            string `db:"@@gtid_purged"`
 	ReadOnly              bool   `db:"@@read_only"`
 	SuperReadOnly         bool   `db:"@@super_read_only"`
 	WaitForSlaveCount     int    `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
