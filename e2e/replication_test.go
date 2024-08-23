@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo"
@@ -116,6 +117,7 @@ var _ = Context("replication", func() {
 
 	It("should switch the primary if requested", func() {
 		kubectlSafe(nil, "moco", "-n", "repl", "switchover", "test")
+		time.Sleep(10 * time.Second)
 		Eventually(func() int {
 			cluster, err := getCluster("repl", "test")
 			if err != nil {
@@ -124,6 +126,61 @@ var _ = Context("replication", func() {
 			return cluster.Status.CurrentPrimaryIndex
 		}).ShouldNot(Equal(0))
 
+		Eventually(func() error {
+			cluster, err := getCluster("repl", "test")
+			if err != nil {
+				return err
+			}
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == metav1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
+		}).Should(Succeed())
+	})
+
+	It("should switch the primary even with replication delays and new primary has initialized", func() {
+		kubectlSafe(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "test", "--index", "2", "--",
+			"-e", "STOP REPLICA SQL_THREAD")
+		kubectlSafe(nil, "moco", "-n", "donor", "mysql", "-u", "moco-admin", "single", "--",
+			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('eee')")
+		kubectlSafe(nil, "delete", "pvc", "-n", "repl", "--wait=false", "mysql-data-moco-test-0")
+		kubectlSafe(nil, "delete", "pod", "-n", "repl", "--grace-period=1", "moco-test-0")
+		time.Sleep(60 * time.Second)
+		Eventually(func() error {
+			cluster, err := getCluster("repl", "test")
+			if err != nil {
+				return err
+			}
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionAvailable {
+					continue
+				}
+				if cond.Status == metav1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not available: %s", cond.Status)
+			}
+			return errors.New("no available condition")
+		}).Should(Succeed())
+
+		kubectlSafe(nil, "moco", "-n", "repl", "switchover", "test")
+		time.Sleep(10 * time.Second)
+		Eventually(func() int {
+			cluster, err := getCluster("repl", "test")
+			if err != nil {
+				return 0
+			}
+			return cluster.Status.CurrentPrimaryIndex
+		}).ShouldNot(Equal(1))
+		time.Sleep(10 * time.Second)
+		kubectlSafe(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "test", "--index", "2", "--",
+			"-e", "START REPLICA SQL_THREAD")
 		Eventually(func() error {
 			cluster, err := getCluster("repl", "test")
 			if err != nil {
@@ -177,12 +234,12 @@ var _ = Context("replication", func() {
 
 	It("should detect errant transactions", func() {
 		Eventually(func() error {
-			_, err := kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
+			_, err := kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "2", "test", "--",
 				"-e", "SET GLOBAL read_only=0")
 			if err != nil {
 				return err
 			}
-			_, err = kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "0", "test", "--",
+			_, err = kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-admin", "--index", "2", "test", "--",
 				"-e", "CREATE DATABASE errant")
 			return err
 		}).Should(Succeed())
@@ -258,11 +315,11 @@ var _ = Context("replication", func() {
 		cluster, err := getCluster("repl", "test")
 		Expect(err).NotTo(HaveOccurred())
 
-		kubectlSafe(nil, "delete", "-n", "repl", "--wait=false", "pvc", "mysql-data-moco-test-0")
-		kubectlSafe(nil, "delete", "-n", "repl", "--grace-period=1", "pod", cluster.PodName(0))
+		kubectlSafe(nil, "delete", "-n", "repl", "--wait=false", "pvc", "mysql-data-moco-test-2")
+		kubectlSafe(nil, "delete", "-n", "repl", "--grace-period=1", "pod", cluster.PodName(2))
 
 		Eventually(func() error {
-			out, err := kubectl(nil, "-n", "repl", "get", "pod", cluster.PodName(0), "-o", "json")
+			out, err := kubectl(nil, "-n", "repl", "get", "pod", cluster.PodName(2), "-o", "json")
 			if err != nil {
 				return err
 			}
@@ -277,7 +334,7 @@ var _ = Context("replication", func() {
 				}
 				if cond.Reason == "Unschedulable" {
 					fmt.Println("re-deleting pending pod...")
-					_, err := kubectl(nil, "delete", "-n", "repl", "--grace-period=1", "pod", cluster.PodName(0))
+					_, err := kubectl(nil, "delete", "-n", "repl", "--grace-period=1", "pod", cluster.PodName(2))
 					if err != nil {
 						return fmt.Errorf("failed to delete pod: %w", err)
 					}
@@ -322,7 +379,7 @@ var _ = Context("replication", func() {
 
 		Eventually(func() error {
 			_, err := kubectl(nil, "moco", "-n", "repl", "mysql", "-u", "moco-writable", "test", "--",
-				"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('eee')")
+				"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('fff')")
 			return err
 		}).Should(Succeed())
 	})
@@ -341,7 +398,7 @@ var _ = Context("replication", func() {
 			}
 			count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
 			return count
-		}).Should(Equal(5))
+		}).Should(Equal(6))
 	})
 
 	It("should delete clusters", func() {
