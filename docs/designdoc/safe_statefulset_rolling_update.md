@@ -37,8 +37,7 @@ This document proposes to add a reconciler that dynamically sets `.partition` to
 
 ### When creating MySQLCluster
 
-Until MySQLCluster successfully starts for the first time, applies StatefulSet without setting `.partition`.
-This is done to prevent a situation where a user-corrected StatefulSet, due to misconfigurations like image issues, does not roll out due to partition.
+When MySQLCluster is created, set the same value as `.spec.replicas` to `.partition` of StatefulSet in MutatingWebhook.
 
 ### When updating MySQLCluster
 
