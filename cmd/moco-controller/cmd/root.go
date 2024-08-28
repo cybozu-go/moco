@@ -23,23 +23,24 @@ var (
 )
 
 var config struct {
-	metricsAddr             string
-	probeAddr               string
-	pprofAddr               string
-	leaderElectionID        string
-	webhookAddr             string
-	certDir                 string
-	grpcCertDir             string
-	agentImage              string
-	backupImage             string
-	fluentBitImage          string
-	exporterImage           string
-	pvcSyncAnnotationKeys   []string
-	pvcSyncLabelKeys        []string
-	interval                time.Duration
-	maxConcurrentReconciles int
-	qps                     int
-	zapOpts                 zap.Options
+	metricsAddr                string
+	probeAddr                  string
+	pprofAddr                  string
+	leaderElectionID           string
+	webhookAddr                string
+	certDir                    string
+	grpcCertDir                string
+	agentImage                 string
+	backupImage                string
+	fluentBitImage             string
+	exporterImage              string
+	pvcSyncAnnotationKeys      []string
+	pvcSyncLabelKeys           []string
+	interval                   time.Duration
+	maxConcurrentReconciles    int
+	mySQLConfigMapHistoryLimit int
+	qps                        int
+	zapOpts                    zap.Options
 }
 
 func init() {
@@ -109,6 +110,7 @@ func init() {
 	fs.StringSliceVar(&config.pvcSyncLabelKeys, "pvc-sync-label-keys", []string{}, "The keys of labels from MySQLCluster's volumeClaimTemplates to be synced to the PVC")
 	fs.DurationVar(&config.interval, "check-interval", 1*time.Minute, "Interval of cluster maintenance")
 	fs.IntVar(&config.maxConcurrentReconciles, "max-concurrent-reconciles", 8, "The maximum number of concurrent reconciles which can be run")
+	fs.IntVar(&config.mySQLConfigMapHistoryLimit, "mysql-configmap-history-limit", 10, "The maximum number of MySQLConfigMap's history to be kept")
 	// The default QPS is 20.
 	// https://github.com/kubernetes-sigs/controller-runtime/blob/a26de2d610c3cf4b2a02688534aaf5a65749c743/pkg/client/config/config.go#L84-L85
 	fs.IntVar(&config.qps, "apiserver-qps-throttle", 20, "The maximum QPS to the API server.")
