@@ -158,6 +158,12 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - pods/status
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
       - secrets
     verbs:
       - create
@@ -459,6 +465,26 @@ webhooks:
           - CREATE
         resources:
           - mysqlclusters
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: moco-webhook-service
+        namespace: '{{ .Release.Namespace }}'
+        path: /mutate-apps-v1-statefulset
+    failurePolicy: Fail
+    name: statefulset.kb.io
+    rules:
+      - apiGroups:
+          - apps
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - statefulsets
     sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1

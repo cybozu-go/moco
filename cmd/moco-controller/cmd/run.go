@@ -119,6 +119,15 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
+	if err = (&controllers.StatefulSetPartitionReconciler{
+		Client:                  mgr.GetClient(),
+		Recorder:                mgr.GetEventRecorderFor("moco-controller"),
+		MaxConcurrentReconciles: config.maxConcurrentReconciles,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Partition")
+		return err
+	}
+
 	if err = (&controllers.PodWatcher{
 		Client:                  mgr.GetClient(),
 		ClusterManager:          clusterMgr,
@@ -135,6 +144,11 @@ func subMain(ns, addr string, port int) error {
 
 	if err = (&mocov1beta2.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
+		return err
+	}
+
+	if err := mocov1beta2.SetupStatefulSetWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "StatefulSet")
 		return err
 	}
 

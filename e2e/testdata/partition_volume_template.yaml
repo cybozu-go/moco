@@ -1,0 +1,28 @@
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: partition
+  name: test
+spec:
+  replicas: 3
+  podTemplate:
+    metadata:
+      labels:
+        foo: bar
+    spec:
+      containers:
+      - name: mysqld
+        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+        resources:
+          requests:
+            cpu: 1m
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+      labels:
+        foo: bar
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

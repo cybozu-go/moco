@@ -50,12 +50,12 @@ endif
 	$(KUBECTL) apply -f minio.yaml
 	$(KUBECTL) apply -f minio-tls.yaml
 	$(KUBECTL) apply -f fake-gcs-server.yaml
-	$(KUBECTL) wait --timeout=60s --for=condition=Ready --all pods
+	$(KUBECTL) wait --timeout=90s --for=condition=Ready --all pods
 
 .PHONY: test
 test:
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		go test -v -race -timeout 60m . -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -race -timeout 90m . -ginkgo.progress -ginkgo.v -ginkgo.failFast
 
 .PHONY: test-upgrade
 test-upgrade:

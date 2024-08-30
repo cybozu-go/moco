@@ -79,6 +79,11 @@ var _ = BeforeSuite(func() {
 	err = k8sClient.Create(context.Background(), ns)
 	Expect(err).NotTo(HaveOccurred())
 
+	ns = &corev1.Namespace{}
+	ns.Name = "partition"
+	err = k8sClient.Create(context.Background(), ns)
+	Expect(err).NotTo(HaveOccurred())
+
 }, 60)
 
 var _ = AfterSuite(func() {

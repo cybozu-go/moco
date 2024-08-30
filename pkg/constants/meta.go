@@ -21,6 +21,7 @@ const (
 	AnnSecretVersion         = "moco.cybozu.com/secret-version"
 	AnnClusteringStopped     = "moco.cybozu.com/clustering-stopped"
 	AnnReconciliationStopped = "moco.cybozu.com/reconciliation-stopped"
+	AnnForceRollingUpdate    = "moco.cybozu.com/force-rolling-update"
 )
 
 // MySQLClusterFinalizer is the finalizer specifier for MySQLCluster.
