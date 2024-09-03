@@ -560,6 +560,14 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		}
 	}
 
+	// if the binlog required by the replica instance is not existing in the new primary instance, some data may be missing when `CHANGE MASTER TO' is executed.
+	// use SubtractGTID to ensure no data is missing when switching.
+	if sub, err := op.SubtractGTID(ctx, ss.MySQLStatus[ss.Primary].GlobalVariables.PurgedGTID, ss.MySQLStatus[index].GlobalVariables.ExecutedGTID); err != nil {
+		return false, err
+	} else if sub != "" {
+		return false, fmt.Errorf("new primary %d does not have binlog containing transactions %s required for instance %d", ss.Primary, sub, index)
+	}
+
 	ai := dbop.AccessInfo{
 		Host:     ss.Cluster.PodHostname(ss.Primary),
 		Port:     constants.MySQLPort,
