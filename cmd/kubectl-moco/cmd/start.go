@@ -50,7 +50,7 @@ func startClustering(ctx context.Context, name string) error {
 	}
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The clustering is already running.")
+		fmt.Fprintf(os.Stdout, "The clustering is already running.\n")
 		return nil
 	}
 
@@ -89,7 +89,7 @@ func startReconciliation(ctx context.Context, name string) error {
 	}
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The reconciliation is already running.")
+		fmt.Fprintf(os.Stdout, "The reconciliation is already running.\n")
 		return nil
 	}
 
