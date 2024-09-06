@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -51,7 +50,7 @@ func stopClustering(ctx context.Context, name string) error {
 	cluster.Annotations[constants.AnnClusteringStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The clustering is already stopped.\n")
+		fmt.Println("The clustering is already stopped.")
 		return nil
 	}
 
@@ -59,8 +58,7 @@ func stopClustering(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to stop clustering of MySQLCluster: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "stopped clustering of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
-
+	fmt.Printf("stopped clustering of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
 	return nil
 }
 
@@ -91,7 +89,7 @@ func stopReconciliation(ctx context.Context, name string) error {
 	cluster.Annotations[constants.AnnReconciliationStopped] = "true"
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The reconciliation is already stopped.\n")
+		fmt.Println("The reconciliation is already stopped.")
 		return nil
 	}
 
@@ -99,7 +97,6 @@ func stopReconciliation(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to stop reconciliation of MySQLCluster: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "stopped reconciliation of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
-
+	fmt.Printf("stopped reconciliation of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
 	return nil
 }

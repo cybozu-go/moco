@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -50,7 +49,7 @@ func startClustering(ctx context.Context, name string) error {
 	}
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The clustering is already running.\n")
+		fmt.Println("The clustering is already running.")
 		return nil
 	}
 
@@ -58,8 +57,7 @@ func startClustering(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to start clustering of MySQLCluster: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "started clustering of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
-
+	fmt.Printf("started clustering of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
 	return nil
 }
 
@@ -89,7 +87,7 @@ func startReconciliation(ctx context.Context, name string) error {
 	}
 
 	if equality.Semantic.DeepEqual(orig, cluster) {
-		fmt.Fprintf(os.Stdout, "The reconciliation is already running.\n")
+		fmt.Println("The reconciliation is already running.")
 		return nil
 	}
 
@@ -97,7 +95,6 @@ func startReconciliation(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to start reconciliation of MySQLCluster: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "started reconciliation of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
-
+	fmt.Printf("started reconciliation of MySQLCluster %q\n", fmt.Sprintf("%s/%s", namespace, name))
 	return nil
 }
