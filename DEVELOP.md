@@ -54,7 +54,7 @@ Edit the following lines in `Dockerfile`:
 
 ```
 # The tag should be the latest one
-FROM ghcr.io/cybozu-go/moco/mysql:8.4.0.1 as mysql
+FROM ghcr.io/cybozu-go/moco/mysql:8.4.2.1 as mysql
 
 # See the below description for how to get the version string.
 ARG MYSQLSH_VERSION=8.4.0-1
@@ -84,14 +84,14 @@ MySQL versions appear twice:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.36", "8.0.37", "8.4.0"]
+        mysql-version: ["8.0.28", "8.0.36", "8.0.37", "8.4.0", "8.4.2"]
 ...
   # Matrix tests for the latest MySQL version on different Kubernetes versions.
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.4.0"]
+        mysql-version: ["8.4.2"]
         k8s-version: ["1.29.4", "1.30.4", "1.31.0"]
 ...
   # Matrix tests for different MySQL versions on the latest supported Kubernetes version.
@@ -99,7 +99,7 @@ MySQL versions appear twice:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.36", "8.0.37", "8.4.0"]
+        mysql-version: ["8.0.28", "8.0.36", "8.0.37", "8.4.0", "8.4.2"]
         k8s-version: ["1.31.0"]
 ```
 
