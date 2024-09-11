@@ -117,6 +117,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			},
 		})
 		Expect(err).ToNot(HaveOccurred())
+
 		mockMgr = &mockManager{
 			clusters: make(map[string]struct{}),
 		}
