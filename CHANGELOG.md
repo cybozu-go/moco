@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Update fluent-bit image to 3.1.7 [#738](https://github.com/cybozu-go/moco/pull/738)
+
 ## [0.23.2] - 2024-07-02
 
 ### Fixed
