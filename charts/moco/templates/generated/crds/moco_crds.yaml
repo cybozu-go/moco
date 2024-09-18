@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.2
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -68,14 +68,14 @@ spec:
                       description: If specified, the pod's scheduling constraints.
                       properties:
                         nodeAffinity:
-                          description: NodeAffinityApplyConfiguration represents an decla
+                          description: NodeAffinityApplyConfiguration represents a declar
                           properties:
                             preferredDuringSchedulingIgnoredDuringExecution:
                               items:
                                 description: PreferredSchedulingTermApplyConfiguration represen
                                 properties:
                                   preference:
-                                    description: NodeSelectorTermApplyConfiguration represents an d
+                                    description: NodeSelectorTermApplyConfiguration represents a de
                                     properties:
                                       matchExpressions:
                                         items:
@@ -114,11 +114,11 @@ spec:
                                 type: object
                               type: array
                             requiredDuringSchedulingIgnoredDuringExecution:
-                              description: NodeSelectorApplyConfiguration represents an decla
+                              description: NodeSelectorApplyConfiguration represents a declar
                               properties:
                                 nodeSelectorTerms:
                                   items:
-                                    description: NodeSelectorTermApplyConfiguration represents an d
+                                    description: NodeSelectorTermApplyConfiguration represents a de
                                     properties:
                                       matchExpressions:
                                         items:
@@ -155,17 +155,17 @@ spec:
                               type: object
                           type: object
                         podAffinity:
-                          description: PodAffinityApplyConfiguration represents an declar
+                          description: PodAffinityApplyConfiguration represents a declara
                           properties:
                             preferredDuringSchedulingIgnoredDuringExecution:
                               items:
                                 description: WeightedPodAffinityTermApplyConfiguration represen
                                 properties:
                                   podAffinityTerm:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -196,7 +196,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -232,10 +232,10 @@ spec:
                               type: array
                             requiredDuringSchedulingIgnoredDuringExecution:
                               items:
-                                description: PodAffinityTermApplyConfiguration represents an de
+                                description: PodAffinityTermApplyConfiguration represents a dec
                                 properties:
                                   labelSelector:
-                                    description: LabelSelectorApplyConfiguration represents an decl
+                                    description: LabelSelectorApplyConfiguration represents a decla
                                     properties:
                                       matchExpressions:
                                         items:
@@ -266,7 +266,7 @@ spec:
                                       type: string
                                     type: array
                                   namespaceSelector:
-                                    description: LabelSelectorApplyConfiguration represents an decl
+                                    description: LabelSelectorApplyConfiguration represents a decla
                                     properties:
                                       matchExpressions:
                                         items:
@@ -298,17 +298,17 @@ spec:
                               type: array
                           type: object
                         podAntiAffinity:
-                          description: PodAntiAffinityApplyConfiguration represents an de
+                          description: PodAntiAffinityApplyConfiguration represents a dec
                           properties:
                             preferredDuringSchedulingIgnoredDuringExecution:
                               items:
                                 description: WeightedPodAffinityTermApplyConfiguration represen
                                 properties:
                                   podAffinityTerm:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -339,7 +339,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -375,10 +375,10 @@ spec:
                               type: array
                             requiredDuringSchedulingIgnoredDuringExecution:
                               items:
-                                description: PodAffinityTermApplyConfiguration represents an de
+                                description: PodAffinityTermApplyConfiguration represents a dec
                                 properties:
                                   labelSelector:
-                                    description: LabelSelectorApplyConfiguration represents an decl
+                                    description: LabelSelectorApplyConfiguration represents a decla
                                     properties:
                                       matchExpressions:
                                         items:
@@ -409,7 +409,7 @@ spec:
                                       type: string
                                     type: array
                                   namespaceSelector:
-                                    description: LabelSelectorApplyConfiguration represents an decl
+                                    description: LabelSelectorApplyConfiguration represents a decla
                                     properties:
                                       matchExpressions:
                                         items:
@@ -490,7 +490,7 @@ spec:
                           value:
                             type: string
                           valueFrom:
-                            description: EnvVarSourceApplyConfiguration represents an decla
+                            description: EnvVarSourceApplyConfiguration represents a declar
                             properties:
                               configMapKeyRef:
                                 description: 'ConfigMapKeySelectorApplyConfiguration represents '
@@ -525,7 +525,7 @@ spec:
                                     type: string
                                 type: object
                               secretKeyRef:
-                                description: 'SecretKeySelectorApplyConfiguration represents an '
+                                description: SecretKeySelectorApplyConfiguration represents a d
                                 properties:
                                   key:
                                     type: string
@@ -543,7 +543,7 @@ spec:
                         description: EnvFromSourceApplyConfiguration is the type define
                         properties:
                           configMapRef:
-                            description: ConfigMapEnvSourceApplyConfiguration represents an
+                            description: 'ConfigMapEnvSourceApplyConfiguration represents a '
                             properties:
                               name:
                                 type: string
@@ -553,7 +553,7 @@ spec:
                           prefix:
                             type: string
                           secretRef:
-                            description: SecretEnvSourceApplyConfiguration represents an de
+                            description: SecretEnvSourceApplyConfiguration represents a dec
                             properties:
                               name:
                                 type: string
@@ -610,6 +610,9 @@ spec:
                             type: string
                           readOnly:
                             type: boolean
+                          recursiveReadOnly:
+                            description: RecursiveReadOnlyMode describes recursive-readonly
+                            type: string
                           subPath:
                             type: string
                           subPathExpr:
@@ -661,7 +664,7 @@ spec:
                                 type: string
                             type: object
                           cephfs:
-                            description: CephFSVolumeSourceApplyConfiguration represents an
+                            description: 'CephFSVolumeSourceApplyConfiguration represents a '
                             properties:
                               monitors:
                                 items:
@@ -683,7 +686,7 @@ spec:
                                 type: string
                             type: object
                           cinder:
-                            description: CinderVolumeSourceApplyConfiguration represents an
+                            description: 'CinderVolumeSourceApplyConfiguration represents a '
                             properties:
                               fsType:
                                 type: string
@@ -706,7 +709,7 @@ spec:
                                 type: integer
                               items:
                                 items:
-                                  description: KeyToPathApplyConfiguration represents an declarat
+                                  description: KeyToPathApplyConfiguration represents a declarati
                                   properties:
                                     key:
                                       type: string
@@ -723,7 +726,7 @@ spec:
                                 type: boolean
                             type: object
                           csi:
-                            description: CSIVolumeSourceApplyConfiguration represents an de
+                            description: CSIVolumeSourceApplyConfiguration represents a dec
                             properties:
                               driver:
                                 type: string
@@ -802,7 +805,7 @@ spec:
                                 description: PersistentVolumeClaimTemplateApplyConfiguration re
                                 properties:
                                   metadata:
-                                    description: ObjectMetaApplyConfiguration represents an declara
+                                    description: ObjectMetaApplyConfiguration represents a declarat
                                     properties:
                                       annotations:
                                         additionalProperties:
@@ -836,7 +839,7 @@ spec:
                                         type: string
                                       ownerReferences:
                                         items:
-                                          description: OwnerReferenceApplyConfiguration represents an dec
+                                          description: OwnerReferenceApplyConfiguration represents a decl
                                           properties:
                                             apiVersion:
                                               type: string
@@ -911,7 +914,7 @@ spec:
                                             type: object
                                         type: object
                                       selector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -946,7 +949,7 @@ spec:
                                 type: object
                             type: object
                           fc:
-                            description: FCVolumeSourceApplyConfiguration represents an dec
+                            description: FCVolumeSourceApplyConfiguration represents a decl
                             properties:
                               fsType:
                                 type: string
@@ -965,7 +968,7 @@ spec:
                                 type: array
                             type: object
                           flexVolume:
-                            description: FlexVolumeSourceApplyConfiguration represents an d
+                            description: FlexVolumeSourceApplyConfiguration represents a de
                             properties:
                               driver:
                                 type: string
@@ -1033,8 +1036,17 @@ spec:
                               type:
                                 type: string
                             type: object
+                          image:
+                            description: ImageVolumeSourceApplyConfiguration represents a d
+                            properties:
+                              pullPolicy:
+                                description: 'PullPolicy describes a policy for if/when to pull '
+                                type: string
+                              reference:
+                                type: string
+                            type: object
                           iscsi:
-                            description: 'ISCSIVolumeSourceApplyConfiguration represents an '
+                            description: ISCSIVolumeSourceApplyConfiguration represents a d
                             properties:
                               chapAuthDiscovery:
                                 type: boolean
@@ -1069,7 +1081,7 @@ spec:
                           name:
                             type: string
                           nfs:
-                            description: NFSVolumeSourceApplyConfiguration represents an de
+                            description: NFSVolumeSourceApplyConfiguration represents a dec
                             properties:
                               path:
                                 type: string
@@ -1112,13 +1124,13 @@ spec:
                                 type: integer
                               sources:
                                 items:
-                                  description: VolumeProjectionApplyConfiguration represents an d
+                                  description: VolumeProjectionApplyConfiguration represents a de
                                   properties:
                                     clusterTrustBundle:
                                       description: ClusterTrustBundleProjectionApplyConfiguration rep
                                       properties:
                                         labelSelector:
-                                          description: LabelSelectorApplyConfiguration represents an decl
+                                          description: LabelSelectorApplyConfiguration represents a decla
                                           properties:
                                             matchExpressions:
                                               items:
@@ -1154,7 +1166,7 @@ spec:
                                       properties:
                                         items:
                                           items:
-                                            description: KeyToPathApplyConfiguration represents an declarat
+                                            description: KeyToPathApplyConfiguration represents a declarati
                                             properties:
                                               key:
                                                 type: string
@@ -1208,11 +1220,11 @@ spec:
                                           type: array
                                       type: object
                                     secret:
-                                      description: SecretProjectionApplyConfiguration represents an d
+                                      description: SecretProjectionApplyConfiguration represents a de
                                       properties:
                                         items:
                                           items:
-                                            description: KeyToPathApplyConfiguration represents an declarat
+                                            description: KeyToPathApplyConfiguration represents a declarati
                                             properties:
                                               key:
                                                 type: string
@@ -1259,7 +1271,7 @@ spec:
                                 type: string
                             type: object
                           rbd:
-                            description: RBDVolumeSourceApplyConfiguration represents an de
+                            description: RBDVolumeSourceApplyConfiguration represents a dec
                             properties:
                               fsType:
                                 type: string
@@ -1313,14 +1325,14 @@ spec:
                                 type: string
                             type: object
                           secret:
-                            description: SecretVolumeSourceApplyConfiguration represents an
+                            description: 'SecretVolumeSourceApplyConfiguration represents a '
                             properties:
                               defaultMode:
                                 format: int32
                                 type: integer
                               items:
                                 items:
-                                  description: KeyToPathApplyConfiguration represents an declarat
+                                  description: KeyToPathApplyConfiguration represents a declarati
                                   properties:
                                     key:
                                       type: string
@@ -1411,7 +1423,7 @@ spec:
                               type: string
                           type: object
                         cephfs:
-                          description: CephFSVolumeSourceApplyConfiguration represents an
+                          description: 'CephFSVolumeSourceApplyConfiguration represents a '
                           properties:
                             monitors:
                               items:
@@ -1433,7 +1445,7 @@ spec:
                               type: string
                           type: object
                         cinder:
-                          description: CinderVolumeSourceApplyConfiguration represents an
+                          description: 'CinderVolumeSourceApplyConfiguration represents a '
                           properties:
                             fsType:
                               type: string
@@ -1456,7 +1468,7 @@ spec:
                               type: integer
                             items:
                               items:
-                                description: KeyToPathApplyConfiguration represents an declarat
+                                description: KeyToPathApplyConfiguration represents a declarati
                                 properties:
                                   key:
                                     type: string
@@ -1473,7 +1485,7 @@ spec:
                               type: boolean
                           type: object
                         csi:
-                          description: CSIVolumeSourceApplyConfiguration represents an de
+                          description: CSIVolumeSourceApplyConfiguration represents a dec
                           properties:
                             driver:
                               type: string
@@ -1552,7 +1564,7 @@ spec:
                               description: PersistentVolumeClaimTemplateApplyConfiguration re
                               properties:
                                 metadata:
-                                  description: ObjectMetaApplyConfiguration represents an declara
+                                  description: ObjectMetaApplyConfiguration represents a declarat
                                   properties:
                                     annotations:
                                       additionalProperties:
@@ -1586,7 +1598,7 @@ spec:
                                       type: string
                                     ownerReferences:
                                       items:
-                                        description: OwnerReferenceApplyConfiguration represents an dec
+                                        description: OwnerReferenceApplyConfiguration represents a decl
                                         properties:
                                           apiVersion:
                                             type: string
@@ -1661,7 +1673,7 @@ spec:
                                           type: object
                                       type: object
                                     selector:
-                                      description: LabelSelectorApplyConfiguration represents an decl
+                                      description: LabelSelectorApplyConfiguration represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -1696,7 +1708,7 @@ spec:
                               type: object
                           type: object
                         fc:
-                          description: FCVolumeSourceApplyConfiguration represents an dec
+                          description: FCVolumeSourceApplyConfiguration represents a decl
                           properties:
                             fsType:
                               type: string
@@ -1715,7 +1727,7 @@ spec:
                               type: array
                           type: object
                         flexVolume:
-                          description: FlexVolumeSourceApplyConfiguration represents an d
+                          description: FlexVolumeSourceApplyConfiguration represents a de
                           properties:
                             driver:
                               type: string
@@ -1783,8 +1795,17 @@ spec:
                             type:
                               type: string
                           type: object
+                        image:
+                          description: ImageVolumeSourceApplyConfiguration represents a d
+                          properties:
+                            pullPolicy:
+                              description: 'PullPolicy describes a policy for if/when to pull '
+                              type: string
+                            reference:
+                              type: string
+                          type: object
                         iscsi:
-                          description: 'ISCSIVolumeSourceApplyConfiguration represents an '
+                          description: ISCSIVolumeSourceApplyConfiguration represents a d
                           properties:
                             chapAuthDiscovery:
                               type: boolean
@@ -1817,7 +1838,7 @@ spec:
                               type: string
                           type: object
                         nfs:
-                          description: NFSVolumeSourceApplyConfiguration represents an de
+                          description: NFSVolumeSourceApplyConfiguration represents a dec
                           properties:
                             path:
                               type: string
@@ -1860,13 +1881,13 @@ spec:
                               type: integer
                             sources:
                               items:
-                                description: VolumeProjectionApplyConfiguration represents an d
+                                description: VolumeProjectionApplyConfiguration represents a de
                                 properties:
                                   clusterTrustBundle:
                                     description: ClusterTrustBundleProjectionApplyConfiguration rep
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -1902,7 +1923,7 @@ spec:
                                     properties:
                                       items:
                                         items:
-                                          description: KeyToPathApplyConfiguration represents an declarat
+                                          description: KeyToPathApplyConfiguration represents a declarati
                                           properties:
                                             key:
                                               type: string
@@ -1956,11 +1977,11 @@ spec:
                                         type: array
                                     type: object
                                   secret:
-                                    description: SecretProjectionApplyConfiguration represents an d
+                                    description: SecretProjectionApplyConfiguration represents a de
                                     properties:
                                       items:
                                         items:
-                                          description: KeyToPathApplyConfiguration represents an declarat
+                                          description: KeyToPathApplyConfiguration represents a declarati
                                           properties:
                                             key:
                                               type: string
@@ -2007,7 +2028,7 @@ spec:
                               type: string
                           type: object
                         rbd:
-                          description: RBDVolumeSourceApplyConfiguration represents an de
+                          description: RBDVolumeSourceApplyConfiguration represents a dec
                           properties:
                             fsType:
                               type: string
@@ -2061,14 +2082,14 @@ spec:
                               type: string
                           type: object
                         secret:
-                          description: SecretVolumeSourceApplyConfiguration represents an
+                          description: 'SecretVolumeSourceApplyConfiguration represents a '
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             items:
                               items:
-                                description: KeyToPathApplyConfiguration represents an declarat
+                                description: KeyToPathApplyConfiguration represents a declarati
                                 properties:
                                   key:
                                     type: string
@@ -2149,7 +2170,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.2
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -2285,9 +2306,11 @@ spec:
                             properties:
                               claims:
                                 items:
-                                  description: ResourceClaimApplyConfiguration represents an decl
+                                  description: ResourceClaimApplyConfiguration represents a decla
                                   properties:
                                     name:
+                                      type: string
+                                    request:
                                       type: string
                                   type: object
                                 type: array
@@ -2321,17 +2344,17 @@ spec:
                           format: int64
                           type: integer
                         affinity:
-                          description: AffinityApplyConfiguration represents an declarati
+                          description: AffinityApplyConfiguration represents a declarativ
                           properties:
                             nodeAffinity:
-                              description: NodeAffinityApplyConfiguration represents an decla
+                              description: NodeAffinityApplyConfiguration represents a declar
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: PreferredSchedulingTermApplyConfiguration represen
                                     properties:
                                       preference:
-                                        description: NodeSelectorTermApplyConfiguration represents an d
+                                        description: NodeSelectorTermApplyConfiguration represents a de
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2370,11 +2393,11 @@ spec:
                                     type: object
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
-                                  description: NodeSelectorApplyConfiguration represents an decla
+                                  description: NodeSelectorApplyConfiguration represents a declar
                                   properties:
                                     nodeSelectorTerms:
                                       items:
-                                        description: NodeSelectorTermApplyConfiguration represents an d
+                                        description: NodeSelectorTermApplyConfiguration represents a de
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2411,17 +2434,17 @@ spec:
                                   type: object
                               type: object
                             podAffinity:
-                              description: PodAffinityApplyConfiguration represents an declar
+                              description: PodAffinityApplyConfiguration represents a declara
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: WeightedPodAffinityTermApplyConfiguration represen
                                     properties:
                                       podAffinityTerm:
-                                        description: PodAffinityTermApplyConfiguration represents an de
+                                        description: PodAffinityTermApplyConfiguration represents a dec
                                         properties:
                                           labelSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -2452,7 +2475,7 @@ spec:
                                               type: string
                                             type: array
                                           namespaceSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -2488,10 +2511,10 @@ spec:
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
                                   items:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2522,7 +2545,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2554,17 +2577,17 @@ spec:
                                   type: array
                               type: object
                             podAntiAffinity:
-                              description: PodAntiAffinityApplyConfiguration represents an de
+                              description: PodAntiAffinityApplyConfiguration represents a dec
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: WeightedPodAffinityTermApplyConfiguration represen
                                     properties:
                                       podAffinityTerm:
-                                        description: PodAffinityTermApplyConfiguration represents an de
+                                        description: PodAffinityTermApplyConfiguration represents a dec
                                         properties:
                                           labelSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -2595,7 +2618,7 @@ spec:
                                               type: string
                                             type: array
                                           namespaceSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -2631,10 +2654,10 @@ spec:
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
                                   items:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2665,7 +2688,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -2701,7 +2724,7 @@ spec:
                           type: boolean
                         containers:
                           items:
-                            description: ContainerApplyConfiguration represents an declarat
+                            description: ContainerApplyConfiguration represents a declarati
                             properties:
                               args:
                                 items:
@@ -2713,14 +2736,14 @@ spec:
                                 type: array
                               env:
                                 items:
-                                  description: EnvVarApplyConfiguration represents an declarative
+                                  description: 'EnvVarApplyConfiguration represents a declarative '
                                   properties:
                                     name:
                                       type: string
                                     value:
                                       type: string
                                     valueFrom:
-                                      description: EnvVarSourceApplyConfiguration represents an decla
+                                      description: EnvVarSourceApplyConfiguration represents a declar
                                       properties:
                                         configMapKeyRef:
                                           description: 'ConfigMapKeySelectorApplyConfiguration represents '
@@ -2755,7 +2778,7 @@ spec:
                                               type: string
                                           type: object
                                         secretKeyRef:
-                                          description: 'SecretKeySelectorApplyConfiguration represents an '
+                                          description: SecretKeySelectorApplyConfiguration represents a d
                                           properties:
                                             key:
                                               type: string
@@ -2769,10 +2792,10 @@ spec:
                                 type: array
                               envFrom:
                                 items:
-                                  description: EnvFromSourceApplyConfiguration represents an decl
+                                  description: EnvFromSourceApplyConfiguration represents a decla
                                   properties:
                                     configMapRef:
-                                      description: ConfigMapEnvSourceApplyConfiguration represents an
+                                      description: 'ConfigMapEnvSourceApplyConfiguration represents a '
                                       properties:
                                         name:
                                           type: string
@@ -2782,7 +2805,7 @@ spec:
                                     prefix:
                                       type: string
                                     secretRef:
-                                      description: SecretEnvSourceApplyConfiguration represents an de
+                                      description: SecretEnvSourceApplyConfiguration represents a dec
                                       properties:
                                         name:
                                           type: string
@@ -2797,13 +2820,13 @@ spec:
                                 description: 'PullPolicy describes a policy for if/when to pull '
                                 type: string
                               lifecycle:
-                                description: LifecycleApplyConfiguration represents an declarat
+                                description: LifecycleApplyConfiguration represents a declarati
                                 properties:
                                   postStart:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -2811,13 +2834,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -2837,14 +2860,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -2856,10 +2879,10 @@ spec:
                                         type: object
                                     type: object
                                   preStop:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -2867,13 +2890,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -2893,14 +2916,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -2913,10 +2936,10 @@ spec:
                                     type: object
                                 type: object
                               livenessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -2927,7 +2950,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -2936,13 +2959,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -2971,7 +2994,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -2992,7 +3015,7 @@ spec:
                                 type: string
                               ports:
                                 items:
-                                  description: ContainerPortApplyConfiguration represents an decl
+                                  description: ContainerPortApplyConfiguration represents a decla
                                   properties:
                                     containerPort:
                                       format: int32
@@ -3005,15 +3028,15 @@ spec:
                                     name:
                                       type: string
                                     protocol:
-                                      default: TCP
+                                      description: Protocol defines network protocols supported for t
                                       type: string
                                   type: object
                                 type: array
                               readinessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -3024,7 +3047,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -3033,13 +3056,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -3068,7 +3091,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -3102,9 +3125,11 @@ spec:
                                 properties:
                                   claims:
                                     items:
-                                      description: ResourceClaimApplyConfiguration represents an decl
+                                      description: ResourceClaimApplyConfiguration represents a decla
                                       properties:
                                         name:
+                                          type: string
+                                        request:
                                           type: string
                                       type: object
                                     type: array
@@ -3131,12 +3156,20 @@ spec:
                                 description: ContainerRestartPolicy is the restart policy for a
                                 type: string
                               securityContext:
-                                description: SecurityContextApplyConfiguration represents an de
+                                description: SecurityContextApplyConfiguration represents a dec
                                 properties:
                                   allowPrivilegeEscalation:
                                     type: boolean
+                                  appArmorProfile:
+                                    description: AppArmorProfileApplyConfiguration represents a dec
+                                    properties:
+                                      localhostProfile:
+                                        type: string
+                                      type:
+                                        type: string
+                                    type: object
                                   capabilities:
-                                    description: CapabilitiesApplyConfiguration represents an decla
+                                    description: CapabilitiesApplyConfiguration represents a declar
                                     properties:
                                       add:
                                         items:
@@ -3164,7 +3197,7 @@ spec:
                                     format: int64
                                     type: integer
                                   seLinuxOptions:
-                                    description: SELinuxOptionsApplyConfiguration represents an dec
+                                    description: SELinuxOptionsApplyConfiguration represents a decl
                                     properties:
                                       level:
                                         type: string
@@ -3176,7 +3209,7 @@ spec:
                                         type: string
                                     type: object
                                   seccompProfile:
-                                    description: SeccompProfileApplyConfiguration represents an dec
+                                    description: SeccompProfileApplyConfiguration represents a decl
                                     properties:
                                       localhostProfile:
                                         type: string
@@ -3198,10 +3231,10 @@ spec:
                                     type: object
                                 type: object
                               startupProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -3212,7 +3245,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -3221,13 +3254,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -3256,7 +3289,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -3286,7 +3319,7 @@ spec:
                                 type: boolean
                               volumeDevices:
                                 items:
-                                  description: VolumeDeviceApplyConfiguration represents an decla
+                                  description: VolumeDeviceApplyConfiguration represents a declar
                                   properties:
                                     devicePath:
                                       type: string
@@ -3296,7 +3329,7 @@ spec:
                                 type: array
                               volumeMounts:
                                 items:
-                                  description: VolumeMountApplyConfiguration represents an declar
+                                  description: VolumeMountApplyConfiguration represents a declara
                                   properties:
                                     mountPath:
                                       type: string
@@ -3307,6 +3340,9 @@ spec:
                                       type: string
                                     readOnly:
                                       type: boolean
+                                    recursiveReadOnly:
+                                      description: RecursiveReadOnlyMode describes recursive-readonly
+                                      type: string
                                     subPath:
                                       type: string
                                     subPathExpr:
@@ -3318,7 +3354,7 @@ spec:
                             type: object
                           type: array
                         dnsConfig:
-                          description: PodDNSConfigApplyConfiguration represents an decla
+                          description: PodDNSConfigApplyConfiguration represents a declar
                           properties:
                             nameservers:
                               items:
@@ -3326,7 +3362,7 @@ spec:
                               type: array
                             options:
                               items:
-                                description: PodDNSConfigOptionApplyConfiguration represents an
+                                description: 'PodDNSConfigOptionApplyConfiguration represents a '
                                 properties:
                                   name:
                                     type: string
@@ -3346,7 +3382,7 @@ spec:
                           type: boolean
                         ephemeralContainers:
                           items:
-                            description: EphemeralContainerApplyConfiguration represents an
+                            description: 'EphemeralContainerApplyConfiguration represents a '
                             properties:
                               args:
                                 items:
@@ -3358,14 +3394,14 @@ spec:
                                 type: array
                               env:
                                 items:
-                                  description: EnvVarApplyConfiguration represents an declarative
+                                  description: 'EnvVarApplyConfiguration represents a declarative '
                                   properties:
                                     name:
                                       type: string
                                     value:
                                       type: string
                                     valueFrom:
-                                      description: EnvVarSourceApplyConfiguration represents an decla
+                                      description: EnvVarSourceApplyConfiguration represents a declar
                                       properties:
                                         configMapKeyRef:
                                           description: 'ConfigMapKeySelectorApplyConfiguration represents '
@@ -3400,7 +3436,7 @@ spec:
                                               type: string
                                           type: object
                                         secretKeyRef:
-                                          description: 'SecretKeySelectorApplyConfiguration represents an '
+                                          description: SecretKeySelectorApplyConfiguration represents a d
                                           properties:
                                             key:
                                               type: string
@@ -3414,10 +3450,10 @@ spec:
                                 type: array
                               envFrom:
                                 items:
-                                  description: EnvFromSourceApplyConfiguration represents an decl
+                                  description: EnvFromSourceApplyConfiguration represents a decla
                                   properties:
                                     configMapRef:
-                                      description: ConfigMapEnvSourceApplyConfiguration represents an
+                                      description: 'ConfigMapEnvSourceApplyConfiguration represents a '
                                       properties:
                                         name:
                                           type: string
@@ -3427,7 +3463,7 @@ spec:
                                     prefix:
                                       type: string
                                     secretRef:
-                                      description: SecretEnvSourceApplyConfiguration represents an de
+                                      description: SecretEnvSourceApplyConfiguration represents a dec
                                       properties:
                                         name:
                                           type: string
@@ -3442,13 +3478,13 @@ spec:
                                 description: 'PullPolicy describes a policy for if/when to pull '
                                 type: string
                               lifecycle:
-                                description: LifecycleApplyConfiguration represents an declarat
+                                description: LifecycleApplyConfiguration represents a declarati
                                 properties:
                                   postStart:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -3456,13 +3492,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -3482,14 +3518,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -3501,10 +3537,10 @@ spec:
                                         type: object
                                     type: object
                                   preStop:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -3512,13 +3548,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -3538,14 +3574,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -3558,10 +3594,10 @@ spec:
                                     type: object
                                 type: object
                               livenessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -3572,7 +3608,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -3581,13 +3617,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -3616,7 +3652,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -3637,7 +3673,7 @@ spec:
                                 type: string
                               ports:
                                 items:
-                                  description: ContainerPortApplyConfiguration represents an decl
+                                  description: ContainerPortApplyConfiguration represents a decla
                                   properties:
                                     containerPort:
                                       format: int32
@@ -3650,15 +3686,15 @@ spec:
                                     name:
                                       type: string
                                     protocol:
-                                      default: TCP
+                                      description: Protocol defines network protocols supported for t
                                       type: string
                                   type: object
                                 type: array
                               readinessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -3669,7 +3705,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -3678,13 +3714,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -3713,7 +3749,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -3747,9 +3783,11 @@ spec:
                                 properties:
                                   claims:
                                     items:
-                                      description: ResourceClaimApplyConfiguration represents an decl
+                                      description: ResourceClaimApplyConfiguration represents a decla
                                       properties:
                                         name:
+                                          type: string
+                                        request:
                                           type: string
                                       type: object
                                     type: array
@@ -3776,12 +3814,20 @@ spec:
                                 description: ContainerRestartPolicy is the restart policy for a
                                 type: string
                               securityContext:
-                                description: SecurityContextApplyConfiguration represents an de
+                                description: SecurityContextApplyConfiguration represents a dec
                                 properties:
                                   allowPrivilegeEscalation:
                                     type: boolean
+                                  appArmorProfile:
+                                    description: AppArmorProfileApplyConfiguration represents a dec
+                                    properties:
+                                      localhostProfile:
+                                        type: string
+                                      type:
+                                        type: string
+                                    type: object
                                   capabilities:
-                                    description: CapabilitiesApplyConfiguration represents an decla
+                                    description: CapabilitiesApplyConfiguration represents a declar
                                     properties:
                                       add:
                                         items:
@@ -3809,7 +3855,7 @@ spec:
                                     format: int64
                                     type: integer
                                   seLinuxOptions:
-                                    description: SELinuxOptionsApplyConfiguration represents an dec
+                                    description: SELinuxOptionsApplyConfiguration represents a decl
                                     properties:
                                       level:
                                         type: string
@@ -3821,7 +3867,7 @@ spec:
                                         type: string
                                     type: object
                                   seccompProfile:
-                                    description: SeccompProfileApplyConfiguration represents an dec
+                                    description: SeccompProfileApplyConfiguration represents a decl
                                     properties:
                                       localhostProfile:
                                         type: string
@@ -3843,10 +3889,10 @@ spec:
                                     type: object
                                 type: object
                               startupProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -3857,7 +3903,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -3866,13 +3912,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -3901,7 +3947,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -3933,7 +3979,7 @@ spec:
                                 type: boolean
                               volumeDevices:
                                 items:
-                                  description: VolumeDeviceApplyConfiguration represents an decla
+                                  description: VolumeDeviceApplyConfiguration represents a declar
                                   properties:
                                     devicePath:
                                       type: string
@@ -3943,7 +3989,7 @@ spec:
                                 type: array
                               volumeMounts:
                                 items:
-                                  description: VolumeMountApplyConfiguration represents an declar
+                                  description: VolumeMountApplyConfiguration represents a declara
                                   properties:
                                     mountPath:
                                       type: string
@@ -3954,6 +4000,9 @@ spec:
                                       type: string
                                     readOnly:
                                       type: boolean
+                                    recursiveReadOnly:
+                                      description: RecursiveReadOnlyMode describes recursive-readonly
+                                      type: string
                                     subPath:
                                       type: string
                                     subPathExpr:
@@ -3966,7 +4015,7 @@ spec:
                           type: array
                         hostAliases:
                           items:
-                            description: HostAliasApplyConfiguration represents an declarat
+                            description: HostAliasApplyConfiguration represents a declarati
                             properties:
                               hostnames:
                                 items:
@@ -3996,7 +4045,7 @@ spec:
                           type: array
                         initContainers:
                           items:
-                            description: ContainerApplyConfiguration represents an declarat
+                            description: ContainerApplyConfiguration represents a declarati
                             properties:
                               args:
                                 items:
@@ -4008,14 +4057,14 @@ spec:
                                 type: array
                               env:
                                 items:
-                                  description: EnvVarApplyConfiguration represents an declarative
+                                  description: 'EnvVarApplyConfiguration represents a declarative '
                                   properties:
                                     name:
                                       type: string
                                     value:
                                       type: string
                                     valueFrom:
-                                      description: EnvVarSourceApplyConfiguration represents an decla
+                                      description: EnvVarSourceApplyConfiguration represents a declar
                                       properties:
                                         configMapKeyRef:
                                           description: 'ConfigMapKeySelectorApplyConfiguration represents '
@@ -4050,7 +4099,7 @@ spec:
                                               type: string
                                           type: object
                                         secretKeyRef:
-                                          description: 'SecretKeySelectorApplyConfiguration represents an '
+                                          description: SecretKeySelectorApplyConfiguration represents a d
                                           properties:
                                             key:
                                               type: string
@@ -4064,10 +4113,10 @@ spec:
                                 type: array
                               envFrom:
                                 items:
-                                  description: EnvFromSourceApplyConfiguration represents an decl
+                                  description: EnvFromSourceApplyConfiguration represents a decla
                                   properties:
                                     configMapRef:
-                                      description: ConfigMapEnvSourceApplyConfiguration represents an
+                                      description: 'ConfigMapEnvSourceApplyConfiguration represents a '
                                       properties:
                                         name:
                                           type: string
@@ -4077,7 +4126,7 @@ spec:
                                     prefix:
                                       type: string
                                     secretRef:
-                                      description: SecretEnvSourceApplyConfiguration represents an de
+                                      description: SecretEnvSourceApplyConfiguration represents a dec
                                       properties:
                                         name:
                                           type: string
@@ -4092,13 +4141,13 @@ spec:
                                 description: 'PullPolicy describes a policy for if/when to pull '
                                 type: string
                               lifecycle:
-                                description: LifecycleApplyConfiguration represents an declarat
+                                description: LifecycleApplyConfiguration represents a declarati
                                 properties:
                                   postStart:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -4106,13 +4155,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -4132,14 +4181,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -4151,10 +4200,10 @@ spec:
                                         type: object
                                     type: object
                                   preStop:
-                                    description: LifecycleHandlerApplyConfiguration represents an d
+                                    description: LifecycleHandlerApplyConfiguration represents a de
                                     properties:
                                       exec:
-                                        description: ExecActionApplyConfiguration represents an declara
+                                        description: ExecActionApplyConfiguration represents a declarat
                                         properties:
                                           command:
                                             items:
@@ -4162,13 +4211,13 @@ spec:
                                             type: array
                                         type: object
                                       httpGet:
-                                        description: HTTPGetActionApplyConfiguration represents an decl
+                                        description: HTTPGetActionApplyConfiguration represents a decla
                                         properties:
                                           host:
                                             type: string
                                           httpHeaders:
                                             items:
-                                              description: HTTPHeaderApplyConfiguration represents an declara
+                                              description: HTTPHeaderApplyConfiguration represents a declarat
                                               properties:
                                                 name:
                                                   type: string
@@ -4188,14 +4237,14 @@ spec:
                                             type: string
                                         type: object
                                       sleep:
-                                        description: SleepActionApplyConfiguration represents an declar
+                                        description: SleepActionApplyConfiguration represents a declara
                                         properties:
                                           seconds:
                                             format: int64
                                             type: integer
                                         type: object
                                       tcpSocket:
-                                        description: TCPSocketActionApplyConfiguration represents an de
+                                        description: TCPSocketActionApplyConfiguration represents a dec
                                         properties:
                                           host:
                                             type: string
@@ -4208,10 +4257,10 @@ spec:
                                     type: object
                                 type: object
                               livenessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -4222,7 +4271,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -4231,13 +4280,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -4266,7 +4315,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -4287,7 +4336,7 @@ spec:
                                 type: string
                               ports:
                                 items:
-                                  description: ContainerPortApplyConfiguration represents an decl
+                                  description: ContainerPortApplyConfiguration represents a decla
                                   properties:
                                     containerPort:
                                       format: int32
@@ -4300,15 +4349,15 @@ spec:
                                     name:
                                       type: string
                                     protocol:
-                                      default: TCP
+                                      description: Protocol defines network protocols supported for t
                                       type: string
                                   type: object
                                 type: array
                               readinessProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -4319,7 +4368,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -4328,13 +4377,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -4363,7 +4412,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -4397,9 +4446,11 @@ spec:
                                 properties:
                                   claims:
                                     items:
-                                      description: ResourceClaimApplyConfiguration represents an decl
+                                      description: ResourceClaimApplyConfiguration represents a decla
                                       properties:
                                         name:
+                                          type: string
+                                        request:
                                           type: string
                                       type: object
                                     type: array
@@ -4426,12 +4477,20 @@ spec:
                                 description: ContainerRestartPolicy is the restart policy for a
                                 type: string
                               securityContext:
-                                description: SecurityContextApplyConfiguration represents an de
+                                description: SecurityContextApplyConfiguration represents a dec
                                 properties:
                                   allowPrivilegeEscalation:
                                     type: boolean
+                                  appArmorProfile:
+                                    description: AppArmorProfileApplyConfiguration represents a dec
+                                    properties:
+                                      localhostProfile:
+                                        type: string
+                                      type:
+                                        type: string
+                                    type: object
                                   capabilities:
-                                    description: CapabilitiesApplyConfiguration represents an decla
+                                    description: CapabilitiesApplyConfiguration represents a declar
                                     properties:
                                       add:
                                         items:
@@ -4459,7 +4518,7 @@ spec:
                                     format: int64
                                     type: integer
                                   seLinuxOptions:
-                                    description: SELinuxOptionsApplyConfiguration represents an dec
+                                    description: SELinuxOptionsApplyConfiguration represents a decl
                                     properties:
                                       level:
                                         type: string
@@ -4471,7 +4530,7 @@ spec:
                                         type: string
                                     type: object
                                   seccompProfile:
-                                    description: SeccompProfileApplyConfiguration represents an dec
+                                    description: SeccompProfileApplyConfiguration represents a decl
                                     properties:
                                       localhostProfile:
                                         type: string
@@ -4493,10 +4552,10 @@ spec:
                                     type: object
                                 type: object
                               startupProbe:
-                                description: 'ProbeApplyConfiguration represents an declarative '
+                                description: ProbeApplyConfiguration represents a declarative c
                                 properties:
                                   exec:
-                                    description: ExecActionApplyConfiguration represents an declara
+                                    description: ExecActionApplyConfiguration represents a declarat
                                     properties:
                                       command:
                                         items:
@@ -4507,7 +4566,7 @@ spec:
                                     format: int32
                                     type: integer
                                   grpc:
-                                    description: GRPCActionApplyConfiguration represents an declara
+                                    description: GRPCActionApplyConfiguration represents a declarat
                                     properties:
                                       port:
                                         format: int32
@@ -4516,13 +4575,13 @@ spec:
                                         type: string
                                     type: object
                                   httpGet:
-                                    description: HTTPGetActionApplyConfiguration represents an decl
+                                    description: HTTPGetActionApplyConfiguration represents a decla
                                     properties:
                                       host:
                                         type: string
                                       httpHeaders:
                                         items:
-                                          description: HTTPHeaderApplyConfiguration represents an declara
+                                          description: HTTPHeaderApplyConfiguration represents a declarat
                                           properties:
                                             name:
                                               type: string
@@ -4551,7 +4610,7 @@ spec:
                                     format: int32
                                     type: integer
                                   tcpSocket:
-                                    description: TCPSocketActionApplyConfiguration represents an de
+                                    description: TCPSocketActionApplyConfiguration represents a dec
                                     properties:
                                       host:
                                         type: string
@@ -4581,7 +4640,7 @@ spec:
                                 type: boolean
                               volumeDevices:
                                 items:
-                                  description: VolumeDeviceApplyConfiguration represents an decla
+                                  description: VolumeDeviceApplyConfiguration represents a declar
                                   properties:
                                     devicePath:
                                       type: string
@@ -4591,7 +4650,7 @@ spec:
                                 type: array
                               volumeMounts:
                                 items:
-                                  description: VolumeMountApplyConfiguration represents an declar
+                                  description: VolumeMountApplyConfiguration represents a declara
                                   properties:
                                     mountPath:
                                       type: string
@@ -4602,6 +4661,9 @@ spec:
                                       type: string
                                     readOnly:
                                       type: boolean
+                                    recursiveReadOnly:
+                                      description: RecursiveReadOnlyMode describes recursive-readonly
+                                      type: string
                                     subPath:
                                       type: string
                                     subPathExpr:
@@ -4619,7 +4681,7 @@ spec:
                             type: string
                           type: object
                         os:
-                          description: 'PodOSApplyConfiguration represents an declarative '
+                          description: PodOSApplyConfiguration represents a declarative c
                           properties:
                             name:
                               description: OSName is the set of OS'es that can be used in OS.
@@ -4644,7 +4706,7 @@ spec:
                           type: string
                         readinessGates:
                           items:
-                            description: PodReadinessGateApplyConfiguration represents an d
+                            description: PodReadinessGateApplyConfiguration represents a de
                             properties:
                               conditionType:
                                 description: PodConditionType is a valid value for PodCondition
@@ -4653,18 +4715,14 @@ spec:
                           type: array
                         resourceClaims:
                           items:
-                            description: PodResourceClaimApplyConfiguration represents an d
+                            description: PodResourceClaimApplyConfiguration represents a de
                             properties:
                               name:
                                 type: string
-                              source:
-                                description: ClaimSourceApplyConfiguration represents an declar
-                                properties:
-                                  resourceClaimName:
-                                    type: string
-                                  resourceClaimTemplateName:
-                                    type: string
-                                type: object
+                              resourceClaimName:
+                                type: string
+                              resourceClaimTemplateName:
+                                type: string
                             type: object
                           type: array
                         restartPolicy:
@@ -4676,15 +4734,23 @@ spec:
                           type: string
                         schedulingGates:
                           items:
-                            description: 'PodSchedulingGateApplyConfiguration represents an '
+                            description: PodSchedulingGateApplyConfiguration represents a d
                             properties:
                               name:
                                 type: string
                             type: object
                           type: array
                         securityContext:
-                          description: PodSecurityContextApplyConfiguration represents an
+                          description: 'PodSecurityContextApplyConfiguration represents a '
                           properties:
+                            appArmorProfile:
+                              description: AppArmorProfileApplyConfiguration represents a dec
+                              properties:
+                                localhostProfile:
+                                  type: string
+                                type:
+                                  type: string
+                              type: object
                             fsGroup:
                               format: int64
                               type: integer
@@ -4700,7 +4766,7 @@ spec:
                               format: int64
                               type: integer
                             seLinuxOptions:
-                              description: SELinuxOptionsApplyConfiguration represents an dec
+                              description: SELinuxOptionsApplyConfiguration represents a decl
                               properties:
                                 level:
                                   type: string
@@ -4712,7 +4778,7 @@ spec:
                                   type: string
                               type: object
                             seccompProfile:
-                              description: SeccompProfileApplyConfiguration represents an dec
+                              description: SeccompProfileApplyConfiguration represents a decl
                               properties:
                                 localhostProfile:
                                   type: string
@@ -4725,9 +4791,12 @@ spec:
                                 format: int64
                                 type: integer
                               type: array
+                            supplementalGroupsPolicy:
+                              description: 'SupplementalGroupsPolicy defines how supplemental '
+                              type: string
                             sysctls:
                               items:
-                                description: SysctlApplyConfiguration represents an declarative
+                                description: 'SysctlApplyConfiguration represents a declarative '
                                 properties:
                                   name:
                                     type: string
@@ -4763,7 +4832,7 @@ spec:
                           type: integer
                         tolerations:
                           items:
-                            description: TolerationApplyConfiguration represents an declara
+                            description: TolerationApplyConfiguration represents a declarat
                             properties:
                               effect:
                                 type: string
@@ -4784,7 +4853,7 @@ spec:
                             description: TopologySpreadConstraintApplyConfiguration represe
                             properties:
                               labelSelector:
-                                description: LabelSelectorApplyConfiguration represents an decl
+                                description: LabelSelectorApplyConfiguration represents a decla
                                 properties:
                                   matchExpressions:
                                     items:
@@ -4830,7 +4899,7 @@ spec:
                           type: array
                         volumes:
                           items:
-                            description: VolumeApplyConfiguration represents an declarative
+                            description: 'VolumeApplyConfiguration represents a declarative '
                             properties:
                               awsElasticBlockStore:
                                 description: AWSElasticBlockStoreVolumeSourceApplyConfiguration
@@ -4872,7 +4941,7 @@ spec:
                                     type: string
                                 type: object
                               cephfs:
-                                description: CephFSVolumeSourceApplyConfiguration represents an
+                                description: 'CephFSVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   monitors:
                                     items:
@@ -4894,7 +4963,7 @@ spec:
                                     type: string
                                 type: object
                               cinder:
-                                description: CinderVolumeSourceApplyConfiguration represents an
+                                description: 'CinderVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   fsType:
                                     type: string
@@ -4917,7 +4986,7 @@ spec:
                                     type: integer
                                   items:
                                     items:
-                                      description: KeyToPathApplyConfiguration represents an declarat
+                                      description: KeyToPathApplyConfiguration represents a declarati
                                       properties:
                                         key:
                                           type: string
@@ -4934,7 +5003,7 @@ spec:
                                     type: boolean
                                 type: object
                               csi:
-                                description: CSIVolumeSourceApplyConfiguration represents an de
+                                description: CSIVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   driver:
                                     type: string
@@ -5013,7 +5082,7 @@ spec:
                                     description: PersistentVolumeClaimTemplateApplyConfiguration re
                                     properties:
                                       metadata:
-                                        description: ObjectMetaApplyConfiguration represents an declara
+                                        description: ObjectMetaApplyConfiguration represents a declarat
                                         properties:
                                           annotations:
                                             additionalProperties:
@@ -5047,7 +5116,7 @@ spec:
                                             type: string
                                           ownerReferences:
                                             items:
-                                              description: OwnerReferenceApplyConfiguration represents an dec
+                                              description: OwnerReferenceApplyConfiguration represents a decl
                                               properties:
                                                 apiVersion:
                                                   type: string
@@ -5122,7 +5191,7 @@ spec:
                                                 type: object
                                             type: object
                                           selector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -5157,7 +5226,7 @@ spec:
                                     type: object
                                 type: object
                               fc:
-                                description: FCVolumeSourceApplyConfiguration represents an dec
+                                description: FCVolumeSourceApplyConfiguration represents a decl
                                 properties:
                                   fsType:
                                     type: string
@@ -5176,7 +5245,7 @@ spec:
                                     type: array
                                 type: object
                               flexVolume:
-                                description: FlexVolumeSourceApplyConfiguration represents an d
+                                description: FlexVolumeSourceApplyConfiguration represents a de
                                 properties:
                                   driver:
                                     type: string
@@ -5244,8 +5313,17 @@ spec:
                                   type:
                                     type: string
                                 type: object
+                              image:
+                                description: ImageVolumeSourceApplyConfiguration represents a d
+                                properties:
+                                  pullPolicy:
+                                    description: 'PullPolicy describes a policy for if/when to pull '
+                                    type: string
+                                  reference:
+                                    type: string
+                                type: object
                               iscsi:
-                                description: 'ISCSIVolumeSourceApplyConfiguration represents an '
+                                description: ISCSIVolumeSourceApplyConfiguration represents a d
                                 properties:
                                   chapAuthDiscovery:
                                     type: boolean
@@ -5280,7 +5358,7 @@ spec:
                               name:
                                 type: string
                               nfs:
-                                description: NFSVolumeSourceApplyConfiguration represents an de
+                                description: NFSVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   path:
                                     type: string
@@ -5323,13 +5401,13 @@ spec:
                                     type: integer
                                   sources:
                                     items:
-                                      description: VolumeProjectionApplyConfiguration represents an d
+                                      description: VolumeProjectionApplyConfiguration represents a de
                                       properties:
                                         clusterTrustBundle:
                                           description: ClusterTrustBundleProjectionApplyConfiguration rep
                                           properties:
                                             labelSelector:
-                                              description: LabelSelectorApplyConfiguration represents an decl
+                                              description: LabelSelectorApplyConfiguration represents a decla
                                               properties:
                                                 matchExpressions:
                                                   items:
@@ -5365,7 +5443,7 @@ spec:
                                           properties:
                                             items:
                                               items:
-                                                description: KeyToPathApplyConfiguration represents an declarat
+                                                description: KeyToPathApplyConfiguration represents a declarati
                                                 properties:
                                                   key:
                                                     type: string
@@ -5419,11 +5497,11 @@ spec:
                                               type: array
                                           type: object
                                         secret:
-                                          description: SecretProjectionApplyConfiguration represents an d
+                                          description: SecretProjectionApplyConfiguration represents a de
                                           properties:
                                             items:
                                               items:
-                                                description: KeyToPathApplyConfiguration represents an declarat
+                                                description: KeyToPathApplyConfiguration represents a declarati
                                                 properties:
                                                   key:
                                                     type: string
@@ -5470,7 +5548,7 @@ spec:
                                     type: string
                                 type: object
                               rbd:
-                                description: RBDVolumeSourceApplyConfiguration represents an de
+                                description: RBDVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   fsType:
                                     type: string
@@ -5524,14 +5602,14 @@ spec:
                                     type: string
                                 type: object
                               secret:
-                                description: SecretVolumeSourceApplyConfiguration represents an
+                                description: 'SecretVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   defaultMode:
                                     format: int32
                                     type: integer
                                   items:
                                     items:
-                                      description: KeyToPathApplyConfiguration represents an declarat
+                                      description: KeyToPathApplyConfiguration represents a declarati
                                       properties:
                                         key:
                                           type: string
@@ -5647,7 +5725,7 @@ spec:
                           type: array
                         ports:
                           items:
-                            description: ServicePortApplyConfiguration represents an declar
+                            description: ServicePortApplyConfiguration represents a declara
                             properties:
                               appProtocol:
                                 type: string
@@ -5660,7 +5738,7 @@ spec:
                                 format: int32
                                 type: integer
                               protocol:
-                                default: TCP
+                                description: Protocol defines network protocols supported for t
                                 type: string
                               targetPort:
                                 anyOf:
@@ -5682,13 +5760,15 @@ spec:
                           description: SessionAffinityConfigApplyConfiguration represents
                           properties:
                             clientIP:
-                              description: ClientIPConfigApplyConfiguration represents an dec
+                              description: ClientIPConfigApplyConfiguration represents a decl
                               properties:
                                 timeoutSeconds:
                                   format: int32
                                   type: integer
                               type: object
                           type: object
+                        trafficDistribution:
+                          type: string
                         type:
                           description: 'Service Type string describes ingress methods for '
                           type: string
@@ -5758,7 +5838,7 @@ spec:
                           type: array
                         ports:
                           items:
-                            description: ServicePortApplyConfiguration represents an declar
+                            description: ServicePortApplyConfiguration represents a declara
                             properties:
                               appProtocol:
                                 type: string
@@ -5771,7 +5851,7 @@ spec:
                                 format: int32
                                 type: integer
                               protocol:
-                                default: TCP
+                                description: Protocol defines network protocols supported for t
                                 type: string
                               targetPort:
                                 anyOf:
@@ -5793,13 +5873,15 @@ spec:
                           description: SessionAffinityConfigApplyConfiguration represents
                           properties:
                             clientIP:
-                              description: ClientIPConfigApplyConfiguration represents an dec
+                              description: ClientIPConfigApplyConfiguration represents a decl
                               properties:
                                 timeoutSeconds:
                                   format: int32
                                   type: integer
                               type: object
                           type: object
+                        trafficDistribution:
+                          type: string
                         type:
                           description: 'Service Type string describes ingress methods for '
                           type: string
@@ -5824,14 +5906,14 @@ spec:
                           description: If specified, the pod's scheduling constraints.
                           properties:
                             nodeAffinity:
-                              description: NodeAffinityApplyConfiguration represents an decla
+                              description: NodeAffinityApplyConfiguration represents a declar
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: PreferredSchedulingTermApplyConfiguration represen
                                     properties:
                                       preference:
-                                        description: NodeSelectorTermApplyConfiguration represents an d
+                                        description: NodeSelectorTermApplyConfiguration represents a de
                                         properties:
                                           matchExpressions:
                                             items:
@@ -5870,11 +5952,11 @@ spec:
                                     type: object
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
-                                  description: NodeSelectorApplyConfiguration represents an decla
+                                  description: NodeSelectorApplyConfiguration represents a declar
                                   properties:
                                     nodeSelectorTerms:
                                       items:
-                                        description: NodeSelectorTermApplyConfiguration represents an d
+                                        description: NodeSelectorTermApplyConfiguration represents a de
                                         properties:
                                           matchExpressions:
                                             items:
@@ -5911,17 +5993,17 @@ spec:
                                   type: object
                               type: object
                             podAffinity:
-                              description: PodAffinityApplyConfiguration represents an declar
+                              description: PodAffinityApplyConfiguration represents a declara
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: WeightedPodAffinityTermApplyConfiguration represen
                                     properties:
                                       podAffinityTerm:
-                                        description: PodAffinityTermApplyConfiguration represents an de
+                                        description: PodAffinityTermApplyConfiguration represents a dec
                                         properties:
                                           labelSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -5952,7 +6034,7 @@ spec:
                                               type: string
                                             type: array
                                           namespaceSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -5988,10 +6070,10 @@ spec:
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
                                   items:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -6022,7 +6104,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -6054,17 +6136,17 @@ spec:
                                   type: array
                               type: object
                             podAntiAffinity:
-                              description: PodAntiAffinityApplyConfiguration represents an de
+                              description: PodAntiAffinityApplyConfiguration represents a dec
                               properties:
                                 preferredDuringSchedulingIgnoredDuringExecution:
                                   items:
                                     description: WeightedPodAffinityTermApplyConfiguration represen
                                     properties:
                                       podAffinityTerm:
-                                        description: PodAffinityTermApplyConfiguration represents an de
+                                        description: PodAffinityTermApplyConfiguration represents a dec
                                         properties:
                                           labelSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -6095,7 +6177,7 @@ spec:
                                               type: string
                                             type: array
                                           namespaceSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -6131,10 +6213,10 @@ spec:
                                   type: array
                                 requiredDuringSchedulingIgnoredDuringExecution:
                                   items:
-                                    description: PodAffinityTermApplyConfiguration represents an de
+                                    description: PodAffinityTermApplyConfiguration represents a dec
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -6165,7 +6247,7 @@ spec:
                                           type: string
                                         type: array
                                       namespaceSelector:
-                                        description: LabelSelectorApplyConfiguration represents an decl
+                                        description: LabelSelectorApplyConfiguration represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -6246,7 +6328,7 @@ spec:
                               value:
                                 type: string
                               valueFrom:
-                                description: EnvVarSourceApplyConfiguration represents an decla
+                                description: EnvVarSourceApplyConfiguration represents a declar
                                 properties:
                                   configMapKeyRef:
                                     description: 'ConfigMapKeySelectorApplyConfiguration represents '
@@ -6281,7 +6363,7 @@ spec:
                                         type: string
                                     type: object
                                   secretKeyRef:
-                                    description: 'SecretKeySelectorApplyConfiguration represents an '
+                                    description: SecretKeySelectorApplyConfiguration represents a d
                                     properties:
                                       key:
                                         type: string
@@ -6299,7 +6381,7 @@ spec:
                             description: EnvFromSourceApplyConfiguration is the type define
                             properties:
                               configMapRef:
-                                description: ConfigMapEnvSourceApplyConfiguration represents an
+                                description: 'ConfigMapEnvSourceApplyConfiguration represents a '
                                 properties:
                                   name:
                                     type: string
@@ -6309,7 +6391,7 @@ spec:
                               prefix:
                                 type: string
                               secretRef:
-                                description: SecretEnvSourceApplyConfiguration represents an de
+                                description: SecretEnvSourceApplyConfiguration represents a dec
                                 properties:
                                   name:
                                     type: string
@@ -6366,6 +6448,9 @@ spec:
                                 type: string
                               readOnly:
                                 type: boolean
+                              recursiveReadOnly:
+                                description: RecursiveReadOnlyMode describes recursive-readonly
+                                type: string
                               subPath:
                                 type: string
                               subPathExpr:
@@ -6417,7 +6502,7 @@ spec:
                                     type: string
                                 type: object
                               cephfs:
-                                description: CephFSVolumeSourceApplyConfiguration represents an
+                                description: 'CephFSVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   monitors:
                                     items:
@@ -6439,7 +6524,7 @@ spec:
                                     type: string
                                 type: object
                               cinder:
-                                description: CinderVolumeSourceApplyConfiguration represents an
+                                description: 'CinderVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   fsType:
                                     type: string
@@ -6462,7 +6547,7 @@ spec:
                                     type: integer
                                   items:
                                     items:
-                                      description: KeyToPathApplyConfiguration represents an declarat
+                                      description: KeyToPathApplyConfiguration represents a declarati
                                       properties:
                                         key:
                                           type: string
@@ -6479,7 +6564,7 @@ spec:
                                     type: boolean
                                 type: object
                               csi:
-                                description: CSIVolumeSourceApplyConfiguration represents an de
+                                description: CSIVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   driver:
                                     type: string
@@ -6558,7 +6643,7 @@ spec:
                                     description: PersistentVolumeClaimTemplateApplyConfiguration re
                                     properties:
                                       metadata:
-                                        description: ObjectMetaApplyConfiguration represents an declara
+                                        description: ObjectMetaApplyConfiguration represents a declarat
                                         properties:
                                           annotations:
                                             additionalProperties:
@@ -6592,7 +6677,7 @@ spec:
                                             type: string
                                           ownerReferences:
                                             items:
-                                              description: OwnerReferenceApplyConfiguration represents an dec
+                                              description: OwnerReferenceApplyConfiguration represents a decl
                                               properties:
                                                 apiVersion:
                                                   type: string
@@ -6667,7 +6752,7 @@ spec:
                                                 type: object
                                             type: object
                                           selector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -6702,7 +6787,7 @@ spec:
                                     type: object
                                 type: object
                               fc:
-                                description: FCVolumeSourceApplyConfiguration represents an dec
+                                description: FCVolumeSourceApplyConfiguration represents a decl
                                 properties:
                                   fsType:
                                     type: string
@@ -6721,7 +6806,7 @@ spec:
                                     type: array
                                 type: object
                               flexVolume:
-                                description: FlexVolumeSourceApplyConfiguration represents an d
+                                description: FlexVolumeSourceApplyConfiguration represents a de
                                 properties:
                                   driver:
                                     type: string
@@ -6789,8 +6874,17 @@ spec:
                                   type:
                                     type: string
                                 type: object
+                              image:
+                                description: ImageVolumeSourceApplyConfiguration represents a d
+                                properties:
+                                  pullPolicy:
+                                    description: 'PullPolicy describes a policy for if/when to pull '
+                                    type: string
+                                  reference:
+                                    type: string
+                                type: object
                               iscsi:
-                                description: 'ISCSIVolumeSourceApplyConfiguration represents an '
+                                description: ISCSIVolumeSourceApplyConfiguration represents a d
                                 properties:
                                   chapAuthDiscovery:
                                     type: boolean
@@ -6825,7 +6919,7 @@ spec:
                               name:
                                 type: string
                               nfs:
-                                description: NFSVolumeSourceApplyConfiguration represents an de
+                                description: NFSVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   path:
                                     type: string
@@ -6868,13 +6962,13 @@ spec:
                                     type: integer
                                   sources:
                                     items:
-                                      description: VolumeProjectionApplyConfiguration represents an d
+                                      description: VolumeProjectionApplyConfiguration represents a de
                                       properties:
                                         clusterTrustBundle:
                                           description: ClusterTrustBundleProjectionApplyConfiguration rep
                                           properties:
                                             labelSelector:
-                                              description: LabelSelectorApplyConfiguration represents an decl
+                                              description: LabelSelectorApplyConfiguration represents a decla
                                               properties:
                                                 matchExpressions:
                                                   items:
@@ -6910,7 +7004,7 @@ spec:
                                           properties:
                                             items:
                                               items:
-                                                description: KeyToPathApplyConfiguration represents an declarat
+                                                description: KeyToPathApplyConfiguration represents a declarati
                                                 properties:
                                                   key:
                                                     type: string
@@ -6964,11 +7058,11 @@ spec:
                                               type: array
                                           type: object
                                         secret:
-                                          description: SecretProjectionApplyConfiguration represents an d
+                                          description: SecretProjectionApplyConfiguration represents a de
                                           properties:
                                             items:
                                               items:
-                                                description: KeyToPathApplyConfiguration represents an declarat
+                                                description: KeyToPathApplyConfiguration represents a declarati
                                                 properties:
                                                   key:
                                                     type: string
@@ -7015,7 +7109,7 @@ spec:
                                     type: string
                                 type: object
                               rbd:
-                                description: RBDVolumeSourceApplyConfiguration represents an de
+                                description: RBDVolumeSourceApplyConfiguration represents a dec
                                 properties:
                                   fsType:
                                     type: string
@@ -7069,14 +7163,14 @@ spec:
                                     type: string
                                 type: object
                               secret:
-                                description: SecretVolumeSourceApplyConfiguration represents an
+                                description: 'SecretVolumeSourceApplyConfiguration represents a '
                                 properties:
                                   defaultMode:
                                     format: int32
                                     type: integer
                                   items:
                                     items:
-                                      description: KeyToPathApplyConfiguration represents an declarat
+                                      description: KeyToPathApplyConfiguration represents a declarati
                                       properties:
                                         key:
                                           type: string
@@ -7167,7 +7261,7 @@ spec:
                                   type: string
                               type: object
                             cephfs:
-                              description: CephFSVolumeSourceApplyConfiguration represents an
+                              description: 'CephFSVolumeSourceApplyConfiguration represents a '
                               properties:
                                 monitors:
                                   items:
@@ -7189,7 +7283,7 @@ spec:
                                   type: string
                               type: object
                             cinder:
-                              description: CinderVolumeSourceApplyConfiguration represents an
+                              description: 'CinderVolumeSourceApplyConfiguration represents a '
                               properties:
                                 fsType:
                                   type: string
@@ -7212,7 +7306,7 @@ spec:
                                   type: integer
                                 items:
                                   items:
-                                    description: KeyToPathApplyConfiguration represents an declarat
+                                    description: KeyToPathApplyConfiguration represents a declarati
                                     properties:
                                       key:
                                         type: string
@@ -7229,7 +7323,7 @@ spec:
                                   type: boolean
                               type: object
                             csi:
-                              description: CSIVolumeSourceApplyConfiguration represents an de
+                              description: CSIVolumeSourceApplyConfiguration represents a dec
                               properties:
                                 driver:
                                   type: string
@@ -7308,7 +7402,7 @@ spec:
                                   description: PersistentVolumeClaimTemplateApplyConfiguration re
                                   properties:
                                     metadata:
-                                      description: ObjectMetaApplyConfiguration represents an declara
+                                      description: ObjectMetaApplyConfiguration represents a declarat
                                       properties:
                                         annotations:
                                           additionalProperties:
@@ -7342,7 +7436,7 @@ spec:
                                           type: string
                                         ownerReferences:
                                           items:
-                                            description: OwnerReferenceApplyConfiguration represents an dec
+                                            description: OwnerReferenceApplyConfiguration represents a decl
                                             properties:
                                               apiVersion:
                                                 type: string
@@ -7417,7 +7511,7 @@ spec:
                                               type: object
                                           type: object
                                         selector:
-                                          description: LabelSelectorApplyConfiguration represents an decl
+                                          description: LabelSelectorApplyConfiguration represents a decla
                                           properties:
                                             matchExpressions:
                                               items:
@@ -7452,7 +7546,7 @@ spec:
                                   type: object
                               type: object
                             fc:
-                              description: FCVolumeSourceApplyConfiguration represents an dec
+                              description: FCVolumeSourceApplyConfiguration represents a decl
                               properties:
                                 fsType:
                                   type: string
@@ -7471,7 +7565,7 @@ spec:
                                   type: array
                               type: object
                             flexVolume:
-                              description: FlexVolumeSourceApplyConfiguration represents an d
+                              description: FlexVolumeSourceApplyConfiguration represents a de
                               properties:
                                 driver:
                                   type: string
@@ -7539,8 +7633,17 @@ spec:
                                 type:
                                   type: string
                               type: object
+                            image:
+                              description: ImageVolumeSourceApplyConfiguration represents a d
+                              properties:
+                                pullPolicy:
+                                  description: 'PullPolicy describes a policy for if/when to pull '
+                                  type: string
+                                reference:
+                                  type: string
+                              type: object
                             iscsi:
-                              description: 'ISCSIVolumeSourceApplyConfiguration represents an '
+                              description: ISCSIVolumeSourceApplyConfiguration represents a d
                               properties:
                                 chapAuthDiscovery:
                                   type: boolean
@@ -7573,7 +7676,7 @@ spec:
                                   type: string
                               type: object
                             nfs:
-                              description: NFSVolumeSourceApplyConfiguration represents an de
+                              description: NFSVolumeSourceApplyConfiguration represents a dec
                               properties:
                                 path:
                                   type: string
@@ -7616,13 +7719,13 @@ spec:
                                   type: integer
                                 sources:
                                   items:
-                                    description: VolumeProjectionApplyConfiguration represents an d
+                                    description: VolumeProjectionApplyConfiguration represents a de
                                     properties:
                                       clusterTrustBundle:
                                         description: ClusterTrustBundleProjectionApplyConfiguration rep
                                         properties:
                                           labelSelector:
-                                            description: LabelSelectorApplyConfiguration represents an decl
+                                            description: LabelSelectorApplyConfiguration represents a decla
                                             properties:
                                               matchExpressions:
                                                 items:
@@ -7658,7 +7761,7 @@ spec:
                                         properties:
                                           items:
                                             items:
-                                              description: KeyToPathApplyConfiguration represents an declarat
+                                              description: KeyToPathApplyConfiguration represents a declarati
                                               properties:
                                                 key:
                                                   type: string
@@ -7712,11 +7815,11 @@ spec:
                                             type: array
                                         type: object
                                       secret:
-                                        description: SecretProjectionApplyConfiguration represents an d
+                                        description: SecretProjectionApplyConfiguration represents a de
                                         properties:
                                           items:
                                             items:
-                                              description: KeyToPathApplyConfiguration represents an declarat
+                                              description: KeyToPathApplyConfiguration represents a declarati
                                               properties:
                                                 key:
                                                   type: string
@@ -7763,7 +7866,7 @@ spec:
                                   type: string
                               type: object
                             rbd:
-                              description: RBDVolumeSourceApplyConfiguration represents an de
+                              description: RBDVolumeSourceApplyConfiguration represents a dec
                               properties:
                                 fsType:
                                   type: string
@@ -7817,14 +7920,14 @@ spec:
                                   type: string
                               type: object
                             secret:
-                              description: SecretVolumeSourceApplyConfiguration represents an
+                              description: 'SecretVolumeSourceApplyConfiguration represents a '
                               properties:
                                 defaultMode:
                                   format: int32
                                   type: integer
                                 items:
                                   items:
-                                    description: KeyToPathApplyConfiguration represents an declarat
+                                    description: KeyToPathApplyConfiguration represents a declarati
                                     properties:
                                       key:
                                         type: string
@@ -7981,7 +8084,7 @@ spec:
                                 type: object
                             type: object
                           selector:
-                            description: LabelSelectorApplyConfiguration represents an decl
+                            description: LabelSelectorApplyConfiguration represents a decla
                             properties:
                               matchExpressions:
                                 items:

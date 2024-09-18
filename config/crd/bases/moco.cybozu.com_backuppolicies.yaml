@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.2
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
@@ -62,8 +62,7 @@ spec:
                     description: If specified, the pod's scheduling constraints.
                     properties:
                       nodeAffinity:
-                        description: NodeAffinityApplyConfiguration represents an
-                          decla
+                        description: NodeAffinityApplyConfiguration represents a declar
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
@@ -72,7 +71,7 @@ spec:
                               properties:
                                 preference:
                                   description: NodeSelectorTermApplyConfiguration
-                                    represents an d
+                                    represents a de
                                   properties:
                                     matchExpressions:
                                       items:
@@ -116,12 +115,12 @@ spec:
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
                             description: NodeSelectorApplyConfiguration represents
-                              an decla
+                              a declar
                             properties:
                               nodeSelectorTerms:
                                 items:
                                   description: NodeSelectorTermApplyConfiguration
-                                    represents an d
+                                    represents a de
                                   properties:
                                     matchExpressions:
                                       items:
@@ -162,7 +161,7 @@ spec:
                             type: object
                         type: object
                       podAffinity:
-                        description: PodAffinityApplyConfiguration represents an declar
+                        description: PodAffinityApplyConfiguration represents a declara
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
@@ -171,11 +170,11 @@ spec:
                               properties:
                                 podAffinityTerm:
                                   description: PodAffinityTermApplyConfiguration represents
-                                    an de
+                                    a dec
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -209,7 +208,7 @@ spec:
                                       type: array
                                     namespaceSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -248,11 +247,11 @@ spec:
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
                               description: PodAffinityTermApplyConfiguration represents
-                                an de
+                                a dec
                               properties:
                                 labelSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    an decl
+                                    a decla
                                   properties:
                                     matchExpressions:
                                       items:
@@ -286,7 +285,7 @@ spec:
                                   type: array
                                 namespaceSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    an decl
+                                    a decla
                                   properties:
                                     matchExpressions:
                                       items:
@@ -321,7 +320,7 @@ spec:
                         type: object
                       podAntiAffinity:
                         description: PodAntiAffinityApplyConfiguration represents
-                          an de
+                          a dec
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
@@ -330,11 +329,11 @@ spec:
                               properties:
                                 podAffinityTerm:
                                   description: PodAffinityTermApplyConfiguration represents
-                                    an de
+                                    a dec
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -368,7 +367,7 @@ spec:
                                       type: array
                                     namespaceSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -407,11 +406,11 @@ spec:
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
                               description: PodAffinityTermApplyConfiguration represents
-                                an de
+                                a dec
                               properties:
                                 labelSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    an decl
+                                    a decla
                                   properties:
                                     matchExpressions:
                                       items:
@@ -445,7 +444,7 @@ spec:
                                   type: array
                                 namespaceSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    an decl
+                                    a decla
                                   properties:
                                     matchExpressions:
                                       items:
@@ -530,8 +529,8 @@ spec:
                         value:
                           type: string
                         valueFrom:
-                          description: EnvVarSourceApplyConfiguration represents an
-                            decla
+                          description: EnvVarSourceApplyConfiguration represents a
+                            declar
                           properties:
                             configMapKeyRef:
                               description: 'ConfigMapKeySelectorApplyConfiguration
@@ -569,8 +568,8 @@ spec:
                                   type: string
                               type: object
                             secretKeyRef:
-                              description: 'SecretKeySelectorApplyConfiguration represents
-                                an '
+                              description: SecretKeySelectorApplyConfiguration represents
+                                a d
                               properties:
                                 key:
                                   type: string
@@ -588,8 +587,8 @@ spec:
                       description: EnvFromSourceApplyConfiguration is the type define
                       properties:
                         configMapRef:
-                          description: ConfigMapEnvSourceApplyConfiguration represents
-                            an
+                          description: 'ConfigMapEnvSourceApplyConfiguration represents
+                            a '
                           properties:
                             name:
                               type: string
@@ -600,7 +599,7 @@ spec:
                           type: string
                         secretRef:
                           description: SecretEnvSourceApplyConfiguration represents
-                            an de
+                            a dec
                           properties:
                             name:
                               type: string
@@ -659,6 +658,9 @@ spec:
                           type: string
                         readOnly:
                           type: boolean
+                        recursiveReadOnly:
+                          description: RecursiveReadOnlyMode describes recursive-readonly
+                          type: string
                         subPath:
                           type: string
                         subPathExpr:
@@ -711,8 +713,8 @@ spec:
                               type: string
                           type: object
                         cephfs:
-                          description: CephFSVolumeSourceApplyConfiguration represents
-                            an
+                          description: 'CephFSVolumeSourceApplyConfiguration represents
+                            a '
                           properties:
                             monitors:
                               items:
@@ -735,8 +737,8 @@ spec:
                               type: string
                           type: object
                         cinder:
-                          description: CinderVolumeSourceApplyConfiguration represents
-                            an
+                          description: 'CinderVolumeSourceApplyConfiguration represents
+                            a '
                           properties:
                             fsType:
                               type: string
@@ -761,7 +763,7 @@ spec:
                             items:
                               items:
                                 description: KeyToPathApplyConfiguration represents
-                                  an declarat
+                                  a declarati
                                 properties:
                                   key:
                                     type: string
@@ -779,7 +781,7 @@ spec:
                           type: object
                         csi:
                           description: CSIVolumeSourceApplyConfiguration represents
-                            an de
+                            a dec
                           properties:
                             driver:
                               type: string
@@ -865,7 +867,7 @@ spec:
                               properties:
                                 metadata:
                                   description: ObjectMetaApplyConfiguration represents
-                                    an declara
+                                    a declarat
                                   properties:
                                     annotations:
                                       additionalProperties:
@@ -900,7 +902,7 @@ spec:
                                     ownerReferences:
                                       items:
                                         description: OwnerReferenceApplyConfiguration
-                                          represents an dec
+                                          represents a decl
                                         properties:
                                           apiVersion:
                                             type: string
@@ -984,7 +986,7 @@ spec:
                                       type: object
                                     selector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -1023,7 +1025,7 @@ spec:
                           type: object
                         fc:
                           description: FCVolumeSourceApplyConfiguration represents
-                            an dec
+                            a decl
                           properties:
                             fsType:
                               type: string
@@ -1043,7 +1045,7 @@ spec:
                           type: object
                         flexVolume:
                           description: FlexVolumeSourceApplyConfiguration represents
-                            an d
+                            a de
                           properties:
                             driver:
                               type: string
@@ -1115,9 +1117,20 @@ spec:
                             type:
                               type: string
                           type: object
+                        image:
+                          description: ImageVolumeSourceApplyConfiguration represents
+                            a d
+                          properties:
+                            pullPolicy:
+                              description: 'PullPolicy describes a policy for if/when
+                                to pull '
+                              type: string
+                            reference:
+                              type: string
+                          type: object
                         iscsi:
-                          description: 'ISCSIVolumeSourceApplyConfiguration represents
-                            an '
+                          description: ISCSIVolumeSourceApplyConfiguration represents
+                            a d
                           properties:
                             chapAuthDiscovery:
                               type: boolean
@@ -1154,7 +1167,7 @@ spec:
                           type: string
                         nfs:
                           description: NFSVolumeSourceApplyConfiguration represents
-                            an de
+                            a dec
                           properties:
                             path:
                               type: string
@@ -1198,7 +1211,7 @@ spec:
                             sources:
                               items:
                                 description: VolumeProjectionApplyConfiguration represents
-                                  an d
+                                  a de
                                 properties:
                                   clusterTrustBundle:
                                     description: ClusterTrustBundleProjectionApplyConfiguration
@@ -1206,7 +1219,7 @@ spec:
                                     properties:
                                       labelSelector:
                                         description: LabelSelectorApplyConfiguration
-                                          represents an decl
+                                          represents a decla
                                         properties:
                                           matchExpressions:
                                             items:
@@ -1246,7 +1259,7 @@ spec:
                                       items:
                                         items:
                                           description: KeyToPathApplyConfiguration
-                                            represents an declarat
+                                            represents a declarati
                                           properties:
                                             key:
                                               type: string
@@ -1305,12 +1318,12 @@ spec:
                                     type: object
                                   secret:
                                     description: SecretProjectionApplyConfiguration
-                                      represents an d
+                                      represents a de
                                     properties:
                                       items:
                                         items:
                                           description: KeyToPathApplyConfiguration
-                                            represents an declarat
+                                            represents a declarati
                                           properties:
                                             key:
                                               type: string
@@ -1360,7 +1373,7 @@ spec:
                           type: object
                         rbd:
                           description: RBDVolumeSourceApplyConfiguration represents
-                            an de
+                            a dec
                           properties:
                             fsType:
                               type: string
@@ -1417,8 +1430,8 @@ spec:
                               type: string
                           type: object
                         secret:
-                          description: SecretVolumeSourceApplyConfiguration represents
-                            an
+                          description: 'SecretVolumeSourceApplyConfiguration represents
+                            a '
                           properties:
                             defaultMode:
                               format: int32
@@ -1426,7 +1439,7 @@ spec:
                             items:
                               items:
                                 description: KeyToPathApplyConfiguration represents
-                                  an declarat
+                                  a declarati
                                 properties:
                                   key:
                                     type: string
@@ -1519,8 +1532,8 @@ spec:
                             type: string
                         type: object
                       cephfs:
-                        description: CephFSVolumeSourceApplyConfiguration represents
-                          an
+                        description: 'CephFSVolumeSourceApplyConfiguration represents
+                          a '
                         properties:
                           monitors:
                             items:
@@ -1542,8 +1555,8 @@ spec:
                             type: string
                         type: object
                       cinder:
-                        description: CinderVolumeSourceApplyConfiguration represents
-                          an
+                        description: 'CinderVolumeSourceApplyConfiguration represents
+                          a '
                         properties:
                           fsType:
                             type: string
@@ -1567,7 +1580,7 @@ spec:
                           items:
                             items:
                               description: KeyToPathApplyConfiguration represents
-                                an declarat
+                                a declarati
                               properties:
                                 key:
                                   type: string
@@ -1585,7 +1598,7 @@ spec:
                         type: object
                       csi:
                         description: CSIVolumeSourceApplyConfiguration represents
-                          an de
+                          a dec
                         properties:
                           driver:
                             type: string
@@ -1670,7 +1683,7 @@ spec:
                             properties:
                               metadata:
                                 description: ObjectMetaApplyConfiguration represents
-                                  an declara
+                                  a declarat
                                 properties:
                                   annotations:
                                     additionalProperties:
@@ -1705,7 +1718,7 @@ spec:
                                   ownerReferences:
                                     items:
                                       description: OwnerReferenceApplyConfiguration
-                                        represents an dec
+                                        represents a decl
                                       properties:
                                         apiVersion:
                                           type: string
@@ -1789,7 +1802,7 @@ spec:
                                     type: object
                                   selector:
                                     description: LabelSelectorApplyConfiguration represents
-                                      an decl
+                                      a decla
                                     properties:
                                       matchExpressions:
                                         items:
@@ -1827,8 +1840,8 @@ spec:
                             type: object
                         type: object
                       fc:
-                        description: FCVolumeSourceApplyConfiguration represents an
-                          dec
+                        description: FCVolumeSourceApplyConfiguration represents a
+                          decl
                         properties:
                           fsType:
                             type: string
@@ -1848,7 +1861,7 @@ spec:
                         type: object
                       flexVolume:
                         description: FlexVolumeSourceApplyConfiguration represents
-                          an d
+                          a de
                         properties:
                           driver:
                             type: string
@@ -1919,9 +1932,20 @@ spec:
                           type:
                             type: string
                         type: object
+                      image:
+                        description: ImageVolumeSourceApplyConfiguration represents
+                          a d
+                        properties:
+                          pullPolicy:
+                            description: 'PullPolicy describes a policy for if/when
+                              to pull '
+                            type: string
+                          reference:
+                            type: string
+                        type: object
                       iscsi:
-                        description: 'ISCSIVolumeSourceApplyConfiguration represents
-                          an '
+                        description: ISCSIVolumeSourceApplyConfiguration represents
+                          a d
                         properties:
                           chapAuthDiscovery:
                             type: boolean
@@ -1955,7 +1979,7 @@ spec:
                         type: object
                       nfs:
                         description: NFSVolumeSourceApplyConfiguration represents
-                          an de
+                          a dec
                         properties:
                           path:
                             type: string
@@ -1999,7 +2023,7 @@ spec:
                           sources:
                             items:
                               description: VolumeProjectionApplyConfiguration represents
-                                an d
+                                a de
                               properties:
                                 clusterTrustBundle:
                                   description: ClusterTrustBundleProjectionApplyConfiguration
@@ -2007,7 +2031,7 @@ spec:
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents an decl
+                                        represents a decla
                                       properties:
                                         matchExpressions:
                                           items:
@@ -2047,7 +2071,7 @@ spec:
                                     items:
                                       items:
                                         description: KeyToPathApplyConfiguration represents
-                                          an declarat
+                                          a declarati
                                         properties:
                                           key:
                                             type: string
@@ -2106,12 +2130,12 @@ spec:
                                   type: object
                                 secret:
                                   description: SecretProjectionApplyConfiguration
-                                    represents an d
+                                    represents a de
                                   properties:
                                     items:
                                       items:
                                         description: KeyToPathApplyConfiguration represents
-                                          an declarat
+                                          a declarati
                                         properties:
                                           key:
                                             type: string
@@ -2161,7 +2185,7 @@ spec:
                         type: object
                       rbd:
                         description: RBDVolumeSourceApplyConfiguration represents
-                          an de
+                          a dec
                         properties:
                           fsType:
                             type: string
@@ -2216,8 +2240,8 @@ spec:
                             type: string
                         type: object
                       secret:
-                        description: SecretVolumeSourceApplyConfiguration represents
-                          an
+                        description: 'SecretVolumeSourceApplyConfiguration represents
+                          a '
                         properties:
                           defaultMode:
                             format: int32
@@ -2225,7 +2249,7 @@ spec:
                           items:
                             items:
                               description: KeyToPathApplyConfiguration represents
-                                an declarat
+                                a declarati
                               properties:
                                 key:
                                   type: string

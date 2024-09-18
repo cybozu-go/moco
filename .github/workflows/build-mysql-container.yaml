@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
-        k8s-version: [ "1.29.4" ]
+        k8s-version: [ "1.31.0" ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -98,7 +98,7 @@ jobs:
       - run: make logs
         working-directory: e2e
         if: always()
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: logs-${{ matrix.k8s-version }}-${{ matrix.mysql-version }}.tar.gz

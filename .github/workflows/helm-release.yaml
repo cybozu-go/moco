@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
           version: v3.10.2
 
@@ -30,7 +30,7 @@ jobs:
       - name: Packaging the chart
         run: helm package ./charts/moco/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: helm-charts
           path: ./moco-*.tgz
@@ -46,11 +46,11 @@ jobs:
           ref: gh-pages
 
       - name: Set up Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
           version: v3.15.0
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: helm-charts
 

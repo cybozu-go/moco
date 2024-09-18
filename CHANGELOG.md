@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Update fluent-bit image to 3.1.7 [#738](https://github.com/cybozu-go/moco/pull/738)
+- Add support for k8s 1.30 and 1.31 [#727](https://github.com/cybozu-go/moco/pull/727)
 
 ## [0.23.2] - 2024-07-02
 
