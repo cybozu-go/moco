@@ -498,11 +498,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		cms := &corev1.ConfigMapList{}
-		if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
-			panic(err)
-		}
-
 		Expect(cm.Data["my.cnf"]).To(ContainSubstring("foo = baz"))
 	})
 
