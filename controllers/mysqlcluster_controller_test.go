@@ -122,15 +122,16 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			clusters: make(map[string]struct{}),
 		}
 		mysqlr := &MySQLClusterReconciler{
-			Client:          mgr.GetClient(),
-			Scheme:          scheme,
-			Recorder:        mgr.GetEventRecorderFor("moco-controller"),
-			SystemNamespace: testMocoSystemNamespace,
-			ClusterManager:  mockMgr,
-			AgentImage:      testAgentImage,
-			BackupImage:     testBackupImage,
-			FluentBitImage:  testFluentBitImage,
-			ExporterImage:   testExporterImage,
+			Client:                     mgr.GetClient(),
+			Scheme:                     scheme,
+			Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
+			SystemNamespace:            testMocoSystemNamespace,
+			ClusterManager:             mockMgr,
+			AgentImage:                 testAgentImage,
+			BackupImage:                testBackupImage,
+			FluentBitImage:             testFluentBitImage,
+			ExporterImage:              testExporterImage,
+			MySQLConfigMapHistoryLimit: 2,
 		}
 		err = mysqlr.SetupWithManager(mgr)
 		Expect(err).ToNot(HaveOccurred())
@@ -422,19 +423,28 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		oldName := cm.Name
 		Eventually(func() error {
 			cms := &corev1.ConfigMapList{}
 			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
 				return err
 			}
 
-			var mycnfCMs []*corev1.ConfigMap
-			for i, cm := range cms.Items {
-				if cm.Name == oldName {
+			var mycnfCount int
+			prefix := cluster.PrefixedName() + "."
+			for _, cm := range cms.Items {
+				if !strings.HasPrefix(cm.Name, prefix) {
 					continue
 				}
-				if strings.HasPrefix(cm.Name, "moco-test.") {
+				mycnfCount++
+			}
+
+			if mycnfCount != 2 {
+				return fmt.Errorf("the number of config maps is not history limits: %d", len(cms.Items))
+			}
+
+			var mycnfCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if strings.HasPrefix(cm.Name, "moco-test.") && strings.Contains(cm.Data["my.cnf"], "foo = bar") {
 					mycnfCMs = append(mycnfCMs, &cms.Items[i])
 				}
 			}
@@ -458,19 +468,28 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Update(ctx, userCM)
 		Expect(err).NotTo(HaveOccurred())
 
-		oldName = cm.Name
 		Eventually(func() error {
 			cms := &corev1.ConfigMapList{}
 			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
 				return err
 			}
 
-			var mycnfCMs []*corev1.ConfigMap
-			for i, cm := range cms.Items {
-				if cm.Name == oldName {
+			var mycnfCount int
+			prefix := cluster.PrefixedName() + "."
+			for _, cm := range cms.Items {
+				if !strings.HasPrefix(cm.Name, prefix) {
 					continue
 				}
-				if strings.HasPrefix(cm.Name, "moco-test.") {
+				mycnfCount++
+			}
+
+			if mycnfCount != 2 {
+				return fmt.Errorf("the number of config maps is not history limits: %d", len(cms.Items))
+			}
+
+			var mycnfCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if strings.HasPrefix(cm.Name, "moco-test.") && strings.Contains(cm.Data["my.cnf"], "foo = baz") {
 					mycnfCMs = append(mycnfCMs, &cms.Items[i])
 				}
 			}

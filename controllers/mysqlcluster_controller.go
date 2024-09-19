@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -136,17 +137,18 @@ func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r cli
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Scheme                  *runtime.Scheme
-	Recorder                record.EventRecorder
-	AgentImage              string
-	BackupImage             string
-	FluentBitImage          string
-	ExporterImage           string
-	SystemNamespace         string
-	PVCSyncAnnotationKeys   []string
-	PVCSyncLabelKeys        []string
-	ClusterManager          clustering.ClusterManager
-	MaxConcurrentReconciles int
+	Scheme                     *runtime.Scheme
+	Recorder                   record.EventRecorder
+	AgentImage                 string
+	BackupImage                string
+	FluentBitImage             string
+	ExporterImage              string
+	SystemNamespace            string
+	PVCSyncAnnotationKeys      []string
+	PVCSyncLabelKeys           []string
+	ClusterManager             clustering.ClusterManager
+	MaxConcurrentReconciles    int
+	MySQLConfigMapHistoryLimit int
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;update;patch
@@ -506,11 +508,22 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
 		return nil, err
 	}
-	for _, old := range cms.Items {
+
+	// Sort the ConfigMapList by creation timestamp in descending order
+	sort.Slice(cms.Items, func(i, j int) bool {
+		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
+	})
+
+	for i, old := range cms.Items {
+		if i < r.MySQLConfigMapHistoryLimit {
+			continue
+		}
+
 		if strings.HasPrefix(old.Name, prefix) && old.Name != cmName {
 			if err := r.Delete(ctx, &old); err != nil {
 				return nil, fmt.Errorf("failed to delete old my.cnf configmap %s/%s: %w", old.Namespace, old.Name, err)
 			}
+			log.Info("deleted old my.cnf configmap", "configMapName", old.Name)
 		}
 	}
 
