@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	switchOverTimeoutSeconds = 70
-	failOverTimeoutSeconds   = 3600
+	timeoutSeconds = 50
 )
 
 var (
@@ -163,7 +162,7 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 		return fmt.Errorf("failed to get the primary status: %w", err)
 	}
 
-	err = ss.DBOps[ss.Candidate].WaitForGTID(ctx, pst.GlobalVariables.ExecutedGTID, switchOverTimeoutSeconds)
+	err = ss.DBOps[ss.Candidate].WaitForGTID(ctx, pst.GlobalVariables.ExecutedGTID, timeoutSeconds)
 	if err != nil {
 		return err
 	}
@@ -241,7 +240,7 @@ func (p *managerProcess) failover(ctx context.Context, ss *StatusSet) error {
 
 	gtid := candidates[candidate].ReplicaStatus.RetrievedGtidSet
 	log.Info("waiting for the new primary to execute all retrieved transactions", "index", candidate, "gtid", gtid)
-	err = ss.DBOps[candidate].WaitForGTID(ctx, gtid, failOverTimeoutSeconds)
+	err = ss.DBOps[candidate].WaitForGTID(ctx, gtid, timeoutSeconds)
 	if err != nil {
 		return err
 	}
