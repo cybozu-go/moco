@@ -26,3 +26,6 @@ const (
 
 // MySQLClusterFinalizer is the finalizer specifier for MySQLCluster.
 const MySQLClusterFinalizer = "moco.cybozu.com/mysqlcluster"
+
+// MySQLClusterPodFinalizer is the finalizer specifier for MySQLCluster's pods.
+const MySQLClusterPodFinalizer = "moco.cybozu.com/mysqlcluster-pod"

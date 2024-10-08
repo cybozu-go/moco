@@ -784,7 +784,8 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	sts.Spec.WithTemplate(corev1ac.PodTemplateSpec().
 		WithAnnotations(cluster.Spec.PodTemplate.Annotations).
 		WithLabels(cluster.Spec.PodTemplate.Labels).
-		WithLabels(labelSet(cluster, false)))
+		WithLabels(labelSet(cluster, false)).
+		WithFinalizers(constants.MySQLClusterPodFinalizer))
 
 	podSpec := corev1ac.PodSpecApplyConfiguration(*cluster.Spec.PodTemplate.Spec.DeepCopy())
 	podSpec.WithServiceAccountName(cluster.PrefixedName())
