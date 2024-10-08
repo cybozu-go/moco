@@ -14,6 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -56,6 +57,13 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	sts := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: pod.Namespace, Name: ref.Name}, sts); err != nil {
+		if controllerutil.ContainsFinalizer(pod, constants.MySQLClusterPodFinalizer) {
+			log.Info("removing finalizer", "name", pod.Name)
+			controllerutil.RemoveFinalizer(pod, constants.MySQLClusterPodFinalizer)
+			if err := r.Update(ctx, pod); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -74,6 +82,13 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if pod.DeletionTimestamp != nil {
 		log.Info("detected mysql pod deletion", "name", pod.Name)
+		if controllerutil.ContainsFinalizer(pod, constants.MySQLClusterPodFinalizer) {
+			log.Info("removing finalizer", "name", pod.Name)
+			controllerutil.RemoveFinalizer(pod, constants.MySQLClusterPodFinalizer)
+			if err := r.Update(ctx, pod); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 	} else {
 		log.Info("detected demote annotation", "name", pod.Name)
 	}
