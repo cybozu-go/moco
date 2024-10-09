@@ -7,7 +7,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +53,13 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	cfg, err = testEnv.Start()
+	done := make(chan interface{})
+	go func() {
+		defer GinkgoRecover()
+		cfg, err = testEnv.Start()
+		close(done)
+	}()
+	Eventually(done).WithTimeout(time.Minute).Should(BeClosed())
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
@@ -84,7 +90,7 @@ var _ = BeforeSuite(func() {
 	err = k8sClient.Create(context.Background(), ns)
 	Expect(err).NotTo(HaveOccurred())
 
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")

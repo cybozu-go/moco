@@ -10,7 +10,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +22,7 @@ var donorYAML string
 //go:embed testdata/replication.yaml
 var replYAML string
 
-var _ = Context("replication", func() {
+var _ = Context("replication", Ordered, func() {
 	if doUpgrade {
 		return
 	}
