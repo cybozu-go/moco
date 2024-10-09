@@ -9,7 +9,7 @@ import (
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -64,6 +64,58 @@ func testNewMySQLCluster(ns string) *mocov1beta2.MySQLCluster {
 	return cluster
 }
 
+func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
+	bp := &mocov1beta2.BackupPolicy{}
+	bp.Namespace = "test"
+	bp.Name = "test-policy"
+	bp.Spec.ActiveDeadlineSeconds = ptr.To[int64](100)
+	bp.Spec.BackoffLimit = ptr.To[int32](1)
+	bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
+	bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
+	bp.Spec.Schedule = "*/5 * * * *"
+	bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
+	bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
+	jc := &bp.Spec.JobConfig
+	jc.Threads = 3
+	jc.ServiceAccountName = "foo"
+	jc.CPU = resource.NewQuantity(1, resource.DecimalSI)
+	jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
+	jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
+	jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
+	jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
+	jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
+		{
+			ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
+				LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
+					Name: ptr.To[string]("bucket-config"),
+				},
+			},
+		},
+	}
+	jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+		EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+	}
+	jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
+		{
+			Name: ptr.To[string]("test"),
+			VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
+				EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+			},
+		},
+	}
+	jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
+		{
+			Name:      ptr.To[string]("test"),
+			MountPath: ptr.To[string]("/path/to/dir"),
+		},
+	}
+	jc.BucketConfig.BucketName = "mybucket"
+	jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
+	jc.BucketConfig.Region = "us-east-1"
+	jc.BucketConfig.UsePathStyle = true
+	return bp
+}
+
 func testDeleteMySQLCluster(ctx context.Context, ns, name string) {
 	cluster := &mocov1beta2.MySQLCluster{}
 	cluster.Namespace = ns
@@ -94,6 +146,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.BackupPolicy{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
@@ -1251,54 +1305,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating a backup policy")
-		bp := &mocov1beta2.BackupPolicy{}
-		bp.Namespace = "test"
-		bp.Name = "test-policy"
-		bp.Spec.ActiveDeadlineSeconds = ptr.To[int64](100)
-		bp.Spec.BackoffLimit = ptr.To[int32](1)
-		bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-		bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
-		bp.Spec.Schedule = "*/5 * * * *"
-		bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
-		bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
-		jc := &bp.Spec.JobConfig
-		jc.Threads = 3
-		jc.ServiceAccountName = "foo"
-		jc.CPU = resource.NewQuantity(1, resource.DecimalSI)
-		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
-		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
-		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
-		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
-			{
-				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
-					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
-						Name: ptr.To[string]("bucket-config"),
-					},
-				},
-			},
-		}
-		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
-			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
-		}
-		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
-			{
-				Name: ptr.To[string]("test"),
-				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
-					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
-				},
-			},
-		}
-		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
-			{
-				Name:      ptr.To[string]("test"),
-				MountPath: ptr.To[string]("/path/to/dir"),
-			},
-		}
-		jc.BucketConfig.BucketName = "mybucket"
-		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
-		jc.BucketConfig.Region = "us-east-1"
-		jc.BucketConfig.UsePathStyle = true
+		bp := testNewBackUpPolicy()
 		err = k8sClient.Create(ctx, bp)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1386,7 +1393,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		bp.Spec.Schedule = "*/5 1 * * *"
 		bp.Spec.SuccessfulJobsHistoryLimit = nil
 		bp.Spec.FailedJobsHistoryLimit = nil
-		jc = &bp.Spec.JobConfig
+		jc := &bp.Spec.JobConfig
 		jc.Threads = 1
 		jc.ServiceAccountName = "oof"
 		jc.CPU = nil
@@ -1656,6 +1663,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		// use existing backup policy
 		cluster.Spec.BackupPolicyName = ptr.To[string]("test-policy")
 		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		bp := testNewBackUpPolicy()
+		err = k8sClient.Create(ctx, bp)
 		Expect(err).NotTo(HaveOccurred())
 
 		var cj *batchv1.CronJob

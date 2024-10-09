@@ -12,7 +12,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/go-logr/stdr"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
@@ -145,7 +145,7 @@ var _ = Describe("manager", func() {
 		time.Sleep(10 * time.Millisecond)
 	})
 	JustAfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
+		if CurrentSpecReport().Failed() {
 			cluster, err := testGetCluster(ctx)
 			if err == nil {
 				enc := json.NewEncoder(os.Stdout)

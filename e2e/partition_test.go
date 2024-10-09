@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,7 +37,7 @@ var imagePullBackoffApplyYAML string
 //go:embed testdata/partition_volume_template.yaml
 var volumeTemplateApplyYAML string
 
-var _ = Context("partition_test", func() {
+var _ = Context("partition_test", Ordered, func() {
 	if doUpgrade {
 		return
 	}

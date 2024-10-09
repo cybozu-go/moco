@@ -12,7 +12,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,7 +25,7 @@ var backupGCSYAML string
 //go:embed testdata/restore_gcs.yaml
 var restoreGCSYAML string
 
-var _ = Context("backup-gcs", func() {
+var _ = Context("backup-gcs", Ordered, func() {
 	if doUpgrade {
 		return
 	}

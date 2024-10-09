@@ -93,25 +93,25 @@ envtest: setup-envtest
 	source <($(SETUP_ENVTEST) use -p env); \
 		export MOCO_CHECK_INTERVAL=100ms; \
 		export MOCO_CLONE_WAIT_DURATION=100ms; \
-		go test -v -count 1 -race ./clustering -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 	source <($(SETUP_ENVTEST) use -p env); \
 		export DEBUG_CONTROLLER=1; \
-		go test -v -count 1 -race ./controllers -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 	source <($(SETUP_ENVTEST) use -p env); \
-		go test -v -count 1 -race ./api/... -ginkgo.progress -ginkgo.v
+		go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
 	source <($(SETUP_ENVTEST) use -p env); \
-		go test -v -count 1 -race ./backup -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 
 .PHONY: test-dbop
 test-dbop:
 	-docker network create test-moco
-	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/dbop -ginkgo.v
+	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/dbop -ginkgo.v -ginkgo.randomize-all
 
 .PHONY: test-bkop
 test-bkop:
 	@if which mysqlsh; then : ; else echo 'Run "make setup" to prepare test tools.'; exit 1; fi
 	-docker network create test-moco
-	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.progress
+	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.randomize-all
 
 .PHONY: test
 test: test-tools

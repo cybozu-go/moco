@@ -9,7 +9,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -17,7 +17,7 @@ import (
 //go:embed testdata/failure.yaml
 var failureYAML string
 
-var _ = Context("failure", func() {
+var _ = Context("failure", Ordered, func() {
 	if doUpgrade {
 		return
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
