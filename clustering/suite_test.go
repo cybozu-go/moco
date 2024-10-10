@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -76,7 +76,7 @@ var _ = BeforeSuite(func() {
 
 	mysqlPassword, err = password.NewMySQLPassword()
 	Expect(err).NotTo(HaveOccurred())
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -28,7 +28,7 @@ var _ = Context("upgrade", func() {
 		return
 	}
 
-	It("should upgrade MySQL successfully", func() {
+	It("should upgrade MySQL successfully", Ordered, func() {
 		By("creating a 5-instance cluster with MySQL " + mysqlVersionOld)
 		kubectlSafe(fillTemplateWithVersion(upgradeYAML, mysqlVersionOld), "apply", "-f", "-")
 		Eventually(func() error {

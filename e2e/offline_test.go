@@ -4,13 +4,14 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	"github.com/cybozu-go/moco/clustering"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"strings"
+
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/clustering"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 //go:embed testdata/offline_test.yaml
@@ -19,7 +20,7 @@ var offlineYAML string
 //go:embed testdata/offline_test_changed.yaml
 var offlineChangedYAML string
 
-var _ = Context("offline", func() {
+var _ = Context("offline", Ordered, func() {
 	if doUpgrade {
 		return
 	}
