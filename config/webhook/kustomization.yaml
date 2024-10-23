@@ -1,6 +1,7 @@
 resources:
 - manifests.yaml
 - service.yaml
+- validate_preventdelete.yaml
 
 configurations:
 - kustomizeconfig.yaml

@@ -1,0 +1,27 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: delete-validator
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["*"]
+        operations: ["DELETE"]
+        resources: ["pods"]
+  validations:
+    - expression: |
+        !has(oldObject.metadata.annotations) ||
+        !("moco.cybozu.com/prevent" in oldObject.metadata.annotations) ||
+        !(oldObject.metadata.annotations["moco.cybozu.com/prevent"] == "delete")
+      messageExpression: oldObject.metadata.name + ' is protected from deletion'
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: delete-validator
+spec:
+  policyName: moco-delete-validator
+  validationActions:
+    - Deny
