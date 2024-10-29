@@ -55,12 +55,12 @@ endif
 .PHONY: test
 test:
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		go test -v -race -timeout 90m . -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -race -timeout 90m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all -ginkgo.timeout 90m
 
 .PHONY: test-upgrade
 test-upgrade:
 	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 UPGRADE=1 \
-		go test -v -race -timeout 15m . -ginkgo.progress -ginkgo.v -ginkgo.failFast
+		go test -v -race -timeout 15m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all
 
 .PHONY: logs
 logs:

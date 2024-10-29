@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ var pvcTestYAML string
 //go:embed testdata/pvc_test_changed.yaml
 var pvcApplyYAML string
 
-var _ = Context("pvc_test", func() {
+var _ = Context("pvc_test", Ordered, func() {
 	if doUpgrade {
 		return
 	}

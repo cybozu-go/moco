@@ -10,7 +10,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,7 +25,7 @@ var stopYAML string
 //go:embed testdata/stop_changed.yaml
 var stopChangedYAML string
 
-var _ = Context("stop reconciliation and clustering", func() {
+var _ = Context("stop reconciliation and clustering", Ordered, func() {
 	if doUpgrade {
 		return
 	}
