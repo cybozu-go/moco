@@ -381,7 +381,6 @@ metadata:
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
   name: moco-delete-validator
-  namespace: '{{ .Release.Namespace }}'
 spec:
   failurePolicy: Fail
   matchConstraints:
@@ -410,7 +409,6 @@ metadata:
     app.kubernetes.io/version: '{{ .Chart.AppVersion }}'
     helm.sh/chart: '{{ include "moco.chart" . }}'
   name: moco-delete-validator
-  namespace: '{{ .Release.Namespace }}'
 spec:
   policyName: moco-delete-validator
   validationActions:
