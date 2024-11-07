@@ -87,6 +87,15 @@ type MySQLClusterSpec struct {
 	// +optional
 	MaxDelaySeconds *int `json:"maxDelaySeconds,omitempty"`
 
+	// MaxDelaySecondsForPodDeletion configures the delay threshold to delete a pod.
+	// If replication delay of the mysqld instance is over this threshold, the pod will not be deleted.
+	// The default is 0 seconds.
+	// Setting this field to 0 disables the delay check for pod deletion.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default=0
+	// +optional
+	MaxDelaySecondsForPodDeletion int64 `json:"maxDelaySecondsForPodDeletion,omitempty"`
+
 	// StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working.
 	// The default is 3600 seconds.
 	// +kubebuilder:validation:Minimum=0
