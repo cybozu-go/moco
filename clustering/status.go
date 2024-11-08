@@ -235,6 +235,44 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		ss.ExecutedGTID = pst.GlobalVariables.ExecutedGTID
 	}
 
+	// detect replication delay
+	if cluster.Spec.MaxDelaySecondsForPodDeletion > 0 {
+		preventDelete := false
+		for i, ist := range ss.MySQLStatus {
+			if i == ss.Primary {
+				continue
+			}
+			if ist == nil {
+				continue
+			}
+			if ist.ReplicaStatus == nil {
+				continue
+			}
+			if ist.ReplicaStatus.SecondsBehindSource.Valid && ist.ReplicaStatus.SecondsBehindSource.Int64 > cluster.Spec.MaxDelaySecondsForPodDeletion {
+				preventDelete = true
+			}
+		}
+		if preventDelete {
+			primary := ss.Pods[ss.Primary]
+			if primary.Annotations == nil {
+				primary.Annotations = make(map[string]string)
+			}
+			if _, exists := primary.Annotations[constants.AnnPrevent]; !exists {
+				logFromContext(ctx).Info("replication delay detected, prevent pod deletion", "instance", ss.Primary)
+				primary.Annotations[constants.AnnPrevent] = "delete"
+				p.client.Update(ctx, primary)
+			}
+		} else {
+			for i, pod := range ss.Pods {
+				if pod.Annotations != nil {
+					logFromContext(ctx).Info("replication delay resolved, allow pod deletion", "instance", i)
+					delete(pod.Annotations, constants.AnnPrevent)
+					p.client.Update(ctx, pod)
+				}
+			}
+		}
+	}
+
 	// detect errant replicas
 	if ss.ExecutedGTID != "" {
 		pst := ss.MySQLStatus[ss.Primary]
