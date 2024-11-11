@@ -80,7 +80,7 @@ spec:
                 type: integer
               maxDelaySecondsForPodDeletion:
                 default: 0
-                description: MaxDelaySecondsForPodDeletion configures the delay
+                description: MaxDelaySecondsForPodDeletion configures the maxim
                 format: int64
                 minimum: 0
                 type: integer
