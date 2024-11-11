@@ -22,7 +22,7 @@ const (
 	AnnClusteringStopped     = "moco.cybozu.com/clustering-stopped"
 	AnnReconciliationStopped = "moco.cybozu.com/reconciliation-stopped"
 	AnnForceRollingUpdate    = "moco.cybozu.com/force-rolling-update"
-	AnnPrevent               = "moco.cybozu.com/prevent"
+	AnnPreventDelete         = "moco.cybozu.com/prevent-delete"
 )
 
 // MySQLClusterFinalizer is the finalizer specifier for MySQLCluster.

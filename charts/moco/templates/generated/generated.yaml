@@ -396,8 +396,8 @@ spec:
   validations:
     - expression: |
         !has(oldObject.metadata.annotations) ||
-        !("moco.cybozu.com/prevent" in oldObject.metadata.annotations) ||
-        !(oldObject.metadata.annotations["moco.cybozu.com/prevent"] == "delete")
+        !("moco.cybozu.com/prevent-delete" in oldObject.metadata.annotations) ||
+        !(oldObject.metadata.annotations["moco.cybozu.com/prevent-delete"] == "true")
       messageExpression: oldObject.metadata.name + ' is protected from deletion'
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1

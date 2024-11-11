@@ -257,17 +257,19 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 			if primary.Annotations == nil {
 				primary.Annotations = make(map[string]string)
 			}
-			if _, exists := primary.Annotations[constants.AnnPrevent]; !exists {
+			if _, exists := primary.Annotations[constants.AnnPreventDelete]; !exists {
 				logFromContext(ctx).Info("replication delay detected, prevent pod deletion", "instance", ss.Primary)
-				primary.Annotations[constants.AnnPrevent] = "delete"
+				primary.Annotations[constants.AnnPreventDelete] = "true"
 				p.client.Update(ctx, primary)
 			}
 		} else {
 			for i, pod := range ss.Pods {
 				if pod.Annotations != nil {
-					logFromContext(ctx).Info("replication delay resolved, allow pod deletion", "instance", i)
-					delete(pod.Annotations, constants.AnnPrevent)
-					p.client.Update(ctx, pod)
+					if _, exists := pod.Annotations[constants.AnnPreventDelete]; exists {
+						logFromContext(ctx).Info("replication delay resolved, allow pod deletion", "instance", i)
+						delete(pod.Annotations, constants.AnnPreventDelete)
+						p.client.Update(ctx, pod)
+					}
 				}
 			}
 		}
