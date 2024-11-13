@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.2
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.3
 ```
 
 If you want to build and use your own `mysqld`, read the rest of this document.
@@ -35,9 +35,9 @@ On Ubuntu 22.04, you can build the source code as follows:
 $ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
     cmake libncurses5-dev libjemalloc-dev libnuma-dev libaio-dev pkg-config
-$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.2.tar.gz
-$ tar -x -z -f mysql-8.4.2.tar.gz
-$ cd mysql-8.4.2
+$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.3.tar.gz
+$ tar -x -z -f mysql-8.4.3.tar.gz
+$ cd mysql-8.4.3
 $ mkdir bld
 $ cd bld
 $ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
