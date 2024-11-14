@@ -253,22 +253,28 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 			}
 		}
 		if preventDelete {
-			primary := ss.Pods[ss.Primary]
-			if primary.Annotations == nil {
-				primary.Annotations = make(map[string]string)
+			ppod := ss.Pods[ss.Primary]
+			newPod := ppod.DeepCopy()
+			if newPod.Annotations == nil {
+				newPod.Annotations = make(map[string]string)
 			}
-			if _, exists := primary.Annotations[constants.AnnPreventDelete]; !exists {
+			if _, exists := newPod.Annotations[constants.AnnPreventDelete]; !exists {
 				logFromContext(ctx).Info("replication delay detected, prevent pod deletion", "instance", ss.Primary)
-				primary.Annotations[constants.AnnPreventDelete] = "true"
-				p.client.Update(ctx, primary)
+				newPod.Annotations[constants.AnnPreventDelete] = "true"
+				if err := p.client.Patch(ctx, newPod, client.MergeFrom(ppod)); err != nil {
+					return nil, fmt.Errorf("failed to add moco.cybozu.com/prevent-delete annotation: %w", err)
+				}
 			}
 		} else {
 			for i, pod := range ss.Pods {
 				if pod.Annotations != nil {
 					if _, exists := pod.Annotations[constants.AnnPreventDelete]; exists {
+						newPod := pod.DeepCopy()
 						logFromContext(ctx).Info("replication delay resolved, allow pod deletion", "instance", i)
-						delete(pod.Annotations, constants.AnnPreventDelete)
-						p.client.Update(ctx, pod)
+						delete(newPod.Annotations, constants.AnnPreventDelete)
+						if err := p.client.Patch(ctx, newPod, client.MergeFrom(pod)); err != nil {
+							return nil, fmt.Errorf("failed to remove moco.cybozu.com/prevent-delete annotation: %w", err)
+						}
 					}
 				}
 			}
