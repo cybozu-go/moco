@@ -92,9 +92,10 @@ type StatusSet struct {
 	Errants      []int
 	Candidates   []int
 
-	NeedSwitch bool
-	Candidate  int
-	State      ClusterState
+	NeedSwitch         bool
+	PreventPodDeletion bool
+	Candidate          int
+	State              ClusterState
 }
 
 // Close closes `ss.DBOps`.
@@ -237,7 +238,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 
 	// detect replication delay
 	if cluster.Spec.MaxDelaySecondsForPodDeletion > 0 {
-		preventDelete := false
+		preventPodDeletion := false
 		for i, ist := range ss.MySQLStatus {
 			if i == ss.Primary {
 				continue
@@ -249,36 +250,11 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				continue
 			}
 			if ist.ReplicaStatus.SecondsBehindSource.Valid && ist.ReplicaStatus.SecondsBehindSource.Int64 > cluster.Spec.MaxDelaySecondsForPodDeletion {
-				preventDelete = true
+				preventPodDeletion = true
+				break
 			}
 		}
-		if preventDelete {
-			ppod := ss.Pods[ss.Primary]
-			newPod := ppod.DeepCopy()
-			if newPod.Annotations == nil {
-				newPod.Annotations = make(map[string]string)
-			}
-			if _, exists := newPod.Annotations[constants.AnnPreventDelete]; !exists {
-				logFromContext(ctx).Info("replication delay detected, prevent pod deletion", "instance", ss.Primary)
-				newPod.Annotations[constants.AnnPreventDelete] = "true"
-				if err := p.client.Patch(ctx, newPod, client.MergeFrom(ppod)); err != nil {
-					return nil, fmt.Errorf("failed to add moco.cybozu.com/prevent-delete annotation: %w", err)
-				}
-			}
-		} else {
-			for i, pod := range ss.Pods {
-				if pod.Annotations != nil {
-					if _, exists := pod.Annotations[constants.AnnPreventDelete]; exists {
-						newPod := pod.DeepCopy()
-						logFromContext(ctx).Info("replication delay resolved, allow pod deletion", "instance", i)
-						delete(newPod.Annotations, constants.AnnPreventDelete)
-						if err := p.client.Patch(ctx, newPod, client.MergeFrom(pod)); err != nil {
-							return nil, fmt.Errorf("failed to remove moco.cybozu.com/prevent-delete annotation: %w", err)
-						}
-					}
-				}
-			}
-		}
+		ss.PreventPodDeletion = preventPodDeletion
 	}
 
 	// detect errant replicas

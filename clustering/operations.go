@@ -315,6 +315,38 @@ func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, noRole
 	return nil
 }
 
+func (p *managerProcess) removeAnnPreventDelete(ctx context.Context, ss *StatusSet) error {
+	log := logFromContext(ctx)
+	for _, pod := range ss.Pods {
+		if _, exists := pod.Annotations[constants.AnnPreventDelete]; exists {
+			newPod := pod.DeepCopy()
+			delete(newPod.Annotations, constants.AnnPreventDelete)
+			log.Info("replication delay resolved, allow pod deletion", "pod", pod.Name)
+			if err := p.client.Patch(ctx, newPod, client.MergeFrom(pod)); err != nil {
+				return fmt.Errorf("failed to remove moco.cybozu.com/prevent-delete annotation: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (p *managerProcess) addAnnPreventDelete(ctx context.Context, ss *StatusSet) error {
+	log := logFromContext(ctx)
+	ppod := ss.Pods[ss.Primary]
+	newPod := ppod.DeepCopy()
+	if newPod.Annotations == nil {
+		newPod.Annotations = make(map[string]string)
+	}
+	if _, exists := newPod.Annotations[constants.AnnPreventDelete]; !exists {
+		newPod.Annotations[constants.AnnPreventDelete] = "true"
+		log.Info("replication delay detected, prevent pod deletion", "pod", ppod.Name)
+		if err := p.client.Patch(ctx, newPod, client.MergeFrom(ppod)); err != nil {
+			return fmt.Errorf("failed to add moco.cybozu.com/prevent-delete annotation: %w", err)
+		}
+	}
+	return nil
+}
+
 func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, error) {
 	redo := false
 
