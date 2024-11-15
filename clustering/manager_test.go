@@ -1016,4 +1016,71 @@ var _ = Describe("manager", func() {
 		Expect(ms.backupWorkDirUsage).To(MetricsIs("==", 30))
 		Expect(ms.backupWarnings).To(MetricsIs("==", 2))
 	})
+	It("shoud delect replication delay and prevent deletion of primary", func() {
+		testSetupResources(ctx, 3, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+		defer func() {
+			cm.Stop(client.ObjectKeyFromObject(cluster))
+			time.Sleep(400 * time.Millisecond)
+			Eventually(func(g Gomega) {
+				ch := make(chan prometheus.Metric, 2)
+				metrics.ErrantReplicasVec.Collect(ch)
+				g.Expect(ch).NotTo(Receive())
+			}).Should(Succeed())
+		}()
+
+		// set MaxDelaySecondsForPodDeletion to 10sec
+		cluster.Spec.MaxDelaySecondsForPodDeletion = 10
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		// wait for cluster's condition changes
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// set replication delay to 100sec
+		primary := cluster.Status.CurrentPrimaryIndex
+		for i := 0; i < 3; i++ {
+			if i == primary {
+				continue
+			}
+			of.setSecondsBehindSource(cluster.PodHostname(i), 100)
+		}
+
+		// wait for the pods' annotations are updated
+		Eventually(func(g Gomega) {
+			pod := &corev1.Pod{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(primary)}, pod)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pod.Annotations).To(HaveKeyWithValue(constants.AnnPreventDelete, "true"))
+		}).Should(Succeed())
+
+		// set replication delay to 0sec
+		for i := 0; i < 3; i++ {
+			if i == primary {
+				continue
+			}
+			of.setSecondsBehindSource(cluster.PodHostname(i), 0)
+		}
+
+		// wait for the pods' annotations are updated
+		Eventually(func(g Gomega) {
+			pod := &corev1.Pod{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(primary)}, pod)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(pod.Annotations).NotTo(HaveKey(constants.AnnPreventDelete))
+		}).Should(Succeed())
+	})
 })

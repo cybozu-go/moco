@@ -514,12 +514,14 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
 	})
 
-	for i, old := range cms.Items {
-		if i < r.MySQLConfigMapHistoryLimit {
+	oldMyCnfCount := 0
+	for _, old := range cms.Items {
+		if !strings.HasPrefix(old.Name, prefix) || old.Name == cmName {
 			continue
 		}
-
-		if strings.HasPrefix(old.Name, prefix) && old.Name != cmName {
+		oldMyCnfCount++
+		log.Info("found my.cnf configmap", "configMapName", old.Name, "count", oldMyCnfCount, "created", old.CreationTimestamp.Time)
+		if oldMyCnfCount > r.MySQLConfigMapHistoryLimit-1 {
 			if err := r.Delete(ctx, &old); err != nil {
 				return nil, fmt.Errorf("failed to delete old my.cnf configmap %s/%s: %w", old.Namespace, old.Name, err)
 			}

@@ -493,7 +493,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 
 			if mycnfCount != 2 {
-				return fmt.Errorf("the number of config maps is not history limits: %d", len(cms.Items))
+				return fmt.Errorf("the number of config maps is not history limits: %d", mycnfCount)
 			}
 
 			var mycnfCMs []*corev1.ConfigMap
@@ -538,7 +538,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			}
 
 			if mycnfCount != 2 {
-				return fmt.Errorf("the number of config maps is not history limits: %d", len(cms.Items))
+				return fmt.Errorf("the number of config maps is not history limits: %d", mycnfCount)
 			}
 
 			var mycnfCMs []*corev1.ConfigMap

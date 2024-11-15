@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prevent-delete
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: prevent-delete
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: prevent-delete
+  name: test
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 3
+  maxDelaySeconds: 0
+  maxDelaySecondsForPodDeletion: 10
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
