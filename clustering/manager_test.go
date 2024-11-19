@@ -1016,6 +1016,7 @@ var _ = Describe("manager", func() {
 		Expect(ms.backupWorkDirUsage).To(MetricsIs("==", 30))
 		Expect(ms.backupWarnings).To(MetricsIs("==", 2))
 	})
+
 	It("should detect replication delay and prevent deletion of primary", func() {
 		testSetupResources(ctx, 3, "")
 

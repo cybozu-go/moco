@@ -100,9 +100,9 @@ var _ = Context("PreventDelete", func() {
 
 		// add prevent-delete annotation and wait for it to be removed
 		for i := 0; i < 3; i++ {
-			kubectlSafe(nil, "annotate", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", i), "moco.cybozu.com/prevent-delete=true")
+			kubectlSafe(nil, "annotate", "pod", "-n", "prevent-delete", cluster.PodName(i), "moco.cybozu.com/prevent-delete=true")
 			Eventually(func() error {
-				out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", i), "-o", "json")
+				out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(i), "-o", "json")
 				Expect(err).NotTo(HaveOccurred())
 				pod := &corev1.Pod{}
 				err = json.Unmarshal(out, pod)
@@ -119,7 +119,7 @@ var _ = Context("PreventDelete", func() {
 
 		// wait for prevent-delete annotation to be added
 		Eventually(func() error {
-			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary), "-o", "json")
+			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(primary), "-o", "json")
 			Expect(err).NotTo(HaveOccurred())
 			pod := &corev1.Pod{}
 			err = json.Unmarshal(out, pod)
@@ -133,15 +133,15 @@ var _ = Context("PreventDelete", func() {
 		}).Should(Succeed())
 
 		// fail to delete pod with prevent-delete annotation
-		_, err = kubectl(nil, "delete", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary))
-		Expect(err.Error()).To(ContainSubstring("moco-test-%d is protected from deletion", primary))
+		_, err = kubectl(nil, "delete", "pod", "-n", "prevent-delete", cluster.PodName(primary))
+		Expect(err.Error()).To(ContainSubstring("%s is protected from deletion", cluster.PodName(primary)))
 
 		// resolve replication delay
 		setSourceDelay(0, 0)
 
 		// wait for prevent-delete annotation to be removed
 		Eventually(func() error {
-			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary), "-o", "json")
+			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(primary), "-o", "json")
 			Expect(err).NotTo(HaveOccurred())
 			pod := &corev1.Pod{}
 			err = json.Unmarshal(out, pod)
@@ -163,7 +163,7 @@ var _ = Context("PreventDelete", func() {
 
 		// wait for prevent-delete annotation to be added
 		Eventually(func() error {
-			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary), "-o", "json")
+			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(primary), "-o", "json")
 			Expect(err).NotTo(HaveOccurred())
 			pod := &corev1.Pod{}
 			err = json.Unmarshal(out, pod)
@@ -234,7 +234,7 @@ var _ = Context("PreventDelete", func() {
 
 		// wait for prevent-delete annotation to be added
 		Eventually(func() error {
-			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary), "-o", "json")
+			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(primary), "-o", "json")
 			Expect(err).NotTo(HaveOccurred())
 			pod := &corev1.Pod{}
 			err = json.Unmarshal(out, pod)
