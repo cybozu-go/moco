@@ -223,4 +223,69 @@ var _ = Context("PreventDelete", func() {
 		}).Should(Succeed())
 		time.Sleep(30 * time.Second)
 	})
+
+	It("should not finish switchover if replication delay occurs", func() {
+		cluster, err := getCluster("prevent-delete", "test")
+		Expect(err).NotTo(HaveOccurred())
+		primary := cluster.Status.CurrentPrimaryIndex
+
+		// set huge replication delay
+		setSourceDelay(0, 10000)
+
+		// wait for prevent-delete annotation to be added
+		Eventually(func() error {
+			out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", fmt.Sprintf("moco-test-%d", primary), "-o", "json")
+			Expect(err).NotTo(HaveOccurred())
+			pod := &corev1.Pod{}
+			err = json.Unmarshal(out, pod)
+			Expect(err).NotTo(HaveOccurred())
+			if val, exists := pod.Annotations[constants.AnnPreventDelete]; !exists {
+				return errors.New("annotation is not added")
+			} else if val != "true" {
+				return fmt.Errorf("annotation value is not true: %s", val)
+			}
+			return nil
+		}).Should(Succeed())
+
+		// never finish switchover
+		kubectlSafe(nil, "moco", "switchover", "-n", "prevent-delete", "test")
+		Consistently(func() error {
+			cluster, err := getCluster("prevent-delete", "test")
+			Expect(err).NotTo(HaveOccurred())
+			if cluster.Status.CurrentPrimaryIndex == primary {
+				return errors.New("switchover is not finished")
+			}
+			return nil
+		}, 1*time.Minute).ShouldNot(Succeed())
+
+		// resolve replication delay
+		setSourceDelay(0, 0)
+
+		// wait for switchover to be finished
+		Eventually(func() error {
+			cluster, err := getCluster("prevent-delete", "test")
+			Expect(err).NotTo(HaveOccurred())
+			if cluster.Status.CurrentPrimaryIndex == primary {
+				return errors.New("switchover is not finished")
+			}
+			return nil
+		}).Should(Succeed())
+
+		// wait for cluster to be healthy
+		Eventually(func() error {
+			cluster, err := getCluster("prevent-delete", "test")
+			Expect(err).NotTo(HaveOccurred())
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == metav1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
+		}).Should(Succeed())
+		time.Sleep(30 * time.Second)
+	})
 })

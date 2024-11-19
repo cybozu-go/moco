@@ -14,7 +14,7 @@ import (
 //go:embed testdata/failover.yaml
 var failoverYAML string
 
-var _ = Context("failure", Ordered, func() {
+var _ = Context("failover", Ordered, func() {
 	if doUpgrade {
 		return
 	}

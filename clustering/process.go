@@ -218,7 +218,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		return false, nil
 
 	case StateHealthy, StateDegraded:
-		if ss.NeedSwitch {
+		if ss.NeedSwitch && !ss.PreventPodDeletion {
 			if err := p.switchover(ctx, ss); err != nil {
 				event.SwitchOverFailed.Emit(ss.Cluster, p.recorder, err)
 				return false, fmt.Errorf("failed to switchover: %w", err)
