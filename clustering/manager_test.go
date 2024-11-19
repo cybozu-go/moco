@@ -1016,7 +1016,7 @@ var _ = Describe("manager", func() {
 		Expect(ms.backupWorkDirUsage).To(MetricsIs("==", 30))
 		Expect(ms.backupWarnings).To(MetricsIs("==", 2))
 	})
-	It("shoud delect replication delay and prevent deletion of primary", func() {
+	It("should detect replication delay and prevent deletion of primary", func() {
 		testSetupResources(ctx, 3, "")
 
 		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
