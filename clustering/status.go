@@ -92,9 +92,10 @@ type StatusSet struct {
 	Errants      []int
 	Candidates   []int
 
-	NeedSwitch bool
-	Candidate  int
-	State      ClusterState
+	NeedSwitch         bool
+	PreventPodDeletion bool
+	Candidate          int
+	State              ClusterState
 }
 
 // Close closes `ss.DBOps`.
@@ -233,6 +234,27 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		}
 		ss.MySQLStatus[ss.Primary] = pst
 		ss.ExecutedGTID = pst.GlobalVariables.ExecutedGTID
+	}
+
+	// detect replication delay
+	if cluster.Spec.MaxDelaySecondsForPodDeletion > 0 {
+		preventPodDeletion := false
+		for i, ist := range ss.MySQLStatus {
+			if i == ss.Primary {
+				continue
+			}
+			if ist == nil {
+				continue
+			}
+			if ist.ReplicaStatus == nil {
+				continue
+			}
+			if ist.ReplicaStatus.SecondsBehindSource.Valid && ist.ReplicaStatus.SecondsBehindSource.Int64 > cluster.Spec.MaxDelaySecondsForPodDeletion {
+				preventPodDeletion = true
+				break
+			}
+		}
+		ss.PreventPodDeletion = preventPodDeletion
 	}
 
 	// detect errant replicas

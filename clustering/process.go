@@ -185,6 +185,18 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to update status fields in MySQLCluster: %w", err)
 	}
 
+	if ss.PreventPodDeletion {
+		err := p.addAnnPreventDelete(ctx, ss)
+		if err != nil {
+			return false, fmt.Errorf("failed to add annotation to prevent pod deletion: %w", err)
+		}
+	} else {
+		err := p.removeAnnPreventDelete(ctx, ss)
+		if err != nil {
+			return false, fmt.Errorf("failed to remove annotation to prevent pod deletion: %w", err)
+		}
+	}
+
 	logFromContext(ctx).Info("cluster state is " + ss.State.String())
 	switch ss.State {
 	case StateOffline:
@@ -206,7 +218,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		return false, nil
 
 	case StateHealthy, StateDegraded:
-		if ss.NeedSwitch {
+		if ss.NeedSwitch && !ss.PreventPodDeletion {
 			if err := p.switchover(ctx, ss); err != nil {
 				event.SwitchOverFailed.Emit(ss.Cluster, p.recorder, err)
 				return false, fmt.Errorf("failed to switchover: %w", err)

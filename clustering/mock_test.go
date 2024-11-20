@@ -2,6 +2,7 @@ package clustering
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
@@ -447,6 +448,12 @@ func (m *mockMySQL) setRetrievedGTIDSet(gtid string) {
 	m.status.ReplicaStatus.RetrievedGtidSet = gtid
 }
 
+func (m *mockMySQL) setSecondsBehindSource(seconds int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.status.ReplicaStatus.SecondsBehindSource = sql.NullInt64{Int64: seconds, Valid: true}
+}
+
 type mockOpFactory struct {
 	orphaned int64
 
@@ -547,4 +554,9 @@ func (f *mockOpFactory) getKillConnectionsCount(name string) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.countKillConnections[name]
+}
+
+func (f *mockOpFactory) setSecondsBehindSource(name string, seconds int64) {
+	m := f.getInstance(name)
+	m.setSecondsBehindSource(seconds)
 }

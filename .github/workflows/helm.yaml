@@ -40,6 +40,7 @@ jobs:
           version: v0.23.0
           node_image: kindest/node:v1.31.0
           kubectl_version: v1.31.0
+          config: e2e/kind-config.yaml
 
       - name: Apply cert-manager
         run: |
