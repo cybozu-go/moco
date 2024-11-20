@@ -92,7 +92,7 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 2. Make a new branch from the latest `main` with `git neco dev bump-chart-v$CHARTVERSION`.
 
     ```console
-    $ git neco dev "bump-chart-v$VERSION"
+    $ git neco dev "bump-chart-v$CHARTVERSION"
     ```
 
 3. Update version strings:
