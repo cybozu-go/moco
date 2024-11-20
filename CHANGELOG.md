@@ -5,6 +5,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.25.0] - 2024-11-20
+
+### Changed
+- Set timeoutSeconds to 50sec [#746](https://github.com/cybozu-go/moco/pull/746)
+- Migrate to Ginkgo v2 [#750](https://github.com/cybozu-go/moco/pull/750)
+- pods are deleted without waiting for completion when switchover takes a long time [#751](https://github.com/cybozu-go/moco/pull/751)
+
+### Added
+- build MySQL and mysqld_exporter images [#754](https://github.com/cybozu-go/moco/pull/754)
+
 ## [0.24.1] - 2024-09-20
 
 ### Changed
@@ -12,7 +22,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add support for k8s 1.30 and 1.31 [#727](https://github.com/cybozu-go/moco/pull/727)
 - Bump google.golang.org/grpc from 1.64.0 to 1.64.1 [719](https://github.com/cybozu-go/moco/pull/719)
 
-## Added
+### Added
 - Add mysql-configmap-history-limit flags [#733](https://github.com/cybozu-go/moco/pull/733)
 - rebuild mysql image and add mysqld 8.0.39, 8.4.2 [#728](https://github.com/cybozu-go/moco/pull/728)
 - Add statefulset partition controller [#633](https://github.com/cybozu-go/moco/pull/633),[#628](https://github.com/cybozu-go/moco/pull/628)
@@ -20,7 +30,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add procedure to set cluster to read-only [#724](https://github.com/cybozu-go/moco/pull/724)
 - Allows customization of service ports [#723](https://github.com/cybozu-go/moco/pull/723)
 
-## Fixed
+### Fixed
 - Add a line break to kubectl-moco start/stop command's message [#737](https://github.com/cybozu-go/moco/pull/737)
 - Cannot replicate because the master purged required binary logs [#731](https://github.com/cybozu-go/moco/pull/731)
 - Add missing assertion method [#709](https://github.com/cybozu-go/moco/pull/709)
@@ -640,7 +650,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.24.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/cybozu-go/moco/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/cybozu-go/moco/compare/v0.23.2...v0.24.1
 [0.23.2]: https://github.com/cybozu-go/moco/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/cybozu-go/moco/compare/v0.21.1...v0.23.1
