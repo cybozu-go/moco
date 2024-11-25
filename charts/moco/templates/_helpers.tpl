@@ -23,3 +23,14 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Return the appropriate apiVersion for admissionregistration.
+*/}}
+{{- define "admissionregistration.apiVersion" -}}
+{{- if .Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1" -}}
+admissionregistration.k8s.io/v1
+{{- else -}}
+admissionregistration.k8s.io/v1beta1
+{{- end }}
+{{- end }}
