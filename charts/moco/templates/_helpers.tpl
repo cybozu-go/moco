@@ -28,9 +28,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Return the appropriate apiVersion for admissionregistration.
 */}}
 {{- define "admissionregistration.apiVersion" -}}
-{{- if .Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1" -}}
-admissionregistration.k8s.io/v1
-{{- else -}}
+{{- if (lt (int .Capabilities.KubeVersion.Minor) 30) -}}
 admissionregistration.k8s.io/v1beta1
+{{- else -}}
+admissionregistration.k8s.io/v1
 {{- end }}
 {{- end }}
