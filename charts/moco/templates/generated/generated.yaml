@@ -372,7 +372,7 @@ spec:
     app.kubernetes.io/component: moco-controller
     app.kubernetes.io/name: '{{ include "moco.name" . }}'
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: '{{ include "admissionregistration.apiVersion" . }}'
 kind: ValidatingAdmissionPolicy
 metadata:
   labels:
@@ -400,7 +400,7 @@ spec:
         !(oldObject.metadata.annotations["moco.cybozu.com/prevent-delete"] == "true")
       messageExpression: oldObject.metadata.name + ' is protected from deletion'
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: '{{ include "admissionregistration.apiVersion" . }}'
 kind: ValidatingAdmissionPolicyBinding
 metadata:
   labels:

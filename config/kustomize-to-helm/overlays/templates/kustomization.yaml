@@ -14,3 +14,14 @@ patchesStrategicMerge:
 
 transformers:
   - label-transformer.yaml
+
+patches:
+  - target:
+      group: admissionregistration.k8s.io
+      version: v1beta1
+      kind: 'ValidatingAdmissionPolicy|ValidatingAdmissionPolicyBinding'
+      name: '.*'
+    patch: |-
+      - op: replace
+        path: "/apiVersion"
+        value: '{{ include "admissionregistration.apiVersion" . }}'
