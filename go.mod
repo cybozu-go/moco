@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.18
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.2
 	// Do not update moco-agent until changes that will cause StatefulSet to restart are made.
-	github.com/cybozu-go/moco-agent v0.12.1
+	github.com/cybozu-go/moco-agent v0.13.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-sql-driver/mysql v1.8.1

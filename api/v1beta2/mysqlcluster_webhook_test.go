@@ -151,6 +151,13 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	It("should allow a valid logRotationSize", func() {
+		r := makeMySQLCluster()
+		r.Spec.LogRotationSize = 1024
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("should deny an invalid logRotationSchedule", func() {
 		r := makeMySQLCluster()
 		r.Spec.LogRotationSchedule = "hoge fuga"

@@ -109,6 +109,11 @@ type MySQLClusterSpec struct {
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
+	// LogRotationSize specifies the size to rotate MySQL logs
+	// If not set, size-based log rotation is disabled by default
+	// +optional
+	LogRotationSize int `json:"logRotationSize,omitempty"`
+
 	// The name of BackupPolicy custom resource in the same namespace.
 	// If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.
 	// +nullable
@@ -169,6 +174,11 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSchedule, err.Error()))
 		}
+	}
+
+	pp = p.Child("logRotationSize")
+	if s.LogRotationSize < 0 {
+		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positve integer or zero"))
 	}
 
 	pp = p.Child("replicas")

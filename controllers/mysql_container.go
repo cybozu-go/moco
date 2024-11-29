@@ -134,6 +134,9 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 	if cluster.Spec.LogRotationSchedule != "" {
 		c.WithArgs("--log-rotation-schedule", cluster.Spec.LogRotationSchedule)
 	}
+	if cluster.Spec.LogRotationSize > 0 {
+		c.WithArgs("--log-rotation-size", fmt.Sprintf("%d", cluster.Spec.LogRotationSize))
+	}
 
 	if cluster.Spec.AgentUseLocalhost {
 		c.WithArgs(constants.MocoMySQLDLocalhostFlag, strconv.FormatBool(cluster.Spec.AgentUseLocalhost))
