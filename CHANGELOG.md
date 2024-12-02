@@ -5,7 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [0.25.0] - 2024-11-20
+## [0.25.1] - 2024-12-03
+
+### Breaking Changes
+[#751](https://github.com/cybozu-go/moco/pull/751), included in this release, needs ValidatingAdmissionPolicy. But this feature is not enabled default when K8s version < 1.30. So you have to enable the feature manually when you use those version.
 
 ### Changed
 - Set timeoutSeconds to 50sec [#746](https://github.com/cybozu-go/moco/pull/746)
@@ -14,6 +17,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - build MySQL and mysqld_exporter images [#754](https://github.com/cybozu-go/moco/pull/754)
+- Add log-rotation-size [#762](https://github.com/cybozu-go/moco/pull/762)
+
+### Fixed
+- issue-759: Select the appropriate apiVersion [#760](https://github.com/cybozu-go/moco/pull/760)
+
+
+## [0.25.0] - 2024-11-20
+
+This release was aborted due to a bug.
+https://github.com/cybozu-go/moco/issues/759
 
 ## [0.24.1] - 2024-09-20
 
@@ -650,7 +663,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.25.1...HEAD
+[0.25.1]: https://github.com/cybozu-go/moco/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/cybozu-go/moco/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/cybozu-go/moco/compare/v0.23.2...v0.24.1
 [0.23.2]: https://github.com/cybozu-go/moco/compare/v0.23.1...v0.23.2
