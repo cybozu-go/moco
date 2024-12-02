@@ -2256,6 +2256,9 @@ spec:
                 logRotationSchedule:
                   description: LogRotationSchedule specifies the schedule to rota
                   type: string
+                logRotationSize:
+                  description: LogRotationSize specifies the size to rotate MySQL
+                  type: integer
                 maxDelaySeconds:
                   default: 60
                   description: 'MaxDelaySeconds configures the readiness probe of '

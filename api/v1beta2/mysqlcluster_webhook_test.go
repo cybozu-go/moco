@@ -158,6 +158,20 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should allow a valid logRotationSize", func() {
+		r := makeMySQLCluster()
+		r.Spec.LogRotationSize = 1024
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should deny an invalid logRotationSize", func() {
+		r := makeMySQLCluster()
+		r.Spec.LogRotationSize = -1
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny without mysqld container", func() {
 		r := makeMySQLCluster()
 		r.Spec.PodTemplate.Spec.Containers = nil
