@@ -2,11 +2,13 @@ KIND_VERSION = 0.23.0
 KUBERNETES_VERSION = 1.31.0
 CERT_MANAGER_VERSION = 1.15.3
 MYSQL_VERSION = 8.4.3
+GINKGO_VERSION = 2.20.2
 
 KIND := $(dir $(shell pwd))/bin/kind
 KUBECTL := $(dir $(shell pwd))/bin/kubectl
 KUSTOMIZE := $(dir $(shell pwd))/bin/kustomize
 KUBECTL_MOCO := $(dir $(shell pwd))/bin/kubectl-moco
+GINKGO := $(dir $(shell pwd))/bin/ginkgo
 KUBECONFIG := $(shell pwd)/.kubeconfig
 export MYSQL_VERSION KUBECTL KUBECONFIG
 
@@ -53,14 +55,14 @@ endif
 	$(KUBECTL) wait --timeout=90s --for=condition=Ready --all pods
 
 .PHONY: test
-test:
+test: $(GINKGO)
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		go test -v -race -timeout 90m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all -ginkgo.timeout 90m
+		$(GINKGO) -v -p --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: test-upgrade
-test-upgrade:
+test-upgrade: $(GINKGO)
 	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 UPGRADE=1 \
-		go test -v -race -timeout 15m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all
+		$(GINKGO) -v -p --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: logs
 logs:
@@ -92,3 +94,7 @@ $(KUSTOMIZE):
 $(KUBECTL_MOCO):
 	mkdir -p ../bin
 	cd ..; GOBIN=$$(pwd)/bin go install ./cmd/kubectl-moco
+
+$(GINKGO):
+	mkdir -p ../bin
+	cd ..; GOBIN=$$(pwd)/bin go install github.com/onsi/ginkgo/v2/ginkgo@v$(GINKGO_VERSION)

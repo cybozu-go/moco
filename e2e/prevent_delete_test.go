@@ -80,7 +80,7 @@ func setSourceDelay(index, delay int) {
 	}
 }
 
-var _ = Context("PreventDelete", func() {
+var _ = Context("PreventDelete", Serial, func() {
 	if doUpgrade {
 		return
 	}
