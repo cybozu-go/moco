@@ -55,12 +55,12 @@ endif
 .PHONY: test
 test:
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		go test -v -race -timeout 90m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all -ginkgo.timeout 90m
+		go run github.com/onsi/ginkgo/v2/ginkgo run -v --procs 5 --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: test-upgrade
 test-upgrade:
 	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 UPGRADE=1 \
-		go test -v -race -timeout 15m . -ginkgo.v -ginkgo.fail-fast -ginkgo.randomize-all
+		go run github.com/onsi/ginkgo/v2/ginkgo run -v --procs 5 --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: logs
 logs:
@@ -92,3 +92,4 @@ $(KUSTOMIZE):
 $(KUBECTL_MOCO):
 	mkdir -p ../bin
 	cd ..; GOBIN=$$(pwd)/bin go install ./cmd/kubectl-moco
+

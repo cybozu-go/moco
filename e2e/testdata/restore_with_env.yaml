@@ -1,14 +1,14 @@
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
-  namespace: backup
+  namespace: backup-with-env
   name: target
 spec:
   mysqlConfigMapName: mycnf
   replicas: 1
   restore:
     sourceName: source
-    sourceNamespace: backup
+    sourceNamespace: backup-with-env
     restorePoint: "{{ .RestorePoint }}"
     jobConfig:
       serviceAccountName: backup-owner
@@ -45,7 +45,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: backup
+  namespace: backup-with-env
   name: bucket-name
 data:
-  BUCKET_NAME: moco
+  BUCKET_NAME: moco-with-env

@@ -22,6 +22,6 @@ func TestE2e(t *testing.T) {
 //go:embed testdata/client.yaml
 var clientYAML string
 
-var _ = BeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func() {
 	kubectlSafe(fillTemplate(clientYAML), "apply", "-f", "-")
-})
+}, func() {})
