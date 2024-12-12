@@ -72,4 +72,4 @@ metadata:
   namespace: backup-with-env
   name: bucket-name
 data:
-  BUCKET_NAME: moco
+  BUCKET_NAME: moco-with-env

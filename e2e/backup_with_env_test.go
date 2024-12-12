@@ -17,6 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//go:embed testdata/makebucket_with_env.yaml
+var makeBucketWithEnvYAML string
+
 //go:embed testdata/backup_with_env.yaml
 var backupWithEnvYAML string
 
@@ -31,7 +34,7 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 	var restorePoint time.Time
 
 	It("should create a bucket", func() {
-		kubectlSafe([]byte(makeBucketYAML), "apply", "-f", "-")
+		kubectlSafe([]byte(makeBucketWithEnvYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "get", "jobs", "make-bucket", "-o", "json")
 			g.Expect(err).NotTo(HaveOccurred())
