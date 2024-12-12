@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: make-bucket-with-env
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - command:
+            - s3cmd
+            - --host=minio.default.svc:9000
+            - --host-bucket=minio.default.svc:9000
+            - --access_key=minioadmin
+            - --secret_key=minioadmin
+            - --no-ssl
+            - mb
+            - s3://moco-with-env
+          image: moco-backup:dev
+          imagePullPolicy: IfNotPresent
+          name: make-bucket
