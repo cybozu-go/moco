@@ -36,14 +36,14 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 	It("should create a bucket", func() {
 		kubectlSafe([]byte(makeBucketWithEnvYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
-			out, err := kubectl(nil, "get", "jobs", "make-bucket", "-o", "json")
+			out, err := kubectl(nil, "get", "jobs", "make-bucket-with-env", "-o", "json")
 			g.Expect(err).NotTo(HaveOccurred())
 			job := &batchv1.Job{}
 			err = json.Unmarshal(out, job)
 			g.Expect(err).NotTo(HaveOccurred())
 			condComplete, err := getJobCondition(job, batchv1.JobComplete)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket has not been finished")
+			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket-with-env has not been finished")
 		}).Should(Succeed())
 	})
 
