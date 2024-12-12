@@ -57,12 +57,12 @@ endif
 .PHONY: test
 test: $(GINKGO)
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		$(GINKGO) -v --procs 7 --fail-fast --randomize-all --timeout 90m .
+		$(GINKGO) -v --procs 5 --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: test-upgrade
 test-upgrade: $(GINKGO)
 	env PATH=$$(pwd)/../bin:$$PATH RUN_E2E=1 UPGRADE=1 \
-		$(GINKGO) -v --procs 7 --fail-fast --randomize-all --timeout 90m .
+		$(GINKGO) -v --procs 5 --fail-fast --randomize-all --timeout 90m .
 
 .PHONY: logs
 logs:
