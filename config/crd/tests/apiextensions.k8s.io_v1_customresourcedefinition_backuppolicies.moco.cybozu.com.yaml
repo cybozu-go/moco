@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.2
+    controller-gen.kubebuilder.io/version: v0.17.0
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
@@ -16,33 +16,33 @@ spec:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: 'BackupPolicy is a namespaced resource that should '
+        description: BackupPolicy is a namespaced resource that should...
         properties:
           apiVersion:
-            description: APIVersion defines the versioned schema of this re
+            description: APIVersion defines the versioned schema of this...
             type: string
           kind:
-            description: Kind is a string value representing the REST resou
+            description: Kind is a string value representing the REST...
             type: string
           metadata:
             type: object
           spec:
-            description: BackupPolicySpec defines the configuration items f
+            description: BackupPolicySpec defines the configuration items...
             properties:
               activeDeadlineSeconds:
-                description: 'Specifies the duration in seconds relative to the '
+                description: Specifies the duration in seconds relative to the...
                 format: int64
                 nullable: true
                 type: integer
               backoffLimit:
-                description: Specifies the number of retries before marking thi
+                description: Specifies the number of retries before marking...
                 format: int32
                 minimum: 0
                 nullable: true
                 type: integer
               concurrencyPolicy:
                 default: Allow
-                description: 'Specifies how to treat concurrent executions of a '
+                description: Specifies how to treat concurrent executions of a...
                 enum:
                 - Allow
                 - Forbid
@@ -61,27 +61,25 @@ spec:
                     description: If specified, the pod's scheduling constraints.
                     properties:
                       nodeAffinity:
-                        description: NodeAffinityApplyConfiguration represents a declar
+                        description: NodeAffinityApplyConfiguration represents a...
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: PreferredSchedulingTermApplyConfiguration
-                                represen
+                              description: PreferredSchedulingTermApplyConfiguration...
                               properties:
                                 preference:
                                   description: NodeSelectorTermApplyConfiguration
-                                    represents a de
+                                    represents a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration
-                                          represen
+                                        description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A node selector operator
-                                              is the set of operators t
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -91,14 +89,13 @@ spec:
                                       type: array
                                     matchFields:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration
-                                          represen
+                                        description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A node selector operator
-                                              is the set of operators t
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -114,23 +111,22 @@ spec:
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
                             description: NodeSelectorApplyConfiguration represents
-                              a declar
+                              a...
                             properties:
                               nodeSelectorTerms:
                                 items:
                                   description: NodeSelectorTermApplyConfiguration
-                                    represents a de
+                                    represents a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration
-                                          represen
+                                        description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A node selector operator
-                                              is the set of operators t
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -140,14 +136,13 @@ spec:
                                       type: array
                                     matchFields:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration
-                                          represen
+                                        description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A node selector operator
-                                              is the set of operators t
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -160,31 +155,29 @@ spec:
                             type: object
                         type: object
                       podAffinity:
-                        description: PodAffinityApplyConfiguration represents a declara
+                        description: PodAffinityApplyConfiguration represents a...
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: WeightedPodAffinityTermApplyConfiguration
-                                represen
+                              description: WeightedPodAffinityTermApplyConfiguration...
                               properties:
                                 podAffinityTerm:
                                   description: PodAffinityTermApplyConfiguration represents
-                                    a dec
+                                    a...
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -207,18 +200,17 @@ spec:
                                       type: array
                                     namespaceSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -246,22 +238,21 @@ spec:
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
                               description: PodAffinityTermApplyConfiguration represents
-                                a dec
+                                a...
                               properties:
                                 labelSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    a decla
+                                    a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration
-                                          represe
+                                        description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: 'A label selector operator
-                                              is the set of operators '
+                                            description: A label selector operator
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -284,18 +275,17 @@ spec:
                                   type: array
                                 namespaceSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    a decla
+                                    a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration
-                                          represe
+                                        description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: 'A label selector operator
-                                              is the set of operators '
+                                            description: A label selector operator
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -319,31 +309,29 @@ spec:
                         type: object
                       podAntiAffinity:
                         description: PodAntiAffinityApplyConfiguration represents
-                          a dec
+                          a...
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: WeightedPodAffinityTermApplyConfiguration
-                                represen
+                              description: WeightedPodAffinityTermApplyConfiguration...
                               properties:
                                 podAffinityTerm:
                                   description: PodAffinityTermApplyConfiguration represents
-                                    a dec
+                                    a...
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -366,18 +354,17 @@ spec:
                                       type: array
                                     namespaceSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -405,22 +392,21 @@ spec:
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
                               description: PodAffinityTermApplyConfiguration represents
-                                a dec
+                                a...
                               properties:
                                 labelSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    a decla
+                                    a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration
-                                          represe
+                                        description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: 'A label selector operator
-                                              is the set of operators '
+                                            description: A label selector operator
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -443,18 +429,17 @@ spec:
                                   type: array
                                 namespaceSelector:
                                   description: LabelSelectorApplyConfiguration represents
-                                    a decla
+                                    a...
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration
-                                          represe
+                                        description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: 'A label selector operator
-                                              is the set of operators '
+                                            description: A label selector operator
+                                              is the set of operators...
                                             type: string
                                           values:
                                             items:
@@ -482,7 +467,7 @@ spec:
                     properties:
                       backendType:
                         default: s3
-                        description: BackendType is an identifier for the object storag
+                        description: BackendType is an identifier for the object...
                         enum:
                         - s3
                         - gcs
@@ -492,8 +477,7 @@ spec:
                         minLength: 1
                         type: string
                       caCert:
-                        description: Path to SSL CA certificate file used in addition
-                          t
+                        description: Path to SSL CA certificate file used in addition...
                         type: string
                       endpointURL:
                         description: The API endpoint URL.
@@ -503,7 +487,7 @@ spec:
                         description: The region of the bucket.
                         type: string
                       usePathStyle:
-                        description: 'Allows you to enable the client to use path-style '
+                        description: Allows you to enable the client to use path-style...
                         type: boolean
                     required:
                     - bucketName
@@ -518,22 +502,20 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   env:
-                    description: List of environment variables to set in the contai
+                    description: List of environment variables to set in the...
                     items:
-                      description: EnvVarApplyConfiguration is the type defined to
-                        im
+                      description: EnvVarApplyConfiguration is the type defined to...
                       properties:
                         name:
                           type: string
                         value:
                           type: string
                         valueFrom:
-                          description: EnvVarSourceApplyConfiguration represents a
-                            declar
+                          description: EnvVarSourceApplyConfiguration represents a...
                           properties:
                             configMapKeyRef:
-                              description: 'ConfigMapKeySelectorApplyConfiguration
-                                represents '
+                              description: ConfigMapKeySelectorApplyConfiguration
+                                represents...
                               properties:
                                 key:
                                   type: string
@@ -543,8 +525,7 @@ spec:
                                   type: boolean
                               type: object
                             fieldRef:
-                              description: ObjectFieldSelectorApplyConfiguration represents
-                                a
+                              description: ObjectFieldSelectorApplyConfiguration represents...
                               properties:
                                 apiVersion:
                                   type: string
@@ -552,8 +533,7 @@ spec:
                                   type: string
                               type: object
                             resourceFieldRef:
-                              description: ResourceFieldSelectorApplyConfiguration
-                                represents
+                              description: ResourceFieldSelectorApplyConfiguration...
                               properties:
                                 containerName:
                                   type: string
@@ -568,7 +548,7 @@ spec:
                               type: object
                             secretKeyRef:
                               description: SecretKeySelectorApplyConfiguration represents
-                                a d
+                                a...
                               properties:
                                 key:
                                   type: string
@@ -581,13 +561,13 @@ spec:
                       type: object
                     type: array
                   envFrom:
-                    description: 'List of sources to populate environment variables '
+                    description: List of sources to populate environment variables...
                     items:
-                      description: EnvFromSourceApplyConfiguration is the type define
+                      description: EnvFromSourceApplyConfiguration is the type...
                       properties:
                         configMapRef:
-                          description: 'ConfigMapEnvSourceApplyConfiguration represents
-                            a '
+                          description: ConfigMapEnvSourceApplyConfiguration represents
+                            a...
                           properties:
                             name:
                               type: string
@@ -598,7 +578,7 @@ spec:
                           type: string
                         secretRef:
                           description: SecretEnvSourceApplyConfiguration represents
-                            a dec
+                            a...
                           properties:
                             name:
                               type: string
@@ -619,7 +599,7 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: 'MaxMemory is the amount of maximum memory for the '
+                    description: MaxMemory is the amount of maximum memory for the...
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
@@ -628,25 +608,23 @@ spec:
                     - type: integer
                     - type: string
                     default: 4Gi
-                    description: Memory is the amount of memory requested for the
-                      P
+                    description: Memory is the amount of memory requested for the...
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   serviceAccountName:
-                    description: ServiceAccountName specifies the ServiceAccount to
+                    description: ServiceAccountName specifies the ServiceAccount...
                     minLength: 1
                     type: string
                   threads:
                     default: 4
-                    description: Threads is the number of threads used for backup
-                      o
+                    description: Threads is the number of threads used for backup...
                     minimum: 1
                     type: integer
                   volumeMounts:
-                    description: VolumeMounts describes a list of volume mounts tha
+                    description: VolumeMounts describes a list of volume mounts...
                     items:
-                      description: 'VolumeMountApplyConfiguration is the type defined '
+                      description: VolumeMountApplyConfiguration is the type defined...
                       properties:
                         mountPath:
                           type: string
@@ -658,7 +636,7 @@ spec:
                         readOnly:
                           type: boolean
                         recursiveReadOnly:
-                          description: RecursiveReadOnlyMode describes recursive-readonly
+                          description: RecursiveReadOnlyMode describes...
                           type: string
                         subPath:
                           type: string
@@ -667,13 +645,12 @@ spec:
                       type: object
                     type: array
                   volumes:
-                    description: Volumes defines the list of volumes that can be mo
+                    description: Volumes defines the list of volumes that can be...
                     items:
-                      description: VolumeApplyConfiguration is the type defined to
-                        im
+                      description: VolumeApplyConfiguration is the type defined to...
                       properties:
                         awsElasticBlockStore:
-                          description: AWSElasticBlockStoreVolumeSourceApplyConfiguration
+                          description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
                           properties:
                             fsType:
                               type: string
@@ -686,7 +663,7 @@ spec:
                               type: string
                           type: object
                         azureDisk:
-                          description: AzureDiskVolumeSourceApplyConfiguration represents
+                          description: AzureDiskVolumeSourceApplyConfiguration...
                           properties:
                             cachingMode:
                               type: string
@@ -702,7 +679,7 @@ spec:
                               type: boolean
                           type: object
                         azureFile:
-                          description: AzureFileVolumeSourceApplyConfiguration represents
+                          description: AzureFileVolumeSourceApplyConfiguration...
                           properties:
                             readOnly:
                               type: boolean
@@ -712,8 +689,8 @@ spec:
                               type: string
                           type: object
                         cephfs:
-                          description: 'CephFSVolumeSourceApplyConfiguration represents
-                            a '
+                          description: CephFSVolumeSourceApplyConfiguration represents
+                            a...
                           properties:
                             monitors:
                               items:
@@ -726,8 +703,8 @@ spec:
                             secretFile:
                               type: string
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -736,16 +713,16 @@ spec:
                               type: string
                           type: object
                         cinder:
-                          description: 'CinderVolumeSourceApplyConfiguration represents
-                            a '
+                          description: CinderVolumeSourceApplyConfiguration represents
+                            a...
                           properties:
                             fsType:
                               type: string
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -754,7 +731,7 @@ spec:
                               type: string
                           type: object
                         configMap:
-                          description: ConfigMapVolumeSourceApplyConfiguration represents
+                          description: ConfigMapVolumeSourceApplyConfiguration...
                           properties:
                             defaultMode:
                               format: int32
@@ -762,7 +739,7 @@ spec:
                             items:
                               items:
                                 description: KeyToPathApplyConfiguration represents
-                                  a declarati
+                                  a...
                                 properties:
                                   key:
                                     type: string
@@ -780,15 +757,15 @@ spec:
                           type: object
                         csi:
                           description: CSIVolumeSourceApplyConfiguration represents
-                            a dec
+                            a...
                           properties:
                             driver:
                               type: string
                             fsType:
                               type: string
                             nodePublishSecretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -801,19 +778,18 @@ spec:
                               type: object
                           type: object
                         downwardAPI:
-                          description: DownwardAPIVolumeSourceApplyConfiguration represen
+                          description: DownwardAPIVolumeSourceApplyConfiguration...
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             items:
                               items:
-                                description: DownwardAPIVolumeFileApplyConfiguration
-                                  represents
+                                description: DownwardAPIVolumeFileApplyConfiguration...
                                 properties:
                                   fieldRef:
                                     description: ObjectFieldSelectorApplyConfiguration
-                                      represents a
+                                      represents...
                                     properties:
                                       apiVersion:
                                         type: string
@@ -826,8 +802,7 @@ spec:
                                   path:
                                     type: string
                                   resourceFieldRef:
-                                    description: ResourceFieldSelectorApplyConfiguration
-                                      represents
+                                    description: ResourceFieldSelectorApplyConfiguration...
                                     properties:
                                       containerName:
                                         type: string
@@ -844,11 +819,11 @@ spec:
                               type: array
                           type: object
                         emptyDir:
-                          description: 'EmptyDirVolumeSourceApplyConfiguration represents '
+                          description: EmptyDirVolumeSourceApplyConfiguration represents...
                           properties:
                             medium:
                               description: StorageMedium defines ways that storage
-                                can be all
+                                can be...
                               type: string
                             sizeLimit:
                               anyOf:
@@ -858,15 +833,14 @@ spec:
                               x-kubernetes-int-or-string: true
                           type: object
                         ephemeral:
-                          description: EphemeralVolumeSourceApplyConfiguration represents
+                          description: EphemeralVolumeSourceApplyConfiguration...
                           properties:
                             volumeClaimTemplate:
-                              description: PersistentVolumeClaimTemplateApplyConfiguration
-                                re
+                              description: PersistentVolumeClaimTemplateApplyConfiguration...
                               properties:
                                 metadata:
                                   description: ObjectMetaApplyConfiguration represents
-                                    a declarat
+                                    a...
                                   properties:
                                     annotations:
                                       additionalProperties:
@@ -901,7 +875,7 @@ spec:
                                     ownerReferences:
                                       items:
                                         description: OwnerReferenceApplyConfiguration
-                                          represents a decl
+                                          represents a...
                                         properties:
                                           apiVersion:
                                             type: string
@@ -915,7 +889,7 @@ spec:
                                             type: string
                                           uid:
                                             description: UID is a type that holds
-                                              unique ID values, includi
+                                              unique ID values,...
                                             type: string
                                         type: object
                                       type: array
@@ -923,20 +897,18 @@ spec:
                                       type: string
                                     uid:
                                       description: UID is a type that holds unique
-                                        ID values, includi
+                                        ID values,...
                                       type: string
                                   type: object
                                 spec:
-                                  description: PersistentVolumeClaimSpecApplyConfiguration
-                                    repres
+                                  description: PersistentVolumeClaimSpecApplyConfiguration...
                                   properties:
                                     accessModes:
                                       items:
                                         type: string
                                       type: array
                                     dataSource:
-                                      description: TypedLocalObjectReferenceApplyConfiguration
-                                        repres
+                                      description: TypedLocalObjectReferenceApplyConfiguration...
                                       properties:
                                         apiGroup:
                                           type: string
@@ -946,8 +918,8 @@ spec:
                                           type: string
                                       type: object
                                     dataSourceRef:
-                                      description: 'TypedObjectReferenceApplyConfiguration
-                                        represents '
+                                      description: TypedObjectReferenceApplyConfiguration
+                                        represents...
                                       properties:
                                         apiGroup:
                                           type: string
@@ -959,8 +931,7 @@ spec:
                                           type: string
                                       type: object
                                     resources:
-                                      description: VolumeResourceRequirementsApplyConfiguration
-                                        repre
+                                      description: VolumeResourceRequirementsApplyConfiguration...
                                       properties:
                                         limits:
                                           additionalProperties:
@@ -970,7 +941,7 @@ spec:
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
                                           description: ResourceList is a set of (resource
-                                            name, quantity)
+                                            name,...
                                           type: object
                                         requests:
                                           additionalProperties:
@@ -980,23 +951,22 @@ spec:
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
                                           description: ResourceList is a set of (resource
-                                            name, quantity)
+                                            name,...
                                           type: object
                                       type: object
                                     selector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -1015,7 +985,7 @@ spec:
                                       type: string
                                     volumeMode:
                                       description: PersistentVolumeMode describes
-                                        how a volume is int
+                                        how a volume is...
                                       type: string
                                     volumeName:
                                       type: string
@@ -1024,7 +994,7 @@ spec:
                           type: object
                         fc:
                           description: FCVolumeSourceApplyConfiguration represents
-                            a decl
+                            a...
                           properties:
                             fsType:
                               type: string
@@ -1044,7 +1014,7 @@ spec:
                           type: object
                         flexVolume:
                           description: FlexVolumeSourceApplyConfiguration represents
-                            a de
+                            a...
                           properties:
                             driver:
                               type: string
@@ -1057,16 +1027,15 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
                               type: object
                           type: object
                         flocker:
-                          description: FlockerVolumeSourceApplyConfiguration represents
-                            a
+                          description: FlockerVolumeSourceApplyConfiguration represents...
                           properties:
                             datasetName:
                               type: string
@@ -1074,8 +1043,7 @@ spec:
                               type: string
                           type: object
                         gcePersistentDisk:
-                          description: GCEPersistentDiskVolumeSourceApplyConfiguration
-                            re
+                          description: GCEPersistentDiskVolumeSourceApplyConfiguration...
                           properties:
                             fsType:
                               type: string
@@ -1088,8 +1056,7 @@ spec:
                               type: boolean
                           type: object
                         gitRepo:
-                          description: GitRepoVolumeSourceApplyConfiguration represents
-                            a
+                          description: GitRepoVolumeSourceApplyConfiguration represents...
                           properties:
                             directory:
                               type: string
@@ -1099,7 +1066,7 @@ spec:
                               type: string
                           type: object
                         glusterfs:
-                          description: GlusterfsVolumeSourceApplyConfiguration represents
+                          description: GlusterfsVolumeSourceApplyConfiguration...
                           properties:
                             endpoints:
                               type: string
@@ -1109,7 +1076,7 @@ spec:
                               type: boolean
                           type: object
                         hostPath:
-                          description: 'HostPathVolumeSourceApplyConfiguration represents '
+                          description: HostPathVolumeSourceApplyConfiguration represents...
                           properties:
                             path:
                               type: string
@@ -1118,18 +1085,18 @@ spec:
                           type: object
                         image:
                           description: ImageVolumeSourceApplyConfiguration represents
-                            a d
+                            a...
                           properties:
                             pullPolicy:
-                              description: 'PullPolicy describes a policy for if/when
-                                to pull '
+                              description: PullPolicy describes a policy for if/when
+                                to pull...
                               type: string
                             reference:
                               type: string
                           type: object
                         iscsi:
                           description: ISCSIVolumeSourceApplyConfiguration represents
-                            a d
+                            a...
                           properties:
                             chapAuthDiscovery:
                               type: boolean
@@ -1153,8 +1120,8 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -1166,7 +1133,7 @@ spec:
                           type: string
                         nfs:
                           description: NFSVolumeSourceApplyConfiguration represents
-                            a dec
+                            a...
                           properties:
                             path:
                               type: string
@@ -1176,7 +1143,7 @@ spec:
                               type: string
                           type: object
                         persistentVolumeClaim:
-                          description: PersistentVolumeClaimVolumeSourceApplyConfiguratio
+                          description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
                           properties:
                             claimName:
                               type: string
@@ -1184,7 +1151,7 @@ spec:
                               type: boolean
                           type: object
                         photonPersistentDisk:
-                          description: PhotonPersistentDiskVolumeSourceApplyConfiguration
+                          description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
                           properties:
                             fsType:
                               type: string
@@ -1192,7 +1159,7 @@ spec:
                               type: string
                           type: object
                         portworxVolume:
-                          description: 'PortworxVolumeSourceApplyConfiguration represents '
+                          description: PortworxVolumeSourceApplyConfiguration represents...
                           properties:
                             fsType:
                               type: string
@@ -1202,7 +1169,7 @@ spec:
                               type: string
                           type: object
                         projected:
-                          description: ProjectedVolumeSourceApplyConfiguration represents
+                          description: ProjectedVolumeSourceApplyConfiguration...
                           properties:
                             defaultMode:
                               format: int32
@@ -1210,26 +1177,24 @@ spec:
                             sources:
                               items:
                                 description: VolumeProjectionApplyConfiguration represents
-                                  a de
+                                  a...
                                 properties:
                                   clusterTrustBundle:
-                                    description: ClusterTrustBundleProjectionApplyConfiguration
-                                      rep
+                                    description: ClusterTrustBundleProjectionApplyConfiguration...
                                     properties:
                                       labelSelector:
                                         description: LabelSelectorApplyConfiguration
-                                          represents a decla
+                                          represents a...
                                         properties:
                                           matchExpressions:
                                             items:
-                                              description: LabelSelectorRequirementApplyConfiguration
-                                                represe
+                                              description: LabelSelectorRequirementApplyConfiguration...
                                               properties:
                                                 key:
                                                   type: string
                                                 operator:
-                                                  description: 'A label selector operator
-                                                    is the set of operators '
+                                                  description: A label selector operator
+                                                    is the set of operators...
                                                   type: string
                                                 values:
                                                   items:
@@ -1253,12 +1218,12 @@ spec:
                                     type: object
                                   configMap:
                                     description: ConfigMapProjectionApplyConfiguration
-                                      represents a
+                                      represents...
                                     properties:
                                       items:
                                         items:
                                           description: KeyToPathApplyConfiguration
-                                            represents a declarati
+                                            represents a...
                                           properties:
                                             key:
                                               type: string
@@ -1275,17 +1240,15 @@ spec:
                                         type: boolean
                                     type: object
                                   downwardAPI:
-                                    description: DownwardAPIProjectionApplyConfiguration
-                                      represents
+                                    description: DownwardAPIProjectionApplyConfiguration...
                                     properties:
                                       items:
                                         items:
-                                          description: DownwardAPIVolumeFileApplyConfiguration
-                                            represents
+                                          description: DownwardAPIVolumeFileApplyConfiguration...
                                           properties:
                                             fieldRef:
                                               description: ObjectFieldSelectorApplyConfiguration
-                                                represents a
+                                                represents...
                                               properties:
                                                 apiVersion:
                                                   type: string
@@ -1298,8 +1261,7 @@ spec:
                                             path:
                                               type: string
                                             resourceFieldRef:
-                                              description: ResourceFieldSelectorApplyConfiguration
-                                                represents
+                                              description: ResourceFieldSelectorApplyConfiguration...
                                               properties:
                                                 containerName:
                                                   type: string
@@ -1317,12 +1279,12 @@ spec:
                                     type: object
                                   secret:
                                     description: SecretProjectionApplyConfiguration
-                                      represents a de
+                                      represents a...
                                     properties:
                                       items:
                                         items:
                                           description: KeyToPathApplyConfiguration
-                                            represents a declarati
+                                            represents a...
                                           properties:
                                             key:
                                               type: string
@@ -1339,8 +1301,7 @@ spec:
                                         type: boolean
                                     type: object
                                   serviceAccountToken:
-                                    description: ServiceAccountTokenProjectionApplyConfiguration
-                                      re
+                                    description: ServiceAccountTokenProjectionApplyConfiguration...
                                     properties:
                                       audience:
                                         type: string
@@ -1354,8 +1315,7 @@ spec:
                               type: array
                           type: object
                         quobyte:
-                          description: QuobyteVolumeSourceApplyConfiguration represents
-                            a
+                          description: QuobyteVolumeSourceApplyConfiguration represents...
                           properties:
                             group:
                               type: string
@@ -1372,7 +1332,7 @@ spec:
                           type: object
                         rbd:
                           description: RBDVolumeSourceApplyConfiguration represents
-                            a dec
+                            a...
                           properties:
                             fsType:
                               type: string
@@ -1389,8 +1349,8 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -1399,8 +1359,7 @@ spec:
                               type: string
                           type: object
                         scaleIO:
-                          description: ScaleIOVolumeSourceApplyConfiguration represents
-                            a
+                          description: ScaleIOVolumeSourceApplyConfiguration represents...
                           properties:
                             fsType:
                               type: string
@@ -1411,8 +1370,8 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -1429,8 +1388,8 @@ spec:
                               type: string
                           type: object
                         secret:
-                          description: 'SecretVolumeSourceApplyConfiguration represents
-                            a '
+                          description: SecretVolumeSourceApplyConfiguration represents
+                            a...
                           properties:
                             defaultMode:
                               format: int32
@@ -1438,7 +1397,7 @@ spec:
                             items:
                               items:
                                 description: KeyToPathApplyConfiguration represents
-                                  a declarati
+                                  a...
                                 properties:
                                   key:
                                     type: string
@@ -1455,15 +1414,15 @@ spec:
                               type: string
                           type: object
                         storageos:
-                          description: StorageOSVolumeSourceApplyConfiguration represents
+                          description: StorageOSVolumeSourceApplyConfiguration...
                           properties:
                             fsType:
                               type: string
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: 'LocalObjectReferenceApplyConfiguration
-                                represents '
+                              description: LocalObjectReferenceApplyConfiguration
+                                represents...
                               properties:
                                 name:
                                   type: string
@@ -1474,8 +1433,7 @@ spec:
                               type: string
                           type: object
                         vsphereVolume:
-                          description: VsphereVirtualDiskVolumeSourceApplyConfiguration
-                            r
+                          description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
                           properties:
                             fsType:
                               type: string
@@ -1489,10 +1447,10 @@ spec:
                       type: object
                     type: array
                   workVolume:
-                    description: WorkVolume is the volume source for the working di
+                    description: WorkVolume is the volume source for the working...
                     properties:
                       awsElasticBlockStore:
-                        description: AWSElasticBlockStoreVolumeSourceApplyConfiguration
+                        description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
                         properties:
                           fsType:
                             type: string
@@ -1505,7 +1463,7 @@ spec:
                             type: string
                         type: object
                       azureDisk:
-                        description: AzureDiskVolumeSourceApplyConfiguration represents
+                        description: AzureDiskVolumeSourceApplyConfiguration...
                         properties:
                           cachingMode:
                             type: string
@@ -1521,7 +1479,7 @@ spec:
                             type: boolean
                         type: object
                       azureFile:
-                        description: AzureFileVolumeSourceApplyConfiguration represents
+                        description: AzureFileVolumeSourceApplyConfiguration...
                         properties:
                           readOnly:
                             type: boolean
@@ -1531,8 +1489,8 @@ spec:
                             type: string
                         type: object
                       cephfs:
-                        description: 'CephFSVolumeSourceApplyConfiguration represents
-                          a '
+                        description: CephFSVolumeSourceApplyConfiguration represents
+                          a...
                         properties:
                           monitors:
                             items:
@@ -1545,7 +1503,7 @@ spec:
                           secretFile:
                             type: string
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -1554,15 +1512,15 @@ spec:
                             type: string
                         type: object
                       cinder:
-                        description: 'CinderVolumeSourceApplyConfiguration represents
-                          a '
+                        description: CinderVolumeSourceApplyConfiguration represents
+                          a...
                         properties:
                           fsType:
                             type: string
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -1571,7 +1529,7 @@ spec:
                             type: string
                         type: object
                       configMap:
-                        description: ConfigMapVolumeSourceApplyConfiguration represents
+                        description: ConfigMapVolumeSourceApplyConfiguration...
                         properties:
                           defaultMode:
                             format: int32
@@ -1579,7 +1537,7 @@ spec:
                           items:
                             items:
                               description: KeyToPathApplyConfiguration represents
-                                a declarati
+                                a...
                               properties:
                                 key:
                                   type: string
@@ -1597,14 +1555,14 @@ spec:
                         type: object
                       csi:
                         description: CSIVolumeSourceApplyConfiguration represents
-                          a dec
+                          a...
                         properties:
                           driver:
                             type: string
                           fsType:
                             type: string
                           nodePublishSecretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -1617,19 +1575,18 @@ spec:
                             type: object
                         type: object
                       downwardAPI:
-                        description: DownwardAPIVolumeSourceApplyConfiguration represen
+                        description: DownwardAPIVolumeSourceApplyConfiguration...
                         properties:
                           defaultMode:
                             format: int32
                             type: integer
                           items:
                             items:
-                              description: DownwardAPIVolumeFileApplyConfiguration
-                                represents
+                              description: DownwardAPIVolumeFileApplyConfiguration...
                               properties:
                                 fieldRef:
                                   description: ObjectFieldSelectorApplyConfiguration
-                                    represents a
+                                    represents...
                                   properties:
                                     apiVersion:
                                       type: string
@@ -1642,8 +1599,7 @@ spec:
                                 path:
                                   type: string
                                 resourceFieldRef:
-                                  description: ResourceFieldSelectorApplyConfiguration
-                                    represents
+                                  description: ResourceFieldSelectorApplyConfiguration...
                                   properties:
                                     containerName:
                                       type: string
@@ -1660,11 +1616,11 @@ spec:
                             type: array
                         type: object
                       emptyDir:
-                        description: 'EmptyDirVolumeSourceApplyConfiguration represents '
+                        description: EmptyDirVolumeSourceApplyConfiguration represents...
                         properties:
                           medium:
                             description: StorageMedium defines ways that storage can
-                              be all
+                              be...
                             type: string
                           sizeLimit:
                             anyOf:
@@ -1674,15 +1630,14 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       ephemeral:
-                        description: EphemeralVolumeSourceApplyConfiguration represents
+                        description: EphemeralVolumeSourceApplyConfiguration...
                         properties:
                           volumeClaimTemplate:
-                            description: PersistentVolumeClaimTemplateApplyConfiguration
-                              re
+                            description: PersistentVolumeClaimTemplateApplyConfiguration...
                             properties:
                               metadata:
                                 description: ObjectMetaApplyConfiguration represents
-                                  a declarat
+                                  a...
                                 properties:
                                   annotations:
                                     additionalProperties:
@@ -1717,7 +1672,7 @@ spec:
                                   ownerReferences:
                                     items:
                                       description: OwnerReferenceApplyConfiguration
-                                        represents a decl
+                                        represents a...
                                       properties:
                                         apiVersion:
                                           type: string
@@ -1731,7 +1686,7 @@ spec:
                                           type: string
                                         uid:
                                           description: UID is a type that holds unique
-                                            ID values, includi
+                                            ID values,...
                                           type: string
                                       type: object
                                     type: array
@@ -1739,20 +1694,18 @@ spec:
                                     type: string
                                   uid:
                                     description: UID is a type that holds unique ID
-                                      values, includi
+                                      values,...
                                     type: string
                                 type: object
                               spec:
-                                description: PersistentVolumeClaimSpecApplyConfiguration
-                                  repres
+                                description: PersistentVolumeClaimSpecApplyConfiguration...
                                 properties:
                                   accessModes:
                                     items:
                                       type: string
                                     type: array
                                   dataSource:
-                                    description: TypedLocalObjectReferenceApplyConfiguration
-                                      repres
+                                    description: TypedLocalObjectReferenceApplyConfiguration...
                                     properties:
                                       apiGroup:
                                         type: string
@@ -1762,8 +1715,8 @@ spec:
                                         type: string
                                     type: object
                                   dataSourceRef:
-                                    description: 'TypedObjectReferenceApplyConfiguration
-                                      represents '
+                                    description: TypedObjectReferenceApplyConfiguration
+                                      represents...
                                     properties:
                                       apiGroup:
                                         type: string
@@ -1775,8 +1728,7 @@ spec:
                                         type: string
                                     type: object
                                   resources:
-                                    description: VolumeResourceRequirementsApplyConfiguration
-                                      repre
+                                    description: VolumeResourceRequirementsApplyConfiguration...
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -1786,7 +1738,7 @@ spec:
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
                                         description: ResourceList is a set of (resource
-                                          name, quantity)
+                                          name,...
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -1796,23 +1748,22 @@ spec:
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
                                         description: ResourceList is a set of (resource
-                                          name, quantity)
+                                          name,...
                                         type: object
                                     type: object
                                   selector:
                                     description: LabelSelectorApplyConfiguration represents
-                                      a decla
+                                      a...
                                     properties:
                                       matchExpressions:
                                         items:
-                                          description: LabelSelectorRequirementApplyConfiguration
-                                            represe
+                                          description: LabelSelectorRequirementApplyConfiguration...
                                           properties:
                                             key:
                                               type: string
                                             operator:
-                                              description: 'A label selector operator
-                                                is the set of operators '
+                                              description: A label selector operator
+                                                is the set of operators...
                                               type: string
                                             values:
                                               items:
@@ -1831,7 +1782,7 @@ spec:
                                     type: string
                                   volumeMode:
                                     description: PersistentVolumeMode describes how
-                                      a volume is int
+                                      a volume is...
                                     type: string
                                   volumeName:
                                     type: string
@@ -1839,8 +1790,7 @@ spec:
                             type: object
                         type: object
                       fc:
-                        description: FCVolumeSourceApplyConfiguration represents a
-                          decl
+                        description: FCVolumeSourceApplyConfiguration represents a...
                         properties:
                           fsType:
                             type: string
@@ -1860,7 +1810,7 @@ spec:
                         type: object
                       flexVolume:
                         description: FlexVolumeSourceApplyConfiguration represents
-                          a de
+                          a...
                         properties:
                           driver:
                             type: string
@@ -1873,15 +1823,14 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
                             type: object
                         type: object
                       flocker:
-                        description: FlockerVolumeSourceApplyConfiguration represents
-                          a
+                        description: FlockerVolumeSourceApplyConfiguration represents...
                         properties:
                           datasetName:
                             type: string
@@ -1889,8 +1838,7 @@ spec:
                             type: string
                         type: object
                       gcePersistentDisk:
-                        description: GCEPersistentDiskVolumeSourceApplyConfiguration
-                          re
+                        description: GCEPersistentDiskVolumeSourceApplyConfiguration...
                         properties:
                           fsType:
                             type: string
@@ -1903,8 +1851,7 @@ spec:
                             type: boolean
                         type: object
                       gitRepo:
-                        description: GitRepoVolumeSourceApplyConfiguration represents
-                          a
+                        description: GitRepoVolumeSourceApplyConfiguration represents...
                         properties:
                           directory:
                             type: string
@@ -1914,7 +1861,7 @@ spec:
                             type: string
                         type: object
                       glusterfs:
-                        description: GlusterfsVolumeSourceApplyConfiguration represents
+                        description: GlusterfsVolumeSourceApplyConfiguration...
                         properties:
                           endpoints:
                             type: string
@@ -1924,7 +1871,7 @@ spec:
                             type: boolean
                         type: object
                       hostPath:
-                        description: 'HostPathVolumeSourceApplyConfiguration represents '
+                        description: HostPathVolumeSourceApplyConfiguration represents...
                         properties:
                           path:
                             type: string
@@ -1933,18 +1880,18 @@ spec:
                         type: object
                       image:
                         description: ImageVolumeSourceApplyConfiguration represents
-                          a d
+                          a...
                         properties:
                           pullPolicy:
-                            description: 'PullPolicy describes a policy for if/when
-                              to pull '
+                            description: PullPolicy describes a policy for if/when
+                              to pull...
                             type: string
                           reference:
                             type: string
                         type: object
                       iscsi:
                         description: ISCSIVolumeSourceApplyConfiguration represents
-                          a d
+                          a...
                         properties:
                           chapAuthDiscovery:
                             type: boolean
@@ -1968,7 +1915,7 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -1978,7 +1925,7 @@ spec:
                         type: object
                       nfs:
                         description: NFSVolumeSourceApplyConfiguration represents
-                          a dec
+                          a...
                         properties:
                           path:
                             type: string
@@ -1988,7 +1935,7 @@ spec:
                             type: string
                         type: object
                       persistentVolumeClaim:
-                        description: PersistentVolumeClaimVolumeSourceApplyConfiguratio
+                        description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
                         properties:
                           claimName:
                             type: string
@@ -1996,7 +1943,7 @@ spec:
                             type: boolean
                         type: object
                       photonPersistentDisk:
-                        description: PhotonPersistentDiskVolumeSourceApplyConfiguration
+                        description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
                         properties:
                           fsType:
                             type: string
@@ -2004,7 +1951,7 @@ spec:
                             type: string
                         type: object
                       portworxVolume:
-                        description: 'PortworxVolumeSourceApplyConfiguration represents '
+                        description: PortworxVolumeSourceApplyConfiguration represents...
                         properties:
                           fsType:
                             type: string
@@ -2014,7 +1961,7 @@ spec:
                             type: string
                         type: object
                       projected:
-                        description: ProjectedVolumeSourceApplyConfiguration represents
+                        description: ProjectedVolumeSourceApplyConfiguration...
                         properties:
                           defaultMode:
                             format: int32
@@ -2022,26 +1969,24 @@ spec:
                           sources:
                             items:
                               description: VolumeProjectionApplyConfiguration represents
-                                a de
+                                a...
                               properties:
                                 clusterTrustBundle:
-                                  description: ClusterTrustBundleProjectionApplyConfiguration
-                                    rep
+                                  description: ClusterTrustBundleProjectionApplyConfiguration...
                                   properties:
                                     labelSelector:
                                       description: LabelSelectorApplyConfiguration
-                                        represents a decla
+                                        represents a...
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration
-                                              represe
+                                            description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
                                                 type: string
                                               operator:
-                                                description: 'A label selector operator
-                                                  is the set of operators '
+                                                description: A label selector operator
+                                                  is the set of operators...
                                                 type: string
                                               values:
                                                 items:
@@ -2065,12 +2010,12 @@ spec:
                                   type: object
                                 configMap:
                                   description: ConfigMapProjectionApplyConfiguration
-                                    represents a
+                                    represents...
                                   properties:
                                     items:
                                       items:
                                         description: KeyToPathApplyConfiguration represents
-                                          a declarati
+                                          a...
                                         properties:
                                           key:
                                             type: string
@@ -2087,17 +2032,15 @@ spec:
                                       type: boolean
                                   type: object
                                 downwardAPI:
-                                  description: DownwardAPIProjectionApplyConfiguration
-                                    represents
+                                  description: DownwardAPIProjectionApplyConfiguration...
                                   properties:
                                     items:
                                       items:
-                                        description: DownwardAPIVolumeFileApplyConfiguration
-                                          represents
+                                        description: DownwardAPIVolumeFileApplyConfiguration...
                                         properties:
                                           fieldRef:
                                             description: ObjectFieldSelectorApplyConfiguration
-                                              represents a
+                                              represents...
                                             properties:
                                               apiVersion:
                                                 type: string
@@ -2110,8 +2053,7 @@ spec:
                                           path:
                                             type: string
                                           resourceFieldRef:
-                                            description: ResourceFieldSelectorApplyConfiguration
-                                              represents
+                                            description: ResourceFieldSelectorApplyConfiguration...
                                             properties:
                                               containerName:
                                                 type: string
@@ -2129,12 +2071,12 @@ spec:
                                   type: object
                                 secret:
                                   description: SecretProjectionApplyConfiguration
-                                    represents a de
+                                    represents a...
                                   properties:
                                     items:
                                       items:
                                         description: KeyToPathApplyConfiguration represents
-                                          a declarati
+                                          a...
                                         properties:
                                           key:
                                             type: string
@@ -2151,8 +2093,7 @@ spec:
                                       type: boolean
                                   type: object
                                 serviceAccountToken:
-                                  description: ServiceAccountTokenProjectionApplyConfiguration
-                                    re
+                                  description: ServiceAccountTokenProjectionApplyConfiguration...
                                   properties:
                                     audience:
                                       type: string
@@ -2166,8 +2107,7 @@ spec:
                             type: array
                         type: object
                       quobyte:
-                        description: QuobyteVolumeSourceApplyConfiguration represents
-                          a
+                        description: QuobyteVolumeSourceApplyConfiguration represents...
                         properties:
                           group:
                             type: string
@@ -2184,7 +2124,7 @@ spec:
                         type: object
                       rbd:
                         description: RBDVolumeSourceApplyConfiguration represents
-                          a dec
+                          a...
                         properties:
                           fsType:
                             type: string
@@ -2201,7 +2141,7 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -2210,8 +2150,7 @@ spec:
                             type: string
                         type: object
                       scaleIO:
-                        description: ScaleIOVolumeSourceApplyConfiguration represents
-                          a
+                        description: ScaleIOVolumeSourceApplyConfiguration represents...
                         properties:
                           fsType:
                             type: string
@@ -2222,7 +2161,7 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -2239,8 +2178,8 @@ spec:
                             type: string
                         type: object
                       secret:
-                        description: 'SecretVolumeSourceApplyConfiguration represents
-                          a '
+                        description: SecretVolumeSourceApplyConfiguration represents
+                          a...
                         properties:
                           defaultMode:
                             format: int32
@@ -2248,7 +2187,7 @@ spec:
                           items:
                             items:
                               description: KeyToPathApplyConfiguration represents
-                                a declarati
+                                a...
                               properties:
                                 key:
                                   type: string
@@ -2265,14 +2204,14 @@ spec:
                             type: string
                         type: object
                       storageos:
-                        description: StorageOSVolumeSourceApplyConfiguration represents
+                        description: StorageOSVolumeSourceApplyConfiguration...
                         properties:
                           fsType:
                             type: string
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: 'LocalObjectReferenceApplyConfiguration represents '
+                            description: LocalObjectReferenceApplyConfiguration represents...
                             properties:
                               name:
                                 type: string
@@ -2283,8 +2222,7 @@ spec:
                             type: string
                         type: object
                       vsphereVolume:
-                        description: VsphereVirtualDiskVolumeSourceApplyConfiguration
-                          r
+                        description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
                         properties:
                           fsType:
                             type: string
@@ -2305,7 +2243,7 @@ spec:
                 description: The schedule in Cron format for periodic backups.
                 type: string
               startingDeadlineSeconds:
-                description: 'Optional deadline in seconds for starting the job '
+                description: Optional deadline in seconds for starting the job...
                 format: int64
                 nullable: true
                 type: integer
