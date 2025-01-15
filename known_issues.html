@@ -185,10 +185,10 @@
 <li><a href="#multi-threaded-replication">Multi-threaded replication</a></li>
 </ul>
 <h2 id="multi-threaded-replication"><a class="header" href="#multi-threaded-replication">Multi-threaded replication</a></h2>
-<p><em>Status: not fixed as of MOCO v0.9.5</em></p>
+<p><em>Status: Resolved</em></p>
 <p>If you use MOCO with MySQL version 8.0.25 or earlier, you should not configure the replicas with <code>replica_parallel_workers</code> &gt; 1.
 Multi-threaded replication will cause the replica to fail to resume after the crash.</p>
-<p>This issue is registered as <a href="https://github.com/cybozu-go/moco/issues/322">#322</a> and will be addressed at no distant date.</p>
+<p>Currently, MOCO does not support MySQL version 8.0.25 or earlier, so this issue does not occur.</p>
 
                     </main>
 
