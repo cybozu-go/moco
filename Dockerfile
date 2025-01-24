@@ -20,13 +20,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.3.1 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.4.1 as mysql
 
 # the backup image
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.4.3
+ARG MYSQLSH_VERSION=8.4.4
 ARG MYSQLSH_GLIBC_VERSION=2.28
 ARG TARGETARCH
 
