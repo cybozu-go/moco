@@ -12,7 +12,7 @@ export MYSQL_VERSION KUBECTL KUBECONFIG
 
 ## to test development version of moco-agent, run make with AGENT_DIR=<path>
 AGENT_DIR =
-AGENT_IMAGE := ghcr.io/cybozu-go/moco-agent:$(shell awk '/moco-agent/ {print substr($$2, 2)}' ../go.mod)
+AGENT_IMAGE := ghcr.io/cybozu-go/moco-agent:$(shell awk '/github.com\/cybozu-go\/moco-agent/ {print substr($$2, 2)}' ../go.mod)
 
 ## to test development version of mysqld, run make with USE_LOCAL_MYSQL_IMAGE=1
 USE_LOCAL_MYSQL_IMAGE =
