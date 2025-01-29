@@ -92,7 +92,7 @@ MySQL versions appear twice:
     strategy:
       matrix:
         mysql-version: ["8.4.4"]
-        k8s-version: ["1.29.4", "1.30.4", "1.31.0"]
+        k8s-version: ["1.30.4", "1.31.0", "1.32.0"]
 ...
   # Matrix tests for different MySQL versions on the latest supported Kubernetes version.
   e2e-mysql:
@@ -100,7 +100,7 @@ MySQL versions appear twice:
     strategy:
       matrix:
         mysql-version: ["8.0.28", "8.0.39", "8.0.40", "8.0.41", "8.4.4"]
-        k8s-version: ["1.31.0"]
+        k8s-version: ["1.32.0"]
 ```
 
 ## Updating moco-agent

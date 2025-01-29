@@ -1,5 +1,5 @@
 # Tool versions
-CTRL_TOOLS_VERSION=0.16.2
+CTRL_TOOLS_VERSION=0.17.0
 CTRL_RUNTIME_VERSION := $(shell awk '/sigs.k8s.io\/controller-runtime/ {print substr($$2, 2)}' go.mod)
 KUSTOMIZE_VERSION = 5.4.3
 HELM_VERSION = 3.15.4
