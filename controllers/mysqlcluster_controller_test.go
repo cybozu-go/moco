@@ -1053,6 +1053,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}).
 					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}),
 				),
+				SecurityContext: (*mocov1beta2.SecurityContextApplyConfiguration)(corev1ac.SecurityContext().
+					WithCapabilities(corev1ac.Capabilities().WithDrop("ALL"))),
 			},
 			{
 				Name: mocov1beta2.ExporterContainerName,
@@ -1060,6 +1062,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}).
 					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}),
 				),
+				SecurityContext: (*mocov1beta2.SecurityContextApplyConfiguration)(corev1ac.SecurityContext().
+					WithCapabilities(corev1ac.Capabilities().WithDrop("ALL"))),
 			},
 			{
 				Name: mocov1beta2.InitContainerName,
@@ -1067,6 +1071,8 @@ var _ = Describe("MySQLCluster reconciler", func() {
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}).
 					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}),
 				),
+				SecurityContext: (*mocov1beta2.SecurityContextApplyConfiguration)(corev1ac.SecurityContext().
+					WithCapabilities(corev1ac.Capabilities().WithAdd("SYS_NICE"))),
 			},
 		}
 
@@ -1157,10 +1163,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
 			Expect(c.SecurityContext).NotTo(BeNil())
-			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.MysqldContainerName:
 				Expect(c.StartupProbe).NotTo(BeNil())
@@ -1169,6 +1171,10 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(ptr.To[int64](200)))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
+				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
 			case constants.AgentContainerName:
 				Expect(c.Args).To(ContainElement("20s"))
 				Expect(c.Args).To(ContainElement("0 * * * *"))
@@ -1176,16 +1182,26 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				Expect(c.Args).To(ContainElements("--mysqld-localhost", "true"))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
+				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+				Expect(c.SecurityContext.RunAsUser).To(BeNil())
+				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
 			case constants.ExporterContainerName:
 				foundExporter = true
 				Expect(c.Image).To(Equal(testExporterImage))
 				Expect(c.Args).To(HaveLen(3))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
+				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+				Expect(c.SecurityContext.RunAsUser).To(BeNil())
+				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
 			case "dummy":
 				foundDummyContainer = true
 				Expect(c.Image).To(Equal("dummy:latest"))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
+				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
 			}
 		}
 		Expect(foundExporter).To(BeTrue())
@@ -1194,20 +1210,23 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		foundInitDummyContainer := false
 		for _, c := range sts.Spec.Template.Spec.InitContainers {
 			Expect(c.SecurityContext).NotTo(BeNil())
-			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
 			switch c.Name {
 			case constants.InitContainerName:
 				Expect(c.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
 				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
+				Expect(c.SecurityContext.Capabilities.Add).To(ContainElement(corev1.Capability("SYS_NICE")))
+				Expect(c.SecurityContext.RunAsUser).To(BeNil())
+				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
 			case "init-dummy":
 				foundInitDummyContainer = true
 				Expect(c.Image).To(Equal("init-dummy:latest"))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
+				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
+				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
 			}
 		}
 		Expect(foundInitDummyContainer).To(BeTrue())

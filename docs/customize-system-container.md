@@ -4,7 +4,7 @@ MOCO has containers that are automatically added by the system in addition to co
 (e.g. `agent`, `moco-init` etc...)
 
 The `MySQLCluster.spec.podTemplate.overwriteContainers` field can be used to overwrite such containers.
-Currently, only container resources can be overwritten.
+Currently, only container resources and securityContexts can be overwritten.
 `overwriteContainers` is only available in MySQLCluster v1beta2.
 
 ```yaml
@@ -24,11 +24,15 @@ spec:
       resources:
         requests:
           cpu: 50m
+    - name: moco-init
+      securityContext:
+        capabilities:
+          add: ["SYS_NICE"]
 ```
 
 ## System containers
 
-The following is a list of system containers used by MOCO.
+The following is a list of system containers and default resource settings.
 Specifying container names in `overwriteContainers` that are not listed here will result in an error in API validation.
 
 | Name            | Default CPU Requests/Limits | Default Memory Requests/Limits | Description                                                                                                                                             |
@@ -37,3 +41,6 @@ Specifying container names in `overwriteContainers` that are not listed here wil
 | moco-init       | `100m` / `100m`             | `300Mi` / `300Mi`              | Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address. |
 | slow-log        | `100m` / `100m`             | `20Mi` / `20Mi`                | Sidecar container for outputting slow query logs.                                                                                                       |
 | mysqld-exporter | `200m` / `200m`             | `100Mi` / `100Mi`              | MySQL server exporter sidecar container.                                                                                                                |
+
+All system containers are configured runAsUser=1000 and runAsGroup=1000 in securityContext.
+If you specify securityContext in `overwriteContainers`, this configuration of specified container will be overwritten.

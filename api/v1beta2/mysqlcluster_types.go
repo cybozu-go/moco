@@ -455,6 +455,8 @@ const (
 )
 
 // OverwriteContainer defines the container spec used for overwriting.
+// For more information, please read the following documentation.
+// https://cybozu-go.github.io/moco/customize-system-container.html
 type OverwriteContainer struct {
 	// Name of the container to overwrite.
 	// +kubebuilder:validation:Required
@@ -463,6 +465,10 @@ type OverwriteContainer struct {
 	// Resources is the container resource to be overwritten.
 	// +optional
 	Resources *ResourceRequirementsApplyConfiguration `json:"resources,omitempty"`
+
+	// SecurityContext is the container SecurityContext to be overwritten.
+	// +optional
+	SecurityContext *SecurityContextApplyConfiguration `json:"securityContext,omitempty"`
 }
 
 // ResourceRequirementsApplyConfiguration is the type defined to implement the DeepCopy method.
@@ -471,6 +477,23 @@ type ResourceRequirementsApplyConfiguration corev1ac.ResourceRequirementsApplyCo
 // DeepCopy is copying the receiver, creating a new OverwriteContainer.
 func (in *ResourceRequirementsApplyConfiguration) DeepCopy() *ResourceRequirementsApplyConfiguration {
 	out := new(ResourceRequirementsApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// SecurityContextApplyConfiguration is the type defined to implement the DeepCopy method.
+type SecurityContextApplyConfiguration corev1ac.SecurityContextApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new OverwriteContainer.
+func (in *SecurityContextApplyConfiguration) DeepCopy() *SecurityContextApplyConfiguration {
+	out := new(SecurityContextApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")
