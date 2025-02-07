@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -99,19 +100,46 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 }
 
 func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
+	prctFunc := func(o client.Object) bool {
+		if !strings.HasPrefix(o.GetName(), "moco-") {
+			return false
+		}
+
+		labels := o.GetLabels()
+		if labels[constants.LabelAppName] != constants.AppNameMySQL {
+			return false
+		}
+		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
+			return false
+		}
+		return true
+	}
+
+	stsPrct := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
+		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
+	}
+
+	podPrct := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
+		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
+	}
+
 	mapFn := handler.EnqueueRequestsFromMapFunc(
 		func(ctx context.Context, obj client.Object) []ctrl.Request {
+			cluster := obj.(*mocov1beta2.MySQLCluster)
 			return []ctrl.Request{
 				{
 					NamespacedName: client.ObjectKey{
-						Name:      obj.GetName(),
-						Namespace: obj.GetNamespace(),
+						Name:      cluster.PrefixedName(),
+						Namespace: cluster.GetNamespace(),
 					},
 				},
 			}
 		})
 
-	p := predicate.Funcs{
+	clusterPrct := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			old := e.ObjectOld.(*mocov1beta2.MySQLCluster)
 			new := e.ObjectNew.(*mocov1beta2.MySQLCluster)
@@ -123,12 +151,12 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}).
-		Owns(&corev1.Pod{}).
+		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
+		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
 		Watches(
 			&mocov1beta2.MySQLCluster{},
 			mapFn,
-			builder.WithPredicates(p),
+			builder.WithPredicates(clusterPrct),
 		).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
