@@ -17,6 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -27,6 +28,11 @@ func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cluster.PrefixedName(),
 			Namespace: cluster.Namespace,
+			Labels: map[string]string{
+				constants.LabelAppName:      constants.AppNameMySQL,
+				constants.LabelAppInstance:  cluster.Name,
+				constants.LabelAppCreatedBy: constants.AppCreator,
+			},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(cluster, mocov1beta2.GroupVersion.WithKind("MySQLCluster")),
 			},
@@ -41,11 +47,19 @@ func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 				},
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"foo": "bar"},
+				MatchLabels: map[string]string{
+					constants.LabelAppName:      constants.AppNameMySQL,
+					constants.LabelAppInstance:  cluster.Name,
+					constants.LabelAppCreatedBy: constants.AppCreator,
+				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"foo": "bar"},
+					Labels: map[string]string{
+						constants.LabelAppName:      constants.AppNameMySQL,
+						constants.LabelAppInstance:  cluster.Name,
+						constants.LabelAppCreatedBy: constants.AppCreator,
+					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -64,14 +78,13 @@ func testNewPods(sts *appsv1.StatefulSet) []*corev1.Pod {
 	pods := make([]*corev1.Pod, 0, *sts.Spec.Replicas)
 
 	for i := 0; i < int(*sts.Spec.Replicas); i++ {
+		podLabels := sts.Spec.Template.DeepCopy().Labels
+		podLabels[appsv1.ControllerRevisionHashLabelKey] = "rev1"
 		pods = append(pods, &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%d", sts.Name, i),
-				Namespace: sts.Namespace,
-				Labels: map[string]string{
-					appsv1.ControllerRevisionHashLabelKey: "rev1",
-					"foo":                                 "bar",
-				},
+				Name:            fmt.Sprintf("%s-%d", sts.Name, i),
+				Namespace:       sts.Namespace,
+				Labels:          podLabels,
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(sts, appsv1.SchemeGroupVersion.WithKind("StatefulSet"))},
 			},
 			Spec: corev1.PodSpec{
@@ -86,7 +99,7 @@ func testNewPods(sts *appsv1.StatefulSet) []*corev1.Pod {
 
 func rolloutPods(ctx context.Context, sts *appsv1.StatefulSet, rev1 int, rev2 int) {
 	pods := &corev1.PodList{}
-	err := k8sClient.List(ctx, pods, client.InNamespace("partition"), client.MatchingLabels(map[string]string{"foo": "bar"}))
+	err := k8sClient.List(ctx, pods, client.InNamespace("partition"), client.MatchingLabels(sts.Spec.Template.Labels))
 	Expect(err).NotTo(HaveOccurred())
 	Expect(len(pods.Items)).To(Equal(rev1 + rev2))
 
