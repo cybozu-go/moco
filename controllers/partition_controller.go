@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -126,38 +125,9 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
 	}
 
-	mapFn := handler.EnqueueRequestsFromMapFunc(
-		func(ctx context.Context, obj client.Object) []ctrl.Request {
-			cluster := obj.(*mocov1beta2.MySQLCluster)
-			return []ctrl.Request{
-				{
-					NamespacedName: client.ObjectKey{
-						Name:      cluster.PrefixedName(),
-						Namespace: cluster.GetNamespace(),
-					},
-				},
-			}
-		})
-
-	clusterPrct := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			old := e.ObjectOld.(*mocov1beta2.MySQLCluster)
-			new := e.ObjectNew.(*mocov1beta2.MySQLCluster)
-			return old.ResourceVersion != new.ResourceVersion
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			return true
-		},
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
 		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
-		Watches(
-			&mocov1beta2.MySQLCluster{},
-			mapFn,
-			builder.WithPredicates(clusterPrct),
-		).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
