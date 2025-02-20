@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -19,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -99,37 +99,35 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 }
 
 func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	mapFn := handler.EnqueueRequestsFromMapFunc(
-		func(ctx context.Context, obj client.Object) []ctrl.Request {
-			return []ctrl.Request{
-				{
-					NamespacedName: client.ObjectKey{
-						Name:      obj.GetName(),
-						Namespace: obj.GetNamespace(),
-					},
-				},
-			}
-		})
+	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
+	prctFunc := func(o client.Object) bool {
+		if !strings.HasPrefix(o.GetName(), "moco-") {
+			return false
+		}
 
-	p := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			old := e.ObjectOld.(*mocov1beta2.MySQLCluster)
-			new := e.ObjectNew.(*mocov1beta2.MySQLCluster)
-			return old.ResourceVersion != new.ResourceVersion
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			return true
-		},
+		labels := o.GetLabels()
+		if labels[constants.LabelAppName] != constants.AppNameMySQL {
+			return false
+		}
+		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
+			return false
+		}
+		return true
+	}
+
+	stsPrct := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
+		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
+	}
+
+	podPrct := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
+		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}).
-		Owns(&corev1.Pod{}).
-		Watches(
-			&mocov1beta2.MySQLCluster{},
-			mapFn,
-			builder.WithPredicates(p),
-		).
+		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
+		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
