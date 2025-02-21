@@ -183,7 +183,7 @@
 <p>MOCO has containers that are automatically added by the system in addition to containers added by the user.
 (e.g. <code>agent</code>, <code>moco-init</code> etc...)</p>
 <p>The <code>MySQLCluster.spec.podTemplate.overwriteContainers</code> field can be used to overwrite such containers.
-Currently, only container resources can be overwritten.
+Currently, only container resources and securityContexts can be overwritten.
 <code>overwriteContainers</code> is only available in MySQLCluster v1beta2.</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
@@ -201,9 +201,13 @@ spec:
       resources:
         requests:
           cpu: 50m
+    - name: moco-init
+      securityContext:
+        capabilities:
+          add: ["SYS_NICE"]
 </code></pre>
 <h2 id="system-containers"><a class="header" href="#system-containers">System containers</a></h2>
-<p>The following is a list of system containers used by MOCO.
+<p>The following is a list of system containers and default resource settings.
 Specifying container names in <code>overwriteContainers</code> that are not listed here will result in an error in API validation.</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Default CPU Requests/Limits</th><th>Default Memory Requests/Limits</th><th>Description</th></tr></thead><tbody>
 <tr><td>agent</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MOCO's agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent</td></tr>
@@ -212,6 +216,9 @@ Specifying container names in <code>overwriteContainers</code> that are not list
 <tr><td>mysqld-exporter</td><td><code>200m</code> / <code>200m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MySQL server exporter sidecar container.</td></tr>
 </tbody></table>
 </div>
+<p>All system containers are configured runAsUser=1000 and runAsGroup=1000 in securityContext.
+If you specify securityContext in <code>overwriteContainers</code>, this configuration of specified container will be overwritten.</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

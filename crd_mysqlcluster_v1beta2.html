@@ -283,10 +283,11 @@
 </div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>
 <h4 id="overwritecontainer"><a class="header" href="#overwritecontainer">OverwriteContainer</a></h4>
-<p>OverwriteContainer defines the container spec used for overwriting.</p>
+<p>OverwriteContainer defines the container spec used for overwriting. For more information, please read the following documentation. https://cybozu-go.github.io/moco/customize-system-container.html</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>name</td><td>Name of the container to overwrite.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName">OverwriteableContainerName</a></td><td>true</td></tr>
 <tr><td>resources</td><td>Resources is the container resource to be overwritten.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration">ResourceRequirementsApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>securityContext</td><td>SecurityContext is the container SecurityContext to be overwritten.</td><td>*SecurityContextApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="#custom-resources">Back to Custom Resources</a></p>

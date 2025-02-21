@@ -1109,7 +1109,7 @@ $ make install
 <p>MOCO has containers that are automatically added by the system in addition to containers added by the user.
 (e.g. <code>agent</code>, <code>moco-init</code> etc...)</p>
 <p>The <code>MySQLCluster.spec.podTemplate.overwriteContainers</code> field can be used to overwrite such containers.
-Currently, only container resources can be overwritten.
+Currently, only container resources and securityContexts can be overwritten.
 <code>overwriteContainers</code> is only available in MySQLCluster v1beta2.</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
@@ -1127,9 +1127,13 @@ spec:
       resources:
         requests:
           cpu: 50m
+    - name: moco-init
+      securityContext:
+        capabilities:
+          add: ["SYS_NICE"]
 </code></pre>
 <h2 id="system-containers"><a class="header" href="#system-containers">System containers</a></h2>
-<p>The following is a list of system containers used by MOCO.
+<p>The following is a list of system containers and default resource settings.
 Specifying container names in <code>overwriteContainers</code> that are not listed here will result in an error in API validation.</p>
 <div class="table-wrapper"><table><thead><tr><th>Name</th><th>Default CPU Requests/Limits</th><th>Default Memory Requests/Limits</th><th>Description</th></tr></thead><tbody>
 <tr><td>agent</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MOCO's agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent</td></tr>
@@ -1137,7 +1141,10 @@ Specifying container names in <code>overwriteContainers</code> that are not list
 <tr><td>slow-log</td><td><code>100m</code> / <code>100m</code></td><td><code>20Mi</code> / <code>20Mi</code></td><td>Sidecar container for outputting slow query logs.</td></tr>
 <tr><td>mysqld-exporter</td><td><code>200m</code> / <code>200m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MySQL server exporter sidecar container.</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="change-the-volumeclaimtemplates"><a class="header" href="#change-the-volumeclaimtemplates">Change the volumeClaimTemplates</a></h1>
+</div>
+<p>All system containers are configured runAsUser=1000 and runAsGroup=1000 in securityContext.
+If you specify securityContext in <code>overwriteContainers</code>, this configuration of specified container will be overwritten.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="change-the-volumeclaimtemplates"><a class="header" href="#change-the-volumeclaimtemplates">Change the volumeClaimTemplates</a></h1>
 <p>MOCO supports MySQLCluster <code>.spec.volumeClaimTemplates</code> changes.</p>
 <p>When <code>.spec.volumeClaimTemplates</code> is changed, moco-controller will try to recreate the StatefulSet.
 This is because modification of <code>volumeClaimTemplates</code> in StatefulSet is currently not allowed.</p>
@@ -1450,10 +1457,11 @@ Multi-threaded replication will cause the replica to fail to resume after the cr
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
 <h4 id="overwritecontainer"><a class="header" href="#overwritecontainer">OverwriteContainer</a></h4>
-<p>OverwriteContainer defines the container spec used for overwriting.</p>
+<p>OverwriteContainer defines the container spec used for overwriting. For more information, please read the following documentation. https://cybozu-go.github.io/moco/customize-system-container.html</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th><th>Scheme</th><th>Required</th></tr></thead><tbody>
 <tr><td>name</td><td>Name of the container to overwrite.</td><td><a href="https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName">OverwriteableContainerName</a></td><td>true</td></tr>
 <tr><td>resources</td><td>Resources is the container resource to be overwritten.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration">ResourceRequirementsApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>securityContext</td><td>SecurityContext is the container SecurityContext to be overwritten.</td><td>*SecurityContextApplyConfiguration</td><td>false</td></tr>
 </tbody></table>
 </div>
 <p><a href="crd_mysqlcluster_v1beta2.html#custom-resources">Back to Custom Resources</a></p>
