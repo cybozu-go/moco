@@ -160,6 +160,88 @@ spec:
                               description: ResourceList is a set of (resource name,...
                               type: object
                           type: object
+                        securityContext:
+                          description: SecurityContext is the container SecurityContext...
+                          properties:
+                            allowPrivilegeEscalation:
+                              type: boolean
+                            appArmorProfile:
+                              description: AppArmorProfileApplyConfiguration represents
+                                a...
+                              properties:
+                                localhostProfile:
+                                  type: string
+                                type:
+                                  type: string
+                              type: object
+                            capabilities:
+                              description: CapabilitiesApplyConfiguration represents
+                                a...
+                              properties:
+                                add:
+                                  items:
+                                    description: Capability represent POSIX capabilities
+                                      type
+                                    type: string
+                                  type: array
+                                drop:
+                                  items:
+                                    description: Capability represent POSIX capabilities
+                                      type
+                                    type: string
+                                  type: array
+                              type: object
+                            privileged:
+                              type: boolean
+                            procMount:
+                              type: string
+                            readOnlyRootFilesystem:
+                              type: boolean
+                            runAsGroup:
+                              format: int64
+                              type: integer
+                            runAsNonRoot:
+                              type: boolean
+                            runAsUser:
+                              format: int64
+                              type: integer
+                            seLinuxOptions:
+                              description: SELinuxOptionsApplyConfiguration represents
+                                a...
+                              properties:
+                                level:
+                                  type: string
+                                role:
+                                  type: string
+                                type:
+                                  type: string
+                                user:
+                                  type: string
+                              type: object
+                            seccompProfile:
+                              description: SeccompProfileApplyConfiguration represents
+                                a...
+                              properties:
+                                localhostProfile:
+                                  type: string
+                                type:
+                                  description: SeccompProfileType defines the supported
+                                    seccomp...
+                                  type: string
+                              type: object
+                            windowsOptions:
+                              description: WindowsSecurityContextOptionsApplyConfiguration...
+                              properties:
+                                gmsaCredentialSpec:
+                                  type: string
+                                gmsaCredentialSpecName:
+                                  type: string
+                                hostProcess:
+                                  type: boolean
+                                runAsUserName:
+                                  type: string
+                              type: object
+                          type: object
                       required:
                       - name
                       type: object

@@ -122,12 +122,13 @@ ObjectMeta is metadata of objects. This is partially copied from metav1.ObjectMe
 
 #### OverwriteContainer
 
-OverwriteContainer defines the container spec used for overwriting.
+OverwriteContainer defines the container spec used for overwriting. For more information, please read the following documentation. https://cybozu-go.github.io/moco/customize-system-container.html
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | name | Name of the container to overwrite. | [OverwriteableContainerName](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName) | true |
 | resources | Resources is the container resource to be overwritten. | *[ResourceRequirementsApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration) | false |
+| securityContext | SecurityContext is the container SecurityContext to be overwritten. | *SecurityContextApplyConfiguration | false |
 
 [Back to Custom Resources](#custom-resources)
 
