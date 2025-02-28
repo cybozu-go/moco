@@ -10,7 +10,7 @@
     - [Installing kubectl-moco](install-plugin.md)
 - [Usage](usage.md)
 - [Advanced topics](advanced.md)
-    - [Building your own imge](custom-mysqld.md)
+    - [Building your own image](custom-mysqld.md)
     - [Customize system container](customize-system-container.md)
     - [Change volumeClaimTemplates](change-pvc-template.md)
     - [Rollout strategy](rolling-update-strategy.md)
