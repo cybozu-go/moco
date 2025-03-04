@@ -5,6 +5,32 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.26.0] - 2025-03-04
+### Breaking Changes
+
+### ⚠️ Breaking Changes
+- Support MySQL 8.4.4/8.0.41 [#775](https://github.com/cybozu-go/moco/pull/775), [#773](https://github.com/cybozu-go/moco/pull/773), [#774](https://github.com/cybozu-go/moco/pull/774)
+- Support k8s 1.32 [#770](https://github.com/cybozu-go/moco/pull/770)
+
+### ⚠️ End support for older versions
+ - MySQL versions supported after this release are 8.0.28, 8.0.39, 8.0.40, 8.0.41 and 8.4.4
+ - K8s versions supported after this release are 1.30, 1.31, 1.32
+
+### Changed
+- Update mysqld_exporter image [#765](https://github.com/cybozu-go/moco/pull/765)
+- Update moco-agent [#770](https://github.com/cybozu-go/moco/pull/770)
+- Run e2e test in parallel [#767](https://github.com/cybozu-go/moco/pull/767)
+- Update dependencies [#760](https://github.com/cybozu-go/moco/pull/760) [#770](https://github.com/cybozu-go/moco/pull/770) [#783](https://github.com/cybozu-go/moco/pull/783) 
+
+### Added
+- Allow overwriteContainers to specify a securityContext [#778](https://github.com/cybozu-go/moco/pull/778)
+
+### Fixed
+- update known issues [#769](https://github.com/cybozu-go/moco/pull/769)
+- Narrow down the target of StatefulSetPartitionReconciler [#781](https://github.com/cybozu-go/moco/pull/781)
+- docs: fix spelling in summary.md [#785](https://github.com/cybozu-go/moco/pull/785)
+   - Our thanks to [@sebastian-philipp](https://github.com/sebastian-philipp) for the contribution
+
 ## [0.25.1] - 2024-12-03
 
 ### Breaking Changes
@@ -663,7 +689,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.25.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/cybozu-go/moco/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/cybozu-go/moco/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/cybozu-go/moco/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/cybozu-go/moco/compare/v0.23.2...v0.24.1
