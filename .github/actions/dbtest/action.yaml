@@ -13,6 +13,8 @@ runs:
       with:
         go-version-file: go.mod
         cache: true
+    - name: Setup Aqua
+      uses: ./.github/actions/setup-aqua
     - run: make setup
       shell: bash
     - run: make test-bkop MYSQL_VERSION=${{ inputs.mysql-version }}

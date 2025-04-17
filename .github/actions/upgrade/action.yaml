@@ -8,6 +8,8 @@ runs:
       with:
         go-version-file: go.mod
         cache: true
+    - name: Setup Aqua
+      uses: ./.github/actions/setup-aqua
     - run: |
         swapon > swapon.txt
         sudo swapoff -a

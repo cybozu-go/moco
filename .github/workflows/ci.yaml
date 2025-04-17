@@ -23,6 +23,8 @@ jobs:
       with:
         go-version-file: go.mod
         cache: true
+    - name: Setup Aqua
+      uses: ./.github/actions/setup-aqua
     - run: make release-build
 
   test:
@@ -34,6 +36,8 @@ jobs:
       with:
         go-version-file: go.mod
         cache: true
+    - name: Setup Aqua
+      uses: ./.github/actions/setup-aqua
     - run: make test
     - run: make check-generate
     - run: make envtest

@@ -1,11 +1,10 @@
-KIND_VERSION = 0.23.0
 KUBERNETES_VERSION = 1.32.0
 CERT_MANAGER_VERSION = 1.15.3
 MYSQL_VERSION = 8.4.4
 
-KIND := $(dir $(shell pwd))/bin/kind
-KUBECTL := $(dir $(shell pwd))/bin/kubectl
-KUSTOMIZE := $(dir $(shell pwd))/bin/kustomize
+KIND := kind
+KUBECTL := kubectl
+KUSTOMIZE := kustomize
 KUBECTL_MOCO := $(dir $(shell pwd))/bin/kubectl-moco
 KUBECONFIG := $(shell pwd)/.kubeconfig
 export MYSQL_VERSION KUBECTL KUBECONFIG
@@ -30,7 +29,7 @@ help:
 	@echo "stop       Stop the kind cluster"
 
 .PHONY: start
-start: $(KIND) $(KUBECTL) $(KUSTOMIZE) $(KUBECTL_MOCO)
+start: aqua-install $(KUBECTL_MOCO)
 	$(KIND) create cluster --name=moco --config=$(KIND_CONFIG) --image=kindest/node:v$(KUBERNETES_VERSION) --wait 1m
 	cd ..; docker buildx build --no-cache --load --target controller -t moco:dev .
 	$(KIND) load docker-image moco:dev --name=moco
@@ -52,6 +51,10 @@ endif
 	$(KUBECTL) apply -f fake-gcs-server.yaml
 	$(KUBECTL) wait --timeout=90s --for=condition=Ready --all pods
 
+.PHONY: aqua-install
+aqua-install:
+	aqua install
+
 .PHONY: test
 test:
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
@@ -70,21 +73,11 @@ logs:
 	rm -rf logs
 
 .PHONY: stop
-stop: $(KIND) 
+stop:
 	$(KIND) delete cluster --name=moco
 	-docker image rm moco:dev
 	-docker image rm moco-backup:dev
 	-docker image prune -f
-
-$(KIND):
-	mkdir -p ../bin
-	curl -sfL -o $@ https://github.com/kubernetes-sigs/kind/releases/download/v$(KIND_VERSION)/kind-linux-amd64
-	chmod a+x $@
-
-$(KUBECTL):
-	mkdir -p ../bin
-	curl -sfL -o $@ https://dl.k8s.io/release/v$(KUBERNETES_VERSION)/bin/linux/amd64/kubectl
-	chmod a+x $@
 
 $(KUSTOMIZE):
 	$(MAKE) -C .. kustomize
@@ -92,4 +85,3 @@ $(KUSTOMIZE):
 $(KUBECTL_MOCO):
 	mkdir -p ../bin
 	cd ..; GOBIN=$$(pwd)/bin go install ./cmd/kubectl-moco
-
