@@ -79,9 +79,6 @@ stop:
 	-docker image rm moco-backup:dev
 	-docker image prune -f
 
-$(KUSTOMIZE):
-	$(MAKE) -C .. kustomize
-
 $(KUBECTL_MOCO):
 	mkdir -p ../bin
 	cd ..; GOBIN=$$(pwd)/bin go install ./cmd/kubectl-moco
