@@ -12,6 +12,7 @@ HELM := helm
 GORELEASER := goreleaser
 YQ := yq
 CONTROLLER_GEN := controller-gen
+SETUP_ENVTEST := setup-envtest
 CRD_TO_MARKDOWN := crd-to-markdown
 STATICCHECK := staticcheck
 MDBOOK := mdbook
@@ -89,7 +90,7 @@ check-generate:
 	git diff --exit-code --name-only
 
 .PHONY: envtest
-envtest: setup-envtest
+envtest: aqua-install
 	source <($(SETUP_ENVTEST) use -p env); \
 		export MOCO_CHECK_INTERVAL=100ms; \
 		export MOCO_CLONE_WAIT_DURATION=100ms; \
@@ -140,13 +141,6 @@ release-manifests-build: aqua-install
 	rm -rf build
 	mkdir -p build
 	$(KUSTOMIZE) build . > build/moco.yaml
-
-##@ Tools
-SETUP_ENVTEST := $(shell pwd)/bin/setup-envtest
-.PHONY: setup-envtest
-setup-envtest: ## Download setup-envtest locally if necessary
-	# see https://github.com/kubernetes-sigs/controller-runtime/tree/master/tools/setup-envtest
-	GOBIN=$(shell pwd)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: aqua-install
 aqua-install: ## Install tools managed by aqua
