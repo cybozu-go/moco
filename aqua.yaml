@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+checksum:
+  enabled: true
+  require_checksum: true
+#   supported_envs:
+#   - all
+registries:
+- type: standard
+  ref: v4.350.0 # renovate: depName=aquaproj/aqua-registry
+packages:
+- name: kubernetes-sigs/kind@v0.23.0
+- name: kubernetes/kubectl@v1.32.0
+- name: kubernetes-sigs/kustomize@kustomize/v5.4.3
+- name: helm/helm@v3.15.4
+- name: goreleaser/goreleaser@v1.26.2
+- name: mikefarah/yq@v4.44.3
+- name: kubernetes-sigs/controller-tools/controller-gen@v0.17.0
+- name: clamoriniere/crd-to-markdown@v0.0.3
+- name: dominikh/go-tools/staticcheck@2025.1.1
+- name: rust-lang/mdBook@v0.4.40
+- name: kubernetes-sigs/controller-runtime/setup-envtest@v0.20.4

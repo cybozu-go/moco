@@ -1,0 +1,27 @@
+name: Setup Aqua
+description: Install Aqua CLI
+runs:
+  using: composite
+  steps:
+    - name: Restore aqua cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.local/share/aquaproj-aqua
+        key: v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('aqua.yaml') }}
+        restore-keys: |
+          v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Install aqua
+      uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
+      with:
+        aqua_version: v2.48.1
+        working_directory: ${{ inputs.working_directory }}
+        # aqua-installer runs aqua with -l option by default, so packages that aren't run in the workflow aren't cached.
+        aqua_opts: ""
+
+    - name: Save aqua cache
+      if: github.ref_name == 'main'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.local/share/aquaproj-aqua
+        key: v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('aqua.yaml') }}

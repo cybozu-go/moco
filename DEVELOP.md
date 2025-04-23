@@ -1,5 +1,6 @@
 # How to develop MOCO
 
+- [Install aqua](#install-aqua)
 - [Running tests](#running-tests)
 - [Generated files](#generated-files)
 - [Testing with unreleased moco-agent](#testing-with-unreleased-moco-agent)
@@ -8,7 +9,13 @@
 - [Adding or dropping supported software versions](#adding-or-dropping-supported-software-versions)
 - [Updating moco-agent](#updating-moco-agent)
 - [Updating fluent-bit](#updating-fluent-bit)
-- [Updating mysqld_exporter](#updating-mysqld_exporter)
+- [Updating mysqld\_exporter](#updating-mysqld_exporter)
+
+## Install aqua
+
+This project uses [aqua](https://aquaproj.github.io/) to manage development tools. Before starting development, please install aqua by following the instructions at https://aquaproj.github.io/docs/install.
+
+Once aqua is installed, the required development tools will be automatically installed when you run make commands.
 
 ## Running tests
 
