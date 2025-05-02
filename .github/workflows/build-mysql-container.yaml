@@ -89,6 +89,9 @@ jobs:
           cat swapon.txt | tail -n+2 | awk '$2=="file" {print $1}' | sudo xargs --no-run-if-empty rm
       - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
 
+      - name: Setup Aqua
+        uses: ./.github/actions/setup-aqua
+
       - name: Setup test cluster with local mysql image
         run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml USE_LOCAL_MYSQL_IMAGE=1
         working-directory: e2e
