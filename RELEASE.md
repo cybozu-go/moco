@@ -39,10 +39,12 @@ It should look like:
     $ echo $VERSION
     ```
 
-2. Make a new branch from the latest `main` with `git neco dev bump-v$VERSION`.
+2. Make a new branch from the latest `main` with `git checkout -b bump-v$VERSION`.
 
     ```console
-    $ git neco dev "bump-v$VERSION"
+    $ git checkout main
+    $ git pull
+    $ git checkout -b "bump-v$VERSION"
     ```
 
 3. Update version strings in `kustomization.yaml` and `version.go`.
@@ -51,7 +53,8 @@ It should look like:
 
     ```console
     $ git commit -a -m "Bump version to v$VERSION"
-    $ git neco review
+    $ git push -u origin HEAD
+    $ gh pr create -f
     ```
 
 6. Merge the new pull request.
@@ -89,10 +92,12 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ echo $APPVERSION $CHARTVERSION
     ```
 
-2. Make a new branch from the latest `main` with `git neco dev bump-chart-v$CHARTVERSION`.
+2. Make a new branch from the latest `main` with `git checkout -b bump-chart-v$CHARTVERSION`.
 
     ```console
-    $ git neco dev "bump-chart-v$CHARTVERSION"
+    $ git checkout main
+    $ git pull
+    $ git checkout -b "bump-chart-v$CHARTVERSION"
     ```
 
 3. Update version strings:
@@ -108,7 +113,8 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
 
     ```console
     $ git commit -a -m "Bump chart version to v$CHARTVERSION"
-    $ git neco review
+    $ git push -u origin HEAD
+    $ gh pr create -f
     ```
 
 6. Merge the new pull request.

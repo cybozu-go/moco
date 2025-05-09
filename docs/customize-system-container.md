@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.4
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.5
     overwriteContainers:
     - name: agent
       resources:
