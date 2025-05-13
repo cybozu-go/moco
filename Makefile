@@ -1,5 +1,5 @@
 # Tool versions
-MYSQLSH_VERSION = 8.4.4-1
+MYSQLSH_VERSION = 8.4.5-1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
