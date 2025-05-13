@@ -287,7 +287,7 @@ spec:
       containers:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.4
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.5
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -375,7 +375,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.4  # must be the same version as the donor
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.5  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -778,7 +778,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.4
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.5
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
