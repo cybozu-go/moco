@@ -518,7 +518,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		if st.ReplicaStatus.ReplicaIORunning != "Yes" {
 			return
 		}
-		log.Info("stop replica IO thread", "instance", index)
+		log.Info("stop replica IO thread due to an errant transaction", "instance", index)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
 			return false, err
 		}
