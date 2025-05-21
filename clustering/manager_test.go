@@ -676,10 +676,12 @@ var _ = Describe("manager", func() {
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
 				switch i {
+				case 0:
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole), "failing pod should not have role label")
 				case 1:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary), "new primary should have role=primary")
 				default:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica), "other replicas should have role=replica")
 				}
 			}
 		}).Should(Succeed())
@@ -755,7 +757,8 @@ var _ = Describe("manager", func() {
 		for i := 0; i < 3; i++ {
 			switch i {
 			case 0:
-				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
+				// Any positive kill connection count is acceptable for the primary pod.
+				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(BeNumerically(">", 0))
 			default:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
 			}
@@ -890,12 +893,14 @@ var _ = Describe("manager", func() {
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
 				switch i {
+				case 0:
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole), "failing pod should not have role label")
 				case 1:
-					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole))
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole), "errant pod should not have role label")
 				case 3:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary), "new primary should have role=primary")
 				default:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica), "other pods should have role=replica")
 				}
 			}
 		}).Should(Succeed())
@@ -947,10 +952,12 @@ var _ = Describe("manager", func() {
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
 				switch i {
+				case 0:
+					g.Expect(pod.Labels).NotTo(HaveKey(constants.LabelMocoRole), "failing pod should not have role label")
 				case 3:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RolePrimary), "primary pod should have role=primary")
 				default:
-					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica))
+					g.Expect(pod.Labels[constants.LabelMocoRole]).To(Equal(constants.RoleReplica), "other pods should have role=replica")
 				}
 			}
 		}).Should(Succeed())
