@@ -289,8 +289,8 @@ func (p *managerProcess) removeRoleLabel(ctx context.Context, ss *StatusSet) ([]
 	return noRoles, nil
 }
 
-func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, noRoles []int) error {
-	for _, i := range noRoles {
+func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, alive []int) error {
+	for _, i := range alive {
 		if isErrantReplica(ss, i) {
 			continue
 		}
@@ -409,7 +409,7 @@ func (p *managerProcess) configure(ctx context.Context, ss *StatusSet) (bool, er
 	}
 
 	// add new role label
-	err = p.addRoleLabel(ctx, ss, noRoles)
+	err = p.addRoleLabel(ctx, ss, alive)
 	if err != nil {
 		return false, err
 	}
