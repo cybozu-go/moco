@@ -289,6 +289,8 @@ func (p *managerProcess) removeRoleLabel(ctx context.Context, ss *StatusSet) ([]
 	return noRoles, nil
 }
 
+// addRoleLabel adds the appropriate role label to the pods specified by the `alive` slice.
+// The `alive` parameter is a slice of pod indices that are alive and eligible for role labeling.
 func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, alive []int) error {
 	for _, i := range alive {
 		if isErrantReplica(ss, i) {
