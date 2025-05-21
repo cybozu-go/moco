@@ -757,6 +757,7 @@ var _ = Describe("manager", func() {
 		for i := 0; i < 3; i++ {
 			switch i {
 			case 0:
+				// Any positive kill connection count is acceptable for the primary pod.
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(BeNumerically(">", 0))
 			default:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
