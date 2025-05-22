@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -535,11 +537,11 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
-	configTmpl := `[SERVICE]
+	defaultConfigTmpl := `[SERVICE]
   Log_Level      error
 [INPUT]
   Name           tail
-  Path           %s
+  Path           {{ .Path }}
   Read_from_Head true
 [OUTPUT]
   Name           file
@@ -549,12 +551,24 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
   Format         template
   Template       {log}
 `
+	var configTmpl string
+	if cluster.Spec.SlowQueryLogConfigTmpl != nil {
+		configTmpl = *cluster.Spec.SlowQueryLogConfigTmpl
+	} else {
+		configTmpl = defaultConfigTmpl
+	}
 
 	if !cluster.Spec.DisableSlowQueryLogContainer {
 		name := cluster.SlowQueryLogAgentConfigMapName()
-		confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
+		t, err := template.New("").Parse(configTmpl)
+		if err != nil {
+			return fmt.Errorf("failed to parse config template: %w", err)
+		}
+		confVal := new(bytes.Buffer)
+		t.Execute(confVal, struct{ Path string }{Path: filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)})
+
 		data := map[string]string{
-			constants.FluentBitConfigName: confVal,
+			constants.FluentBitConfigName: confVal.String(),
 		}
 
 		cm := corev1ac.ConfigMap(name, cluster.Namespace).
