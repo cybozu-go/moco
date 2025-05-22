@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -408,6 +409,33 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			err := k8sClient.Get(ctx, key, slowCM)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
+
+		customConfig := `
+Path: {{ .Path }}
+dummyKey: dummyValue
+`
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		cluster.Spec.DisableSlowQueryLogContainer = false
+		cluster.Spec.SlowQueryLogConfigTmpl = &customConfig
+		err = k8sClient.Update(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			slowCM = &corev1.ConfigMap{}
+			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
+			if err := k8sClient.Get(ctx, key, slowCM); err != nil {
+				return err
+			}
+			if len(slowCM.Data) == 0 {
+				return fmt.Errorf("the config map is not reconciled yet")
+			}
+			if !strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) {
+				return fmt.Errorf("the config map is invalid")
+			}
+			return nil
+		}).Should(Succeed())
 	})
 
 	It("should create config maps for my.cnf", func() {
