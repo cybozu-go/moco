@@ -5,6 +5,17 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.27.0] - 2025-05-27
+### Breaking Changes
+- Support MySQL 8.4.5/8.0.42 [#794](https://github.com/cybozu-go/moco/pull/794), [#798](https://github.com/cybozu-go/moco/pull/798) 
+
+### Changed
+- Manage CLI tools by aquaproj/aqua [#793](https://github.com/cybozu-go/moco/pull/793)
+
+### Fixed
+- Improved log messages when replication is stopped due to errant_replica [#799](https://github.com/cybozu-go/moco/pull/799)
+- Dead pods should not be labeled with role=replica [#802](https://github.com/cybozu-go/moco/pull/802)
+
 ## [0.26.0] - 2025-03-04
 ### Breaking Changes
 
@@ -689,7 +700,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/cybozu-go/moco/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/cybozu-go/moco/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/cybozu-go/moco/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/cybozu-go/moco/compare/v0.24.1...v0.25.0
