@@ -90,6 +90,8 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
+    - name: Setup Aqua
+      uses: ./.github/actions/setup-aqua
     - name: GoReleaser
       uses: goreleaser/goreleaser-action@v5
       with:
