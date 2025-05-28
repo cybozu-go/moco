@@ -56,8 +56,9 @@ Innovation releases would probably work. But they are not tested in our CI.
 You can quickly run MOCO using [kind](https://kind.sigs.k8s.io/).
 
 1. Prepare a Linux machine and install Docker.
-2. Checkout MOCO and go to `e2e` directory.
-3. Run `make start`
+2. Install aqua by following the instructions at https://aquaproj.github.io/docs/install/.
+3. Checkout MOCO and go to `e2e` directory.
+4. Run `make start`
 
 You can then create a three-instance MySQL cluster as follows:
 
