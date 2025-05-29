@@ -24,7 +24,8 @@ Therefore, we include the following tests in the e2e suite.
 ## How to run e2e tests
 
 1. Prepare a Linux with Docker.
-2. Run the following commands in this directory.
+2. Install aqua by following the instructions at https://aquaproj.github.io/docs/install/.
+3. Run the following commands in this directory.
 
     ```console
     $ make start
@@ -32,7 +33,7 @@ Therefore, we include the following tests in the e2e suite.
     $ make test-upgrade
     ```
 
-3. After the test, run the following command to stop `kind` cluster.
+4. After the test, run the following command to stop `kind` cluster.
 
     ```console
     $ make stop
