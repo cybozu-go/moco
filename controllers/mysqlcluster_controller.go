@@ -565,7 +565,9 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 			return fmt.Errorf("failed to parse config template: %w", err)
 		}
 		confVal := new(bytes.Buffer)
-		t.Execute(confVal, struct{ Path string }{Path: filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)})
+		if err := t.Execute(confVal, struct{ Path string }{Path: filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)}); err != nil {
+			return fmt.Errorf("failed to execute config template: %w", err)
+		}
 
 		data := map[string]string{
 			constants.FluentBitConfigName: confVal.String(),

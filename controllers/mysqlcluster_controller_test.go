@@ -434,6 +434,9 @@ dummyKey: dummyValue
 			if !strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) {
 				return fmt.Errorf("the config map is invalid")
 			}
+			if !strings.Contains(slowCM.Data[constants.FluentBitConfigName], "dummyKey: dummyValue") {
+				return fmt.Errorf("the config map is invalid")
+			}
 			return nil
 		}).Should(Succeed())
 	})
