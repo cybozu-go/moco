@@ -1,0 +1,85 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.podMonitors.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: moco-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  podMetricsEndpoints:
+    - path: /metrics
+      port: metrics
+      {{- with .Values.monitoring.podMonitors.interval }}
+      interval: {{ . }}
+      {{- end }}
+      {{- with .Values.monitoring.podMonitors.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: moco-controller
+      app.kubernetes.io/name: {{ include "moco.name" . }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: moco-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  podMetricsEndpoints:
+    - path: /metrics
+      port: agent-metrics
+      {{- with .Values.monitoring.podMonitors.interval }}
+      interval: {{ . }}
+      {{- end }}
+      {{- with .Values.monitoring.podMonitors.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/created-by: moco
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: moco-mysql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "moco.labels" . | nindent 4 }}
+spec:
+  podMetricsEndpoints:
+    - path: /metrics
+      port: mysqld-metrics
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+          action: replace
+          targetLabel: name
+        - sourceLabels: [__meta_kubernetes_pod_label_statefulset_kubernetes_io_pod_name]
+          action: replace
+          targetLabel: index
+          regex: ".*-([0-9])"
+        - sourceLabels: [__meta_kubernetes_pod_label_moco_cybozu_com_role]
+          action: replace
+          targetLabel: role
+      {{- with .Values.monitoring.podMonitors.interval }}
+      interval: {{ . }}
+      {{- end }}
+      {{- with .Values.monitoring.podMonitors.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/created-by: moco
+{{- end }}
