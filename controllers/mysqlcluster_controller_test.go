@@ -445,25 +445,24 @@ dummyKey: dummyValue
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() error {
+		Eventually(func() (bool, error) {
 			slowCMs, err = getslowCMs()
 			if err != nil {
-				return err
+				return false, err
 			}
 			if len(slowCMs) == 0 {
-				return fmt.Errorf("the config map is not reconciled yet")
+				return false, fmt.Errorf("the config map is not reconciled yet")
 			}
-			return nil
-		}).Should(Succeed())
 
-		found := false
-		for _, slowCM := range slowCMs {
-			if strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) && strings.Contains(slowCM.Data[constants.FluentBitConfigName], "dummyKey: dummyValue") {
-				found = true
-				break
+			found := false
+			for _, slowCM := range slowCMs {
+				if strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) && strings.Contains(slowCM.Data[constants.FluentBitConfigName], "dummyKey: dummyValue") {
+					found = true
+					break
+				}
 			}
-		}
-		Expect(found).To(BeTrue())
+			return found, nil
+		}).Should(BeTrue())
 	})
 
 	It("should create config maps for my.cnf", func() {
