@@ -370,27 +370,49 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
+		getslowCMs := func() ([]*corev1.ConfigMap, error) {
+			cms := &corev1.ConfigMapList{}
+			if err := k8sClient.List(ctx, cms, client.InNamespace("test")); err != nil {
+				return nil, err
+			}
 
-		var slowCM *corev1.ConfigMap
+			var slowCMs []*corev1.ConfigMap
+			for i, cm := range cms.Items {
+				if strings.HasPrefix(cm.Name, "moco-slow-log-agent-config-test.") {
+					slowCMs = append(slowCMs, &cms.Items[i])
+				}
+			}
+			return slowCMs, nil
+		}
+
+		var slowCMs []*corev1.ConfigMap
 		Eventually(func() error {
-			slowCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
-			return k8sClient.Get(ctx, key, slowCM)
-		}).Should(Succeed())
-
-		Expect(slowCM.OwnerReferences).NotTo(BeEmpty())
-
-		slowCM.Data = nil
-		err = k8sClient.Update(ctx, slowCM)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() error {
-			slowCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
-			if err := k8sClient.Get(ctx, key, slowCM); err != nil {
+			slowCMs, err := getslowCMs()
+			if err != nil {
 				return err
 			}
-			if len(slowCM.Data) == 0 {
+			if len(slowCMs) == 0 {
+				return fmt.Errorf("the config map is not reconciled yet")
+			}
+			return err
+		}).Should(Succeed())
+
+		for _, slowCM := range slowCMs {
+			Expect(slowCM.OwnerReferences).NotTo(BeEmpty())
+		}
+
+		for _, slowCM := range slowCMs {
+			slowCM.Data = nil
+			err = k8sClient.Update(ctx, slowCM)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		Eventually(func() error {
+			slowCMs, err := getslowCMs()
+			if err != nil {
+				return err
+			}
+			if len(slowCMs) == 0 {
 				return fmt.Errorf("the config map is not reconciled yet")
 			}
 			return nil
@@ -404,10 +426,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
-			slowCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
-			err := k8sClient.Get(ctx, key, slowCM)
-			return apierrors.IsNotFound(err)
+			slowCMs, err := getslowCMs()
+			if err != nil {
+				return false
+			}
+			return len(slowCMs) != 0
 		}).Should(BeTrue())
 
 		customConfig := `
@@ -423,22 +446,24 @@ dummyKey: dummyValue
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
-			slowCM = &corev1.ConfigMap{}
-			key := client.ObjectKey{Namespace: "test", Name: "moco-slow-log-agent-config-test"}
-			if err := k8sClient.Get(ctx, key, slowCM); err != nil {
+			slowCMs, err = getslowCMs()
+			if err != nil {
 				return err
 			}
-			if len(slowCM.Data) == 0 {
+			if len(slowCMs) == 0 {
 				return fmt.Errorf("the config map is not reconciled yet")
-			}
-			if !strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) {
-				return fmt.Errorf("the config map is invalid")
-			}
-			if !strings.Contains(slowCM.Data[constants.FluentBitConfigName], "dummyKey: dummyValue") {
-				return fmt.Errorf("the config map is invalid")
 			}
 			return nil
 		}).Should(Succeed())
+
+		found := false
+		for _, slowCM := range slowCMs {
+			if strings.Contains(slowCM.Data[constants.FluentBitConfigName], filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)) && strings.Contains(slowCM.Data[constants.FluentBitConfigName], "dummyKey: dummyValue") {
+				found = true
+				break
+			}
+		}
+		Expect(found).To(BeTrue())
 	})
 
 	It("should create config maps for my.cnf", func() {

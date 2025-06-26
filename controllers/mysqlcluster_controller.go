@@ -569,7 +569,7 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 		key := client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}
 		if _, err := apply(ctx, r.Client, key, cm, corev1ac.ExtractConfigMap); err != nil {
 			if errors.Is(err, ErrApplyConfigurationNotChanged) {
-				return nil, nil
+				return cm, nil
 			}
 			return nil, fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, cmName, err)
 		}
@@ -588,9 +588,8 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 		if err != nil && !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to delete configmap for slow logs: %w", err)
 		}
+		return nil, nil
 	}
-
-	return nil, nil
 }
 
 func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, cluster *mocov1beta2.MySQLCluster, namePrefix, currentName string) error {
@@ -606,10 +605,9 @@ func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, clust
 		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
 	})
 
-	prefix := namePrefix + "."
 	oldConfigCount := 0
 	for _, old := range cms.Items {
-		if !strings.HasPrefix(old.Name, prefix) || old.Name == currentName {
+		if !strings.HasPrefix(old.Name, namePrefix) || old.Name == currentName {
 			continue
 		}
 		oldConfigCount++
