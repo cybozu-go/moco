@@ -834,7 +834,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return errors.New("unexpected error: my.conf ConfigMap name is nil")
 	}
 	if slowlogCnf.Name == nil {
-		return errors.New("unexpected error: my.conf ConfigMap name is nil")
+		return errors.New("unexpected error: slow query log ConfigMap name is nil")
 	}
 
 	podSpec.WithVolumes(
