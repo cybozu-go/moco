@@ -425,13 +425,13 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() bool {
+		Eventually(func() (int, error) {
 			slowCMs, err := getslowCMs()
 			if err != nil {
-				return false
+				return 0, err
 			}
-			return len(slowCMs) != 0
-		}).Should(BeTrue())
+			return len(slowCMs), nil
+		}).Should(BeZero())
 
 		customConfig := `
 Path: {{ .Path }}

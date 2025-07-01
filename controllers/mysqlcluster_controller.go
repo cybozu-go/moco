@@ -537,8 +537,8 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 		configTmpl = defaultConfigTmpl
 	}
 
+	prefix := cluster.SlowQueryLogAgentConfigMapName()
 	if !cluster.Spec.DisableSlowQueryLogContainer {
-		prefix := cluster.SlowQueryLogAgentConfigMapName()
 		t, err := template.New("").Parse(configTmpl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse config template: %w", err)
@@ -581,12 +581,17 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 		log.Info("reconciled ConfigMap for slow logs", "configMapName", cmName)
 		return cm, nil
 	} else {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.SlowQueryLogAgentConfigMapName()
-		err := r.Client.Delete(ctx, cm)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to delete configmap for slow logs: %w", err)
+		cms := &corev1.ConfigMapList{}
+		if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
+			return nil, err
+		}
+		for _, old := range cms.Items {
+			if strings.HasPrefix(old.Name, prefix) {
+				if err := r.Delete(ctx, &old); err != nil && !apierrors.IsNotFound(err) {
+					return nil, fmt.Errorf("failed to delete old configmap %s/%s: %w", old.Namespace, old.Name, err)
+				}
+				log.Info("deleted old configmap", "configMapName", old.Name)
+			}
 		}
 		return nil, nil
 	}
