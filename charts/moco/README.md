@@ -38,21 +38,25 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 
 ## Values
 
-| Key                       | Type   | Default                                       | Description                                                      |
-| ------------------------- | ------ | --------------------------------------------- | ---------------------------------------------------------------- |
-| replicaCount              | number | `2`                                           | Number of controller replicas.                                   |
-| image.repository          | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.                                    |
-| image.pullPolicy          | string | `IfNotPresent`                                | MOCO image pulling policy.                                       |
-| image.tag                 | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                                           |
-| imagePullSecrets          | list   | `[]`                                          | Secrets for pulling MOCO image from private repository.          |
-| resources                 | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.                               |
-| crds.enabled              | bool   | `true`                                        | Install and update CRDs as part of the Helm chart.               |
-| extraArgs                 | list   | `[]`                                          | Additional command line flags to pass to moco-controller binary. |
-| nodeSelector              | object | `{}`                                          | nodeSelector used by moco-controller.                            |
-| affinity                  | object | `{}`                                          | affinity used by moco-controller.                                |
-| tolerations               | list   | `[]`                                          | tolerations used by moco-controller.                             |
-| topologySpreadConstraints | list   | `[]`                                          | topologySpreadConstraints used by moco-controller.               |
-| priorityClassName         | string | `""`                                          | PriorityClass used by moco-controller.                           |
+| Key                                   | Type   | Default                                       | Description                                                                  |
+| ------------------------------------- | ------ | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| replicaCount                          | number | `2`                                           | Number of controller replicas.                                               |
+| image.repository                      | string | `"ghcr.io/cybozu-go/moco"`                    | MOCO image repository to use.                                                |
+| image.pullPolicy                      | string | `IfNotPresent`                                | MOCO image pulling policy.                                                   |
+| image.tag                             | string | `{{ .Chart.AppVersion }}`                     | MOCO image tag to use.                                                       |
+| imagePullSecrets                      | list   | `[]`                                          | Secrets for pulling MOCO image from private repository.                      |
+| resources                             | object | `{"requests":{"cpu":"100m","memory":"20Mi"}}` | resources used by moco-controller.                                           |
+| crds.enabled                          | bool   | `true`                                        | Install and update CRDs as part of the Helm chart.                           |
+| extraArgs                             | list   | `[]`                                          | Additional command line flags to pass to moco-controller binary.             |
+| nodeSelector                          | object | `{}`                                          | nodeSelector used by moco-controller.                                        |
+| affinity                              | object | `{}`                                          | affinity used by moco-controller.                                            |
+| tolerations                           | list   | `[]`                                          | tolerations used by moco-controller.                                         |
+| topologySpreadConstraints             | list   | `[]`                                          | topologySpreadConstraints used by moco-controller.                           |
+| priorityClassName                     | string | `""`                                          | PriorityClass used by moco-controller.                                       |
+| monitoring.enabled                    | bool   | `false`                                       | Enable monitoring configuration. Requires Prometheus (CRDs) to be installed. |
+| monitoring.podMonitors.enabled        | bool   | `true`                                        | Create Prometheus pod monitors.                                              |
+| monitoring.podMonitors.interval       | string | `""`                                          | Custom Prometheus scrape interval.                                           |
+| monitoring.podMonitors.scrapeTimeout  | string | `""`                                          | Custom Prometheus scrape timeout.                                            |
 
 ## Generate Manifests
 
