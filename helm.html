@@ -216,6 +216,10 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <tr><td>tolerations</td><td>list</td><td><code>[]</code></td><td>tolerations used by moco-controller.</td></tr>
 <tr><td>topologySpreadConstraints</td><td>list</td><td><code>[]</code></td><td>topologySpreadConstraints used by moco-controller.</td></tr>
 <tr><td>priorityClassName</td><td>string</td><td><code>""</code></td><td>PriorityClass used by moco-controller.</td></tr>
+<tr><td>monitoring.enabled</td><td>bool</td><td><code>false</code></td><td>Enable monitoring configuration. Requires Prometheus (CRDs) to be installed.</td></tr>
+<tr><td>monitoring.podMonitors.enabled</td><td>bool</td><td><code>true</code></td><td>Create Prometheus pod monitors.</td></tr>
+<tr><td>monitoring.podMonitors.interval</td><td>string</td><td><code>""</code></td><td>Custom Prometheus scrape interval.</td></tr>
+<tr><td>monitoring.podMonitors.scrapeTimeout</td><td>string</td><td><code>""</code></td><td>Custom Prometheus scrape timeout.</td></tr>
 </tbody></table>
 </div>
 <h2 id="generate-manifests"><a class="header" href="#generate-manifests">Generate Manifests</a></h2>
