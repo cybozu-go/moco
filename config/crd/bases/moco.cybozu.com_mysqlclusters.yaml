@@ -6359,6 +6359,9 @@ spec:
                 description: ServerIDBase, if set, will become the base number...
                 format: int32
                 type: integer
+              slowQueryLogConfigTmpl:
+                description: SlowQueryLogConfigTmpl is the template for slow...
+                type: string
               startupWaitSeconds:
                 default: 3600
                 description: StartupWaitSeconds is the maximum duration to...

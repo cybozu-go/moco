@@ -128,9 +128,15 @@ type MySQLClusterSpec struct {
 
 	// DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log"
 	// to output slow logs as the containers output.
-	// If set to true, the sidecar container is not added. The default is false.
+	// If set to true, the sidecar container and configmap used by the sidecar container are not added. The default is false.
 	// +optional
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
+
+	// SlowQueryLogConfigTmpl is the template for slow query log configuration file.
+	// If this field is null, MOCO uses the default slow query log configuration.
+	// `{{ .Path }}` will be replaced with the path to the slow query log file.
+	// +optional
+	SlowQueryLogConfigTmpl *string `json:"slowQueryLogConfigTmpl,omitempty"`
 
 	// AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name.
 	// During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also

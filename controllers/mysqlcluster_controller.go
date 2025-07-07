@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -281,8 +283,8 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		log.Error(err, "failed to reconcile my.conf config map")
 		return ctrl.Result{}, err
 	}
-
-	if err = r.reconcileV1FluentBitConfigMap(ctx, req, cluster); err != nil {
+	slowlogConf, err := r.reconcileV1FluentBitConfigMap(ctx, req, cluster)
+	if err != nil {
 		log.Error(err, "failed to reconcile config maps for fluent-bit")
 		return ctrl.Result{}, err
 	}
@@ -299,7 +301,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1StatefulSet(ctx, req, cluster, mycnf); err != nil {
+	if err = r.reconcileV1StatefulSet(ctx, req, cluster, mycnf, slowlogConf); err != nil {
 		log.Error(err, "failed to reconcile stateful set")
 		return ctrl.Result{}, err
 	}
@@ -504,42 +506,21 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 
 	log.Info("reconciled my.cnf ConfigMap", "configMapName", cmName)
 
-	cms := &corev1.ConfigMapList{}
-	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
+	if err := r.cleanupOldConfigMaps(ctx, cluster, prefix, cmName); err != nil {
 		return nil, err
-	}
-
-	// Sort the ConfigMapList by creation timestamp in descending order
-	sort.Slice(cms.Items, func(i, j int) bool {
-		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
-	})
-
-	oldMyCnfCount := 0
-	for _, old := range cms.Items {
-		if !strings.HasPrefix(old.Name, prefix) || old.Name == cmName {
-			continue
-		}
-		oldMyCnfCount++
-		log.Info("found my.cnf configmap", "configMapName", old.Name, "count", oldMyCnfCount, "created", old.CreationTimestamp.Time)
-		if oldMyCnfCount > r.MySQLConfigMapHistoryLimit-1 {
-			if err := r.Delete(ctx, &old); err != nil {
-				return nil, fmt.Errorf("failed to delete old my.cnf configmap %s/%s: %w", old.Namespace, old.Name, err)
-			}
-			log.Info("deleted old my.cnf configmap", "configMapName", old.Name)
-		}
 	}
 
 	return cm, nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
 	log := crlog.FromContext(ctx)
 
-	configTmpl := `[SERVICE]
+	defaultConfigTmpl := `[SERVICE]
   Log_Level      error
 [INPUT]
   Name           tail
-  Path           %s
+  Path           {{ .Path }}
   Read_from_Head true
 [OUTPUT]
   Name           file
@@ -549,41 +530,100 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
   Format         template
   Template       {log}
 `
+	var configTmpl string
+	if cluster.Spec.SlowQueryLogConfigTmpl != nil {
+		configTmpl = *cluster.Spec.SlowQueryLogConfigTmpl
+	} else {
+		configTmpl = defaultConfigTmpl
+	}
 
+	prefix := cluster.SlowQueryLogAgentConfigMapName()
 	if !cluster.Spec.DisableSlowQueryLogContainer {
-		name := cluster.SlowQueryLogAgentConfigMapName()
-		confVal := fmt.Sprintf(configTmpl, filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName))
-		data := map[string]string{
-			constants.FluentBitConfigName: confVal,
+		t, err := template.New("").Parse(configTmpl)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config template: %w", err)
+		}
+		confVal := new(bytes.Buffer)
+		if err := t.Execute(confVal, struct{ Path string }{Path: filepath.Join(constants.LogDirPath, constants.MySQLSlowLogName)}); err != nil {
+			return nil, fmt.Errorf("failed to execute config template: %w", err)
 		}
 
-		cm := corev1ac.ConfigMap(name, cluster.Namespace).
+		data := map[string]string{
+			constants.FluentBitConfigName: confVal.String(),
+		}
+
+		fnv32a := fnv.New32a()
+		fnv32a.Write([]byte(configTmpl))
+		suffix := hex.EncodeToString(fnv32a.Sum(nil))
+
+		cmName := fmt.Sprintf("%s.%s", prefix, suffix)
+
+		cm := corev1ac.ConfigMap(cmName, cluster.Namespace).
 			WithLabels(labelSet(cluster, false)).
 			WithData(data)
 
 		if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
-			return fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, name, err)
+			return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 		}
 
-		key := client.ObjectKey{Namespace: cluster.Namespace, Name: name}
+		key := client.ObjectKey{Namespace: cluster.Namespace, Name: cmName}
 		if _, err := apply(ctx, r.Client, key, cm, corev1ac.ExtractConfigMap); err != nil {
 			if errors.Is(err, ErrApplyConfigurationNotChanged) {
-				return nil
+				return cm, nil
 			}
-			return fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, name, err)
+			return nil, fmt.Errorf("failed to reconcile configmap %s/%s for slow logs: %w", cluster.Namespace, cmName, err)
 		}
 
-		log.Info("reconciled ConfigMap for slow logs", "configMapName", name)
-	} else {
-		cm := &corev1.ConfigMap{}
-		cm.Namespace = cluster.Namespace
-		cm.Name = cluster.SlowQueryLogAgentConfigMapName()
-		err := r.Client.Delete(ctx, cm)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete configmap for slow logs: %w", err)
+		if err := r.cleanupOldConfigMaps(ctx, cluster, prefix, cmName); err != nil {
+			return nil, err
 		}
+
+		log.Info("reconciled ConfigMap for slow logs", "configMapName", cmName)
+		return cm, nil
+	} else {
+		cms := &corev1.ConfigMapList{}
+		if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
+			return nil, err
+		}
+		for _, old := range cms.Items {
+			if strings.HasPrefix(old.Name, prefix) {
+				if err := r.Delete(ctx, &old); err != nil && !apierrors.IsNotFound(err) {
+					return nil, fmt.Errorf("failed to delete old configmap %s/%s: %w", old.Namespace, old.Name, err)
+				}
+				log.Info("deleted old configmap", "configMapName", old.Name)
+			}
+		}
+		return nil, nil
+	}
+}
+
+func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, cluster *mocov1beta2.MySQLCluster, namePrefix, currentName string) error {
+	log := crlog.FromContext(ctx)
+
+	cms := &corev1.ConfigMapList{}
+	if err := r.List(ctx, cms, client.InNamespace(cluster.Namespace)); err != nil {
+		return err
 	}
 
+	// Sort ConfigMaps by creation timestamp in descending order
+	sort.Slice(cms.Items, func(i, j int) bool {
+		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
+	})
+
+	oldConfigCount := 0
+	for _, old := range cms.Items {
+		if !strings.HasPrefix(old.Name, namePrefix) || old.Name == currentName {
+			continue
+		}
+		oldConfigCount++
+		log.Info("found old configmap", "configMapName", old.Name, "count", oldConfigCount, "created", old.CreationTimestamp.Time)
+		if oldConfigCount > r.MySQLConfigMapHistoryLimit-1 {
+			if err := r.Delete(ctx, &old); err != nil {
+				return fmt.Errorf("failed to delete old configmap %s/%s: %w", old.Namespace, old.Name, err)
+			}
+			log.Info("deleted old configmap", "configMapName", old.Name)
+		}
+	}
 	return nil
 }
 
@@ -735,7 +775,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration) error {
+func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration, slowlogConf *corev1ac.ConfigMapApplyConfiguration) error {
 	log := crlog.FromContext(ctx)
 
 	var orig appsv1.StatefulSet
@@ -834,11 +874,14 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	)
 
 	if !cluster.Spec.DisableSlowQueryLogContainer {
+		if slowlogConf == nil || slowlogConf.Name == nil {
+			return errors.New("unexpected error: slow query log ConfigMap or its name is nil")
+		}
 		podSpec.WithVolumes(
 			corev1ac.Volume().
 				WithName(constants.SlowQueryLogAgentConfigVolumeName).
 				WithConfigMap(corev1ac.ConfigMapVolumeSource().
-					WithName(cluster.SlowQueryLogAgentConfigMapName()).
+					WithName(*slowlogConf.Name).
 					WithDefaultMode(0644)),
 		)
 	}
