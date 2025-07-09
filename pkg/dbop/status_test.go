@@ -25,7 +25,7 @@ var _ = Describe("status", func() {
 		op, err := factory.New(context.Background(), cluster, passwd, 0)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("checking the initial stauts")
+		By("checking the initial status")
 		status, err := op.GetStatus(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(status).NotTo(BeNil())
