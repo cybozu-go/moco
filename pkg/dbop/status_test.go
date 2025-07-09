@@ -3,6 +3,8 @@ package dbop
 import (
 	"context"
 
+	"github.com/cybozu-go/moco/pkg/constants"
+
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/password"
 	. "github.com/onsi/ginkgo/v2"
@@ -66,5 +68,99 @@ var _ = Describe("status", func() {
 
 		err = op.Close()
 		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("get rpl_semi_sync_wait_master_sessions", func() {
+		ctx := context.Background()
+		By("preparing 2 node cluster")
+		cluster := &mocov1beta2.MySQLCluster{}
+		cluster.Namespace = "test"
+		cluster.Name = "cluster"
+		cluster.Spec.Replicas = 2
+
+		passwd, err := password.NewMySQLPassword()
+		Expect(err).NotTo(HaveOccurred())
+
+		ops := make([]*operator, cluster.Spec.Replicas)
+		for i := 0; i < int(cluster.Spec.Replicas); i++ {
+			op, err := factory.New(context.Background(), cluster, passwd, i)
+			Expect(err).NotTo(HaveOccurred())
+			ops[i] = op.(*operator)
+		}
+		defer func() {
+			for _, op := range ops {
+				op.Close()
+			}
+		}()
+
+		By("initializing an external instance 0")
+		err = ops[0].SetReadOnly(ctx, false)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = ops[0].db.Exec(`CREATE DATABASE foo`)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = ops[0].db.Exec(`CREATE TABLE foo.t1 (pkey INT PRIMARY KEY, data TEXT NOT NULL) ENGINE=InnoDB`)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = ops[0].db.Exec(`INSERT INTO foo.t1 (pkey, data) VALUES (1, "aaa"), (2, "bbb")`)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("configuring semi-sync replication between 0 and 1")
+		err = ops[1].ConfigureReplica(ctx, AccessInfo{
+			Host:     testContainerName(cluster, 0),
+			Port:     3306,
+			User:     constants.ReplicationUser,
+			Password: passwd.Replicator(),
+		}, true)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() int {
+			var count int
+			err := ops[1].db.Get(&count, `SELECT COUNT(*) FROM foo.t1`)
+			if err != nil {
+				return 0
+			}
+			return count
+		}).Should(Equal(2))
+		err = ops[0].ConfigurePrimary(ctx, 1)
+
+		By("checking status of 1")
+		st0, err := ops[0].GetStatus(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(st0.GlobalVariables.SemiSyncMasterEnabled).To(BeTrue())
+		Expect(st0.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		st1, err := ops[1].GetStatus(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(st1.GlobalVariables.ExecutedGTID).To(Equal(st0.GlobalVariables.ExecutedGTID))
+		Expect(st1.GlobalVariables.SuperReadOnly).To(BeTrue())
+		Expect(st1.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncSlaveEnabled).To(BeTrue())
+
+		By("stop replica and try commit to primary")
+		err = ops[1].StopReplicaIOThread(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
+		// creating a hanging transaction
+		commitCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go func(ctx context.Context) {
+			defer GinkgoRecover()
+			trx, err := ops[0].db.BeginTx(commitCtx, nil)
+			_, err = trx.Exec(`INSERT INTO foo.t1 (pkey, data) VALUES (3, "cccc"), (4, "zzz")`)
+			if err != nil {
+				return
+			}
+			_ = trx.Commit()
+		}(commitCtx)
+
+		By("verify SemiSyncMasterWaitSessions")
+		st0, err = ops[0].GetStatus(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() int {
+			var count int
+			err := ops[1].db.Get(&count, `SELECT COUNT(*) FROM foo.t1`)
+			if err != nil {
+				return 0
+			}
+			return count
+		}).Should(Equal(2))
+		Expect(st0.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(1))
 	})
 })
