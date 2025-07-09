@@ -120,6 +120,7 @@ var _ = Describe("status", func() {
 			return count
 		}).Should(Equal(2))
 		err = ops[0].ConfigurePrimary(ctx, 1)
+		Expect(err).NotTo(HaveOccurred())
 
 		By("checking status of 1")
 		st0, err := ops[0].GetStatus(ctx)
@@ -141,12 +142,10 @@ var _ = Describe("status", func() {
 		commitCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go func(ctx context.Context) {
-			defer GinkgoRecover()
 			trx, err := ops[0].db.BeginTx(commitCtx, nil)
+			Expect(err).NotTo(HaveOccurred())
 			_, err = trx.Exec(`INSERT INTO foo.t1 (pkey, data) VALUES (3, "cccc"), (4, "zzz")`)
-			if err != nil {
-				return
-			}
+			Expect(err).NotTo(HaveOccurred())
 			_ = trx.Commit()
 		}(commitCtx)
 
