@@ -485,6 +485,9 @@ func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 		m.status.GlobalVariables.UUID = fmt.Sprintf("p%d", index)
 		m.status.GlobalVariables.ReadOnly = true
 		m.status.GlobalVariables.SuperReadOnly = true
+		m.status.GlobalStatus = &dbop.GlobalStatus{
+			SemiSyncMasterWaitSessions: 0,
+		}
 		f.mysqls[hostname] = m
 	}
 	return &mockOperator{
