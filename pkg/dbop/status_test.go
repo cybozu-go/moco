@@ -34,6 +34,7 @@ var _ = Describe("status", func() {
 		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(1))
 		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
 		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
 
 		By("writing data and checking gtid_executed")
 		_, err = op.(*operator).db.Exec("SET GLOBAL read_only=0")
@@ -50,6 +51,7 @@ var _ = Describe("status", func() {
 		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(1))
 		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
 		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
 
 		By("enabling semi-sync master")
 		err = op.ConfigurePrimary(context.Background(), 3)
@@ -60,6 +62,7 @@ var _ = Describe("status", func() {
 		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(3))
 		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeTrue())
 		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
 
 		err = op.Close()
 		Expect(err).NotTo(HaveOccurred())
