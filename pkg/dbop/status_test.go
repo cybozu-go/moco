@@ -15,7 +15,7 @@ var _ = Describe("status", func() {
 	ctx := context.Background()
 
 	It("should retrieve status information", func() {
-		By("preparing a single node cluster")
+		By("preparing a 2 node cluster")
 		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
 		cluster.Name = "status"
