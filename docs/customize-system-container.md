@@ -38,7 +38,7 @@ Specifying container names in `overwriteContainers` that are not listed here wil
 | Name            | Default CPU Requests/Limits | Default Memory Requests/Limits | Description                                                                                                                                             |
 | --------------- | --------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | agent           | `100m` / `100m`             | `100Mi` / `100Mi`              | MOCO's agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent                                                                |
-| moco-init       | `100m` / `100m`             | `300Mi` / `300Mi`              | Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address. |
+| moco-init       | `100m` / `100m`             | `512Mi` / `512Mi`              | Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address. |
 | slow-log        | `100m` / `100m`             | `20Mi` / `20Mi`                | Sidecar container for outputting slow query logs.                                                                                                       |
 | mysqld-exporter | `200m` / `200m`             | `100Mi` / `100Mi`              | MySQL server exporter sidecar container.                                                                                                                |
 

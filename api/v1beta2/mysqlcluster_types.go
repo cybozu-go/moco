@@ -143,6 +143,13 @@ type MySQLClusterSpec struct {
 	// communicate with mysqld over localhost when acting as a sidecar.
 	AgentUseLocalhost bool `json:"agentUseLocalhost,omitempty"`
 
+	// InitializeTimezoneData controls whether the init container should populate the timezone data.
+	// If set to true, the init container will load timezone data into MySQL.
+	// The default is false.
+	// +kubebuilder:default=false
+	// +optional
+	InitializeTimezoneData bool `json:"initializeTimezoneData,omitempty"`
+
 	// Offline sets the cluster offline, releasing compute resources. Data is not removed.
 	// +optional
 	Offline bool `json:"offline,omitempty"`
