@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.23-jammy as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.24-jammy as builder
 
 ARG TARGETARCH
 
@@ -12,7 +12,7 @@ RUN GOARCH=${TARGETARCH} go build -ldflags="-w -s" -o moco-backup ./cmd/moco-bac
 
 # the controller image
 FROM --platform=$TARGETPLATFORM scratch as controller
-LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
+LABEL org.opencontainers.image.source=https://github.com/cybozu-go/moco
 
 COPY --from=builder /work/moco-controller ./
 USER 10000:10000
@@ -24,7 +24,7 @@ FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.5.1 as mysql
 
 # the backup image
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
-LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
+LABEL org.opencontainers.image.source=https://github.com/cybozu-go/moco
 
 ARG MYSQLSH_VERSION=8.4.5
 ARG MYSQLSH_GLIBC_VERSION=2.28
