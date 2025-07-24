@@ -21,7 +21,7 @@ RUN cd tmp/ \
     && make -j 20 \
     && make install
 
-FROM ghcr.io/cybozu/ubuntu:22.04
+FROM ghcr.io/cybozu/ubuntu:24.04
 
 COPY --from=builder /usr/local/mysql/LICENSE /usr/local/mysql/LICENSE
 COPY --from=builder /usr/local/mysql/bin /usr/local/mysql/bin
