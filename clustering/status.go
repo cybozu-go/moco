@@ -293,6 +293,9 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		if i == ss.Primary {
 			continue
 		}
+		if ist == nil {
+			continue
+		}
 		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
 			ss.MySQLStatus[i] = nil
 		}
