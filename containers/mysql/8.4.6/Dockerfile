@@ -8,6 +8,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     libgoogle-perftools-dev \
     libnuma-dev \
     libaio-dev \
+    libtirpc-dev \
     pkg-config
 
 RUN cd tmp/ \
@@ -28,7 +29,7 @@ COPY --from=builder /usr/local/mysql/lib /usr/local/mysql/lib
 COPY --from=builder /usr/local/mysql/share /usr/local/mysql/share
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libgoogle-perftools4 libnuma1 libaio1 \
+  && apt-get install -y --no-install-recommends libgoogle-perftools4 libnuma1 libaio1 libtirpc3t64 \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /var/lib/mysql \
   && chown -R 10000:10000 /var/lib/mysql
