@@ -2,9 +2,9 @@ package dbop
 
 import (
 	"context"
-	"github.com/cybozu-go/moco/pkg/constants"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
