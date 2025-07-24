@@ -210,11 +210,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 					return
 				}
 				if err == nil {
-					if index != ss.Primary && index != ss.Candidate && ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
-						ss.MySQLStatus[index] = nil
-					} else {
-						ss.MySQLStatus[index] = ist
-					}
+					ss.MySQLStatus[index] = ist
 					return
 				}
 				// process errors
@@ -289,6 +285,16 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				ss.MySQLStatus[index].IsErrant = true
 			}
 			ss.Errants = append(ss.Errants, index)
+		}
+	}
+
+	// detect hangup replica
+	for i, ist := range ss.MySQLStatus {
+		if i == ss.Primary {
+			continue
+		}
+		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
+			ss.MySQLStatus[i] = nil
 		}
 	}
 
