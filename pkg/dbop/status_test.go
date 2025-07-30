@@ -118,6 +118,8 @@ var _ = Describe("status", func() {
 			_, err = trx.ExecContext(ctx, `INSERT INTO foo.t1 (pkey, data) VALUES (3, "cccc"), (4, "zzz")`)
 			Expect(err).NotTo(HaveOccurred())
 			// Hangup
+			// The error from trx.Commit() is intentionally ignored in this test scenario
+			// because the focus is on simulating a hanging transaction and observing its effects.
 			_ = trx.Commit()
 		}(commitTrx, ops[0])
 
