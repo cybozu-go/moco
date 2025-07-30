@@ -56,33 +56,23 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariabl
 }
 
 func (o *operator) getGlobalStatus(ctx context.Context) (*GlobalStatus, error) {
-	status := &GlobalStatus{}
-	rows, err := o.db.QueryxContext(ctx, "SHOW GLOBAL STATUS LIKE '%Rpl_semi%'")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get mysql global status: %w", err)
+	var value sql.NullString
+
+	semiSyncMasterWaitSessions := 0
+	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Rpl_semi_sync_master_wait_sessions'")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get Rpl_semi_sync_master_wait_sessions: %w", err)
 	}
-	defer rows.Close()
-	var variableName string
-	var value string
-	for rows.Next() {
-		if err = rows.Scan(&variableName, &value); err == nil {
-			switch variableName {
-			case "Rpl_semi_sync_master_wait_sessions":
-				semiSyncMasterWaitSessions, err := strconv.Atoi(value)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse Rpl_semi_sync_master_wait_sessions: %w", err)
-				}
-				status.SemiSyncMasterWaitSessions = semiSyncMasterWaitSessions
-			default:
-				continue
-			}
+	if value.Valid {
+		semiSyncMasterWaitSessions, err = strconv.Atoi(value.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse semi_sync_wait_master_sessions: %w", err)
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read mysql globals status: %w", err)
-	}
 
-	return status, nil
+	return &GlobalStatus{
+		SemiSyncMasterWaitSessions: semiSyncMasterWaitSessions,
+	}, nil
 }
 
 func (o *operator) getReplicaStatus(ctx context.Context) (*ReplicaStatus, error) {
