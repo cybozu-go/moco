@@ -255,6 +255,7 @@
 <tr><td>disableSlowQueryLogContainer</td><td>DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log" to output slow logs as the containers output. If set to true, the sidecar container and configmap used by the sidecar container are not added. The default is false.</td><td>bool</td><td>false</td></tr>
 <tr><td>slowQueryLogConfigTmpl</td><td>SlowQueryLogConfigTmpl is the template for slow query log configuration file. If this field is null, MOCO uses the default slow query log configuration. <code>{{ .Path }}</code> will be replaced with the path to the slow query log file.</td><td>*string</td><td>false</td></tr>
 <tr><td>agentUseLocalhost</td><td>AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name. During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also communicate with mysqld over localhost when acting as a sidecar.</td><td>bool</td><td>false</td></tr>
+<tr><td>initializeTimezoneData</td><td>InitializeTimezoneData controls whether the init container should populate the timezone data. If set to true, the init container will load timezone data into MySQL. The default is false.</td><td>bool</td><td>false</td></tr>
 <tr><td>offline</td><td>Offline sets the cluster offline, releasing compute resources. Data is not removed.</td><td>bool</td><td>false</td></tr>
 </tbody></table>
 </div>
