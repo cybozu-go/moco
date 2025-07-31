@@ -70,6 +70,10 @@ spec:
               disableSlowQueryLogContainer:
                 description: DisableSlowQueryLogContainer controls whether to...
                 type: boolean
+              initializeTimezoneData:
+                default: false
+                description: InitializeTimezoneData controls whether the init...
+                type: boolean
               logRotationSchedule:
                 description: LogRotationSchedule specifies the schedule to...
                 type: string

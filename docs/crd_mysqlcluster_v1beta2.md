@@ -87,6 +87,7 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | disableSlowQueryLogContainer | DisableSlowQueryLogContainer controls whether to add a sidecar container named \"slow-log\" to output slow logs as the containers output. If set to true, the sidecar container and configmap used by the sidecar container are not added. The default is false. | bool | false |
 | slowQueryLogConfigTmpl | SlowQueryLogConfigTmpl is the template for slow query log configuration file. If this field is null, MOCO uses the default slow query log configuration. `{{ .Path }}` will be replaced with the path to the slow query log file. | *string | false |
 | agentUseLocalhost | AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name. During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also communicate with mysqld over localhost when acting as a sidecar. | bool | false |
+| initializeTimezoneData | InitializeTimezoneData controls whether the init container should populate the timezone data. If set to true, the init container will load timezone data into MySQL. The default is false. | bool | false |
 | offline | Offline sets the cluster offline, releasing compute resources. Data is not removed. | bool | false |
 
 [Back to Custom Resources](#custom-resources)

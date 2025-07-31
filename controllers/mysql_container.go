@@ -332,6 +332,7 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 		filepath.Join(constants.SharedPath, constants.InitCommand),
 		fmt.Sprintf("%s=%s", constants.MocoInitDataDirFlag, constants.MySQLDataPath),
 		fmt.Sprintf("%s=%s", constants.MocoInitConfDirFlag, constants.MySQLInitConfPath),
+		fmt.Sprintf("%s=%s", constants.MocoInitTimezoneDataFlag, strconv.FormatBool(cluster.Spec.InitializeTimezoneData)),
 		fmt.Sprintf("%d", cluster.Spec.ServerIDBase),
 	}
 

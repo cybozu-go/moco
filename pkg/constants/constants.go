@@ -65,6 +65,8 @@ const (
 	MocoInitDataDirFlag = "--data-dir"
 	// MocoInitConfDirFlag is flag for conf dir.
 	MocoInitConfDirFlag = "--conf-dir"
+	// MocoInitTimezoneDataFlag is flag for populating timezone data.
+	MocoInitTimezoneDataFlag = "--init-timezones"
 	// MocoMySQLDLocalhostFlag is flag for localhost bind.
 	MocoMySQLDLocalhostFlag = "--mysqld-localhost"
 )
