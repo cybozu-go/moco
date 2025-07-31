@@ -496,6 +496,20 @@ func TestStatusSet(t *testing.T) {
 			expectedState: StateDegraded,
 		},
 		{
+			name: "degraded3-replica-hangup-failover",
+			statusSet: newSS(3, 0, false, false, false, false).
+				withPod(true, false, false).
+				withPod(true, false, false).
+				withPod(true, false, false).
+				withMySQL(newMySQL("1234", false, false, false).
+					withReplica(11, "replica1").
+					build()).
+				withMySQL(newMySQL("123", true, false, false).withPrimary(testPrimaryHostname).build()).
+				withMySQL(nil).
+				build(),
+			expectedState: StateDegraded,
+		},
+		{
 			name: "degraded5-two-replicas-are-bad",
 			statusSet: newSS(5, 0, false, false, false, false).
 				withPod(true, false, false).

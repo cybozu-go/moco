@@ -15,6 +15,7 @@ type AccessInfo struct {
 type MySQLInstanceStatus struct {
 	IsErrant        bool
 	GlobalVariables GlobalVariables
+	GlobalStatus    *GlobalStatus
 	ReplicaHosts    []ReplicaHost
 	ReplicaStatus   *ReplicaStatus // may not be available
 	CloneStatus     *CloneStatus   // may not be available
@@ -41,6 +42,10 @@ type GlobalVariables struct {
 	WaitForSlaveCount     int    `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
 	SemiSyncMasterEnabled bool   `db:"@@rpl_semi_sync_master_enabled"`
 	SemiSyncSlaveEnabled  bool   `db:"@@rpl_semi_sync_slave_enabled"`
+}
+
+type GlobalStatus struct {
+	SemiSyncMasterWaitSessions int
 }
 
 // ReplicaHost defines the columns from `SHOW REPLICAS`

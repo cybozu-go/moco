@@ -288,6 +288,19 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		}
 	}
 
+	// detect hangup replica
+	for i, ist := range ss.MySQLStatus {
+		if i == ss.Primary {
+			continue
+		}
+		if ist == nil {
+			continue
+		}
+		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
+			ss.MySQLStatus[i] = nil
+		}
+	}
+
 	ss.DecideState()
 	return ss, nil
 }
