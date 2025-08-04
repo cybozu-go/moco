@@ -23,7 +23,7 @@ ENTRYPOINT ["/moco-controller"]
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.6.1 as mysql
 
 # the backup image
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:24.04
 LABEL org.opencontainers.image.source https://github.com/cybozu-go/moco
 
 ARG MYSQLSH_VERSION=8.4.6
@@ -37,7 +37,7 @@ COPY --from=mysql /usr/local/mysql/bin/mysqlbinlog /usr/local/mysql/bin/mysqlbin
 COPY --from=mysql /usr/local/mysql/bin/mysql       /usr/local/mysql/bin/mysql
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.10 s3cmd \
+  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.10 s3cmd libgoogle-perftools4 \
   && rm -rf /var/lib/apt/lists/* \
   && if [ "${TARGETARCH}" = 'amd64' ]; then MYSQLSH_ARCH='x86-64'; fi \
   && if [ "${TARGETARCH}" = 'arm64' ]; then MYSQLSH_ARCH='arm-64'; fi \
