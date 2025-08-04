@@ -140,6 +140,7 @@ func (ss *StatusSet) DecideState() {
 // StatusSet.  It calls `StatusSet.DecideState` before returning.
 func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	ss := &StatusSet{}
+	log := logFromContext(ctx)
 
 	cluster := &mocov1beta2.MySQLCluster{}
 	if err := p.reader.Get(ctx, p.name, cluster); err != nil {
@@ -298,6 +299,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		}
 		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
 			ss.MySQLStatus[i] = nil
+			log.Info("Detected a hangup replica. rpl_semi_sync_master_wait_sessions is greater than 0.", "instance", i)
 		}
 	}
 
