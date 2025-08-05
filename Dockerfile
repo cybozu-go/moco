@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.24-jammy as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.24-noble as builder
 
 ARG TARGETARCH
 
