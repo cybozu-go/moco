@@ -37,7 +37,7 @@ COPY --from=mysql /usr/local/mysql/bin/mysqlbinlog /usr/local/mysql/bin/mysqlbin
 COPY --from=mysql /usr/local/mysql/bin/mysql       /usr/local/mysql/bin/mysql
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.10 s3cmd libgoogle-perftools4 \
+  && apt-get install -y --no-install-recommends zstd python3 libpython3.10 s3cmd libgoogle-perftools4 \
   && rm -rf /var/lib/apt/lists/* \
   && if [ "${TARGETARCH}" = 'amd64' ]; then MYSQLSH_ARCH='x86-64'; fi \
   && if [ "${TARGETARCH}" = 'arm64' ]; then MYSQLSH_ARCH='arm-64'; fi \
