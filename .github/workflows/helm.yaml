@@ -37,9 +37,9 @@ jobs:
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         if: steps.list-changed.outputs.changed == 'true'
         with:
-          version: v0.23.0
-          node_image: kindest/node:v1.32.0
-          kubectl_version: v1.32.0
+          version: v0.29.0
+          node_image: kindest/node:v1.33.1
+          kubectl_version: v1.33.1
           config: e2e/kind-config.yaml
 
       - name: Apply cert-manager

@@ -11,14 +11,14 @@ registries:
 - type: standard
   ref: v4.350.0 # renovate: depName=aquaproj/aqua-registry
 packages:
-- name: kubernetes-sigs/kind@v0.23.0
-- name: kubernetes/kubectl@v1.32.0
-- name: kubernetes-sigs/kustomize@kustomize/v5.4.3
-- name: helm/helm@v3.15.4
+- name: kubernetes-sigs/kind@v0.29.0
+- name: kubernetes/kubectl@v1.33.1
+- name: kubernetes-sigs/kustomize@kustomize/v5.7.1
+- name: helm/helm@v3.18.4
 - name: goreleaser/goreleaser@v1.26.2
 - name: mikefarah/yq@v4.44.3
-- name: kubernetes-sigs/controller-tools/controller-gen@v0.17.0
+- name: kubernetes-sigs/controller-tools/controller-gen@v0.18.0
 - name: clamoriniere/crd-to-markdown@v0.0.3
 - name: dominikh/go-tools/staticcheck@2025.1.1
 - name: rust-lang/mdBook@v0.4.40
-- name: kubernetes-sigs/controller-runtime/setup-envtest@v0.20.4
+- name: kubernetes-sigs/controller-runtime/setup-envtest@v0.21.0
