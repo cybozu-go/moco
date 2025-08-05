@@ -140,6 +140,7 @@ func (ss *StatusSet) DecideState() {
 // StatusSet.  It calls `StatusSet.DecideState` before returning.
 func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	ss := &StatusSet{}
+	log := logFromContext(ctx)
 
 	cluster := &mocov1beta2.MySQLCluster{}
 	if err := p.reader.Get(ctx, p.name, cluster); err != nil {
@@ -215,10 +216,10 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				}
 				// process errors
 				if j == statusCheckRetryMax {
-					logFromContext(ctx).Error(err, "failed to get mysqld status, mysqld is not ready", "instance", index)
+					log.Error(err, "failed to get mysqld status, mysqld is not ready", "instance", index)
 					return
 				}
-				logFromContext(ctx).Error(err, "failed to get mysqld status, will retry", "instance", index)
+				log.Error(err, "failed to get mysqld status, will retry", "instance", index)
 				time.Sleep(statusCheckRetryInterval)
 			}
 		}(i)
@@ -285,6 +286,20 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 				ss.MySQLStatus[index].IsErrant = true
 			}
 			ss.Errants = append(ss.Errants, index)
+		}
+	}
+
+	// detect hangup replica
+	for i, ist := range ss.MySQLStatus {
+		if i == ss.Primary {
+			continue
+		}
+		if ist == nil {
+			continue
+		}
+		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
+			ss.MySQLStatus[i] = nil
+			log.Info("Detected a hangup replica. rpl_semi_sync_master_wait_sessions is greater than 0.", "instance", i)
 		}
 	}
 

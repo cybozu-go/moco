@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,12 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 		return nil, fmt.Errorf("failed to get global variables: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 	status.GlobalVariables = *globalVariablesStatus
+
+	globalStatus, err := o.getGlobalStatus(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get global status: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
+	}
+	status.GlobalStatus = globalStatus
 
 	if err := o.db.Select(&status.ReplicaHosts, `SHOW REPLICAS`); err != nil {
 		return nil, fmt.Errorf("failed to get replica hosts: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
@@ -46,6 +53,26 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariabl
 		return nil, fmt.Errorf("failed to get mysql global variables: %w", err)
 	}
 	return status, nil
+}
+
+func (o *operator) getGlobalStatus(ctx context.Context) (*GlobalStatus, error) {
+	var value sql.NullString
+
+	semiSyncMasterWaitSessions := 0
+	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Rpl_semi_sync_master_wait_sessions'")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get Rpl_semi_sync_master_wait_sessions: %w", err)
+	}
+	if value.Valid {
+		semiSyncMasterWaitSessions, err = strconv.Atoi(value.String)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse semi_sync_wait_master_sessions: %w", err)
+		}
+	}
+
+	return &GlobalStatus{
+		SemiSyncMasterWaitSessions: semiSyncMasterWaitSessions,
+	}, nil
 }
 
 func (o *operator) getReplicaStatus(ctx context.Context) (*ReplicaStatus, error) {
