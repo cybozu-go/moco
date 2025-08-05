@@ -267,7 +267,11 @@ Likewise, if a replica Pod is ready, the <code>mysqld</code> is assured read-onl
 <li>The primary Pod is ready and does not lose data.</li>
 <li>For intermediate primary instance, the primary works as a replica for an external <code>mysqld</code> and is read-only.</li>
 <li>Half or more replicas are ready, read-only, connected to the primary, and have no errant transactions.  For example, if <code>spec.replicas</code> is 5, two or more such replicas are needed.</li>
-<li>At least one replica has some problems.</li>
+<li>At least one replica has some problems.
+<ul>
+<li>This also includes cases where a replica's <code>rpl_semi_sync_master_wait_sessions</code> is greater than 0. See related issues. <a href="https://github.com/cybozu-go/moco/issues/813">#813</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Failed
