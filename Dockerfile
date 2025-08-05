@@ -1,5 +1,5 @@
 # Build the moco-controller binary
-FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.24-jammy as builder
+FROM --platform=$BUILDPLATFORM ghcr.io/cybozu/golang:1.24-noble as builder
 
 ARG TARGETARCH
 
@@ -20,13 +20,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.5.1 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.6.1 as mysql
 
 # the backup image
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:22.04
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:24.04
 LABEL org.opencontainers.image.source=https://github.com/cybozu-go/moco
 
-ARG MYSQLSH_VERSION=8.4.5
+ARG MYSQLSH_VERSION=8.4.6
 ARG MYSQLSH_GLIBC_VERSION=2.28
 ARG TARGETARCH
 
@@ -37,7 +37,7 @@ COPY --from=mysql /usr/local/mysql/bin/mysqlbinlog /usr/local/mysql/bin/mysqlbin
 COPY --from=mysql /usr/local/mysql/bin/mysql       /usr/local/mysql/bin/mysql
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libjemalloc2 zstd python3 libpython3.10 s3cmd \
+  && apt-get install -y --no-install-recommends zstd python3 libpython3.10 s3cmd libgoogle-perftools4 \
   && rm -rf /var/lib/apt/lists/* \
   && if [ "${TARGETARCH}" = 'amd64' ]; then MYSQLSH_ARCH='x86-64'; fi \
   && if [ "${TARGETARCH}" = 'arm64' ]; then MYSQLSH_ARCH='arm-64'; fi \
