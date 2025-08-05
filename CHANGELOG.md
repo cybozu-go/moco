@@ -5,6 +5,24 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.28.0] - 2025-08-06
+
+### Added
+- Support for Kubernetes v1.33 [#819](https://github.com/cybozu-go/moco/pull/819)
+- Support MySQL 8.4.6/8.0.43 [#821](https://github.com/cybozu-go/moco/pull/821) [#822](https://github.com/cybozu-go/moco/pull/822)
+- Add InitializeTimezoneData to populate timezone data with moco-init [#818](https://github.com/cybozu-go/moco/pull/818)
+- Add slowQueryLogConfigTmpl options to use custom slow-log config [#810](https://github.com/cybozu-go/moco/pull/810)
+- Prometheus PodMonitors configured by Helm chart [#815](https://github.com/cybozu-go/moco/pull/815)
+
+### Fixed
+- docs: Add install aqua procedure before `make start` [#807](https://github.com/cybozu-go/moco/pull/807)
+- Exclude replicas with uncommitted trx during failover [#816](https://github.com/cybozu-go/moco/pull/816)
+
+### Contributors
+- @kdambekalns
+- @kevinrudde
+- @vholer
+
 ## [0.27.1] - 2025/05/28
 ### Fixed
 - Add setup-aqua to release workflow [#806](https://github.com/cybozu-go/moco/pull/806)
@@ -704,7 +722,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.27.1...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/cybozu-go/moco/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/cybozu-go/moco/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/cybozu-go/moco/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/cybozu-go/moco/compare/v0.25.1...v0.26.0
