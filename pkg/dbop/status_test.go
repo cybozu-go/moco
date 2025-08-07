@@ -129,7 +129,9 @@ var _ = Describe("status", func() {
 		st1, err = ops[1].GetStatus(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st0.GlobalVariables.ExecutedGTID).To(Equal(st1.GlobalVariables.ExecutedGTID))
-		Expect(st0.GlobalStatus.SemiSyncMasterWaitSessions).NotTo(Equal(0))
+		Eventually(func() {
+			Expect(st0.GlobalStatus.SemiSyncMasterWaitSessions).NotTo(Equal(0))
+		})
 		cancelTrx()
 	})
 })
