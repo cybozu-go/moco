@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Added `(agent,fluentbit).image.(repository,tag)` values, to set `--agent-image` and `--fluent-bit-image` args on controller [#827](https://github.com/cybozu-go/moco/pull/827)
+
+### Contributors
+- @dmaes
 
 ## [0.18.0] - 2025/08/06
 ### Changed
