@@ -129,12 +129,12 @@ var _ = Describe("status", func() {
 		st1, err = ops[1].GetStatus(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st0.GlobalVariables.ExecutedGTID).To(Equal(st1.GlobalVariables.ExecutedGTID))
-		Eventually(func() (error, int) {
+		Eventually(func() (int, error) {
 			st0, err = ops[0].GetStatus(ctx)
 			if err != nil {
-				return err, 0
+				return 0, err
 			}
-			return nil, st0.GlobalStatus.SemiSyncMasterWaitSessions
+			return st0.GlobalStatus.SemiSyncMasterWaitSessions, nil
 		}).ShouldNot(Equal(0))
 		cancelTrx()
 	})
