@@ -1,9 +1,9 @@
 # Fluent Bit container image
 
 # Stage1: build from source
-FROM ghcr.io/cybozu/ubuntu-dev:22.04 AS builder
+FROM ghcr.io/cybozu/ubuntu-dev:24.04 AS builder
 
-ARG FLUENT_BIT_VERSION=3.1.7
+ARG FLUENT_BIT_VERSION=4.0.8
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -18,16 +18,17 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     build-essential \
     curl \
     ca-certificates \
-    cmake \
     make \
     tar \
     libssl-dev \
+    libcurl4-openssl-dev \
     libsasl2-dev \
     pkg-config \
     zlib1g-dev \
     libpq-dev \
     flex \
     bison \
+    && apt-get satisfy -y cmake "cmake (<< 4.0)" \
     && curl -L -o "/tmp/fluent-bit.tar.gz" ${FLB_SOURCE} \
     && cd tmp/ && mkdir fluent-bit \
     && tar zxfv fluent-bit.tar.gz -C ./fluent-bit --strip-components=1 \
@@ -35,7 +36,8 @@ RUN apt-get update && apt-get -y install --no-install-recommends \
     && rm -rf /tmp/fluent-bit/build/*
 
 WORKDIR /tmp/fluent-bit/build/
-RUN cmake -DFLB_RELEASE=On \
+RUN cmake -DFLB_SIMD=On \
+          -DFLB_RELEASE=On \
           -DFLB_TRACE=Off \
           -DFLB_JEMALLOC=On \
           -DFLB_TLS=On \
@@ -64,7 +66,7 @@ RUN cmake -DFLB_RELEASE=On \
     && cp LICENSE /fluent-bit/
 
 # Stage2: setup runtime container
-FROM ghcr.io/cybozu/ubuntu:22.04
+FROM ghcr.io/cybozu/ubuntu:24.04
 
 COPY --from=builder /fluent-bit /fluent-bit
 
