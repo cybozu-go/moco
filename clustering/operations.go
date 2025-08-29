@@ -151,6 +151,14 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 
 	pdb := ss.DBOps[ss.Primary]
 
+	// Determine the switchover timeout based on `PreStopSeconds`
+	// If the switchover takes longer than PreStopSeconds, the switchover will fail and failover will occur.
+	preStopSeconds, err := strconv.Atoi(constants.PreStopSeconds)
+	if err != nil {
+		return err
+	}
+	switchOverTimeoutSeconds := preStopSeconds / 2
+
 	// SetReadOnly waits for a running DML.
 	// Therefore, if it waits for a long time, deleteGracePeriodSeconds may be reached.
 	// To avoid this, execute killConnections after a certain period of time.
@@ -171,7 +179,7 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 		if err := pdb.KillConnections(ctx); err != nil {
 			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
 		}
-	case <-time.After(switchOverTimeoutSeconds * time.Second):
+	case <-time.After(time.Duration(switchOverTimeoutSeconds) * time.Second):
 		log.Info("setReadOnly is taking too long, kill connections", "instance", ss.Primary)
 		if err := pdb.KillConnections(ctx); err != nil {
 			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
