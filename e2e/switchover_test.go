@@ -14,7 +14,7 @@ import (
 //go:embed testdata/switchover.yaml
 var switchoverYAML string
 
-var _ = Context("switchover", func() {
+var _ = Context("switchover", Ordered, func() {
 	if doUpgrade {
 		return
 	}
