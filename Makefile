@@ -91,16 +91,16 @@ check-generate:
 
 .PHONY: envtest
 envtest: aqua-install
-	source <($(SETUP_ENVTEST) use -p env); \
+	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
 		export MOCO_CHECK_INTERVAL=100ms; \
 		export MOCO_CLONE_WAIT_DURATION=100ms; \
 		go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env); \
+	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
 		export DEBUG_CONTROLLER=1; \
 		go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env); \
+	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
 		go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
-	source <($(SETUP_ENVTEST) use -p env); \
+	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
 		go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 
 .PHONY: test-dbop
