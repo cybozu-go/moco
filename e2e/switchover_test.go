@@ -57,14 +57,16 @@ var _ = Context("switchover", Ordered, func() {
 		kubectlSafe(nil, "moco", "mysql", "test",
 			"-n", "switchover",
 			"-u", "moco-writable",
-			"--", "-e", "INSERT INTO test.t1 (foo) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10); COMMIT;")
+			"--", "-e", "INSERT INTO test.t1 (foo) VALUES (1); COMMIT;")
 	})
 
-	It("should switch the primary if requested, even when a huge transaction is running", func() {
+	It("should switch the primary if requested, even when a long global read lock is acquired", func() {
 		go func() {
+			// Calling SLEEP within an UPDATE statement creates a situation where a global read lock is intentionally acquired.
+			// The value specified for SLEEP must be less than half the value of `PreStopSeconds`.
 			runInPod("mysql", "-u", "user", "-pabc",
 				"-h", "moco-test-primary.switchover.svc.cluster.local", "test",
-				"-e", "INSERT INTO test.t1 (foo) SELECT a.foo a FROM test.t1 a, test.t1 b, test.t1 c, test.t1 d, test.t1 e, test.t1 f, test.t1 g, test.t1 h")
+				"-e", "UPDATE test.t1 SET foo = SLEEP(5)")
 		}()
 		kubectlSafe(nil, "moco", "-n", "switchover", "switchover", "test")
 		Eventually(func() int {
