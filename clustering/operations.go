@@ -175,10 +175,6 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 			}
 			return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
 		}
-		time.Sleep(100 * time.Millisecond)
-		if err := pdb.KillConnections(ctx); err != nil {
-			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
-		}
 	case <-time.After(time.Duration(switchOverTimeoutSeconds) * time.Second):
 		log.Info("setReadOnly is taking too long, kill connections", "instance", ss.Primary)
 		if err := pdb.KillConnections(ctx); err != nil {
@@ -188,11 +184,13 @@ func (p *managerProcess) switchover(ctx context.Context, ss *StatusSet) error {
 		if err != nil {
 			return fmt.Errorf("failed to make instance %d read-only: %w", ss.Primary, err)
 		}
-		time.Sleep(100 * time.Millisecond)
-		if err := pdb.KillConnections(ctx); err != nil {
-			return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
-		}
 	}
+
+	time.Sleep(100 * time.Millisecond)
+	if err := pdb.KillConnections(ctx); err != nil {
+		return fmt.Errorf("failed to kill connections in instance %d: %w", ss.Primary, err)
+	}
+
 	pst, err := pdb.GetStatus(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get the primary status: %w", err)
