@@ -1,3 +1,5 @@
+KUBERNETES_VERSION = 1.33.0
+
 # Tool versions
 MYSQLSH_VERSION = 8.4.6-1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
@@ -91,16 +93,16 @@ check-generate:
 
 .PHONY: envtest
 envtest: aqua-install
-	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
+	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
 		export MOCO_CHECK_INTERVAL=100ms; \
 		export MOCO_CLONE_WAIT_DURATION=100ms; \
 		go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
+	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
 		export DEBUG_CONTROLLER=1; \
 		go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
+	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
 		go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
-	source <($(SETUP_ENVTEST) use -p env 1.33.0); \
+	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
 		go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 
 .PHONY: test-dbop
