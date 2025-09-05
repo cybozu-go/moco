@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -76,6 +75,47 @@ var _ = Context("switchover", Ordered, func() {
 			}
 			return cluster.Status.CurrentPrimaryIndex
 		}).ShouldNot(Equal(0))
+
+		Eventually(func() error {
+			cluster, err := getCluster("switchover", "test")
+			if err != nil {
+				return err
+			}
+			for _, cond := range cluster.Status.Conditions {
+				if cond.Type != mocov1beta2.ConditionHealthy {
+					continue
+				}
+				if cond.Status == metav1.ConditionTrue {
+					return nil
+				}
+				return fmt.Errorf("cluster is not healthy: %s", cond.Status)
+			}
+			return errors.New("no health condition")
+		}).Should(Succeed())
+	})
+
+	It("should switch the primary if requested, even when a holding global read lock exceeds timeout", func() {
+		cluster, err := getCluster("switchover", "test")
+		Expect(err).NotTo(HaveOccurred())
+
+		beforePrimaryIndex := cluster.Status.CurrentPrimaryIndex
+
+		go func() {
+			// Calling SLEEP within an UPDATE statement creates a situation where a global read lock is intentionally acquired.
+			// The value specified for SLEEP must be more than half the value of `PreStopSeconds`.
+			runInPod("mysql", "-u", "user", "-pabc",
+				"-h", "moco-test-primary.switchover.svc.cluster.local", "test",
+				"-e", "UPDATE test.t1 SET foo = SLEEP(15)")
+		}()
+
+		kubectlSafe(nil, "moco", "-n", "switchover", "switchover", "test")
+		Eventually(func() int {
+			cluster, err := getCluster("switchover", "test")
+			if err != nil {
+				return 0
+			}
+			return cluster.Status.CurrentPrimaryIndex
+		}).ShouldNot(Equal(beforePrimaryIndex))
 
 		Eventually(func() error {
 			cluster, err := getCluster("switchover", "test")
