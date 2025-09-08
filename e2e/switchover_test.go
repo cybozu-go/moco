@@ -60,6 +60,11 @@ var _ = Context("switchover", Ordered, func() {
 	})
 
 	It("should switch the primary if requested, even when a long global read lock is acquired", func() {
+		cluster, err := getCluster("switchover", "test")
+		Expect(err).NotTo(HaveOccurred())
+
+		beforePrimaryIndex := cluster.Status.CurrentPrimaryIndex
+
 		go func() {
 			// Calling SLEEP within an UPDATE statement creates a situation where a global read lock is intentionally acquired.
 			// The value specified for SLEEP must be less than half the value of `PreStopSeconds`.
@@ -74,7 +79,7 @@ var _ = Context("switchover", Ordered, func() {
 				return 0
 			}
 			return cluster.Status.CurrentPrimaryIndex
-		}).ShouldNot(Equal(0))
+		}).ShouldNot(Equal(beforePrimaryIndex))
 
 		Eventually(func() error {
 			cluster, err := getCluster("switchover", "test")
