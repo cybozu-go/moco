@@ -12,9 +12,9 @@ runs:
           v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Install aqua
-      uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
+      uses: aquaproj/aqua-installer@ea518c135a02fc11ff8024364510c181a5c6b342 # v4.0.3
       with:
-        aqua_version: v2.48.1
+        aqua_version: v2.53.11
         working_directory: ${{ inputs.working_directory }}
         # aqua-installer runs aqua with -l option by default, so packages that aren't run in the workflow aren't cached.
         aqua_opts: ""
