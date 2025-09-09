@@ -5,6 +5,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.29.0] - 2025-09-09
+
+### Added
+- Build mysqld_exporter and flunet-bit container image [#828](https://github.com/cybozu-go/moco/pull/828)
+
+### Changed
+- Long wait for SetReadOnly to complete [#830](https://github.com/cybozu-go/moco/pull/830)
+    - Due to this change, huge transactions will now be killed if they exist during a switchover. 
+
 ## [0.28.0] - 2025-08-06
 
 ### Added
@@ -722,7 +731,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/cybozu-go/moco/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/cybozu-go/moco/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/cybozu-go/moco/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/cybozu-go/moco/compare/v0.26.0...v0.27.0
