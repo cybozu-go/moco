@@ -13,7 +13,7 @@
 ```
 Flags:
       --add_dir_header                      If true, adds the file directory to the header of the log messages
-      --agent-image string                  The image of moco-agent sidecar container (default "ghcr.io/cybozu-go/moco-agent:0.12.1")
+      --agent-image string                  The image of moco-agent sidecar container (default "ghcr.io/cybozu-go/moco-agent:0.15.0")
       --alsologtostderr                     log to standard error as well as files (no effect when -logtostderr=true)
       --apiserver-qps-throttle int          The maximum QPS to the API server. (default 20)
       --backup-image string                 The image of moco-backup container (default "ghcr.io/cybozu-go/moco-backup:0.23.2")

@@ -93,7 +93,7 @@ jobs:
     - name: Setup Aqua
       uses: ./.github/actions/setup-aqua
     - name: GoReleaser
-      uses: goreleaser/goreleaser-action@v5
+      uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
       with:
         distribution: goreleaser
         version: latest
@@ -101,5 +101,5 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Update new version in krew-index
-      # v0.0.43 https://github.com/rajatjindal/krew-release-bot/releases/tag/v0.0.43
-      uses: rajatjindal/krew-release-bot@df3eb197549e3568be8b4767eec31c5e8e8e6ad8 # v0.0.46
+      # v0.0.47 https://github.com/rajatjindal/krew-release-bot/releases/tag/v0.0.47
+      uses: rajatjindal/krew-release-bot@3d9faef30a82761d610544f62afddca00993eef9 # v0.0.47
