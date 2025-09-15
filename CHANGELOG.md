@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Allow setting user and group security context for additional containers
+
 ## [0.29.0] - 2025-09-09
 
 ### Added
