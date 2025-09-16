@@ -7,6 +7,7 @@ OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 # Test tools
 BIN_DIR := $(shell pwd)/bin
 NILERR := $(BIN_DIR)/nilerr
+STATICCHECK := $(BIN_DIR)/staticcheck
 SUDO = sudo
 
 KUSTOMIZE := kustomize
@@ -16,7 +17,6 @@ YQ := yq
 CONTROLLER_GEN := controller-gen
 SETUP_ENVTEST := setup-envtest
 CRD_TO_MARKDOWN := crd-to-markdown
-STATICCHECK := staticcheck
 MDBOOK := mdbook
 
 PKG_LIST := zstd python3 libpython3.8
@@ -149,11 +149,16 @@ aqua-install: ## Install tools managed by aqua
 	aqua install
 
 .PHONY: test-tools
-test-tools: $(NILERR)
+test-tools: $(NILERR) $(STATICCHECK)
 
 $(NILERR):
 	mkdir -p $(BIN_DIR)
 	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
+
+.PHONY: $(STATICCHECK)
+$(STATICCHECK):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
 
 .PHONY: setup
 setup:

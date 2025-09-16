@@ -901,6 +901,9 @@ spec:
                                           x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
+                                stopSignal:
+                                  description: Signal defines the stop signal of containers
+                                  type: string
                               type: object
                             livenessProbe:
                               description: ProbeApplyConfiguration represents a declarative...
@@ -1623,6 +1626,9 @@ spec:
                                           x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
+                                stopSignal:
+                                  description: Signal defines the stop signal of containers
+                                  type: string
                               type: object
                             livenessProbe:
                               description: ProbeApplyConfiguration represents a declarative...
@@ -2348,6 +2354,9 @@ spec:
                                           x-kubernetes-int-or-string: true
                                       type: object
                                   type: object
+                                stopSignal:
+                                  description: Signal defines the stop signal of containers
+                                  type: string
                               type: object
                             livenessProbe:
                               description: ProbeApplyConfiguration represents a declarative...
