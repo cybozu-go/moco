@@ -1139,7 +1139,7 @@ dummyKey: dummyValue
 			WithPriorityClassName("hoge").
 			WithContainers(corev1ac.Container().WithName("dummy").WithImage("dummy:latest")).
 			WithInitContainers(corev1ac.Container().WithName("init-dummy").WithImage("init-dummy:latest").
-				WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true))).
+				WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true).WithRunAsUser(0).WithRunAsGroup(0))).
 			WithVolumes(corev1ac.Volume().WithName("dummy-vol").WithEmptyDir(corev1ac.EmptyDirVolumeSource())).
 			WithSecurityContext(corev1ac.PodSecurityContext().WithFSGroup(123)).
 			WithAffinity(corev1ac.Affinity().
@@ -1282,9 +1282,9 @@ dummyKey: dummyValue
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
+				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(0)))
 				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
+				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(0)))
 			}
 		}
 		Expect(foundInitDummyContainer).To(BeTrue())
