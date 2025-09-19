@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -62,7 +63,10 @@ var _ = BeforeSuite(func() {
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Scheme: scheme,
 		},
-		ErrorIfCRDPathMissing: false,
+		ErrorIfCRDPathMissing:       false,
+		DownloadBinaryAssets:        true,
+		DownloadBinaryAssetsVersion: "v" + os.Getenv("ENVTEST_KUBERNETES_VERSION"),
+		BinaryAssetsDirectory:       os.Getenv("ENVTEST_ASSETS_DIR"),
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths: []string{filepath.Join("..", "..", "config", "webhook")},
 		},

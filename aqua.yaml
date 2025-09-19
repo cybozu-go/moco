@@ -20,4 +20,3 @@ packages:
 - name: kubernetes-sigs/controller-tools/controller-gen@v0.18.0
 - name: clamoriniere/crd-to-markdown@v0.0.3
 - name: rust-lang/mdBook@v0.4.52
-- name: kubernetes-sigs/controller-runtime/setup-envtest@v0.22.0

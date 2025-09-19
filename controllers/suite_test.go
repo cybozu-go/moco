@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -49,7 +50,10 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "config", "crd", "tests"),
 			filepath.Join("..", "config", "crd", "tests", "third"),
 		},
-		ErrorIfCRDPathMissing: true,
+		ErrorIfCRDPathMissing:       true,
+		DownloadBinaryAssets:        true,
+		DownloadBinaryAssetsVersion: "v" + os.Getenv("ENVTEST_KUBERNETES_VERSION"),
+		BinaryAssetsDirectory:       os.Getenv("ENVTEST_ASSETS_DIR"),
 	}
 
 	var err error
