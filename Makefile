@@ -10,6 +10,10 @@ NILERR := $(BIN_DIR)/nilerr
 STATICCHECK := $(BIN_DIR)/staticcheck
 SUDO = sudo
 
+# for envtest
+export ENVTEST_KUBERNETES_VERSION=$(shell echo $(KUBERNETES_VERSION) | cut -d "." -f 1-2).0
+export ENVTEST_ASSETS_DIR=$(BIN_DIR)
+
 KUSTOMIZE := kustomize
 HELM := helm
 GORELEASER := goreleaser
@@ -93,17 +97,13 @@ check-generate:
 
 .PHONY: envtest
 envtest: aqua-install
-	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
-		export MOCO_CHECK_INTERVAL=100ms; \
-		export MOCO_CLONE_WAIT_DURATION=100ms; \
-		go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
-		export DEBUG_CONTROLLER=1; \
-		go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
-		go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
-	source <($(SETUP_ENVTEST) use -p env ${KUBERNETES_VERSION}); \
-		go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	export MOCO_CHECK_INTERVAL=100ms; \
+	export MOCO_CLONE_WAIT_DURATION=100ms; \
+	go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	export DEBUG_CONTROLLER=1; \
+	go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
+	go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 
 .PHONY: test-dbop
 test-dbop:

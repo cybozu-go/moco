@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -49,7 +50,10 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
 		},
-		ErrorIfCRDPathMissing: true,
+		ErrorIfCRDPathMissing:       true,
+		DownloadBinaryAssets:        true,
+		DownloadBinaryAssetsVersion: "v" + os.Getenv("ENVTEST_KUBERNETES_VERSION"),
+		BinaryAssetsDirectory:       os.Getenv("ENVTEST_ASSETS_DIR"),
 	}
 
 	var err error
