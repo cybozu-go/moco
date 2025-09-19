@@ -56,3 +56,19 @@ monitoring:
 
     # monitoring.podMonitors.scrapeTimeout -- Custom Prometheus scrape timeout.
     scrapeTimeout: ""
+
+agent:
+  image:
+    # agent.image.repository -- MOCO Agent image repository to use.
+    repository: ghcr.io/cybozu-go/moco-agent
+
+    # agent.image.tag -- MOCO Agent image tag to use.
+    tag: 0.14.0  # agent.image.tag
+
+fluentbit:
+  image:
+    # fluentbit.image.repository -- FluentBit image repository to use.
+    repository: ghcr.io/cybozu-go/moco/fluent-bit
+
+    # fluentbit.image.tag -- FluentBit image tag to use.
+    tag: 3.1.7.1  # fluentbit.image.tag
