@@ -19,7 +19,6 @@ HELM := helm
 GORELEASER := goreleaser
 YQ := yq
 CONTROLLER_GEN := controller-gen
-SETUP_ENVTEST := setup-envtest
 CRD_TO_MARKDOWN := crd-to-markdown
 MDBOOK := mdbook
 
