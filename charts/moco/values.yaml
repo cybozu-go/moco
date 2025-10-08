@@ -72,3 +72,10 @@ fluentbit:
 
     # fluentbit.image.tag -- FluentBit image tag to use.
     tag: 3.1.7.1  # fluentbit.image.tag
+
+mysqldExporter:
+  image:
+    # mysqldExporter.image.repository -- mysqld_exporter image repository to use.
+    repository: ghcr.io/cybozu-go/moco/mysqld_exporter"
+    # mysqldExporter.image.tag -- mysqld_exporter image tag to use.
+    tag: 0.17.2.1  # mysqldExporter.image.tag

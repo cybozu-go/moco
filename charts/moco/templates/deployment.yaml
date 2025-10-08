@@ -44,6 +44,10 @@ spec:
             - --fluent-bit-image
             - "{{ .repository }}:{{ .tag }}"
           {{- end }}
+          {{- with .Values.mysqldExporter.image }}
+            - --mysqld-exporter-image
+            - "{{ .repository }}:{{ .tag }}"
+          {{- end }}
           {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
