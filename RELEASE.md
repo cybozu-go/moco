@@ -89,6 +89,8 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     # Set variables. They should not have "v" prefix.
     $ APPVERSION=x.y.z # MOCO version
     $ AGENTVERSION=j.k.l # MOCO Agent version
+    $ EXPORTERVERSION=d.e.f # mysqld_exporter version, see version.go
+    $ FLUENTBITVERSION=g.h.i # FluentBit version, see version.go
     $ CHARTVERSION=a.b.c
     $ echo $APPVERSION $CHARTVERSION
     ```
@@ -108,6 +110,8 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ sed -r -i "s/^(version: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${CHARTVERSION}/g" charts/moco/Chart.yaml
     $ sed -r -i "s/(tag: +# )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${APPVERSION}/g" charts/moco/values.yaml
     $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+( +# agent.image.tag)/\1${AGENTVERSION}\2/g" charts/moco/values.yaml
+    $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+( +# fluentbit.image.tag)/\1${FLUENTBITVERSION}\2/g" charts/moco/values.yaml
+    $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+( +# mysqldExporter.image.tag)/\1${EXPORTERVERSION}\2/g" charts/moco/values.yaml
     ```
 
 4. Edit `charts/moco/CHANGELOG.md` for the new version ([example][]).
