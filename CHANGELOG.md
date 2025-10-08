@@ -5,6 +5,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Added `(agent,fluentbit,mysqldExporter).image.(repository,tag)` values, to set `--agent-image`, `--fluent-bit-image`, `--mysqld-exporter-image` args on controller [#827](https://github.com/cybozu-go/moco/pull/827)
+
+### Contributors
+- @dmaes
+
 ## [0.30.0] - 2025-09-26
 
 ### Notice
