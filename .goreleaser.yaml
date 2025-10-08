@@ -1,3 +1,4 @@
+version: 2
 before:
   hooks:
     - make release-manifests-build
@@ -20,20 +21,19 @@ builds:
         goarch: arm64
 
 archives:
-  - builds:
+  - ids:
       - kubectl-moco
     name_template: "kubectl-{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     wrap_in_directory: false
-    format: tar.gz
+    formats: ['tar.gz']
     files:
       - LICENSE
-    rlcp: true
 
 checksum:
   name_template: checksums.txt
 
 changelog:
-  skip: true
+  disable: true
 
 release:
   github:

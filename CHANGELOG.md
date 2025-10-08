@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.30.0] - 2025-09-26
+
+### Notice
+GitHub Discussions will be closed in the next release. Please open an Issue for any questions, feature requests, or discussions going forward.
+
+### Changed
+- Allow setting user and group security context for additional containers [#835](https://github.com/cybozu-go/moco/pull/835)
+- Upgrade Kubernetes 1.33 (includes related dependency updates) [#831](https://github.com/cybozu-go/moco/pull/831)
+
+### Fixed
+- Increase test stability for SemiSyncMasterWaitSessions updates [#825](https://github.com/cybozu-go/moco/pull/825)
+- Download assets without setup-envtest [#838](https://github.com/cybozu-go/moco/pull/838)
+
+## [0.29.0] - 2025-09-09
+
+### Added
+- Build mysqld_exporter and flunet-bit container image [#828](https://github.com/cybozu-go/moco/pull/828)
+
+### Changed
+- Long wait for SetReadOnly to complete [#830](https://github.com/cybozu-go/moco/pull/830)
+    - Due to this change, huge transactions will now be killed if they exist during a switchover. 
+
 ## [0.28.0] - 2025-08-06
 
 ### Added
@@ -722,7 +744,9 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/cybozu-go/moco/compare/v0.29.0...v0.30.0
+[0.29.0]: https://github.com/cybozu-go/moco/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/cybozu-go/moco/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/cybozu-go/moco/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/cybozu-go/moco/compare/v0.26.0...v0.27.0

@@ -1,3 +1,5 @@
+KUBERNETES_VERSION = 1.33.0
+
 # Tool versions
 MYSQLSH_VERSION = 8.4.6-1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
@@ -5,16 +7,19 @@ OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 # Test tools
 BIN_DIR := $(shell pwd)/bin
 NILERR := $(BIN_DIR)/nilerr
+STATICCHECK := $(BIN_DIR)/staticcheck
 SUDO = sudo
+
+# for envtest
+export ENVTEST_KUBERNETES_VERSION=$(shell echo $(KUBERNETES_VERSION) | cut -d "." -f 1-2).0
+export ENVTEST_ASSETS_DIR=$(BIN_DIR)
 
 KUSTOMIZE := kustomize
 HELM := helm
 GORELEASER := goreleaser
 YQ := yq
 CONTROLLER_GEN := controller-gen
-SETUP_ENVTEST := setup-envtest
 CRD_TO_MARKDOWN := crd-to-markdown
-STATICCHECK := staticcheck
 MDBOOK := mdbook
 
 PKG_LIST := zstd python3 libpython3.8
@@ -91,17 +96,13 @@ check-generate:
 
 .PHONY: envtest
 envtest: aqua-install
-	source <($(SETUP_ENVTEST) use -p env); \
-		export MOCO_CHECK_INTERVAL=100ms; \
-		export MOCO_CLONE_WAIT_DURATION=100ms; \
-		go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env); \
-		export DEBUG_CONTROLLER=1; \
-		go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	source <($(SETUP_ENVTEST) use -p env); \
-		go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
-	source <($(SETUP_ENVTEST) use -p env); \
-		go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	export MOCO_CHECK_INTERVAL=100ms; \
+	export MOCO_CLONE_WAIT_DURATION=100ms; \
+	go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	export DEBUG_CONTROLLER=1; \
+	go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
+	go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
 
 .PHONY: test-dbop
 test-dbop:
@@ -147,11 +148,16 @@ aqua-install: ## Install tools managed by aqua
 	aqua install
 
 .PHONY: test-tools
-test-tools: $(NILERR)
+test-tools: $(NILERR) $(STATICCHECK)
 
 $(NILERR):
 	mkdir -p $(BIN_DIR)
 	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
+
+.PHONY: $(STATICCHECK)
+$(STATICCHECK):
+	mkdir -p $(BIN_DIR)
+	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
 
 .PHONY: setup
 setup:
