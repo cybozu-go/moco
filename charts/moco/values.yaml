@@ -63,7 +63,7 @@ agent:
     repository: ghcr.io/cybozu-go/moco-agent
 
     # agent.image.tag -- MOCO Agent image tag to use.
-    tag: 0.14.0  # agent.image.tag
+    tag: 0.15.0  # agent.image.tag
 
 fluentbit:
   image:
@@ -71,11 +71,12 @@ fluentbit:
     repository: ghcr.io/cybozu-go/moco/fluent-bit
 
     # fluentbit.image.tag -- FluentBit image tag to use.
-    tag: 3.1.7.1  # fluentbit.image.tag
+    tag: 4.0.8.1  # fluentbit.image.tag
 
 mysqldExporter:
   image:
     # mysqldExporter.image.repository -- mysqld_exporter image repository to use.
-    repository: ghcr.io/cybozu-go/moco/mysqld_exporter"
+    repository: ghcr.io/cybozu-go/moco/mysqld_exporter
+    
     # mysqldExporter.image.tag -- mysqld_exporter image tag to use.
     tag: 0.17.2.1  # mysqldExporter.image.tag
