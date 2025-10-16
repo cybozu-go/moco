@@ -527,7 +527,47 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 		}
 	}
 
-	waitFor := RequiredSemiSyncAcks(int(ss.Cluster.Spec.Replicas))
+	readyReplicas := 0
+	neverReadyReplicas := 0
+	for i, ist := range ss.MySQLStatus {
+		if i == ss.Primary {
+			continue
+		}
+		if ist == nil {
+			neverReadyReplicas++
+			continue
+		}
+
+		rs := ist.ReplicaStatus
+		if rs == nil {
+			continue
+		}
+		if rs.ReplicaIORunning != "Yes" || rs.ReplicaSQLRunning != "Yes" {
+			continue
+		}
+		if !rs.SecondsBehindSource.Valid || rs.SecondsBehindSource.Int64 >= 10 {
+			continue
+		}
+
+		readyReplicas++
+	}
+
+	desiredInstances := int(ss.Cluster.Spec.Replicas)
+	desiredReplicas := desiredInstances - 1
+	instancesForAckCalc := desiredInstances
+
+	scaleUpInProgress := (desiredReplicas > 0 && readyReplicas < desiredReplicas && neverReadyReplicas > 0)
+
+	if scaleUpInProgress {
+		instancesForAckCalc = min(1+readyReplicas, desiredInstances)
+	}
+
+	log.Info(fmt.Sprintf(
+		"semi-sync calc: desiredInstances=%d desiredReplicas=%d readyReplicas=%d neverReadyReplicas=%d instancesForAckCalc=%d scaleUpInProgress=%t",
+		desiredInstances, desiredReplicas, readyReplicas, neverReadyReplicas, instancesForAckCalc, scaleUpInProgress,
+	))
+
+	waitFor := RequiredSemiSyncAcks(instancesForAckCalc)
 	enableSemiSync := waitFor > 0
 	waitFor = int((math.Max(1, float64(waitFor)))) // The minimum value mysql accepts for rpl_semi_sync_master_wait_for_slave_count is 1 (even if replication is disabled)
 
