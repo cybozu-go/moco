@@ -84,7 +84,7 @@ func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldObj, newO
 	oldCluster := oldObj.(*MySQLCluster)
 	newCluster := newObj.(*MySQLCluster)
 
-	warns, errs := newCluster.Spec.validateUpdate(ctx, a.client, oldCluster.Spec)
+	warns, errs := newCluster.Spec.validateUpdate(ctx, a.client, oldCluster)
 	if len(errs) == 0 {
 		return warns, nil
 	}
