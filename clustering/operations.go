@@ -3,6 +3,7 @@ package clustering
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -526,15 +527,19 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 		}
 	}
 
-	if ss.Cluster.Spec.Replicas == 1 {
-		return
-	}
+	waitFor := dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas))
+	enableSemiSync := waitFor > 0
+	waitFor = int((math.Max(1, float64(waitFor)))) // The minimum value mysql accepts for rpl_semi_sync_master_wait_for_slave_count is 1 (even if replication is disabled)
 
-	waitFor := int(ss.Cluster.Spec.Replicas / 2)
-	if !pst.GlobalVariables.SemiSyncMasterEnabled || pst.GlobalVariables.WaitForSlaveCount != waitFor {
+	if pst.GlobalVariables.SemiSyncMasterEnabled != enableSemiSync || pst.GlobalVariables.WaitForSlaveCount != waitFor {
 		redo = true
-		log.Info("enable semi-sync primary")
-		if err := op.ConfigurePrimary(ctx, waitFor); err != nil {
+		log.Info("updating primary",
+			"enableSemiSync", enableSemiSync,
+			"waitFor", waitFor,
+			"currentEnableSemiSync", pst.GlobalVariables.SemiSyncMasterEnabled,
+			"currentWaitFor", pst.GlobalVariables.WaitForSlaveCount,
+		)
+		if err := op.ConfigurePrimary(ctx, enableSemiSync, waitFor); err != nil {
 			return false, err
 		}
 	}

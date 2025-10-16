@@ -496,7 +496,7 @@ func isDegraded(ss *StatusSet) bool {
 			return false
 		}
 	}
-	if replicasInCluster(ss.Cluster, pst.ReplicaHosts) < (ss.Cluster.Spec.Replicas / 2) {
+	if replicasInCluster(ss.Cluster, pst.ReplicaHosts) < int32(dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas))) {
 		return false
 	}
 
@@ -528,7 +528,7 @@ func isDegraded(ss *StatusSet) bool {
 		ss.Candidates = append(ss.Candidates, i)
 	}
 
-	return okReplicas >= (int(ss.Cluster.Spec.Replicas)/2) && okReplicas != int(ss.Cluster.Spec.Replicas-1)
+	return okReplicas >= dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas)) && okReplicas != int(ss.Cluster.Spec.Replicas-1)
 }
 
 func isFailed(ss *StatusSet) bool {
@@ -557,7 +557,7 @@ func isFailed(ss *StatusSet) bool {
 		okReplicas++
 	}
 
-	return okReplicas > (int(ss.Cluster.Spec.Replicas) / 2)
+	return okReplicas > dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas))
 }
 
 func isLost(ss *StatusSet) bool {
@@ -586,7 +586,7 @@ func isLost(ss *StatusSet) bool {
 		okReplicas++
 	}
 
-	return okReplicas <= (int(ss.Cluster.Spec.Replicas) / 2)
+	return okReplicas <= dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas))
 }
 
 func isOffline(ss *StatusSet) bool {
