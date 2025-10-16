@@ -527,7 +527,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 		}
 	}
 
-	waitFor := dbop.ComputeRequiredACKs(int(ss.Cluster.Spec.Replicas))
+	waitFor := RequiredSemiSyncAcks(int(ss.Cluster.Spec.Replicas))
 	enableSemiSync := waitFor > 0
 	waitFor = int((math.Max(1, float64(waitFor)))) // The minimum value mysql accepts for rpl_semi_sync_master_wait_for_slave_count is 1 (even if replication is disabled)
 

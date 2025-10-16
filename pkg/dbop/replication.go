@@ -3,7 +3,6 @@ package dbop
 import (
 	"context"
 	"fmt"
-	"math"
 )
 
 const semiSyncMasterTimeout = 24 * 60 * 60 * 1000
@@ -90,8 +89,4 @@ func (o *operator) SetReadOnly(ctx context.Context, readOnly bool) error {
 		return fmt.Errorf("failed to set read_only=0: %w", err)
 	}
 	return nil
-}
-
-func ComputeRequiredACKs(instances int) int {
-	return int(math.Ceil(float64(instances-1) / 2))
 }
