@@ -785,7 +785,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 			WithReplicas(replicas).
 			WithSelector(metav1ac.LabelSelector().
 				WithMatchLabels(labelSet(cluster, false))).
-			WithPodManagementPolicy(appsv1.ParallelPodManagement).
+			WithPodManagementPolicy(appsv1.OrderedReadyPodManagement).
 			WithUpdateStrategy(appsv1ac.StatefulSetUpdateStrategy().
 				WithType(appsv1.RollingUpdateStatefulSetStrategyType)).
 			WithServiceName(cluster.HeadlessServiceName()))
