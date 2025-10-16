@@ -39,7 +39,7 @@ func (o NopOperator) ConfigureReplica(ctx context.Context, source AccessInfo, se
 	return ErrNop
 }
 
-func (o NopOperator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
+func (o NopOperator) ConfigurePrimary(ctx context.Context, semisync bool, waitForCount int) error {
 	return ErrNop
 }
 

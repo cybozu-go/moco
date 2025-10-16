@@ -184,7 +184,7 @@ var _ = Describe("replication", func() {
 		Expect(st2.ReplicaStatus.RetrievedGtidSet).NotTo(BeEmpty())
 		err = ops[2].WaitForGTID(ctx, st2.ReplicaStatus.RetrievedGtidSet, 10)
 		Expect(err).NotTo(HaveOccurred())
-		err = ops[2].ConfigurePrimary(ctx, 1)
+		err = ops[2].ConfigurePrimary(ctx, true, 1)
 		Expect(err).NotTo(HaveOccurred())
 		err = ops[2].SetReadOnly(ctx, false)
 		Expect(err).NotTo(HaveOccurred())

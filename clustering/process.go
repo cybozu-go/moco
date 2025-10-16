@@ -227,10 +227,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 			// do not configure the cluster after a switchover.
 			return true, nil
 		}
-		if ss.State == StateDegraded {
-			return p.configure(ctx, ss)
-		}
-		return false, nil
+		return p.configure(ctx, ss)
 
 	case StateFailed:
 		// in this case, only applicable operation is a failover.
