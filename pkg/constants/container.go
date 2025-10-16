@@ -18,7 +18,7 @@ const (
 	AgentContainerMemLimit   = "100Mi"
 
 	InitContainerCPURequest = "100m"
-	InitContainerCPULimit   = "100m"
+	InitContainerCPULimit   = "1000m" // mysql data directory process is CPU intensive, with 100m it takes ~60 seconds, with 1000m it takes ~6 seconds
 	InitContainerMemRequest = "512Mi"
 	InitContainerMemLimit   = "512Mi"
 
