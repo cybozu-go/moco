@@ -17,7 +17,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
-	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/mycnf"
 	"github.com/cybozu-go/moco/pkg/password"
@@ -1069,7 +1068,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	if backupCronJobIsRunning {
 		maxUnavailable = intstr.FromInt(0)
 	} else {
-		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas) - dbop.ComputeRequiredACKs(int(cluster.Spec.Replicas)))
+		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas) - clustering.RequiredSemiSyncAcks(int(cluster.Spec.Replicas)))
 	}
 
 	pdbApplyConfig := policyv1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
