@@ -534,15 +534,22 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 			continue
 		}
 		if ist == nil {
+			// This happens during provisioning new pod
 			neverReadyReplicas++
 			continue
 		}
 
 		rs := ist.ReplicaStatus
 		if rs == nil {
+			// This happens when new secondary is cloning, uncofrunately `ist.CloneStatus` does not seem to be realible for these checks...
+			neverReadyReplicas++
 			continue
 		}
-		if rs.ReplicaIORunning != "Yes" || rs.ReplicaSQLRunning != "Yes" {
+
+		// log.Info("DUMPING IST BECAUSE OTHER CHECKS DID NOT HIT!",
+		// 	"ist", spew.Sdump(ist))
+
+		if !rs.IsRunning() {
 			continue
 		}
 		if !rs.SecondsBehindSource.Valid || rs.SecondsBehindSource.Int64 >= 10 {
