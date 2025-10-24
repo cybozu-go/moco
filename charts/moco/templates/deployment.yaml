@@ -35,8 +35,20 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           name: moco-controller
-          {{- with .Values.extraArgs }}
           args:
+          {{- with .Values.agent.image }}
+            - --agent-image
+            - "{{ .repository }}:{{ .tag }}"
+          {{- end }}
+          {{- with .Values.fluentbit.image }}
+            - --fluent-bit-image
+            - "{{ .repository }}:{{ .tag }}"
+          {{- end }}
+          {{- with .Values.mysqldExporter.image }}
+            - --mysqld-exporter-image
+            - "{{ .repository }}:{{ .tag }}"
+          {{- end }}
+          {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:

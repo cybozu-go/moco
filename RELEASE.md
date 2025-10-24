@@ -75,7 +75,7 @@ It should look like:
     $ git push origin v$VERSION
     ```
 
-8. (Option) Edit GitHub release page  
+8. (Option) Edit GitHub release page
     You may edit [the GitHub release page](https://github.com/cybozu-go/moco/releases/latest) to add further details.
 
 ## Bump Chart Version
@@ -88,8 +88,12 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     ```console
     # Set variables. They should not have "v" prefix.
     $ APPVERSION=x.y.z # MOCO version
+    $ AGENTVERSION=j.k.l # MOCO Agent version
+    $ EXPORTERVERSION=d.e.f.g # mysqld_exporter version, see version.go
+    $ FLUENTBITVERSION=h.i.j.k # FluentBit version, see version.go
     $ CHARTVERSION=a.b.c
     $ echo $APPVERSION $CHARTVERSION
+    $ echo $AGENTVERSION $EXPORTERVERSION $FLUENTBITVERSION
     ```
 
 2. Make a new branch from the latest `main` with `git checkout -b bump-chart-v$CHARTVERSION`.
@@ -106,6 +110,9 @@ This will prevent the MOCO version from going up just by modifying the Helm Char
     $ sed -r -i "s/^(appVersion: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${APPVERSION}/g" charts/moco/Chart.yaml
     $ sed -r -i "s/^(version: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${CHARTVERSION}/g" charts/moco/Chart.yaml
     $ sed -r -i "s/(tag: +# )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+/\1${APPVERSION}/g" charts/moco/values.yaml
+    $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+( +# agent.image.tag)/\1${AGENTVERSION}\2/g" charts/moco/values.yaml
+    $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]+\.[[:digit:]]+( +# fluentbit.image.tag)/\1${FLUENTBITVERSION}\2/g" charts/moco/values.yaml
+    $ sed -r -i "s/(tag: )[[:digit:]]+\.[[:digit:]]+\.[[:digit:]+\.[[:digit:]]+( +# mysqldExporter.image.tag)/\1${EXPORTERVERSION}\2/g" charts/moco/values.yaml
     ```
 
 4. Edit `charts/moco/CHANGELOG.md` for the new version ([example][]).
