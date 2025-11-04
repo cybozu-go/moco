@@ -31,11 +31,14 @@ import (
 
 var _ reconcile.Reconciler = &StatefulSetPartitionReconciler{}
 
+var lastUpdatedTimestamp = time.Now()
+
 // StatefulSetPartitionReconciler reconciles a StatefulSet object
 type StatefulSetPartitionReconciler struct {
 	client.Client
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
+	UpdateInterval          time.Duration
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch
@@ -87,6 +90,11 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
+	nextPartitionUpdateTimeBorder := lastUpdatedTimestamp.Add(r.UpdateInterval)
+	if 0 >= r.UpdateInterval || nextPartitionUpdateTimeBorder.Before(time.Now()) {
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
+	}
+
 	if err := r.patchNewPartition(ctx, sts); err != nil {
 		log.Error(err, "failed to apply new partition")
 		return reconcile.Result{}, err
@@ -94,6 +102,7 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 
 	log.Info("partition is updated")
 	metrics.LastPartitionUpdatedVec.WithLabelValues(cluster.Name, cluster.Namespace).SetToCurrentTime()
+	lastUpdatedTimestamp = time.Now()
 
 	return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 }
