@@ -138,7 +138,7 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (bool, error) {
 	log := crlog.FromContext(ctx)
 
-	if sts.Spec.Replicas == &sts.Status.UpdatedReplicas {
+	if *sts.Spec.Replicas == sts.Status.UpdatedReplicas {
 		// In this case, a rolling update has been completed.
 		return true, nil
 	}
