@@ -1,7 +1,7 @@
 # mysqld_exporter container
 
 # Stage1: build from source
-FROM ghcr.io/cybozu/golang:1.24-jammy AS build
+FROM ghcr.io/cybozu/golang:1.25-noble AS build
 
 ARG MYSQLD_EXPORTER_VERSION=v0.18.0
 
