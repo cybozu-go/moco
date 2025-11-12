@@ -1,9 +1,9 @@
 # mysqld_exporter container
 
 # Stage1: build from source
-FROM ghcr.io/cybozu/golang:1.22-jammy AS build
+FROM ghcr.io/cybozu/golang:1.25-noble AS build
 
-ARG MYSQLD_EXPORTER_VERSION=v0.17.2
+ARG MYSQLD_EXPORTER_VERSION=v0.18.0
 
 RUN git clone -b ${MYSQLD_EXPORTER_VERSION} --depth 1 https://github.com/prometheus/mysqld_exporter \
     && make -C mysqld_exporter build
