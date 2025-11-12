@@ -20,7 +20,7 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.6.1 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.7.1 as mysql
 
 # the backup image
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:24.04
