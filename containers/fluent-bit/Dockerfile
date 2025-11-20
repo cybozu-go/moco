@@ -3,7 +3,7 @@
 # Stage1: build from source
 FROM ghcr.io/cybozu/ubuntu-dev:24.04 AS builder
 
-ARG FLUENT_BIT_VERSION=4.0.8
+ARG FLUENT_BIT_VERSION=4.1.1
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
