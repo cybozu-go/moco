@@ -1,7 +1,7 @@
 KUBERNETES_VERSION = 1.33.0
 
 # Tool versions
-MYSQLSH_VERSION = 8.4.6-1
+MYSQLSH_VERSION = 8.4.7-1
 OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
