@@ -513,7 +513,7 @@ spec:
       containers:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.6
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -601,7 +601,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.6  # must be the same version as the donor
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.7  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -1004,7 +1004,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.6
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
@@ -1084,7 +1084,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.6
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
 </code></pre>
 <p>If you want to build and use your own <code>mysqld</code>, read the rest of this document.</p>
 <h2 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h2>
@@ -1101,9 +1101,9 @@ You can find it under <a href="https://github.com/cybozu-go/moco/tree/main/conta
 <pre><code class="language-console">$ sudo apt-get update
 $ sudo apt-get -y --no-install-recommends install build-essential libssl-dev \
     cmake libncurses5-dev libgoogle-perftools-dev libnuma-dev libaio-dev pkg-config libtirpc-dev
-$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.6.tar.gz
-$ tar -x -z -f mysql-8.4.6.tar.gz
-$ cd mysql-8.4.6
+$ curl -fsSL -O https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.7.tar.gz
+$ tar -x -z -f mysql-8.4.7.tar.gz
+$ cd mysql-8.4.7
 $ mkdir bld
 $ cd bld
 $ cmake .. -DBUILD_CONFIG=mysql_release -DCMAKE_BUILD_TYPE=Release \
@@ -1127,7 +1127,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.6
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
     overwriteContainers:
     - name: agent
       resources:
@@ -1217,7 +1217,7 @@ so users can notice anomalies by monitoring this metrics.</p>
       spec:
         containers:
         - name: mysqld
-          image: ghcr.io/cybozu-go/moco/mysql:8.4.6
+          image: ghcr.io/cybozu-go/moco/mysql:8.4.7
     volumeClaimTemplates:
     - metadata:
         name: mysql-data
