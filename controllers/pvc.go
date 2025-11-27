@@ -114,7 +114,11 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 	}
 
 	var pvcs corev1.PersistentVolumeClaimList
-	if err := r.Client.List(ctx, &pvcs, client.MatchingLabelsSelector{Selector: selector}); err != nil {
+	listOpts := []client.ListOption{
+		client.InNamespace(sts.Namespace),
+		client.MatchingLabelsSelector{Selector: selector},
+	}
+	if err := r.Client.List(ctx, &pvcs, listOpts...); err != nil {
 		return nil, fmt.Errorf("failed to list PVCs: %w", err)
 	}
 
@@ -268,7 +272,11 @@ func (r *MySQLClusterReconciler) syncPVCLabelAndAnnotationValues(ctx context.Con
 	}
 
 	var deployedPVCs corev1.PersistentVolumeClaimList
-	if err := r.Client.List(ctx, &deployedPVCs, client.MatchingLabelsSelector{Selector: selector}); err != nil {
+	listOpts := []client.ListOption{
+		client.InNamespace(sts.Namespace),
+		client.MatchingLabelsSelector{Selector: selector},
+	}
+	if err := r.Client.List(ctx, &deployedPVCs, listOpts...); err != nil {
 		return fmt.Errorf("failed to list PVCs: %w", err)
 	}
 

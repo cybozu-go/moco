@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubectl/pkg/util/podutils"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -138,7 +139,7 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (bool, error) {
 	log := crlog.FromContext(ctx)
 
-	if sts.Spec.Replicas == &sts.Status.UpdatedReplicas {
+	if ptr.Deref(sts.Spec.Replicas, 1) == sts.Status.UpdatedReplicas {
 		// In this case, a rolling update has been completed.
 		return true, nil
 	}
