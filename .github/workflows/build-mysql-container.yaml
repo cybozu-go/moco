@@ -16,7 +16,7 @@ on:
 
 jobs:
   filter:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
     steps:

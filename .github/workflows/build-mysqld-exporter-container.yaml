@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
