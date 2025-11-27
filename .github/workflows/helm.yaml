@@ -38,8 +38,8 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         with:
           version: v0.29.0
-          node_image: kindest/node:v1.33.4
-          kubectl_version: v1.33.4
+          node_image: kindest/node:v1.34.2
+          kubectl_version: v1.34.2
           config: e2e/kind-config.yaml
 
       - name: Apply cert-manager
