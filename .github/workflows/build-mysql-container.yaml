@@ -16,7 +16,7 @@ on:
 
 jobs:
   filter:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
     steps:
@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
-        k8s-version: [ "1.33.4" ]
+        k8s-version: [ "1.34.0" ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
