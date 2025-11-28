@@ -568,6 +568,10 @@ func (in PersistentVolumeClaim) ToCoreV1() *corev1ac.PersistentVolumeClaimApplyC
 	spec := corev1ac.PersistentVolumeClaimSpecApplyConfiguration(*in.Spec.DeepCopy())
 	claim.WithSpec(&spec)
 
+	if claim.Spec.AccessModes == nil {
+		claim.Spec.WithAccessModes(corev1.ReadWriteOnce)
+	}
+
 	if claim.Spec.VolumeMode == nil {
 		claim.Spec.WithVolumeMode(corev1.PersistentVolumeFilesystem)
 	}
