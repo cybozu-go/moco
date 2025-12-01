@@ -1156,7 +1156,7 @@ dummyKey: dummyValue
 								WithOperator(metav1.LabelSelectorOpIn).
 								WithValues(cluster.Name),
 							),
-						),
+						).WithTopologyKey(corev1.LabelHostname),
 					),
 				))
 
