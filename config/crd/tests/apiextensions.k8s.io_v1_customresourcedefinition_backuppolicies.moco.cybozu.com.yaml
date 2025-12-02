@@ -532,6 +532,19 @@ spec:
                                 fieldPath:
                                   type: string
                               type: object
+                            fileKeyRef:
+                              description: FileKeySelectorApplyConfiguration represents
+                                a...
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
+                                  type: string
+                              type: object
                             resourceFieldRef:
                               description: ResourceFieldSelectorApplyConfiguration...
                               properties:
@@ -1276,6 +1289,23 @@ spec:
                                               type: object
                                           type: object
                                         type: array
+                                    type: object
+                                  podCertificate:
+                                    description: PodCertificateProjectionApplyConfiguration...
+                                    properties:
+                                      certificateChainPath:
+                                        type: string
+                                      credentialBundlePath:
+                                        type: string
+                                      keyPath:
+                                        type: string
+                                      keyType:
+                                        type: string
+                                      maxExpirationSeconds:
+                                        format: int32
+                                        type: integer
+                                      signerName:
+                                        type: string
                                     type: object
                                   secret:
                                     description: SecretProjectionApplyConfiguration
@@ -2068,6 +2098,23 @@ spec:
                                             type: object
                                         type: object
                                       type: array
+                                  type: object
+                                podCertificate:
+                                  description: PodCertificateProjectionApplyConfiguration...
+                                  properties:
+                                    certificateChainPath:
+                                      type: string
+                                    credentialBundlePath:
+                                      type: string
+                                    keyPath:
+                                      type: string
+                                    keyType:
+                                      type: string
+                                    maxExpirationSeconds:
+                                      format: int32
+                                      type: integer
+                                    signerName:
+                                      type: string
                                   type: object
                                 secret:
                                   description: SecretProjectionApplyConfiguration
