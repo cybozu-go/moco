@@ -9,11 +9,11 @@ jobs:
     name: Build book
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Setup Aqua
       uses: ./.github/actions/setup-aqua
     - run: make book
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: book
         path: docs/book
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: gh-pages
       # ignore helm chart index file and chart archive file.

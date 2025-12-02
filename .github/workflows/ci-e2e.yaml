@@ -23,7 +23,7 @@ jobs:
         mysql-version: ["8.0.28", "8.0.42", "8.0.43", "8.0.44", "8.4.4", "8.4.7"]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check and output changed files
         uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46.0.5
         id: changed-files
@@ -45,7 +45,7 @@ jobs:
     runs-on:
       group: moco
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check and output changed files
         uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46.0.5
         id: changed-files
@@ -69,7 +69,7 @@ jobs:
     runs-on:
       group: moco
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check and output changed files
         uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46.0.5
         id: changed-files
@@ -89,7 +89,7 @@ jobs:
     runs-on:
       group: moco
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check and output changed files
         uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46.0.5
         id: changed-files
