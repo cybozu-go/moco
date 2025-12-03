@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
@@ -530,6 +530,19 @@ spec:
                                 apiVersion:
                                   type: string
                                 fieldPath:
+                                  type: string
+                              type: object
+                            fileKeyRef:
+                              description: FileKeySelectorApplyConfiguration represents
+                                a...
+                              properties:
+                                key:
+                                  type: string
+                                optional:
+                                  type: boolean
+                                path:
+                                  type: string
+                                volumeName:
                                   type: string
                               type: object
                             resourceFieldRef:
@@ -1276,6 +1289,23 @@ spec:
                                               type: object
                                           type: object
                                         type: array
+                                    type: object
+                                  podCertificate:
+                                    description: PodCertificateProjectionApplyConfiguration...
+                                    properties:
+                                      certificateChainPath:
+                                        type: string
+                                      credentialBundlePath:
+                                        type: string
+                                      keyPath:
+                                        type: string
+                                      keyType:
+                                        type: string
+                                      maxExpirationSeconds:
+                                        format: int32
+                                        type: integer
+                                      signerName:
+                                        type: string
                                     type: object
                                   secret:
                                     description: SecretProjectionApplyConfiguration
@@ -2068,6 +2098,23 @@ spec:
                                             type: object
                                         type: object
                                       type: array
+                                  type: object
+                                podCertificate:
+                                  description: PodCertificateProjectionApplyConfiguration...
+                                  properties:
+                                    certificateChainPath:
+                                      type: string
+                                    credentialBundlePath:
+                                      type: string
+                                    keyPath:
+                                      type: string
+                                    keyType:
+                                      type: string
+                                    maxExpirationSeconds:
+                                      format: int32
+                                      type: integer
+                                    signerName:
+                                      type: string
                                   type: object
                                 secret:
                                   description: SecretProjectionApplyConfiguration

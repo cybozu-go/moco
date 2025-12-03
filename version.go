@@ -5,8 +5,8 @@ const (
 	Version = "0.30.0"
 
 	// FluentBitImage is the image for slow-log sidecar container.
-	FluentBitImage = "ghcr.io/cybozu-go/moco/fluent-bit:4.0.8.1"
+	FluentBitImage = "ghcr.io/cybozu-go/moco/fluent-bit:4.1.1.1"
 
 	// ExporterImage is the image for mysqld_exporter sidecar container.
-	ExporterImage = "ghcr.io/cybozu-go/moco/mysqld_exporter:0.17.2.1"
+	ExporterImage = "ghcr.io/cybozu-go/moco/mysqld_exporter:0.18.0.1"
 )

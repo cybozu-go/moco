@@ -4,7 +4,7 @@ description: 'An action to run Upgrade Tests'
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version-file: go.mod
         cache: true
@@ -27,7 +27,7 @@ runs:
       working-directory: e2e
       if: always()
       shell: bash
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       if: always()
       with:
         name: logs-upgrade.tar.gz

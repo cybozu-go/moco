@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.19.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -508,6 +508,18 @@ spec:
                                   apiVersion:
                                     type: string
                                   fieldPath:
+                                    type: string
+                                type: object
+                              fileKeyRef:
+                                description: FileKeySelectorApplyConfiguration represents a...
+                                properties:
+                                  key:
+                                    type: string
+                                  optional:
+                                    type: boolean
+                                  path:
+                                    type: string
+                                  volumeName:
                                     type: string
                                 type: object
                               resourceFieldRef:
@@ -1218,6 +1230,23 @@ spec:
                                                 type: object
                                             type: object
                                           type: array
+                                      type: object
+                                    podCertificate:
+                                      description: PodCertificateProjectionApplyConfiguration...
+                                      properties:
+                                        certificateChainPath:
+                                          type: string
+                                        credentialBundlePath:
+                                          type: string
+                                        keyPath:
+                                          type: string
+                                        keyType:
+                                          type: string
+                                        maxExpirationSeconds:
+                                          format: int32
+                                          type: integer
+                                        signerName:
+                                          type: string
                                       type: object
                                     secret:
                                       description: SecretProjectionApplyConfiguration represents a...
@@ -1976,6 +2005,23 @@ spec:
                                           type: object
                                         type: array
                                     type: object
+                                  podCertificate:
+                                    description: PodCertificateProjectionApplyConfiguration...
+                                    properties:
+                                      certificateChainPath:
+                                        type: string
+                                      credentialBundlePath:
+                                        type: string
+                                      keyPath:
+                                        type: string
+                                      keyType:
+                                        type: string
+                                      maxExpirationSeconds:
+                                        format: int32
+                                        type: integer
+                                      signerName:
+                                        type: string
+                                    type: object
                                   secret:
                                     description: SecretProjectionApplyConfiguration represents a...
                                     properties:
@@ -2170,7 +2216,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/moco-serving-cert'
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.19.0
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -2851,6 +2897,18 @@ spec:
                                             fieldPath:
                                               type: string
                                           type: object
+                                        fileKeyRef:
+                                          description: FileKeySelectorApplyConfiguration represents a...
+                                          properties:
+                                            key:
+                                              type: string
+                                            optional:
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            volumeName:
+                                              type: string
+                                          type: object
                                         resourceFieldRef:
                                           description: ResourceFieldSelectorApplyConfiguration...
                                           properties:
@@ -3246,6 +3304,27 @@ spec:
                               restartPolicy:
                                 description: ContainerRestartPolicy is the restart policy for...
                                 type: string
+                              restartPolicyRules:
+                                items:
+                                  description: ContainerRestartRuleApplyConfiguration represents...
+                                  properties:
+                                    action:
+                                      description: ContainerRestartRuleAction describes the action...
+                                      type: string
+                                    exitCodes:
+                                      description: ContainerRestartRuleOnExitCodesApplyConfiguration...
+                                      properties:
+                                        operator:
+                                          description: ContainerRestartRuleOnExitCodesOperator describes...
+                                          type: string
+                                        values:
+                                          items:
+                                            format: int32
+                                            type: integer
+                                          type: array
+                                      type: object
+                                  type: object
+                                type: array
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents a...
                                 properties:
@@ -3512,6 +3591,18 @@ spec:
                                             fieldPath:
                                               type: string
                                           type: object
+                                        fileKeyRef:
+                                          description: FileKeySelectorApplyConfiguration represents a...
+                                          properties:
+                                            key:
+                                              type: string
+                                            optional:
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            volumeName:
+                                              type: string
+                                          type: object
                                         resourceFieldRef:
                                           description: ResourceFieldSelectorApplyConfiguration...
                                           properties:
@@ -3907,6 +3998,27 @@ spec:
                               restartPolicy:
                                 description: ContainerRestartPolicy is the restart policy for...
                                 type: string
+                              restartPolicyRules:
+                                items:
+                                  description: ContainerRestartRuleApplyConfiguration represents...
+                                  properties:
+                                    action:
+                                      description: ContainerRestartRuleAction describes the action...
+                                      type: string
+                                    exitCodes:
+                                      description: ContainerRestartRuleOnExitCodesApplyConfiguration...
+                                      properties:
+                                        operator:
+                                          description: ContainerRestartRuleOnExitCodesOperator describes...
+                                          type: string
+                                        values:
+                                          items:
+                                            format: int32
+                                            type: integer
+                                          type: array
+                                      type: object
+                                  type: object
+                                type: array
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents a...
                                 properties:
@@ -4129,6 +4241,8 @@ spec:
                           type: boolean
                         hostname:
                           type: string
+                        hostnameOverride:
+                          type: string
                         imagePullSecrets:
                           items:
                             description: LocalObjectReferenceApplyConfiguration represents...
@@ -4176,6 +4290,18 @@ spec:
                                             apiVersion:
                                               type: string
                                             fieldPath:
+                                              type: string
+                                          type: object
+                                        fileKeyRef:
+                                          description: FileKeySelectorApplyConfiguration represents a...
+                                          properties:
+                                            key:
+                                              type: string
+                                            optional:
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            volumeName:
                                               type: string
                                           type: object
                                         resourceFieldRef:
@@ -4573,6 +4699,27 @@ spec:
                               restartPolicy:
                                 description: ContainerRestartPolicy is the restart policy for...
                                 type: string
+                              restartPolicyRules:
+                                items:
+                                  description: ContainerRestartRuleApplyConfiguration represents...
+                                  properties:
+                                    action:
+                                      description: ContainerRestartRuleAction describes the action...
+                                      type: string
+                                    exitCodes:
+                                      description: ContainerRestartRuleOnExitCodesApplyConfiguration...
+                                      properties:
+                                        operator:
+                                          description: ContainerRestartRuleOnExitCodesOperator describes...
+                                          type: string
+                                        values:
+                                          items:
+                                            format: int32
+                                            type: integer
+                                          type: array
+                                      type: object
+                                  type: object
+                                type: array
                               securityContext:
                                 description: SecurityContextApplyConfiguration represents a...
                                 properties:
@@ -5628,6 +5775,23 @@ spec:
                                                 type: object
                                               type: array
                                           type: object
+                                        podCertificate:
+                                          description: PodCertificateProjectionApplyConfiguration...
+                                          properties:
+                                            certificateChainPath:
+                                              type: string
+                                            credentialBundlePath:
+                                              type: string
+                                            keyPath:
+                                              type: string
+                                            keyType:
+                                              type: string
+                                            maxExpirationSeconds:
+                                              format: int32
+                                              type: integer
+                                            signerName:
+                                              type: string
+                                          type: object
                                         secret:
                                           description: SecretProjectionApplyConfiguration represents a...
                                           properties:
@@ -6480,6 +6644,18 @@ spec:
                                       fieldPath:
                                         type: string
                                     type: object
+                                  fileKeyRef:
+                                    description: FileKeySelectorApplyConfiguration represents a...
+                                    properties:
+                                      key:
+                                        type: string
+                                      optional:
+                                        type: boolean
+                                      path:
+                                        type: string
+                                      volumeName:
+                                        type: string
+                                    type: object
                                   resourceFieldRef:
                                     description: ResourceFieldSelectorApplyConfiguration...
                                     properties:
@@ -7188,6 +7364,23 @@ spec:
                                                     type: object
                                                 type: object
                                               type: array
+                                          type: object
+                                        podCertificate:
+                                          description: PodCertificateProjectionApplyConfiguration...
+                                          properties:
+                                            certificateChainPath:
+                                              type: string
+                                            credentialBundlePath:
+                                              type: string
+                                            keyPath:
+                                              type: string
+                                            keyType:
+                                              type: string
+                                            maxExpirationSeconds:
+                                              format: int32
+                                              type: integer
+                                            signerName:
+                                              type: string
                                           type: object
                                         secret:
                                           description: SecretProjectionApplyConfiguration represents a...
@@ -7945,6 +8138,23 @@ spec:
                                                   type: object
                                               type: object
                                             type: array
+                                        type: object
+                                      podCertificate:
+                                        description: PodCertificateProjectionApplyConfiguration...
+                                        properties:
+                                          certificateChainPath:
+                                            type: string
+                                          credentialBundlePath:
+                                            type: string
+                                          keyPath:
+                                            type: string
+                                          keyType:
+                                            type: string
+                                          maxExpirationSeconds:
+                                            format: int32
+                                            type: integer
+                                          signerName:
+                                            type: string
                                         type: object
                                       secret:
                                         description: SecretProjectionApplyConfiguration represents a...

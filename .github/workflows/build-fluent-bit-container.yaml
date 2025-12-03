@@ -16,9 +16,9 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-24.04' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -37,7 +37,7 @@ jobs:
           fi
           echo "TAG=$(cat ./fluent-bit/TAG)" >> $GITHUB_ENV
 
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         if: env.TAG != null
         with:
           context: containers/fluent-bit/.
