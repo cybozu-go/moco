@@ -43,8 +43,7 @@ type Operator interface {
 	ConfigureReplica(ctx context.Context, source AccessInfo, semisync bool) error
 
 	// ConfigurePrimary configures server-side semi-synchronous replication.
-	// For asynchronous replication, this method should not be called.
-	ConfigurePrimary(ctx context.Context, waitForCount int) error
+	ConfigurePrimary(ctx context.Context, semisync bool, waitForCount int) error
 
 	// StopReplicaIOThread executes `STOP REPLICA IO_THREAD`.
 	StopReplicaIOThread(context.Context) error
