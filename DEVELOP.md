@@ -17,6 +17,12 @@ This project uses [aqua](https://aquaproj.github.io/) to manage development tool
 
 Once aqua is installed, the required development tools will be automatically installed when you run make commands.
 
+## Commit sign-off
+
+All commits must be signed off per the [Developer Certificate of Origin](https://developercertificate.org/).
+Run `git commit -s` (or configure your Git client accordingly) so each commit carries a `Signed-off-by` line.
+Pull requests without signed-off commits will be rejected by our checks.
+
 ## Running tests
 
 MOCO has the following 4 kinds of tests:
