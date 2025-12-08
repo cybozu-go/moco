@@ -116,6 +116,10 @@ See https://cybozu-go.github.io/moco/
 
 [`examples`](examples/) directory contains example MySQLCluster manifests.
 
+## Contributing
+
+We require all commits to comply with the [Developer Certificate of Origin](https://developercertificate.org/). Use `git commit -s` (or configure your Git client to add a `Signed-off-by` trailer) to sign off every commit before opening a pull request. Pull requests without the trailer will not pass our checks.
+
 ## Docker images
 
 Docker images are available on [ghcr.io/cybozu-go/moco](https://github.com/orgs/cybozu-go/packages/container/package/moco).
