@@ -178,8 +178,10 @@ var _ = Describe("StatefulSet reconciler", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		r := &StatefulSetPartitionReconciler{
-			Client:   mgr.GetClient(),
-			Recorder: mgr.GetEventRecorderFor("moco-controller"),
+			Client:               mgr.GetClient(),
+			Recorder:             mgr.GetEventRecorderFor("moco-controller"),
+			UpdateInterval:       0,
+			LastUpdatedTimestamp: time.Now(),
 		}
 		err = r.SetupWithManager(mgr)
 		Expect(err).ToNot(HaveOccurred())
