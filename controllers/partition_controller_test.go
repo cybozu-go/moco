@@ -303,13 +303,14 @@ var _ = Describe("StatefulSet reconciler", func() {
 		time.Sleep(100 * time.Millisecond)
 	})
 
-	It("should partition to 0", func() {
-		stopFunc = setupNewManager(ctx, 0)
-		testUpdatePartition(ctx)
-	})
-
-	It("should partition to 0 with update interval", func() {
-		stopFunc = setupNewManager(ctx, 1000)
-		testUpdatePartition(ctx)
+	Context("with different update intervals", func() {
+		DescribeTable("should partition to 0",
+			func(updateInterval int) {
+				stopFunc = setupNewManager(ctx, updateInterval)
+				testUpdatePartition(ctx)
+			},
+			Entry("without interval", 0),
+			Entry("with 1000ms interval", 1000),
+		)
 	})
 })
