@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -15,11 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
-
-	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
-	"github.com/cybozu-go/moco/pkg/constants"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -156,6 +156,38 @@ func rolloutPods(ctx context.Context, sts *appsv1.StatefulSet, rev1 int, rev2 in
 	}
 }
 
+func setupNewManager(ctx context.Context, updateInterval int) context.CancelFunc {
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:         scheme,
+		LeaderElection: false,
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+		Controller: config.Controller{
+			SkipNameValidation: ptr.To(true),
+		},
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	r := &StatefulSetPartitionReconciler{
+		Client:               mgr.GetClient(),
+		Recorder:             mgr.GetEventRecorderFor("moco-controller"),
+		UpdateInterval:       updateInterval,
+		LastUpdatedTimestamp: time.Now(),
+	}
+	err = r.SetupWithManager(mgr)
+	Expect(err).ToNot(HaveOccurred())
+
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		err := mgr.Start(ctx)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	return cancel
+}
+
 var _ = Describe("StatefulSet reconciler", func() {
 	ctx := context.Background()
 	var stopFunc func()
@@ -168,32 +200,6 @@ var _ = Describe("StatefulSet reconciler", func() {
 		err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("partition"))
 		Expect(err).NotTo(HaveOccurred())
 
-		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-			Scheme:         scheme,
-			LeaderElection: false,
-			Metrics: metricsserver.Options{
-				BindAddress: "0",
-			},
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		r := &StatefulSetPartitionReconciler{
-			Client:               mgr.GetClient(),
-			Recorder:             mgr.GetEventRecorderFor("moco-controller"),
-			UpdateInterval:       0,
-			LastUpdatedTimestamp: time.Now(),
-		}
-		err = r.SetupWithManager(mgr)
-		Expect(err).ToNot(HaveOccurred())
-
-		ctx, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
-		go func() {
-			err := mgr.Start(ctx)
-			if err != nil {
-				panic(err)
-			}
-		}()
 		time.Sleep(100 * time.Millisecond)
 	})
 
@@ -203,6 +209,7 @@ var _ = Describe("StatefulSet reconciler", func() {
 	})
 
 	It("should partition to 0", func() {
+		stopFunc = setupNewManager(ctx, 0)
 		cluster := testNewMySQLCluster("partition")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
