@@ -97,7 +97,7 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 	updateInterval := time.Duration(r.UpdateInterval) * time.Millisecond
 	nextPartitionUpdateTimeBorder := r.LastUpdatedTimestamp.Add(updateInterval)
 	if 0 < r.UpdateInterval && nextPartitionUpdateTimeBorder.After(time.Now()) {
-		log.Info("Partition Controller: enter Requeue After", "nextBorder", nextPartitionUpdateTimeBorder)
+		log.Info("retry partition update", "nextUpdateBorder", nextPartitionUpdateTimeBorder)
 		return reconcile.Result{RequeueAfter: updateInterval}, nil
 	}
 
