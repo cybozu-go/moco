@@ -277,7 +277,18 @@ var _ = Describe("StatefulSet reconciler", func() {
 	var stopFunc func()
 
 	BeforeEach(func() {
-		err := k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("partition"))
+		cs := &mocov1beta2.MySQLClusterList{}
+		err := k8sClient.List(ctx, cs, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
+		for _, cluster := range cs.Items {
+			cluster.Finalizers = nil
+			err := k8sClient.Update(ctx, &cluster)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Event{}, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("partition"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("partition"))
 		Expect(err).NotTo(HaveOccurred())
