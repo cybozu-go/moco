@@ -5,8 +5,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+
+## [0.31.0] - 2025-12-09
+
+### Notice
+GitHub Discussions has been closed. Please open an Issue for any questions, feature requests, or discussions going forward.
+
+### Changed
+- Document the Developer Certificate of Origin sign-off policy in contributor docs [#863](https://github.com/cybozu-go/moco/pull/863)
+
 ### Added
+- Support for Kubernetes v1.34, including updated tooling, CRDs, and CI workflows [#860](https://github.com/cybozu-go/moco/pull/860) [#853](https://github.com/cybozu-go/moco/pull/853)
+- Support MySQL 8.0.44 and 8.4.7, with corresponding container images [#858](https://github.com/cybozu-go/moco/pull/858) [#856](https://github.com/cybozu-go/moco/pull/856)
 - Added `(agent,fluentbit,mysqldExporter).image.(repository,tag)` values, to set `--agent-image`, `--fluent-bit-image`, `--mysqld-exporter-image` args on controller [#827](https://github.com/cybozu-go/moco/pull/827)
+
+### Fixed
+- Compare replicas and partition numbers correctly when confirming StatefulSet rollout readiness in the partition controller [#857](https://github.com/cybozu-go/moco/pull/857)
+- Scope PVC resize targets to the MySQL cluster namespace to avoid unintended updates [#857](https://github.com/cybozu-go/moco/pull/857)
 
 ### Contributors
 - @dmaes
@@ -750,7 +765,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/cybozu-go/moco/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/cybozu-go/moco/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/cybozu-go/moco/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/cybozu-go/moco/compare/v0.27.1...v0.28.0
