@@ -188,6 +188,90 @@ func setupNewManager(ctx context.Context, updateInterval int) context.CancelFunc
 	return cancel
 }
 
+func testUpdatePartition(ctx context.Context) {
+	cluster := testNewMySQLCluster("partition")
+	err := k8sClient.Create(ctx, cluster)
+	Expect(err).NotTo(HaveOccurred())
+	meta.SetStatusCondition(&cluster.Status.Conditions,
+		metav1.Condition{
+			Type:   mocov1beta2.ConditionHealthy,
+			Status: metav1.ConditionTrue,
+			Reason: "healthy",
+		},
+	)
+	cluster.Status.ReconcileInfo.Generation = 1
+	err = k8sClient.Status().Update(ctx, cluster)
+	Expect(err).NotTo(HaveOccurred())
+
+	sts := testNewStatefulSet(cluster)
+	err = k8sClient.Create(ctx, sts)
+	Expect(err).NotTo(HaveOccurred())
+	sts.Status = appsv1.StatefulSetStatus{
+		ObservedGeneration: 1,
+		CurrentRevision:    "rev1",
+		UpdateRevision:     "rev1",
+		Replicas:           3,
+		UpdatedReplicas:    3,
+	}
+	err = k8sClient.Status().Update(ctx, sts)
+	Expect(err).NotTo(HaveOccurred())
+
+	for _, pod := range testNewPods(sts) {
+		err = k8sClient.Create(ctx, pod)
+		Expect(err).NotTo(HaveOccurred())
+		pod.Status = corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionTrue,
+					Reason: "PodReady",
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-24 * time.Hour),
+					},
+				},
+			},
+		}
+		err = k8sClient.Status().Update(ctx, pod)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	Eventually(func() error {
+		sts := &appsv1.StatefulSet{}
+		key := client.ObjectKey{Namespace: "partition", Name: "moco-test"}
+		if err := k8sClient.Get(ctx, key, sts); err != nil {
+			return err
+		}
+		if sts.Spec.UpdateStrategy.RollingUpdate == nil {
+			return errors.New("partition is nil")
+		}
+
+		switch *sts.Spec.UpdateStrategy.RollingUpdate.Partition {
+		case 3:
+			rolloutPods(ctx, sts, 2, 1)
+		case 2:
+			rolloutPods(ctx, sts, 1, 2)
+		case 1:
+			rolloutPods(ctx, sts, 0, 3)
+		case 0:
+			return nil
+		}
+
+		return fmt.Errorf("unexpected partition: %d", *sts.Spec.UpdateStrategy.RollingUpdate.Partition)
+	}).Should(Succeed())
+
+	events := &corev1.EventList{}
+	err = k8sClient.List(ctx, events, client.InNamespace("partition"))
+	Expect(err).NotTo(HaveOccurred())
+	sort.Slice(events.Items, func(i, j int) bool {
+		return events.Items[i].CreationTimestamp.Before(&events.Items[j].CreationTimestamp)
+	})
+	Expect(events.Items).To(HaveLen(3))
+	Expect(events.Items[0].Message).To(Equal("Updated partition from 3 to 2"))
+	Expect(events.Items[1].Message).To(Equal("Updated partition from 2 to 1"))
+	Expect(events.Items[2].Message).To(Equal("Updated partition from 1 to 0"))
+}
+
 var _ = Describe("StatefulSet reconciler", func() {
 	ctx := context.Background()
 	var stopFunc func()
@@ -210,86 +294,6 @@ var _ = Describe("StatefulSet reconciler", func() {
 
 	It("should partition to 0", func() {
 		stopFunc = setupNewManager(ctx, 0)
-		cluster := testNewMySQLCluster("partition")
-		err := k8sClient.Create(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		meta.SetStatusCondition(&cluster.Status.Conditions,
-			metav1.Condition{
-				Type:   mocov1beta2.ConditionHealthy,
-				Status: metav1.ConditionTrue,
-				Reason: "healthy",
-			},
-		)
-		cluster.Status.ReconcileInfo.Generation = 1
-		err = k8sClient.Status().Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		sts := testNewStatefulSet(cluster)
-		err = k8sClient.Create(ctx, sts)
-		Expect(err).NotTo(HaveOccurred())
-		sts.Status = appsv1.StatefulSetStatus{
-			ObservedGeneration: 1,
-			CurrentRevision:    "rev1",
-			UpdateRevision:     "rev1",
-			Replicas:           3,
-			UpdatedReplicas:    3,
-		}
-		err = k8sClient.Status().Update(ctx, sts)
-		Expect(err).NotTo(HaveOccurred())
-
-		for _, pod := range testNewPods(sts) {
-			err = k8sClient.Create(ctx, pod)
-			Expect(err).NotTo(HaveOccurred())
-			pod.Status = corev1.PodStatus{
-				Phase: corev1.PodRunning,
-				Conditions: []corev1.PodCondition{
-					{
-						Type:   corev1.PodReady,
-						Status: corev1.ConditionTrue,
-						Reason: "PodReady",
-						LastTransitionTime: metav1.Time{
-							Time: time.Now().Add(-24 * time.Hour),
-						},
-					},
-				},
-			}
-			err = k8sClient.Status().Update(ctx, pod)
-			Expect(err).NotTo(HaveOccurred())
-		}
-
-		Eventually(func() error {
-			sts := &appsv1.StatefulSet{}
-			key := client.ObjectKey{Namespace: "partition", Name: "moco-test"}
-			if err := k8sClient.Get(ctx, key, sts); err != nil {
-				return err
-			}
-			if sts.Spec.UpdateStrategy.RollingUpdate == nil {
-				return errors.New("partition is nil")
-			}
-
-			switch *sts.Spec.UpdateStrategy.RollingUpdate.Partition {
-			case 3:
-				rolloutPods(ctx, sts, 2, 1)
-			case 2:
-				rolloutPods(ctx, sts, 1, 2)
-			case 1:
-				rolloutPods(ctx, sts, 0, 3)
-			case 0:
-				return nil
-			}
-
-			return fmt.Errorf("unexpected partition: %d", *sts.Spec.UpdateStrategy.RollingUpdate.Partition)
-		}).Should(Succeed())
-
-		events := &corev1.EventList{}
-		err = k8sClient.List(ctx, events, client.InNamespace("partition"))
-		Expect(err).NotTo(HaveOccurred())
-		sort.Slice(events.Items, func(i, j int) bool {
-			return events.Items[i].CreationTimestamp.Before(&events.Items[j].CreationTimestamp)
-		})
-		Expect(events.Items).To(HaveLen(3))
-		Expect(events.Items[0].Message).To(Equal("Updated partition from 3 to 2"))
-		Expect(events.Items[1].Message).To(Equal("Updated partition from 2 to 1"))
-		Expect(events.Items[2].Message).To(Equal("Updated partition from 1 to 0"))
+		testUpdatePartition(ctx)
 	})
 })
