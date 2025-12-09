@@ -307,4 +307,9 @@ var _ = Describe("StatefulSet reconciler", func() {
 		stopFunc = setupNewManager(ctx, 0)
 		testUpdatePartition(ctx)
 	})
+
+	It("should partition to 0 with update interval", func() {
+		stopFunc = setupNewManager(ctx, 1000)
+		testUpdatePartition(ctx)
+	})
 })
