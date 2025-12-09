@@ -195,9 +195,6 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 	}
 
 	pp = p.Child("replicas")
-	if s.Replicas%2 == 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive odd number"))
-	}
 	if s.Replicas <= 0 {
 		allErrs = append(allErrs, field.Invalid(pp, s.Replicas, "replicas must be a positive integer"))
 	}
@@ -277,29 +274,52 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 	return nil, allErrs
 }
 
-func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) (admission.Warnings, field.ErrorList) {
+func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, oldCluster *MySQLCluster) (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
 
-	if s.Replicas < old.Replicas {
+	oldSpec := oldCluster.Spec
+
+	oldReplicas := (oldCluster.Spec.Replicas)
+	newReplicas := (s.Replicas)
+
+	if newReplicas <= 0 {
 		p := p.Child("replicas")
-		allErrs = append(allErrs, field.Forbidden(p, "decreasing replicas is not supported yet"))
+		allErrs = append(allErrs, field.Invalid(p.Child("replicas"), newReplicas, "replicas must be a positive integer"))
+	}
+
+	if newReplicas < oldReplicas {
+		p := p.Child("replicas")
+
+		primaryIndex := int32(oldCluster.Status.CurrentPrimaryIndex)
+		podBase := fmt.Sprintf("%s-%s", "moco", oldCluster.Name)
+		primaryPod := fmt.Sprintf("%s-%d", podBase, primaryIndex)
+
+		// StatefulSet deletes highest ordinals first; if primary >= newReplicas it would be deleted.
+		if primaryIndex >= newReplicas {
+			allErrs = append(allErrs, field.Forbidden(p,
+				fmt.Sprintf(
+					"scale-down %d->%d would delete the current primary pod %s. Perform a switchover so the primary's ordinal is < %d, then retry.",
+					oldReplicas, newReplicas, primaryPod, newReplicas,
+				),
+			))
+		}
 	}
 	if s.ReplicationSourceSecretName != nil {
 		p := p.Child("replicationSourceSecretName")
-		if old.ReplicationSourceSecretName == nil {
+		if oldSpec.ReplicationSourceSecretName == nil {
 			allErrs = append(allErrs, field.Forbidden(p, "replication can be initiated only with new clusters"))
-		} else if *s.ReplicationSourceSecretName != *old.ReplicationSourceSecretName {
+		} else if *s.ReplicationSourceSecretName != *oldSpec.ReplicationSourceSecretName {
 			allErrs = append(allErrs, field.Forbidden(p, "replication source secret name cannot be modified"))
 		}
 	}
-	if !equality.Semantic.DeepEqual(s.Restore, old.Restore) {
+	if !equality.Semantic.DeepEqual(s.Restore, oldSpec.Restore) {
 		p := p.Child("restore")
 		allErrs = append(allErrs, field.Forbidden(p, "not editable"))
 	}
 
 	oldPVCSet := make(map[string]PersistentVolumeClaim)
-	for _, oldPVC := range old.VolumeClaimTemplates {
+	for _, oldPVC := range oldSpec.VolumeClaimTemplates {
 		oldPVCSet[oldPVC.Name] = oldPVC
 	}
 
