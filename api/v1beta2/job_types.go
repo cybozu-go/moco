@@ -197,7 +197,7 @@ type BucketConfig struct {
 
 	// BackendType is an identifier for the object storage to be used.
 	//
-	// +kubebuilder:validation:Enum=s3;gcs
+	// +kubebuilder:validation:Enum=s3;gcs;azure
 	// +kubebuilder:default=s3
 	// +optional
 	BackendType string `json:"backendType,omitempty"`

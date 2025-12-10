@@ -17,40 +17,79 @@ spec:
   - name: v1beta2
     schema:
       openAPIV3Schema:
-        description: BackupPolicy is a namespaced resource that should...
+        description: BackupPolicy is a namespaced resource that should be referenced
+          from MySQLCluster.
         properties:
           apiVersion:
-            description: APIVersion defines the versioned schema of this...
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: Kind is a string value representing the REST...
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
-            description: BackupPolicySpec defines the configuration items...
+            description: |-
+              BackupPolicySpec defines the configuration items for MySQLCluster backup.
+
+              The following fields will be copied to CronJob.spec:
+
+              - Schedule
+              - StartingDeadlineSeconds
+              - ConcurrencyPolicy
+              - SuccessfulJobsHistoryLimit
+              - FailedJobsHistoryLimit
+
+              The following fields will be copied to CronJob.spec.jobTemplate.
+
+              - ActiveDeadlineSeconds
+              - BackoffLimit
             properties:
               activeDeadlineSeconds:
-                description: Specifies the duration in seconds relative to the...
+                description: |-
+                  Specifies the duration in seconds relative to the startTime that the job
+                  may be continuously active before the system tries to terminate it; value
+                  must be positive integer. If a Job is suspended (at creation or through an
+                  update), this timer will effectively be stopped and reset when the Job is
+                  resumed again.
                 format: int64
                 nullable: true
                 type: integer
               backoffLimit:
-                description: Specifies the number of retries before marking...
+                description: |-
+                  Specifies the number of retries before marking this job failed.
+                  Defaults to 6
                 format: int32
                 minimum: 0
                 nullable: true
                 type: integer
               concurrencyPolicy:
                 default: Allow
-                description: Specifies how to treat concurrent executions of a...
+                description: |-
+                  Specifies how to treat concurrent executions of a Job.
+                  Valid values are:
+                  - "Allow" (default): allows CronJobs to run concurrently;
+                  - "Forbid": forbids concurrent runs, skipping next run if previous run hasn't finished yet;
+                  - "Replace": cancels currently running job and replaces it with a new one
                 enum:
                 - Allow
                 - Forbid
                 - Replace
                 type: string
               failedJobsHistoryLimit:
-                description: The number of failed finished jobs to retain.
+                description: |-
+                  The number of failed finished jobs to retain.
+                  This is a pointer to distinguish between explicit zero and not specified.
+                  Defaults to 1.
                 format: int32
                 minimum: 0
                 nullable: true
@@ -62,25 +101,33 @@ spec:
                     description: If specified, the pod's scheduling constraints.
                     properties:
                       nodeAffinity:
-                        description: NodeAffinityApplyConfiguration represents a...
+                        description: |-
+                          NodeAffinityApplyConfiguration represents a declarative configuration of the NodeAffinity type for use
+                          with apply.
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: PreferredSchedulingTermApplyConfiguration...
+                              description: |-
+                                PreferredSchedulingTermApplyConfiguration represents a declarative configuration of the PreferredSchedulingTerm type for use
+                                with apply.
                               properties:
                                 preference:
-                                  description: NodeSelectorTermApplyConfiguration
-                                    represents a...
+                                  description: |-
+                                    NodeSelectorTermApplyConfiguration represents a declarative configuration of the NodeSelectorTerm type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          NodeSelectorRequirementApplyConfiguration represents a declarative configuration of the NodeSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: |-
+                                              A node selector operator is the set of operators that can be used in
+                                              a node selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -90,13 +137,16 @@ spec:
                                       type: array
                                     matchFields:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          NodeSelectorRequirementApplyConfiguration represents a declarative configuration of the NodeSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: |-
+                                              A node selector operator is the set of operators that can be used in
+                                              a node selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -111,23 +161,28 @@ spec:
                               type: object
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
-                            description: NodeSelectorApplyConfiguration represents
-                              a...
+                            description: |-
+                              NodeSelectorApplyConfiguration represents a declarative configuration of the NodeSelector type for use
+                              with apply.
                             properties:
                               nodeSelectorTerms:
                                 items:
-                                  description: NodeSelectorTermApplyConfiguration
-                                    represents a...
+                                  description: |-
+                                    NodeSelectorTermApplyConfiguration represents a declarative configuration of the NodeSelectorTerm type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          NodeSelectorRequirementApplyConfiguration represents a declarative configuration of the NodeSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: |-
+                                              A node selector operator is the set of operators that can be used in
+                                              a node selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -137,13 +192,16 @@ spec:
                                       type: array
                                     matchFields:
                                       items:
-                                        description: NodeSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          NodeSelectorRequirementApplyConfiguration represents a declarative configuration of the NodeSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: |-
+                                              A node selector operator is the set of operators that can be used in
+                                              a node selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -156,29 +214,38 @@ spec:
                             type: object
                         type: object
                       podAffinity:
-                        description: PodAffinityApplyConfiguration represents a...
+                        description: |-
+                          PodAffinityApplyConfiguration represents a declarative configuration of the PodAffinity type for use
+                          with apply.
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: WeightedPodAffinityTermApplyConfiguration...
+                              description: |-
+                                WeightedPodAffinityTermApplyConfiguration represents a declarative configuration of the WeightedPodAffinityTerm type for use
+                                with apply.
                               properties:
                                 podAffinityTerm:
-                                  description: PodAffinityTermApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    PodAffinityTermApplyConfiguration represents a declarative configuration of the PodAffinityTerm type for use
+                                    with apply.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -200,18 +267,22 @@ spec:
                                         type: string
                                       type: array
                                     namespaceSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -238,22 +309,27 @@ spec:
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: PodAffinityTermApplyConfiguration represents
-                                a...
+                              description: |-
+                                PodAffinityTermApplyConfiguration represents a declarative configuration of the PodAffinityTerm type for use
+                                with apply.
                               properties:
                                 labelSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A label selector operator
-                                              is the set of operators...
+                                              is the set of operators that can be
+                                              used in a selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -275,18 +351,22 @@ spec:
                                     type: string
                                   type: array
                                 namespaceSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A label selector operator
-                                              is the set of operators...
+                                              is the set of operators that can be
+                                              used in a selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -309,30 +389,38 @@ spec:
                             type: array
                         type: object
                       podAntiAffinity:
-                        description: PodAntiAffinityApplyConfiguration represents
-                          a...
+                        description: |-
+                          PodAntiAffinityApplyConfiguration represents a declarative configuration of the PodAntiAffinity type for use
+                          with apply.
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: WeightedPodAffinityTermApplyConfiguration...
+                              description: |-
+                                WeightedPodAffinityTermApplyConfiguration represents a declarative configuration of the WeightedPodAffinityTerm type for use
+                                with apply.
                               properties:
                                 podAffinityTerm:
-                                  description: PodAffinityTermApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    PodAffinityTermApplyConfiguration represents a declarative configuration of the PodAffinityTerm type for use
+                                    with apply.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -354,18 +442,22 @@ spec:
                                         type: string
                                       type: array
                                     namespaceSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -392,22 +484,27 @@ spec:
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
                             items:
-                              description: PodAffinityTermApplyConfiguration represents
-                                a...
+                              description: |-
+                                PodAffinityTermApplyConfiguration represents a declarative configuration of the PodAffinityTerm type for use
+                                with apply.
                               properties:
                                 labelSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A label selector operator
-                                              is the set of operators...
+                                              is the set of operators that can be
+                                              used in a selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -429,18 +526,22 @@ spec:
                                     type: string
                                   type: array
                                 namespaceSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                    with apply.
                                   properties:
                                     matchExpressions:
                                       items:
-                                        description: LabelSelectorRequirementApplyConfiguration...
+                                        description: |-
+                                          LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
                                           operator:
                                             description: A label selector operator
-                                              is the set of operators...
+                                              is the set of operators that can be
+                                              used in a selector requirement.
                                             type: string
                                           values:
                                             items:
@@ -468,27 +569,36 @@ spec:
                     properties:
                       backendType:
                         default: s3
-                        description: BackendType is an identifier for the object...
+                        description: BackendType is an identifier for the object storage
+                          to be used.
                         enum:
                         - s3
                         - gcs
+                        - azure
                         type: string
                       bucketName:
                         description: The name of the bucket
                         minLength: 1
                         type: string
                       caCert:
-                        description: Path to SSL CA certificate file used in addition...
+                        description: Path to SSL CA certificate file used in addition
+                          to system default.
                         type: string
                       endpointURL:
-                        description: The API endpoint URL.
+                        description: The API endpoint URL.  Set this for non-S3 object
+                          storages.
                         pattern: ^https?://.*
                         type: string
                       region:
-                        description: The region of the bucket.
+                        description: |-
+                          The region of the bucket.
+                          This can also be set through `AWS_REGION` environment variable.
                         type: string
                       usePathStyle:
-                        description: Allows you to enable the client to use path-style...
+                        description: |-
+                          Allows you to enable the client to use path-style addressing, i.e.,
+                          https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing
+                          is used (https?://BUCKET.ENDPOINT/KEY).
                         type: boolean
                     required:
                     - bucketName
@@ -503,20 +613,28 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   env:
-                    description: List of environment variables to set in the...
+                    description: |-
+                      List of environment variables to set in the container.
+
+                      You can configure S3 bucket access parameters through environment variables.
+                      See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig
                     items:
-                      description: EnvVarApplyConfiguration is the type defined to...
+                      description: EnvVarApplyConfiguration is the type defined to
+                        implement the DeepCopy method.
                       properties:
                         name:
                           type: string
                         value:
                           type: string
                         valueFrom:
-                          description: EnvVarSourceApplyConfiguration represents a...
+                          description: |-
+                            EnvVarSourceApplyConfiguration represents a declarative configuration of the EnvVarSource type for use
+                            with apply.
                           properties:
                             configMapKeyRef:
-                              description: ConfigMapKeySelectorApplyConfiguration
-                                represents...
+                              description: |-
+                                ConfigMapKeySelectorApplyConfiguration represents a declarative configuration of the ConfigMapKeySelector type for use
+                                with apply.
                               properties:
                                 key:
                                   type: string
@@ -526,7 +644,9 @@ spec:
                                   type: boolean
                               type: object
                             fieldRef:
-                              description: ObjectFieldSelectorApplyConfiguration represents...
+                              description: |-
+                                ObjectFieldSelectorApplyConfiguration represents a declarative configuration of the ObjectFieldSelector type for use
+                                with apply.
                               properties:
                                 apiVersion:
                                   type: string
@@ -547,7 +667,9 @@ spec:
                                   type: string
                               type: object
                             resourceFieldRef:
-                              description: ResourceFieldSelectorApplyConfiguration...
+                              description: |-
+                                ResourceFieldSelectorApplyConfiguration represents a declarative configuration of the ResourceFieldSelector type for use
+                                with apply.
                               properties:
                                 containerName:
                                   type: string
@@ -561,8 +683,9 @@ spec:
                                   type: string
                               type: object
                             secretKeyRef:
-                              description: SecretKeySelectorApplyConfiguration represents
-                                a...
+                              description: |-
+                                SecretKeySelectorApplyConfiguration represents a declarative configuration of the SecretKeySelector type for use
+                                with apply.
                               properties:
                                 key:
                                   type: string
@@ -575,13 +698,23 @@ spec:
                       type: object
                     type: array
                   envFrom:
-                    description: List of sources to populate environment variables...
+                    description: |-
+                      List of sources to populate environment variables in the container.
+                      The keys defined within a source must be a C_IDENTIFIER. All invalid keys
+                      will be reported as an event when the container is starting. When a key exists in multiple
+                      sources, the value associated with the last source will take precedence.
+                      Values defined by an Env with a duplicate key will take precedence.
+
+                      You can configure S3 bucket access parameters through environment variables.
+                      See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig
                     items:
-                      description: EnvFromSourceApplyConfiguration is the type...
+                      description: EnvFromSourceApplyConfiguration is the type defined
+                        to implement the DeepCopy method.
                       properties:
                         configMapRef:
-                          description: ConfigMapEnvSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            ConfigMapEnvSourceApplyConfiguration represents a declarative configuration of the ConfigMapEnvSource type for use
+                            with apply.
                           properties:
                             name:
                               type: string
@@ -591,8 +724,9 @@ spec:
                         prefix:
                           type: string
                         secretRef:
-                          description: SecretEnvSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            SecretEnvSourceApplyConfiguration represents a declarative configuration of the SecretEnvSource type for use
+                            with apply.
                           properties:
                             name:
                               type: string
@@ -613,7 +747,8 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: MaxMemory is the amount of maximum memory for the...
+                    description: MaxMemory is the amount of maximum memory for the
+                      Pod.
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
@@ -622,23 +757,28 @@ spec:
                     - type: integer
                     - type: string
                     default: 4Gi
-                    description: Memory is the amount of memory requested for the...
+                    description: Memory is the amount of memory requested for the
+                      Pod.
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   serviceAccountName:
-                    description: ServiceAccountName specifies the ServiceAccount...
+                    description: ServiceAccountName specifies the ServiceAccount to
+                      run the Pod.
                     minLength: 1
                     type: string
                   threads:
                     default: 4
-                    description: Threads is the number of threads used for backup...
+                    description: Threads is the number of threads used for backup
+                      or restoration.
                     minimum: 1
                     type: integer
                   volumeMounts:
-                    description: VolumeMounts describes a list of volume mounts...
+                    description: VolumeMounts describes a list of volume mounts that
+                      are to be mounted in a container.
                     items:
-                      description: VolumeMountApplyConfiguration is the type defined...
+                      description: VolumeMountApplyConfiguration is the type defined
+                        to implement the DeepCopy method.
                       properties:
                         mountPath:
                           type: string
@@ -650,7 +790,8 @@ spec:
                         readOnly:
                           type: boolean
                         recursiveReadOnly:
-                          description: RecursiveReadOnlyMode describes...
+                          description: RecursiveReadOnlyMode describes recursive-readonly
+                            mode.
                           type: string
                         subPath:
                           type: string
@@ -659,12 +800,16 @@ spec:
                       type: object
                     type: array
                   volumes:
-                    description: Volumes defines the list of volumes that can be...
+                    description: Volumes defines the list of volumes that can be mounted
+                      by containers in the Pod.
                     items:
-                      description: VolumeApplyConfiguration is the type defined to...
+                      description: VolumeApplyConfiguration is the type defined to
+                        implement the DeepCopy method.
                       properties:
                         awsElasticBlockStore:
-                          description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
+                          description: |-
+                            AWSElasticBlockStoreVolumeSourceApplyConfiguration represents a declarative configuration of the AWSElasticBlockStoreVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -677,7 +822,9 @@ spec:
                               type: string
                           type: object
                         azureDisk:
-                          description: AzureDiskVolumeSourceApplyConfiguration...
+                          description: |-
+                            AzureDiskVolumeSourceApplyConfiguration represents a declarative configuration of the AzureDiskVolumeSource type for use
+                            with apply.
                           properties:
                             cachingMode:
                               type: string
@@ -693,7 +840,9 @@ spec:
                               type: boolean
                           type: object
                         azureFile:
-                          description: AzureFileVolumeSourceApplyConfiguration...
+                          description: |-
+                            AzureFileVolumeSourceApplyConfiguration represents a declarative configuration of the AzureFileVolumeSource type for use
+                            with apply.
                           properties:
                             readOnly:
                               type: boolean
@@ -703,8 +852,9 @@ spec:
                               type: string
                           type: object
                         cephfs:
-                          description: CephFSVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            CephFSVolumeSourceApplyConfiguration represents a declarative configuration of the CephFSVolumeSource type for use
+                            with apply.
                           properties:
                             monitors:
                               items:
@@ -717,8 +867,9 @@ spec:
                             secretFile:
                               type: string
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -727,16 +878,18 @@ spec:
                               type: string
                           type: object
                         cinder:
-                          description: CinderVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            CinderVolumeSourceApplyConfiguration represents a declarative configuration of the CinderVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -745,15 +898,18 @@ spec:
                               type: string
                           type: object
                         configMap:
-                          description: ConfigMapVolumeSourceApplyConfiguration...
+                          description: |-
+                            ConfigMapVolumeSourceApplyConfiguration represents a declarative configuration of the ConfigMapVolumeSource type for use
+                            with apply.
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             items:
                               items:
-                                description: KeyToPathApplyConfiguration represents
-                                  a...
+                                description: |-
+                                  KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                  with apply.
                                 properties:
                                   key:
                                     type: string
@@ -770,16 +926,18 @@ spec:
                               type: boolean
                           type: object
                         csi:
-                          description: CSIVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            CSIVolumeSourceApplyConfiguration represents a declarative configuration of the CSIVolumeSource type for use
+                            with apply.
                           properties:
                             driver:
                               type: string
                             fsType:
                               type: string
                             nodePublishSecretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -792,18 +950,23 @@ spec:
                               type: object
                           type: object
                         downwardAPI:
-                          description: DownwardAPIVolumeSourceApplyConfiguration...
+                          description: |-
+                            DownwardAPIVolumeSourceApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeSource type for use
+                            with apply.
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             items:
                               items:
-                                description: DownwardAPIVolumeFileApplyConfiguration...
+                                description: |-
+                                  DownwardAPIVolumeFileApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeFile type for use
+                                  with apply.
                                 properties:
                                   fieldRef:
-                                    description: ObjectFieldSelectorApplyConfiguration
-                                      represents...
+                                    description: |-
+                                      ObjectFieldSelectorApplyConfiguration represents a declarative configuration of the ObjectFieldSelector type for use
+                                      with apply.
                                     properties:
                                       apiVersion:
                                         type: string
@@ -816,7 +979,9 @@ spec:
                                   path:
                                     type: string
                                   resourceFieldRef:
-                                    description: ResourceFieldSelectorApplyConfiguration...
+                                    description: |-
+                                      ResourceFieldSelectorApplyConfiguration represents a declarative configuration of the ResourceFieldSelector type for use
+                                      with apply.
                                     properties:
                                       containerName:
                                         type: string
@@ -833,11 +998,13 @@ spec:
                               type: array
                           type: object
                         emptyDir:
-                          description: EmptyDirVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            EmptyDirVolumeSourceApplyConfiguration represents a declarative configuration of the EmptyDirVolumeSource type for use
+                            with apply.
                           properties:
                             medium:
                               description: StorageMedium defines ways that storage
-                                can be...
+                                can be allocated to a volume.
                               type: string
                             sizeLimit:
                               anyOf:
@@ -847,14 +1014,19 @@ spec:
                               x-kubernetes-int-or-string: true
                           type: object
                         ephemeral:
-                          description: EphemeralVolumeSourceApplyConfiguration...
+                          description: |-
+                            EphemeralVolumeSourceApplyConfiguration represents a declarative configuration of the EphemeralVolumeSource type for use
+                            with apply.
                           properties:
                             volumeClaimTemplate:
-                              description: PersistentVolumeClaimTemplateApplyConfiguration...
+                              description: |-
+                                PersistentVolumeClaimTemplateApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimTemplate type for use
+                                with apply.
                               properties:
                                 metadata:
-                                  description: ObjectMetaApplyConfiguration represents
-                                    a...
+                                  description: |-
+                                    ObjectMetaApplyConfiguration represents a declarative configuration of the ObjectMeta type for use
+                                    with apply.
                                   properties:
                                     annotations:
                                       additionalProperties:
@@ -888,8 +1060,9 @@ spec:
                                       type: string
                                     ownerReferences:
                                       items:
-                                        description: OwnerReferenceApplyConfiguration
-                                          represents a...
+                                        description: |-
+                                          OwnerReferenceApplyConfiguration represents a declarative configuration of the OwnerReference type for use
+                                          with apply.
                                         properties:
                                           apiVersion:
                                             type: string
@@ -902,27 +1075,35 @@ spec:
                                           name:
                                             type: string
                                           uid:
-                                            description: UID is a type that holds
-                                              unique ID values,...
+                                            description: |-
+                                              UID is a type that holds unique ID values, including UUIDs.  Because we
+                                              don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                                              intent and helps make sure that UIDs and names do not get conflated.
                                             type: string
                                         type: object
                                       type: array
                                     resourceVersion:
                                       type: string
                                     uid:
-                                      description: UID is a type that holds unique
-                                        ID values,...
+                                      description: |-
+                                        UID is a type that holds unique ID values, including UUIDs.  Because we
+                                        don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                                        intent and helps make sure that UIDs and names do not get conflated.
                                       type: string
                                   type: object
                                 spec:
-                                  description: PersistentVolumeClaimSpecApplyConfiguration...
+                                  description: |-
+                                    PersistentVolumeClaimSpecApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimSpec type for use
+                                    with apply.
                                   properties:
                                     accessModes:
                                       items:
                                         type: string
                                       type: array
                                     dataSource:
-                                      description: TypedLocalObjectReferenceApplyConfiguration...
+                                      description: |-
+                                        TypedLocalObjectReferenceApplyConfiguration represents a declarative configuration of the TypedLocalObjectReference type for use
+                                        with apply.
                                       properties:
                                         apiGroup:
                                           type: string
@@ -932,8 +1113,9 @@ spec:
                                           type: string
                                       type: object
                                     dataSourceRef:
-                                      description: TypedObjectReferenceApplyConfiguration
-                                        represents...
+                                      description: |-
+                                        TypedObjectReferenceApplyConfiguration represents a declarative configuration of the TypedObjectReference type for use
+                                        with apply.
                                       properties:
                                         apiGroup:
                                           type: string
@@ -945,7 +1127,9 @@ spec:
                                           type: string
                                       type: object
                                     resources:
-                                      description: VolumeResourceRequirementsApplyConfiguration...
+                                      description: |-
+                                        VolumeResourceRequirementsApplyConfiguration represents a declarative configuration of the VolumeResourceRequirements type for use
+                                        with apply.
                                       properties:
                                         limits:
                                           additionalProperties:
@@ -955,7 +1139,7 @@ spec:
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
                                           description: ResourceList is a set of (resource
-                                            name,...
+                                            name, quantity) pairs.
                                           type: object
                                         requests:
                                           additionalProperties:
@@ -965,22 +1149,26 @@ spec:
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
                                           description: ResourceList is a set of (resource
-                                            name,...
+                                            name, quantity) pairs.
                                           type: object
                                       type: object
                                     selector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -999,7 +1187,8 @@ spec:
                                       type: string
                                     volumeMode:
                                       description: PersistentVolumeMode describes
-                                        how a volume is...
+                                        how a volume is intended to be consumed, either
+                                        Block or Filesystem.
                                       type: string
                                     volumeName:
                                       type: string
@@ -1007,8 +1196,9 @@ spec:
                               type: object
                           type: object
                         fc:
-                          description: FCVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            FCVolumeSourceApplyConfiguration represents a declarative configuration of the FCVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1027,8 +1217,9 @@ spec:
                               type: array
                           type: object
                         flexVolume:
-                          description: FlexVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            FlexVolumeSourceApplyConfiguration represents a declarative configuration of the FlexVolumeSource type for use
+                            with apply.
                           properties:
                             driver:
                               type: string
@@ -1041,15 +1232,18 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
                               type: object
                           type: object
                         flocker:
-                          description: FlockerVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            FlockerVolumeSourceApplyConfiguration represents a declarative configuration of the FlockerVolumeSource type for use
+                            with apply.
                           properties:
                             datasetName:
                               type: string
@@ -1057,7 +1251,9 @@ spec:
                               type: string
                           type: object
                         gcePersistentDisk:
-                          description: GCEPersistentDiskVolumeSourceApplyConfiguration...
+                          description: |-
+                            GCEPersistentDiskVolumeSourceApplyConfiguration represents a declarative configuration of the GCEPersistentDiskVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1070,7 +1266,9 @@ spec:
                               type: boolean
                           type: object
                         gitRepo:
-                          description: GitRepoVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            GitRepoVolumeSourceApplyConfiguration represents a declarative configuration of the GitRepoVolumeSource type for use
+                            with apply.
                           properties:
                             directory:
                               type: string
@@ -1080,7 +1278,9 @@ spec:
                               type: string
                           type: object
                         glusterfs:
-                          description: GlusterfsVolumeSourceApplyConfiguration...
+                          description: |-
+                            GlusterfsVolumeSourceApplyConfiguration represents a declarative configuration of the GlusterfsVolumeSource type for use
+                            with apply.
                           properties:
                             endpoints:
                               type: string
@@ -1090,7 +1290,9 @@ spec:
                               type: boolean
                           type: object
                         hostPath:
-                          description: HostPathVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            HostPathVolumeSourceApplyConfiguration represents a declarative configuration of the HostPathVolumeSource type for use
+                            with apply.
                           properties:
                             path:
                               type: string
@@ -1098,19 +1300,21 @@ spec:
                               type: string
                           type: object
                         image:
-                          description: ImageVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            ImageVolumeSourceApplyConfiguration represents a declarative configuration of the ImageVolumeSource type for use
+                            with apply.
                           properties:
                             pullPolicy:
                               description: PullPolicy describes a policy for if/when
-                                to pull...
+                                to pull a container image
                               type: string
                             reference:
                               type: string
                           type: object
                         iscsi:
-                          description: ISCSIVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            ISCSIVolumeSourceApplyConfiguration represents a declarative configuration of the ISCSIVolumeSource type for use
+                            with apply.
                           properties:
                             chapAuthDiscovery:
                               type: boolean
@@ -1134,8 +1338,9 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -1146,8 +1351,9 @@ spec:
                         name:
                           type: string
                         nfs:
-                          description: NFSVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            NFSVolumeSourceApplyConfiguration represents a declarative configuration of the NFSVolumeSource type for use
+                            with apply.
                           properties:
                             path:
                               type: string
@@ -1157,7 +1363,9 @@ spec:
                               type: string
                           type: object
                         persistentVolumeClaim:
-                          description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
+                          description: |-
+                            PersistentVolumeClaimVolumeSourceApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimVolumeSource type for use
+                            with apply.
                           properties:
                             claimName:
                               type: string
@@ -1165,7 +1373,9 @@ spec:
                               type: boolean
                           type: object
                         photonPersistentDisk:
-                          description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
+                          description: |-
+                            PhotonPersistentDiskVolumeSourceApplyConfiguration represents a declarative configuration of the PhotonPersistentDiskVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1173,7 +1383,9 @@ spec:
                               type: string
                           type: object
                         portworxVolume:
-                          description: PortworxVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            PortworxVolumeSourceApplyConfiguration represents a declarative configuration of the PortworxVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1183,32 +1395,41 @@ spec:
                               type: string
                           type: object
                         projected:
-                          description: ProjectedVolumeSourceApplyConfiguration...
+                          description: |-
+                            ProjectedVolumeSourceApplyConfiguration represents a declarative configuration of the ProjectedVolumeSource type for use
+                            with apply.
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             sources:
                               items:
-                                description: VolumeProjectionApplyConfiguration represents
-                                  a...
+                                description: |-
+                                  VolumeProjectionApplyConfiguration represents a declarative configuration of the VolumeProjection type for use
+                                  with apply.
                                 properties:
                                   clusterTrustBundle:
-                                    description: ClusterTrustBundleProjectionApplyConfiguration...
+                                    description: |-
+                                      ClusterTrustBundleProjectionApplyConfiguration represents a declarative configuration of the ClusterTrustBundleProjection type for use
+                                      with apply.
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration
-                                          represents a...
+                                        description: |-
+                                          LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                          with apply.
                                         properties:
                                           matchExpressions:
                                             items:
-                                              description: LabelSelectorRequirementApplyConfiguration...
+                                              description: |-
+                                                LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                                with apply.
                                               properties:
                                                 key:
                                                   type: string
                                                 operator:
                                                   description: A label selector operator
-                                                    is the set of operators...
+                                                    is the set of operators that can
+                                                    be used in a selector requirement.
                                                   type: string
                                                 values:
                                                   items:
@@ -1231,13 +1452,15 @@ spec:
                                         type: string
                                     type: object
                                   configMap:
-                                    description: ConfigMapProjectionApplyConfiguration
-                                      represents...
+                                    description: |-
+                                      ConfigMapProjectionApplyConfiguration represents a declarative configuration of the ConfigMapProjection type for use
+                                      with apply.
                                     properties:
                                       items:
                                         items:
-                                          description: KeyToPathApplyConfiguration
-                                            represents a...
+                                          description: |-
+                                            KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                            with apply.
                                           properties:
                                             key:
                                               type: string
@@ -1254,15 +1477,20 @@ spec:
                                         type: boolean
                                     type: object
                                   downwardAPI:
-                                    description: DownwardAPIProjectionApplyConfiguration...
+                                    description: |-
+                                      DownwardAPIProjectionApplyConfiguration represents a declarative configuration of the DownwardAPIProjection type for use
+                                      with apply.
                                     properties:
                                       items:
                                         items:
-                                          description: DownwardAPIVolumeFileApplyConfiguration...
+                                          description: |-
+                                            DownwardAPIVolumeFileApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeFile type for use
+                                            with apply.
                                           properties:
                                             fieldRef:
-                                              description: ObjectFieldSelectorApplyConfiguration
-                                                represents...
+                                              description: |-
+                                                ObjectFieldSelectorApplyConfiguration represents a declarative configuration of the ObjectFieldSelector type for use
+                                                with apply.
                                               properties:
                                                 apiVersion:
                                                   type: string
@@ -1275,7 +1503,9 @@ spec:
                                             path:
                                               type: string
                                             resourceFieldRef:
-                                              description: ResourceFieldSelectorApplyConfiguration...
+                                              description: |-
+                                                ResourceFieldSelectorApplyConfiguration represents a declarative configuration of the ResourceFieldSelector type for use
+                                                with apply.
                                               properties:
                                                 containerName:
                                                   type: string
@@ -1309,13 +1539,15 @@ spec:
                                         type: string
                                     type: object
                                   secret:
-                                    description: SecretProjectionApplyConfiguration
-                                      represents a...
+                                    description: |-
+                                      SecretProjectionApplyConfiguration represents a declarative configuration of the SecretProjection type for use
+                                      with apply.
                                     properties:
                                       items:
                                         items:
-                                          description: KeyToPathApplyConfiguration
-                                            represents a...
+                                          description: |-
+                                            KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                            with apply.
                                           properties:
                                             key:
                                               type: string
@@ -1332,7 +1564,9 @@ spec:
                                         type: boolean
                                     type: object
                                   serviceAccountToken:
-                                    description: ServiceAccountTokenProjectionApplyConfiguration...
+                                    description: |-
+                                      ServiceAccountTokenProjectionApplyConfiguration represents a declarative configuration of the ServiceAccountTokenProjection type for use
+                                      with apply.
                                     properties:
                                       audience:
                                         type: string
@@ -1346,7 +1580,9 @@ spec:
                               type: array
                           type: object
                         quobyte:
-                          description: QuobyteVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            QuobyteVolumeSourceApplyConfiguration represents a declarative configuration of the QuobyteVolumeSource type for use
+                            with apply.
                           properties:
                             group:
                               type: string
@@ -1362,8 +1598,9 @@ spec:
                               type: string
                           type: object
                         rbd:
-                          description: RBDVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            RBDVolumeSourceApplyConfiguration represents a declarative configuration of the RBDVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1380,8 +1617,9 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -1390,7 +1628,9 @@ spec:
                               type: string
                           type: object
                         scaleIO:
-                          description: ScaleIOVolumeSourceApplyConfiguration represents...
+                          description: |-
+                            ScaleIOVolumeSourceApplyConfiguration represents a declarative configuration of the ScaleIOVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1401,8 +1641,9 @@ spec:
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -1419,16 +1660,18 @@ spec:
                               type: string
                           type: object
                         secret:
-                          description: SecretVolumeSourceApplyConfiguration represents
-                            a...
+                          description: |-
+                            SecretVolumeSourceApplyConfiguration represents a declarative configuration of the SecretVolumeSource type for use
+                            with apply.
                           properties:
                             defaultMode:
                               format: int32
                               type: integer
                             items:
                               items:
-                                description: KeyToPathApplyConfiguration represents
-                                  a...
+                                description: |-
+                                  KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                  with apply.
                                 properties:
                                   key:
                                     type: string
@@ -1445,15 +1688,18 @@ spec:
                               type: string
                           type: object
                         storageos:
-                          description: StorageOSVolumeSourceApplyConfiguration...
+                          description: |-
+                            StorageOSVolumeSourceApplyConfiguration represents a declarative configuration of the StorageOSVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
                             readOnly:
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: |-
+                                LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                                with apply.
                               properties:
                                 name:
                                   type: string
@@ -1464,7 +1710,9 @@ spec:
                               type: string
                           type: object
                         vsphereVolume:
-                          description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
+                          description: |-
+                            VsphereVirtualDiskVolumeSourceApplyConfiguration represents a declarative configuration of the VsphereVirtualDiskVolumeSource type for use
+                            with apply.
                           properties:
                             fsType:
                               type: string
@@ -1478,10 +1726,18 @@ spec:
                       type: object
                     type: array
                   workVolume:
-                    description: WorkVolume is the volume source for the working...
+                    description: |-
+                      WorkVolume is the volume source for the working directory.
+                      Since the backup or restore task can use a lot of bytes in the working directory,
+                      You should always give a volume with enough capacity.
+
+                      The recommended volume source is a generic ephemeral volume.
+                      https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
                     properties:
                       awsElasticBlockStore:
-                        description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
+                        description: |-
+                          AWSElasticBlockStoreVolumeSourceApplyConfiguration represents a declarative configuration of the AWSElasticBlockStoreVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -1494,7 +1750,9 @@ spec:
                             type: string
                         type: object
                       azureDisk:
-                        description: AzureDiskVolumeSourceApplyConfiguration...
+                        description: |-
+                          AzureDiskVolumeSourceApplyConfiguration represents a declarative configuration of the AzureDiskVolumeSource type for use
+                          with apply.
                         properties:
                           cachingMode:
                             type: string
@@ -1510,7 +1768,9 @@ spec:
                             type: boolean
                         type: object
                       azureFile:
-                        description: AzureFileVolumeSourceApplyConfiguration...
+                        description: |-
+                          AzureFileVolumeSourceApplyConfiguration represents a declarative configuration of the AzureFileVolumeSource type for use
+                          with apply.
                         properties:
                           readOnly:
                             type: boolean
@@ -1520,8 +1780,9 @@ spec:
                             type: string
                         type: object
                       cephfs:
-                        description: CephFSVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          CephFSVolumeSourceApplyConfiguration represents a declarative configuration of the CephFSVolumeSource type for use
+                          with apply.
                         properties:
                           monitors:
                             items:
@@ -1534,7 +1795,9 @@ spec:
                           secretFile:
                             type: string
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -1543,15 +1806,18 @@ spec:
                             type: string
                         type: object
                       cinder:
-                        description: CinderVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          CinderVolumeSourceApplyConfiguration represents a declarative configuration of the CinderVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -1560,15 +1826,18 @@ spec:
                             type: string
                         type: object
                       configMap:
-                        description: ConfigMapVolumeSourceApplyConfiguration...
+                        description: |-
+                          ConfigMapVolumeSourceApplyConfiguration represents a declarative configuration of the ConfigMapVolumeSource type for use
+                          with apply.
                         properties:
                           defaultMode:
                             format: int32
                             type: integer
                           items:
                             items:
-                              description: KeyToPathApplyConfiguration represents
-                                a...
+                              description: |-
+                                KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                with apply.
                               properties:
                                 key:
                                   type: string
@@ -1585,15 +1854,18 @@ spec:
                             type: boolean
                         type: object
                       csi:
-                        description: CSIVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          CSIVolumeSourceApplyConfiguration represents a declarative configuration of the CSIVolumeSource type for use
+                          with apply.
                         properties:
                           driver:
                             type: string
                           fsType:
                             type: string
                           nodePublishSecretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -1606,18 +1878,23 @@ spec:
                             type: object
                         type: object
                       downwardAPI:
-                        description: DownwardAPIVolumeSourceApplyConfiguration...
+                        description: |-
+                          DownwardAPIVolumeSourceApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeSource type for use
+                          with apply.
                         properties:
                           defaultMode:
                             format: int32
                             type: integer
                           items:
                             items:
-                              description: DownwardAPIVolumeFileApplyConfiguration...
+                              description: |-
+                                DownwardAPIVolumeFileApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeFile type for use
+                                with apply.
                               properties:
                                 fieldRef:
-                                  description: ObjectFieldSelectorApplyConfiguration
-                                    represents...
+                                  description: |-
+                                    ObjectFieldSelectorApplyConfiguration represents a declarative configuration of the ObjectFieldSelector type for use
+                                    with apply.
                                   properties:
                                     apiVersion:
                                       type: string
@@ -1630,7 +1907,9 @@ spec:
                                 path:
                                   type: string
                                 resourceFieldRef:
-                                  description: ResourceFieldSelectorApplyConfiguration...
+                                  description: |-
+                                    ResourceFieldSelectorApplyConfiguration represents a declarative configuration of the ResourceFieldSelector type for use
+                                    with apply.
                                   properties:
                                     containerName:
                                       type: string
@@ -1647,11 +1926,13 @@ spec:
                             type: array
                         type: object
                       emptyDir:
-                        description: EmptyDirVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          EmptyDirVolumeSourceApplyConfiguration represents a declarative configuration of the EmptyDirVolumeSource type for use
+                          with apply.
                         properties:
                           medium:
                             description: StorageMedium defines ways that storage can
-                              be...
+                              be allocated to a volume.
                             type: string
                           sizeLimit:
                             anyOf:
@@ -1661,14 +1942,19 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       ephemeral:
-                        description: EphemeralVolumeSourceApplyConfiguration...
+                        description: |-
+                          EphemeralVolumeSourceApplyConfiguration represents a declarative configuration of the EphemeralVolumeSource type for use
+                          with apply.
                         properties:
                           volumeClaimTemplate:
-                            description: PersistentVolumeClaimTemplateApplyConfiguration...
+                            description: |-
+                              PersistentVolumeClaimTemplateApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimTemplate type for use
+                              with apply.
                             properties:
                               metadata:
-                                description: ObjectMetaApplyConfiguration represents
-                                  a...
+                                description: |-
+                                  ObjectMetaApplyConfiguration represents a declarative configuration of the ObjectMeta type for use
+                                  with apply.
                                 properties:
                                   annotations:
                                     additionalProperties:
@@ -1702,8 +1988,9 @@ spec:
                                     type: string
                                   ownerReferences:
                                     items:
-                                      description: OwnerReferenceApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        OwnerReferenceApplyConfiguration represents a declarative configuration of the OwnerReference type for use
+                                        with apply.
                                       properties:
                                         apiVersion:
                                           type: string
@@ -1716,27 +2003,35 @@ spec:
                                         name:
                                           type: string
                                         uid:
-                                          description: UID is a type that holds unique
-                                            ID values,...
+                                          description: |-
+                                            UID is a type that holds unique ID values, including UUIDs.  Because we
+                                            don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                                            intent and helps make sure that UIDs and names do not get conflated.
                                           type: string
                                       type: object
                                     type: array
                                   resourceVersion:
                                     type: string
                                   uid:
-                                    description: UID is a type that holds unique ID
-                                      values,...
+                                    description: |-
+                                      UID is a type that holds unique ID values, including UUIDs.  Because we
+                                      don't ONLY use UUIDs, this is an alias to string.  Being a type captures
+                                      intent and helps make sure that UIDs and names do not get conflated.
                                     type: string
                                 type: object
                               spec:
-                                description: PersistentVolumeClaimSpecApplyConfiguration...
+                                description: |-
+                                  PersistentVolumeClaimSpecApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimSpec type for use
+                                  with apply.
                                 properties:
                                   accessModes:
                                     items:
                                       type: string
                                     type: array
                                   dataSource:
-                                    description: TypedLocalObjectReferenceApplyConfiguration...
+                                    description: |-
+                                      TypedLocalObjectReferenceApplyConfiguration represents a declarative configuration of the TypedLocalObjectReference type for use
+                                      with apply.
                                     properties:
                                       apiGroup:
                                         type: string
@@ -1746,8 +2041,9 @@ spec:
                                         type: string
                                     type: object
                                   dataSourceRef:
-                                    description: TypedObjectReferenceApplyConfiguration
-                                      represents...
+                                    description: |-
+                                      TypedObjectReferenceApplyConfiguration represents a declarative configuration of the TypedObjectReference type for use
+                                      with apply.
                                     properties:
                                       apiGroup:
                                         type: string
@@ -1759,7 +2055,9 @@ spec:
                                         type: string
                                     type: object
                                   resources:
-                                    description: VolumeResourceRequirementsApplyConfiguration...
+                                    description: |-
+                                      VolumeResourceRequirementsApplyConfiguration represents a declarative configuration of the VolumeResourceRequirements type for use
+                                      with apply.
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -1769,7 +2067,7 @@ spec:
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
                                         description: ResourceList is a set of (resource
-                                          name,...
+                                          name, quantity) pairs.
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -1779,22 +2077,26 @@ spec:
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
                                         description: ResourceList is a set of (resource
-                                          name,...
+                                          name, quantity) pairs.
                                         type: object
                                     type: object
                                   selector:
-                                    description: LabelSelectorApplyConfiguration represents
-                                      a...
+                                    description: |-
+                                      LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                      with apply.
                                     properties:
                                       matchExpressions:
                                         items:
-                                          description: LabelSelectorRequirementApplyConfiguration...
+                                          description: |-
+                                            LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                            with apply.
                                           properties:
                                             key:
                                               type: string
                                             operator:
                                               description: A label selector operator
-                                                is the set of operators...
+                                                is the set of operators that can be
+                                                used in a selector requirement.
                                               type: string
                                             values:
                                               items:
@@ -1813,7 +2115,8 @@ spec:
                                     type: string
                                   volumeMode:
                                     description: PersistentVolumeMode describes how
-                                      a volume is...
+                                      a volume is intended to be consumed, either
+                                      Block or Filesystem.
                                     type: string
                                   volumeName:
                                     type: string
@@ -1821,7 +2124,9 @@ spec:
                             type: object
                         type: object
                       fc:
-                        description: FCVolumeSourceApplyConfiguration represents a...
+                        description: |-
+                          FCVolumeSourceApplyConfiguration represents a declarative configuration of the FCVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -1840,8 +2145,9 @@ spec:
                             type: array
                         type: object
                       flexVolume:
-                        description: FlexVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          FlexVolumeSourceApplyConfiguration represents a declarative configuration of the FlexVolumeSource type for use
+                          with apply.
                         properties:
                           driver:
                             type: string
@@ -1854,14 +2160,18 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
                             type: object
                         type: object
                       flocker:
-                        description: FlockerVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          FlockerVolumeSourceApplyConfiguration represents a declarative configuration of the FlockerVolumeSource type for use
+                          with apply.
                         properties:
                           datasetName:
                             type: string
@@ -1869,7 +2179,9 @@ spec:
                             type: string
                         type: object
                       gcePersistentDisk:
-                        description: GCEPersistentDiskVolumeSourceApplyConfiguration...
+                        description: |-
+                          GCEPersistentDiskVolumeSourceApplyConfiguration represents a declarative configuration of the GCEPersistentDiskVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -1882,7 +2194,9 @@ spec:
                             type: boolean
                         type: object
                       gitRepo:
-                        description: GitRepoVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          GitRepoVolumeSourceApplyConfiguration represents a declarative configuration of the GitRepoVolumeSource type for use
+                          with apply.
                         properties:
                           directory:
                             type: string
@@ -1892,7 +2206,9 @@ spec:
                             type: string
                         type: object
                       glusterfs:
-                        description: GlusterfsVolumeSourceApplyConfiguration...
+                        description: |-
+                          GlusterfsVolumeSourceApplyConfiguration represents a declarative configuration of the GlusterfsVolumeSource type for use
+                          with apply.
                         properties:
                           endpoints:
                             type: string
@@ -1902,7 +2218,9 @@ spec:
                             type: boolean
                         type: object
                       hostPath:
-                        description: HostPathVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          HostPathVolumeSourceApplyConfiguration represents a declarative configuration of the HostPathVolumeSource type for use
+                          with apply.
                         properties:
                           path:
                             type: string
@@ -1910,19 +2228,21 @@ spec:
                             type: string
                         type: object
                       image:
-                        description: ImageVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          ImageVolumeSourceApplyConfiguration represents a declarative configuration of the ImageVolumeSource type for use
+                          with apply.
                         properties:
                           pullPolicy:
                             description: PullPolicy describes a policy for if/when
-                              to pull...
+                              to pull a container image
                             type: string
                           reference:
                             type: string
                         type: object
                       iscsi:
-                        description: ISCSIVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          ISCSIVolumeSourceApplyConfiguration represents a declarative configuration of the ISCSIVolumeSource type for use
+                          with apply.
                         properties:
                           chapAuthDiscovery:
                             type: boolean
@@ -1946,7 +2266,9 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -1955,8 +2277,9 @@ spec:
                             type: string
                         type: object
                       nfs:
-                        description: NFSVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          NFSVolumeSourceApplyConfiguration represents a declarative configuration of the NFSVolumeSource type for use
+                          with apply.
                         properties:
                           path:
                             type: string
@@ -1966,7 +2289,9 @@ spec:
                             type: string
                         type: object
                       persistentVolumeClaim:
-                        description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
+                        description: |-
+                          PersistentVolumeClaimVolumeSourceApplyConfiguration represents a declarative configuration of the PersistentVolumeClaimVolumeSource type for use
+                          with apply.
                         properties:
                           claimName:
                             type: string
@@ -1974,7 +2299,9 @@ spec:
                             type: boolean
                         type: object
                       photonPersistentDisk:
-                        description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
+                        description: |-
+                          PhotonPersistentDiskVolumeSourceApplyConfiguration represents a declarative configuration of the PhotonPersistentDiskVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -1982,7 +2309,9 @@ spec:
                             type: string
                         type: object
                       portworxVolume:
-                        description: PortworxVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          PortworxVolumeSourceApplyConfiguration represents a declarative configuration of the PortworxVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -1992,32 +2321,41 @@ spec:
                             type: string
                         type: object
                       projected:
-                        description: ProjectedVolumeSourceApplyConfiguration...
+                        description: |-
+                          ProjectedVolumeSourceApplyConfiguration represents a declarative configuration of the ProjectedVolumeSource type for use
+                          with apply.
                         properties:
                           defaultMode:
                             format: int32
                             type: integer
                           sources:
                             items:
-                              description: VolumeProjectionApplyConfiguration represents
-                                a...
+                              description: |-
+                                VolumeProjectionApplyConfiguration represents a declarative configuration of the VolumeProjection type for use
+                                with apply.
                               properties:
                                 clusterTrustBundle:
-                                  description: ClusterTrustBundleProjectionApplyConfiguration...
+                                  description: |-
+                                    ClusterTrustBundleProjectionApplyConfiguration represents a declarative configuration of the ClusterTrustBundleProjection type for use
+                                    with apply.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: |-
+                                        LabelSelectorApplyConfiguration represents a declarative configuration of the LabelSelector type for use
+                                        with apply.
                                       properties:
                                         matchExpressions:
                                           items:
-                                            description: LabelSelectorRequirementApplyConfiguration...
+                                            description: |-
+                                              LabelSelectorRequirementApplyConfiguration represents a declarative configuration of the LabelSelectorRequirement type for use
+                                              with apply.
                                             properties:
                                               key:
                                                 type: string
                                               operator:
                                                 description: A label selector operator
-                                                  is the set of operators...
+                                                  is the set of operators that can
+                                                  be used in a selector requirement.
                                                 type: string
                                               values:
                                                 items:
@@ -2040,13 +2378,15 @@ spec:
                                       type: string
                                   type: object
                                 configMap:
-                                  description: ConfigMapProjectionApplyConfiguration
-                                    represents...
+                                  description: |-
+                                    ConfigMapProjectionApplyConfiguration represents a declarative configuration of the ConfigMapProjection type for use
+                                    with apply.
                                   properties:
                                     items:
                                       items:
-                                        description: KeyToPathApplyConfiguration represents
-                                          a...
+                                        description: |-
+                                          KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
@@ -2063,15 +2403,20 @@ spec:
                                       type: boolean
                                   type: object
                                 downwardAPI:
-                                  description: DownwardAPIProjectionApplyConfiguration...
+                                  description: |-
+                                    DownwardAPIProjectionApplyConfiguration represents a declarative configuration of the DownwardAPIProjection type for use
+                                    with apply.
                                   properties:
                                     items:
                                       items:
-                                        description: DownwardAPIVolumeFileApplyConfiguration...
+                                        description: |-
+                                          DownwardAPIVolumeFileApplyConfiguration represents a declarative configuration of the DownwardAPIVolumeFile type for use
+                                          with apply.
                                         properties:
                                           fieldRef:
-                                            description: ObjectFieldSelectorApplyConfiguration
-                                              represents...
+                                            description: |-
+                                              ObjectFieldSelectorApplyConfiguration represents a declarative configuration of the ObjectFieldSelector type for use
+                                              with apply.
                                             properties:
                                               apiVersion:
                                                 type: string
@@ -2084,7 +2429,9 @@ spec:
                                           path:
                                             type: string
                                           resourceFieldRef:
-                                            description: ResourceFieldSelectorApplyConfiguration...
+                                            description: |-
+                                              ResourceFieldSelectorApplyConfiguration represents a declarative configuration of the ResourceFieldSelector type for use
+                                              with apply.
                                             properties:
                                               containerName:
                                                 type: string
@@ -2118,13 +2465,15 @@ spec:
                                       type: string
                                   type: object
                                 secret:
-                                  description: SecretProjectionApplyConfiguration
-                                    represents a...
+                                  description: |-
+                                    SecretProjectionApplyConfiguration represents a declarative configuration of the SecretProjection type for use
+                                    with apply.
                                   properties:
                                     items:
                                       items:
-                                        description: KeyToPathApplyConfiguration represents
-                                          a...
+                                        description: |-
+                                          KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                          with apply.
                                         properties:
                                           key:
                                             type: string
@@ -2141,7 +2490,9 @@ spec:
                                       type: boolean
                                   type: object
                                 serviceAccountToken:
-                                  description: ServiceAccountTokenProjectionApplyConfiguration...
+                                  description: |-
+                                    ServiceAccountTokenProjectionApplyConfiguration represents a declarative configuration of the ServiceAccountTokenProjection type for use
+                                    with apply.
                                   properties:
                                     audience:
                                       type: string
@@ -2155,7 +2506,9 @@ spec:
                             type: array
                         type: object
                       quobyte:
-                        description: QuobyteVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          QuobyteVolumeSourceApplyConfiguration represents a declarative configuration of the QuobyteVolumeSource type for use
+                          with apply.
                         properties:
                           group:
                             type: string
@@ -2171,8 +2524,9 @@ spec:
                             type: string
                         type: object
                       rbd:
-                        description: RBDVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          RBDVolumeSourceApplyConfiguration represents a declarative configuration of the RBDVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -2189,7 +2543,9 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -2198,7 +2554,9 @@ spec:
                             type: string
                         type: object
                       scaleIO:
-                        description: ScaleIOVolumeSourceApplyConfiguration represents...
+                        description: |-
+                          ScaleIOVolumeSourceApplyConfiguration represents a declarative configuration of the ScaleIOVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -2209,7 +2567,9 @@ spec:
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -2226,16 +2586,18 @@ spec:
                             type: string
                         type: object
                       secret:
-                        description: SecretVolumeSourceApplyConfiguration represents
-                          a...
+                        description: |-
+                          SecretVolumeSourceApplyConfiguration represents a declarative configuration of the SecretVolumeSource type for use
+                          with apply.
                         properties:
                           defaultMode:
                             format: int32
                             type: integer
                           items:
                             items:
-                              description: KeyToPathApplyConfiguration represents
-                                a...
+                              description: |-
+                                KeyToPathApplyConfiguration represents a declarative configuration of the KeyToPath type for use
+                                with apply.
                               properties:
                                 key:
                                   type: string
@@ -2252,14 +2614,18 @@ spec:
                             type: string
                         type: object
                       storageos:
-                        description: StorageOSVolumeSourceApplyConfiguration...
+                        description: |-
+                          StorageOSVolumeSourceApplyConfiguration represents a declarative configuration of the StorageOSVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
                           readOnly:
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: |-
+                              LocalObjectReferenceApplyConfiguration represents a declarative configuration of the LocalObjectReference type for use
+                              with apply.
                             properties:
                               name:
                                 type: string
@@ -2270,7 +2636,9 @@ spec:
                             type: string
                         type: object
                       vsphereVolume:
-                        description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
+                        description: |-
+                          VsphereVirtualDiskVolumeSourceApplyConfiguration represents a declarative configuration of the VsphereVirtualDiskVolumeSource type for use
+                          with apply.
                         properties:
                           fsType:
                             type: string
@@ -2288,15 +2656,22 @@ spec:
                 - workVolume
                 type: object
               schedule:
-                description: The schedule in Cron format for periodic backups.
+                description: |-
+                  The schedule in Cron format for periodic backups.
+                  See https://en.wikipedia.org/wiki/Cron
                 type: string
               startingDeadlineSeconds:
-                description: Optional deadline in seconds for starting the job...
+                description: |-
+                  Optional deadline in seconds for starting the job if it misses scheduled
+                  time for any reason.  Missed jobs executions will be counted as failed ones.
                 format: int64
                 nullable: true
                 type: integer
               successfulJobsHistoryLimit:
-                description: The number of successful finished jobs to retain.
+                description: |-
+                  The number of successful finished jobs to retain.
+                  This is a pointer to distinguish between explicit zero and not specified.
+                  Defaults to 3.
                 format: int32
                 minimum: 0
                 nullable: true
