@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/pkg/bucket"
@@ -33,6 +34,8 @@ func makeBucket(bucketName string) (bucket.Bucket, error) {
 		return makeS3Bucket(bucketName)
 	case constants.BackendTypeGCS:
 		return makeGCSBucket(bucketName)
+	case constants.BackendTypeAzure:
+		return makeAzureBucket(bucketName)
 	default:
 		return makeS3Bucket(bucketName)
 	}
@@ -75,6 +78,31 @@ func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 
 func makeGCSBucket(bucketName string) (bucket.Bucket, error) {
 	return bucket.NewGCSBucket(context.Background(), bucketName)
+}
+
+func makeAzureBucket(containerName string) (bucket.Bucket, error) {
+	// Get the service URL from the endpoint URL if provided, otherwise use default
+	serviceURL := commonArgs.endpointURL
+	if serviceURL == "" {
+		// If no endpoint is provided, construct default Azure URL from environment
+		// Users should set AZURE_STORAGE_ACCOUNT environment variable
+		accountName := os.Getenv("AZURE_STORAGE_ACCOUNT")
+		if accountName == "" {
+			return nil, fmt.Errorf("AZURE_STORAGE_ACCOUNT environment variable is required for Azure backend")
+		}
+		serviceURL = fmt.Sprintf("https://%s.blob.core.windows.net/", accountName)
+	}
+
+	// Use DefaultAzureCredential which supports multiple authentication methods:
+	// - Environment variables (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET)
+	// - Managed Identity
+	// - Azure CLI
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure credential: %w", err)
+	}
+
+	return bucket.NewAzureBucket(context.Background(), serviceURL, containerName, credential)
 }
 
 var mysqlPassword = os.Getenv("MYSQL_PASSWORD")
