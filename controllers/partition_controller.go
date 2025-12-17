@@ -95,9 +95,9 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	updateInterval := time.Duration(r.UpdateInterval) * time.Millisecond
-	nextPartitionUpdateTimeBorder := r.LastUpdatedTimestamp.Add(updateInterval)
-	if 0 < r.UpdateInterval && nextPartitionUpdateTimeBorder.After(time.Now()) {
-		log.Info("retry partition update", "nextUpdateBorder", nextPartitionUpdateTimeBorder)
+	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(updateInterval)
+	if 0 < r.UpdateInterval && nextPartitionReadyTime.After(time.Now()) {
+		log.Info("retry partition update", "nextPartitionReadyTime", nextPartitionReadyTime)
 		return reconcile.Result{RequeueAfter: updateInterval}, nil
 	}
 
