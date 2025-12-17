@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,6 +38,9 @@ type StatefulSetPartitionReconciler struct {
 	client.Client
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
+	UpdateInterval          time.Duration
+	LastUpdatedTimestamp    time.Time
+	mu                      sync.Mutex
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch
@@ -50,6 +54,13 @@ type StatefulSetPartitionReconciler struct {
 // See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile#Reconciler
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
+
+	if r.UpdateInterval > 0 {
+		if !r.mu.TryLock() {
+			return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
+		}
+		defer r.mu.Unlock()
+	}
 
 	sts := &appsv1.StatefulSet{}
 	err := r.Get(ctx, req.NamespacedName, sts)
@@ -88,6 +99,12 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
+	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(r.UpdateInterval)
+	if 0 < r.UpdateInterval && nextPartitionReadyTime.After(time.Now()) {
+		log.Info("retry partition update", "nextPartitionReadyTime", nextPartitionReadyTime)
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
+	}
+
 	if err := r.patchNewPartition(ctx, sts); err != nil {
 		log.Error(err, "failed to apply new partition")
 		return reconcile.Result{}, err
@@ -95,6 +112,7 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 
 	log.Info("partition is updated")
 	metrics.LastPartitionUpdatedVec.WithLabelValues(cluster.Name, cluster.Namespace).SetToCurrentTime()
+	r.LastUpdatedTimestamp = time.Now()
 
 	return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 }
