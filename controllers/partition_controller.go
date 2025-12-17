@@ -38,7 +38,7 @@ type StatefulSetPartitionReconciler struct {
 	client.Client
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
-	UpdateInterval          int
+	UpdateInterval          time.Duration
 	LastUpdatedTimestamp    time.Time
 	mu                      sync.Mutex
 }
@@ -94,11 +94,10 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	updateInterval := time.Duration(r.UpdateInterval) * time.Millisecond
-	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(updateInterval)
+	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(r.UpdateInterval)
 	if 0 < r.UpdateInterval && nextPartitionReadyTime.After(time.Now()) {
 		log.Info("retry partition update", "nextPartitionReadyTime", nextPartitionReadyTime)
-		return reconcile.Result{RequeueAfter: updateInterval}, nil
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
 	}
 
 	if err := r.patchNewPartition(ctx, sts); err != nil {
