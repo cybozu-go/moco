@@ -156,7 +156,7 @@ func rolloutPods(ctx context.Context, sts *appsv1.StatefulSet, rev1 int, rev2 in
 	}
 }
 
-func setupNewManager(ctx context.Context, updateInterval int) context.CancelFunc {
+func setupNewManager(ctx context.Context, updateInterval time.Duration) context.CancelFunc {
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:         scheme,
 		LeaderElection: false,
@@ -307,12 +307,12 @@ var _ = Describe("StatefulSet reconciler", func() {
 
 	Context("with different update intervals", func() {
 		DescribeTable("should partition to 0",
-			func(updateInterval int) {
+			func(updateInterval time.Duration) {
 				stopFunc = setupNewManager(ctx, updateInterval)
 				testUpdatePartition(ctx)
 			},
-			Entry("without interval", 0),
-			Entry("with 1000ms interval", 1000),
+			Entry("without interval", 0*time.Millisecond),
+			Entry("with 1000ms interval", 1000*time.Millisecond),
 		)
 	})
 })
