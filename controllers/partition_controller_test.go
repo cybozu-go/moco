@@ -299,7 +299,9 @@ var _ = Describe("StatefulSet reconciler", func() {
 	})
 
 	AfterEach(func() {
-		stopFunc()
+		if stopFunc != nil {
+			stopFunc()
+		}
 		time.Sleep(100 * time.Millisecond)
 	})
 
