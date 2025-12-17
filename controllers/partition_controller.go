@@ -55,6 +55,13 @@ type StatefulSetPartitionReconciler struct {
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
 
+	if r.UpdateInterval > 0 {
+		if !r.mu.TryLock() {
+			return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
+		}
+		defer r.mu.Unlock()
+	}
+
 	sts := &appsv1.StatefulSet{}
 	err := r.Get(ctx, req.NamespacedName, sts)
 	if err != nil {
@@ -92,8 +99,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(r.UpdateInterval)
 	if 0 < r.UpdateInterval && nextPartitionReadyTime.After(time.Now()) {
 		log.Info("retry partition update", "nextPartitionReadyTime", nextPartitionReadyTime)
