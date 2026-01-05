@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,8 +39,7 @@ type StatefulSetPartitionReconciler struct {
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
 	UpdateInterval          time.Duration
-	LastUpdatedTimestamp    time.Time
-	mu                      sync.Mutex
+	RateLimiter             *rate.Limiter
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch
@@ -55,11 +54,9 @@ type StatefulSetPartitionReconciler struct {
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	if r.UpdateInterval > 0 {
-		if !r.mu.TryLock() {
-			return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
-		}
-		defer r.mu.Unlock()
+	if r.UpdateInterval > 0 && !r.RateLimiter.Allow() {
+		log.Info("retry partition update")
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
 	}
 
 	sts := &appsv1.StatefulSet{}
@@ -99,12 +96,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
-	nextPartitionReadyTime := r.LastUpdatedTimestamp.Add(r.UpdateInterval)
-	if 0 < r.UpdateInterval && nextPartitionReadyTime.After(time.Now()) {
-		log.Info("retry partition update", "nextPartitionReadyTime", nextPartitionReadyTime)
-		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
-	}
-
 	if err := r.patchNewPartition(ctx, sts); err != nil {
 		log.Error(err, "failed to apply new partition")
 		return reconcile.Result{}, err
@@ -112,7 +103,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 
 	log.Info("partition is updated")
 	metrics.LastPartitionUpdatedVec.WithLabelValues(cluster.Name, cluster.Namespace).SetToCurrentTime()
-	r.LastUpdatedTimestamp = time.Now()
 
 	return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
 }

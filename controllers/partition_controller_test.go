@@ -11,6 +11,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -170,10 +171,10 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 	Expect(err).ToNot(HaveOccurred())
 
 	r := &StatefulSetPartitionReconciler{
-		Client:               mgr.GetClient(),
-		Recorder:             mgr.GetEventRecorderFor("moco-controller"),
-		UpdateInterval:       updateInterval,
-		LastUpdatedTimestamp: time.Now(),
+		Client:         mgr.GetClient(),
+		Recorder:       mgr.GetEventRecorderFor("moco-controller"),
+		UpdateInterval: updateInterval,
+		RateLimiter:    rate.NewLimiter(rate.Every(updateInterval), 1),
 	}
 	err = r.SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())
@@ -188,7 +189,7 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 	return cancel
 }
 
-func testUpdatePartition(ctx context.Context) {
+func testUpdatePartition(ctx context.Context, updateInterval time.Duration) {
 	cluster := testNewMySQLCluster("partition")
 	err := k8sClient.Create(ctx, cluster)
 	Expect(err).NotTo(HaveOccurred())
@@ -309,7 +310,7 @@ var _ = Describe("StatefulSet reconciler", func() {
 		DescribeTable("should partition to 0",
 			func(updateInterval time.Duration) {
 				stopFunc = setupNewManager(ctx, updateInterval)
-				testUpdatePartition(ctx)
+				testUpdatePartition(ctx, updateInterval)
 			},
 			Entry("without interval", 0*time.Millisecond),
 			Entry("with 1000ms interval", 1000*time.Millisecond),

@@ -11,6 +11,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
+	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -125,7 +126,7 @@ func subMain(ns, addr string, port int) error {
 		Recorder:                mgr.GetEventRecorderFor("moco-controller"),
 		MaxConcurrentReconciles: config.maxConcurrentReconciles,
 		UpdateInterval:          config.partitionUpdateInterval,
-		LastUpdatedTimestamp:    time.Now(),
+		RateLimiter:             rate.NewLimiter(rate.Every(config.partitionUpdateInterval), 1),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Partition")
 		return err
