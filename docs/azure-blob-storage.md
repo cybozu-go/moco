@@ -146,6 +146,71 @@ stringData:
   AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net"
 ```
 
+### Option 4: Using Azurite for Local Development
+
+[Azurite](https://github.com/Azure/Azurite) is Microsoft's official Azure Storage Emulator for local development and testing.
+
+#### Setup
+
+1. **Start Azurite using Docker:**
+   ```bash
+   docker run -d -p 10000:10000 \
+     --name azurite \
+     mcr.microsoft.com/azure-storage/azurite \
+     azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+   ```
+
+2. **Create a container using Azure CLI:**
+   ```bash
+   # Azurite uses well-known credentials
+   export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+
+   az storage container create --name moco-backups --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+   ```
+
+3. **Run backups against Azurite:**
+   ```bash
+   # The connection string will be automatically detected
+   export MYSQL_PASSWORD=your-password
+   moco-backup backup --backend-type=azure moco-backups namespace cluster-name
+   ```
+
+#### Azurite Well-Known Credentials
+
+Azurite uses these fixed credentials for local development:
+- **Account Name:** `devstoreaccount1`
+- **Account Key:** `Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==`
+- **Blob Endpoint:** `http://127.0.0.1:10000/devstoreaccount1`
+
+#### Using Azurite in Kubernetes/BackupPolicy
+
+Create a Secret with the connection string:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azurite-credentials
+  namespace: backup
+stringData:
+  AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+```
+
+Reference it in your BackupPolicy:
+
+```yaml
+spec:
+  jobConfig:
+    envFrom:
+    - secretRef:
+        name: azurite-credentials
+    bucketConfig:
+      backendType: azure
+      bucketName: moco-backups
+```
+
+**Note:** Azurite is for development/testing only. Never use it in production.
+
 ## Command-Line Usage
 
 You can also use the `moco-backup` command directly with Azure:
@@ -203,3 +268,4 @@ az storage container create --name moco-backups --account-name <account-name>
 - [Azure SDK for Go](https://github.com/Azure/azure-sdk-for-go)
 - [DefaultAzureCredential](https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/azidentity#DefaultAzureCredential)
 - [Workload Identity for AKS](https://docs.microsoft.com/en-us/azure/aks/workload-identity-overview)
+- [Azurite - Azure Storage Emulator](https://github.com/Azure/Azurite)
