@@ -81,22 +81,24 @@ func makeGCSBucket(bucketName string) (bucket.Bucket, error) {
 }
 
 func makeAzureBucket(containerName string) (bucket.Bucket, error) {
-	// Get the service URL from the endpoint URL if provided, otherwise use default
+	// Priority 1: Check for connection string (for Azurite and testing)
+	if connStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING"); connStr != "" {
+		return bucket.NewAzureBucketFromConnectionString(context.Background(), connStr, containerName)
+	}
+
+	// Priority 2: Use endpoint URL or construct from account name
 	serviceURL := commonArgs.endpointURL
 	if serviceURL == "" {
 		// If no endpoint is provided, construct default Azure URL from environment
-		// Users should set AZURE_STORAGE_ACCOUNT environment variable
 		accountName := os.Getenv("AZURE_STORAGE_ACCOUNT")
 		if accountName == "" {
-			return nil, fmt.Errorf("AZURE_STORAGE_ACCOUNT environment variable is required for Azure backend")
+			return nil, fmt.Errorf("AZURE_STORAGE_ACCOUNT environment variable is required for Azure backend when connection string is not provided")
 		}
 		serviceURL = fmt.Sprintf("https://%s.blob.core.windows.net/", accountName)
 	}
 
-	// Use DefaultAzureCredential which supports multiple authentication methods:
-	// - Environment variables (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET)
-	// - Managed Identity
-	// - Azure CLI
+	// Priority 3: Use DefaultAzureCredential for production Azure
+	// Supports: Environment variables, Managed Identity, Azure CLI, etc.
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Azure credential: %w", err)

@@ -51,6 +51,27 @@ func NewAzureBucket(ctx context.Context, serviceURL, name string, credential azc
 	}, nil
 }
 
+// NewAzureBucketFromConnectionString creates a Bucket using an Azure Storage connection string.
+// This is useful for Azurite (local development emulator) and scenarios where connection
+// strings are preferred over credential-based authentication.
+//
+// Connection string format:
+// "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<key>;BlobEndpoint=<url>;"
+//
+// Example for Azurite:
+// "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+func NewAzureBucketFromConnectionString(ctx context.Context, connectionString, name string) (Bucket, error) {
+	client, err := azblob.NewClientFromConnectionString(connectionString, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azureBucket{
+		name:   name,
+		client: client,
+	}, nil
+}
+
 func (b *azureBucket) Put(ctx context.Context, key string, data io.Reader, objectSize int64) error {
 	// Determine content type based on file extension
 	contentType := "application/octet-stream"
