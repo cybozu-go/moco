@@ -101,7 +101,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{}, err
 	}
 
-	log.Info("partition is updated")
 	metrics.LastPartitionUpdatedVec.WithLabelValues(cluster.Name, cluster.Namespace).SetToCurrentTime()
 
 	return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
