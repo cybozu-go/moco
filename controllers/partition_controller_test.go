@@ -271,6 +271,13 @@ func testUpdatePartition(ctx context.Context, updateInterval time.Duration) {
 	Expect(events.Items[0].Message).To(Equal("Updated partition from 3 to 2"))
 	Expect(events.Items[1].Message).To(Equal("Updated partition from 2 to 1"))
 	Expect(events.Items[2].Message).To(Equal("Updated partition from 1 to 0"))
+
+	if updateInterval > 0 {
+		for i := 1; i < len(events.Items); i++ {
+			interval := events.Items[i].CreationTimestamp.Sub(events.Items[i-1].CreationTimestamp.Time)
+			Expect(interval).To(BeNumerically(">=", updateInterval))
+		}
+	}
 }
 
 var _ = Describe("StatefulSet reconciler", func() {
