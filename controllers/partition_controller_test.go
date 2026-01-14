@@ -9,8 +9,10 @@ import (
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/metrics"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	prometheusutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -277,6 +279,8 @@ func testUpdatePartition(ctx context.Context, updateInterval time.Duration) {
 			interval := events.Items[i].CreationTimestamp.Sub(events.Items[i-1].CreationTimestamp.Time)
 			Expect(interval).To(BeNumerically(">=", updateInterval))
 		}
+		retryCount := prometheusutil.CollectAndCount(metrics.RetryPartitionUpdateCountVec)
+		Expect(retryCount).To(BeNumerically(">", 0))
 	}
 }
 

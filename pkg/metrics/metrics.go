@@ -31,9 +31,10 @@ var (
 	ClusteringStoppedVec     *prometheus.GaugeVec
 	ReconciliationStoppedVec *prometheus.GaugeVec
 
-	CurrentReplicasVec      *prometheus.GaugeVec
-	UpdatedReplicasVec      *prometheus.GaugeVec
-	LastPartitionUpdatedVec *prometheus.GaugeVec
+	CurrentReplicasVec           *prometheus.GaugeVec
+	UpdatedReplicasVec           *prometheus.GaugeVec
+	LastPartitionUpdatedVec      *prometheus.GaugeVec
+	RetryPartitionUpdateCountVec *prometheus.CounterVec
 )
 
 // Backup related metrics
@@ -248,4 +249,11 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The timestamp of the last successful partition update",
 	}, []string{"name", "namespace"})
 	registry.MustRegister(LastPartitionUpdatedVec)
+
+	RetryPartitionUpdateCountVec = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "retry_partition_update",
+		Help:      "The number of retries for partition updates",
+	}, []string{"namespace"})
 }
