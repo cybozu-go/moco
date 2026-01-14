@@ -54,7 +54,7 @@ type StatefulSetPartitionReconciler struct {
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	if r.UpdateInterval > 0 && !r.RateLimiter.Allow() {
+	if !r.RateLimiter.Allow() {
 		log.Info("retry partition update")
 		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
 	}
