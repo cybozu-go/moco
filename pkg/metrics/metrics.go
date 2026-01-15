@@ -253,7 +253,7 @@ func Register(registry prometheus.Registerer) {
 	RetryPartitionUpdateCountVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
 		Subsystem: clusteringSubsystem,
-		Name:      "retry_partition_update",
+		Name:      "partition_update_retries_total",
 		Help:      "The number of retries for partition updates",
 	}, []string{"namespace"})
 }
