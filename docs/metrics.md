@@ -29,7 +29,7 @@ All these metrics are prefixed with `moco_cluster_` and have `name` and `namespa
 | `current_replicas`                  | The number of current replicas                                         | Gauge     |
 | `updated_replicas`                  | The number of updated replicas                                         | Gauge     |
 | `last_partition_updated`            | The timestamp of the last successful partition update                  | Gauge     |
-| `retry_partition_update`            | The number of retries for partition updates                            | Counter   |
+| `partition_update_retries_total`    | The number of retries for partition updates                            | Counter   |
 | `clustering_stopped`                | 1 if the cluster is clustering stopped, 0 otherwise                    | Gauge     |
 | `reconciliation_stopped`            | 1 if the cluster is reconciliation stopped, 0 otherwise                | Gauge     |
 | `errant_replicas`                   | The number of mysqld instances that have [errant transactions][errant] | Gauge     |
