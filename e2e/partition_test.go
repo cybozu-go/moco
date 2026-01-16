@@ -167,7 +167,7 @@ var _ = Context("partition_test", Ordered, func() {
 		Expect(partitionUpdatedMetric).NotTo(BeNil())
 		Expect(updatedReplicasMetric.GetGauge().GetValue()).To(BeNumerically(">", 0))
 
-		// This metrics does not exist because retries are not performed.
+		// This metric does not exist because retries are not performed.
 		retryPartitionUpdateMf := mfs["moco_cluster_partition_update_retries_total"]
 		Expect(retryPartitionUpdateMf).To(BeNil())
 	})
