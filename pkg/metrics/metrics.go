@@ -256,4 +256,5 @@ func Register(registry prometheus.Registerer) {
 		Name:      "partition_update_retries_total",
 		Help:      "The number of retries for partition updates",
 	}, []string{"namespace"})
+	registry.MustRegister(RetryPartitionUpdateCountVec)
 }
