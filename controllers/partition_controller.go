@@ -55,7 +55,7 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 	log := crlog.FromContext(ctx)
 
 	if !r.RateLimiter.Allow() {
-		metrics.RetryPartitionUpdateCountVec.WithLabelValues(req.Namespace).Inc()
+		metrics.PartitionUpdateRetriesTotalVec.WithLabelValues(req.Namespace).Inc()
 		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
 	}
 

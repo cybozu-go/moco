@@ -279,7 +279,7 @@ func testUpdatePartition(ctx context.Context, updateInterval time.Duration) {
 			interval := events.Items[i].CreationTimestamp.Sub(events.Items[i-1].CreationTimestamp.Time)
 			Expect(interval).To(BeNumerically(">=", updateInterval))
 		}
-		retryCount := prometheusutil.CollectAndCount(metrics.RetryPartitionUpdateCountVec)
+		retryCount := prometheusutil.CollectAndCount(metrics.PartitionUpdateRetriesTotalVec)
 		Expect(retryCount).To(BeNumerically(">", 0))
 	}
 }
