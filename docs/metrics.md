@@ -17,7 +17,7 @@ Aside from [the standard Go runtime and process metrics][standard], it exposes m
 All these metrics are prefixed with `moco_cluster_` and have `name` and `namespace` labels.
 
 | Name                                | Description                                                            | Type      |
-| ----------------------------------- | ---------------------------------------------------------------------- | --------- |
+|-------------------------------------|------------------------------------------------------------------------|-----------|
 | `checks_total`                      | The number of times MOCO checked the cluster                           | Counter   |
 | `errors_total`                      | The number of times MOCO encountered errors when managing the cluster  | Counter   |
 | `available`                         | 1 if the cluster is available, 0 otherwise                             | Gauge     |
@@ -29,6 +29,7 @@ All these metrics are prefixed with `moco_cluster_` and have `name` and `namespa
 | `current_replicas`                  | The number of current replicas                                         | Gauge     |
 | `updated_replicas`                  | The number of updated replicas                                         | Gauge     |
 | `last_partition_updated`            | The timestamp of the last successful partition update                  | Gauge     |
+| `partition_update_retries_total`    | The number of retries for partition updates                            | Counter   |
 | `clustering_stopped`                | 1 if the cluster is clustering stopped, 0 otherwise                    | Gauge     |
 | `reconciliation_stopped`            | 1 if the cluster is reconciliation stopped, 0 otherwise                | Gauge     |
 | `errant_replicas`                   | The number of mysqld instances that have [errant transactions][errant] | Gauge     |

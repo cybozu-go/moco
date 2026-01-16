@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +38,8 @@ type StatefulSetPartitionReconciler struct {
 	client.Client
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
+	UpdateInterval          time.Duration
+	RateLimiter             *rate.Limiter
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch
@@ -50,6 +53,11 @@ type StatefulSetPartitionReconciler struct {
 // See https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile#Reconciler
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
+
+	if !r.RateLimiter.Allow() {
+		metrics.PartitionUpdateRetriesTotalVec.WithLabelValues(req.Namespace).Inc()
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
+	}
 
 	sts := &appsv1.StatefulSet{}
 	err := r.Get(ctx, req.NamespacedName, sts)
@@ -93,7 +101,6 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 		return reconcile.Result{}, err
 	}
 
-	log.Info("partition is updated")
 	metrics.LastPartitionUpdatedVec.WithLabelValues(cluster.Name, cluster.Namespace).SetToCurrentTime()
 
 	return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
