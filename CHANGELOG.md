@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.32.0] - 2026/01/19
+
+### Added
+- Controlling Rolling Updates with the Partition Controller [#862](https://github.com/cybozu-go/moco/pull/862)
 
 ## [0.31.0] - 2025-12-09
 
@@ -765,7 +769,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/cybozu-go/moco/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/cybozu-go/moco/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/cybozu-go/moco/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/cybozu-go/moco/compare/v0.28.0...v0.29.0
