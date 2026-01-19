@@ -166,6 +166,10 @@ var _ = Context("partition_test", Ordered, func() {
 		partitionUpdatedMetric := findMetric(partitionUpdatedMf, map[string]string{"namespace": "partition", "name": "test"})
 		Expect(partitionUpdatedMetric).NotTo(BeNil())
 		Expect(updatedReplicasMetric.GetGauge().GetValue()).To(BeNumerically(">", 0))
+
+		// This metric does not exist because retries are not performed.
+		retryPartitionUpdateMf := mfs["moco_cluster_partition_update_retries_total"]
+		Expect(retryPartitionUpdateMf).To(BeNil())
 	})
 
 	It("should volume template change succeed", func() {

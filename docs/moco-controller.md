@@ -40,6 +40,7 @@ Flags:
       --skip_headers                        If true, avoid header prefixes in the log messages
       --skip_log_headers                    If true, avoid headers when opening log files (no effect when -logtostderr=true)
       --stderrthreshold severity            logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true) (default 2)
+      --partition-update-interval duration  The minimum update interval for partitions (e.g., 5s, 100ms) (default: 0 ms)
   -v, --v Level                             number for the log level verbosity
       --version                             version for moco-controller
       --vmodule moduleSpec                  comma-separated list of pattern=N settings for file-filtered logging
