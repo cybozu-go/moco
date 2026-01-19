@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e951379b.js";
+            window.path_to_searchindex_js = "searchindex-a567a214.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -213,6 +213,7 @@ Aside from <a href="https://povilasv.me/prometheus-go-metrics/">the standard Go 
 <tr><td><code>current_replicas</code></td><td>The number of current replicas</td><td>Gauge</td></tr>
 <tr><td><code>updated_replicas</code></td><td>The number of updated replicas</td><td>Gauge</td></tr>
 <tr><td><code>last_partition_updated</code></td><td>The timestamp of the last successful partition update</td><td>Gauge</td></tr>
+<tr><td><code>partition_update_retries_total</code></td><td>The number of retries for partition updates</td><td>Counter</td></tr>
 <tr><td><code>clustering_stopped</code></td><td>1 if the cluster is clustering stopped, 0 otherwise</td><td>Gauge</td></tr>
 <tr><td><code>reconciliation_stopped</code></td><td>1 if the cluster is reconciliation stopped, 0 otherwise</td><td>Gauge</td></tr>
 <tr><td><code>errant_replicas</code></td><td>The number of mysqld instances that have <a href="https://www.percona.com/blog/2014/05/19/errant-transactions-major-hurdle-for-gtid-based-failover-in-mysql-5-6/">errant transactions</a></td><td>Gauge</td></tr>
