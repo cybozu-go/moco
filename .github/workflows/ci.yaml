@@ -38,6 +38,7 @@ jobs:
         cache: true
     - name: Setup Aqua
       uses: ./.github/actions/setup-aqua
+    - run: make lint
     - run: make test
     - run: make check-generate
     - run: make envtest

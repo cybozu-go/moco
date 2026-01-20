@@ -128,15 +128,15 @@ test-bkop:
 	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.randomize-all
 
 .PHONY: test
-test: test-tools aqua-install
+test: aqua-install
 	go test -v -count 1 -race ./pkg/...
 	go install ./...
 	go vet ./...
 	test -z $$(gofmt -s -l . | tee /dev/stderr)
-	$(STATICCHECK) ./...
-	# Disabled temporary due to a false positive with nilerr 0.1.1 built with Go 1.17
-	# https://github.com/cybozu-go/moco/runs/4221024784?check_suite_focus=true
-	# $(NILERR) ./...
+
+.PHONY: lint
+lint: aqua-install
+	@golangci-lint run --timeout 5m
 
 ##@ Build
 
@@ -158,18 +158,6 @@ release-manifests-build: aqua-install
 .PHONY: aqua-install
 aqua-install: ## Install tools managed by aqua
 	aqua install
-
-.PHONY: test-tools
-test-tools: $(NILERR) $(STATICCHECK)
-
-$(NILERR):
-	mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
-
-.PHONY: $(STATICCHECK)
-$(STATICCHECK):
-	mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
 
 .PHONY: setup
 setup:

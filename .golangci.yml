@@ -1,0 +1,47 @@
+version: "2"
+run:
+  allow-parallel-runners: true
+linters:
+  default: none
+  enable:
+    - copyloopvar
+    - errcheck
+    - goconst
+    - gocyclo
+    - govet
+    - ineffassign
+    - modernize
+    - misspell
+    - nakedret
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - nilerr
+  settings:
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    modernize:
+      disable:
+        - omitzero
+    goconst:
+      ignore-string-values:
+        - 'true'
+        - '0.0.0.0'
+        - 'Yes'
+        - 'tcp'
+  exclusions:
+    rules:
+      - path: (.+)(_test\.go|test_(.+)\.go)
+        linters:
+        - noctx
+        - errcheck
+        - goconst
+        - unparam
+formatters:
+  enable:
+    - gofmt
+    - goimports

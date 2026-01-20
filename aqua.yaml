@@ -20,3 +20,4 @@ packages:
 - name: kubernetes-sigs/controller-tools/controller-gen@v0.19.0
 - name: clamoriniere/crd-to-markdown@v0.0.3
 - name: rust-lang/mdBook@v0.5.1
+- name: golangci/golangci-lint@v2.8.0
