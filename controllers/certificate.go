@@ -43,7 +43,7 @@ type certTmplVal struct {
 	TargetNamespace string
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	obj := certificateObj.DeepCopy()
 	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
 	if err == nil {
@@ -76,7 +76,7 @@ func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	controllerSecret := &corev1.Secret{}

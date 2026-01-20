@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -37,7 +36,7 @@ var (
 // This function first syncs the PVC labels and annotations with those of volumeClaimTemplate and then resizes the PVC volume size.
 // The deletion and recreation of the StatefulSet are managed by reconcileV1StatefulSet().
 // Therefore, this function should be called before reconcileV1StatefulSet().
-func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	var sts appsv1.StatefulSet
@@ -56,12 +55,9 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, req ctrl.Requ
 		return nil
 	}
 
-	resizeTarget, ok, err := r.needResizePVC(cluster, &sts)
+	resizeTarget, ok := r.needResizePVC(cluster, &sts)
 	if !ok {
 		return nil
-	}
-	if err != nil {
-		return err
 	}
 
 	log.Info("Starting PVC resize")
@@ -163,9 +159,9 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 	return resizedPVC, nil
 }
 
-func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool, error) {
+func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool) {
 	if len(sts.Spec.VolumeClaimTemplates) == 0 {
-		return nil, false, nil
+		return nil, false
 	}
 
 	pvcSet := make(map[string]corev1.PersistentVolumeClaim, len(sts.Spec.VolumeClaimTemplates))
@@ -202,10 +198,10 @@ func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, 
 	}
 
 	if len(resizeTarget) == 0 {
-		return nil, false, nil
+		return nil, false
 	}
 
-	return resizeTarget, true, nil
+	return resizeTarget, true
 }
 
 func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context, pvc *corev1.PersistentVolumeClaim) (bool, error) {

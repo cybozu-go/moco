@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -23,7 +22,6 @@ import (
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -139,10 +137,7 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 
 			metrics.Register(registry)
 
-			err := r.reconcilePVC(ctx, ctrl.Request{NamespacedName: types.NamespacedName{
-				Namespace: tt.cluster.Namespace,
-				Name:      tt.cluster.Name,
-			}}, tt.cluster)
+			err := r.reconcilePVC(ctx, tt.cluster)
 			if err != nil {
 				t.Fatalf("reconcilePVC() error = %v", err)
 			}
@@ -336,13 +331,7 @@ func TestNeedResizePVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &MySQLClusterReconciler{}
-			resizeTarget, resize, err := r.needResizePVC(tt.cluster, tt.sts)
-			if tt.wantError != nil {
-				if !errors.Is(err, tt.wantError) {
-					t.Fatalf("want error %v, got %v", tt.wantError, err)
-				}
-			}
-
+			resizeTarget, resize := r.needResizePVC(tt.cluster, tt.sts)
 			if tt.wantResize != resize {
 				t.Fatalf("want resize %v, got %v", tt.wantResize, resize)
 			}
