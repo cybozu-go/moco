@@ -600,7 +600,6 @@ func TestStatusSet(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			tc.statusSet.DecideState()
 			if tc.statusSet.State != tc.expectedState {

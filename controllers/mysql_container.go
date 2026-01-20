@@ -282,7 +282,6 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, c := range spec.Containers {
-		c := c
 
 		if c.Name == nil {
 			continue
@@ -454,7 +453,7 @@ func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, c
 	}
 
 	for _, overwrite := range cluster.Spec.PodTemplate.OverwriteContainers {
-		overwrite := overwrite
+
 		if container.Name != nil && *container.Name == overwrite.Name.String() {
 			if overwrite.Resources != nil {
 				container.WithResources((*corev1ac.ResourceRequirementsApplyConfiguration)(overwrite.Resources))

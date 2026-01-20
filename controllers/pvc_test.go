@@ -128,7 +128,6 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			registry := prometheus.NewRegistry()
@@ -186,7 +185,6 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 	var pvcs []client.Object
 
 	for _, pvc := range sts.Spec.VolumeClaimTemplates {
-		pvc := pvc
 		for i := int32(0); i < *sts.Spec.Replicas; i++ {
 			pvc.Name = fmt.Sprintf("%s-%s-%d", pvc.Name, cluster.PrefixedName(), i)
 			pvc.Namespace = cluster.Namespace
@@ -336,7 +334,6 @@ func TestNeedResizePVC(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			r := &MySQLClusterReconciler{}
 			resizeTarget, resize, err := r.needResizePVC(tt.cluster, tt.sts)

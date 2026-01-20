@@ -1213,7 +1213,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 			for _, e := range jc.Env {
-				e := e
 				envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
 			}
 			return envFrom
@@ -1221,7 +1220,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
 			for _, e := range jc.EnvFrom {
-				e := e
 				envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
 			}
 			return envFrom
@@ -1233,7 +1231,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
 			volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
 			for _, v := range jc.VolumeMounts {
-				v := v
 				volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
 			}
 			return volumeMounts
@@ -1265,7 +1262,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 							WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
 								volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
 								for _, v := range jc.Volumes {
-									v := v
 									volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
 								}
 								return volumes
@@ -1530,7 +1526,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 				for _, e := range jc.Env {
-					e := e
 					envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
 				}
 				return envFrom
@@ -1538,7 +1533,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
 				for _, e := range jc.EnvFrom {
-					e := e
 					envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
 				}
 				return envFrom
@@ -1549,7 +1543,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
 				volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
 				for _, v := range jc.VolumeMounts {
-					v := v
 					volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
 				}
 				return volumeMounts
@@ -1574,7 +1567,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 						WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
 							volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
 							for _, v := range jc.Volumes {
-								v := v
 								volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
 							}
 							return volumes
