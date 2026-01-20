@@ -87,6 +87,7 @@ func NewFactory(r Resolver) OperatorFactory {
 
 func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
 	addr, err := f.r.Resolve(ctx, cluster, index)
+	//nolint:nilerr
 	if err != nil {
 		return NopOperator{name: fmt.Sprintf("%s/%s", cluster.Namespace, cluster.PodName(index))}, nil
 	}
