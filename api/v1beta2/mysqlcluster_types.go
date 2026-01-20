@@ -192,7 +192,7 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 
 	pp = p.Child("logRotationSize")
 	if s.LogRotationSize < 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positve integer or zero"))
+		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positive integer or zero"))
 	}
 
 	pp = p.Child("replicas")
