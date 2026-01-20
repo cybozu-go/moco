@@ -311,14 +311,14 @@ func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.R
 			newSize := pvc.StorageSize()
 			oldSize := old.StorageSize()
 
-			switch cmp := newSize.Cmp(oldSize); {
-			case cmp == -1:
+			switch cmp := newSize.Cmp(oldSize); cmp {
+			case -1:
 				// noop
 				// Allow users to reduce the volume size by operating.
 				// ref: docs/designdoc/support_reduce_volume_size.md
-			case cmp == 1:
+			case 1:
 				volumeExpansionTargetIndices = append(volumeExpansionTargetIndices, i)
-			case cmp == 0:
+			case 0:
 				// noop
 			}
 		}

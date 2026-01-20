@@ -331,7 +331,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		secret.Namespace = r.SystemNamespace
 		secret.Name = name
 		secret.Labels = labelSet(cluster, true)
-		if err := r.Client.Create(ctx, secret); err != nil {
+		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
 
@@ -592,7 +592,7 @@ func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, clust
 
 	// Sort ConfigMaps by creation timestamp in descending order
 	sort.Slice(cms.Items, func(i, j int) bool {
-		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
+		return cms.Items[i].CreationTimestamp.After(cms.Items[j].CreationTimestamp.Time)
 	})
 
 	oldConfigCount := 0

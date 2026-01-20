@@ -45,7 +45,7 @@ type certTmplVal struct {
 
 func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	obj := certificateObj.DeepCopy()
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
 	if err == nil {
 		return nil
 	}
@@ -70,7 +70,7 @@ func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req
 	}
 	obj.SetLabels(labelSet(cluster, true))
 
-	if err := r.Client.Create(ctx, obj); err != nil {
+	if err := r.Create(ctx, obj); err != nil {
 		return fmt.Errorf("failed to create certificate: %w", err)
 	}
 	return nil
@@ -80,7 +80,7 @@ func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, req 
 	log := crlog.FromContext(ctx)
 
 	controllerSecret := &corev1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, controllerSecret)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, controllerSecret)
 	if err != nil {
 		return client.IgnoreNotFound(err)
 	}
