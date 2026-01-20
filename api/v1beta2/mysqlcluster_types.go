@@ -155,6 +155,7 @@ type MySQLClusterSpec struct {
 	Offline bool `json:"offline,omitempty"`
 }
 
+//nolint:gocyclo
 func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")

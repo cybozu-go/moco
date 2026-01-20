@@ -138,6 +138,8 @@ func (ss *StatusSet) DecideState() {
 
 // GatherStatus collects information and Kubernetes resources and construct
 // StatusSet.  It calls `StatusSet.DecideState` before returning.
+//
+//nolint:gocyclo
 func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	ss := &StatusSet{}
 	log := logFromContext(ctx)

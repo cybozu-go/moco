@@ -763,6 +763,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	return nil
 }
 
+//nolint:gocyclo
 func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration, slowlogConf *corev1ac.ConfigMapApplyConfiguration) error {
 	log := crlog.FromContext(ctx)
 
@@ -1122,6 +1123,7 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	return append(args, bc.BucketName)
 }
 
+//nolint:gocyclo
 func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
