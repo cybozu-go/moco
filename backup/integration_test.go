@@ -60,7 +60,7 @@ var _ = Describe("Backup/Restore", func() {
 		err = k8sClient.Create(ctx, target)
 		Expect(err).NotTo(HaveOccurred())
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			pod := &corev1.Pod{}
 			pod.Namespace = "test"
 			pod.Name = cluster.PodName(i)

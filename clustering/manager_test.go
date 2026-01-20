@@ -415,7 +415,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -506,7 +506,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -530,7 +530,7 @@ var _ = Describe("manager", func() {
 		Expect(ms.switchoverCount).To(MetricsIs("==", 1))
 		Expect(ms.failoverCount).To(MetricsIs("==", 0))
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			st := of.getInstanceStatus(cluster.PodHostname(i))
 			Expect(st).NotTo(BeNil())
 			Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
@@ -544,7 +544,7 @@ var _ = Describe("manager", func() {
 		}
 
 		// confirm that connections of the mysql whose role has changed are killed
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			switch i {
 			case 0: // KilleConnection is called twice: when the start of the switchover and the changing of role.
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(2))
@@ -571,7 +571,7 @@ var _ = Describe("manager", func() {
 
 		// pods' metadata should not be changed
 		Consistently(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -584,7 +584,7 @@ var _ = Describe("manager", func() {
 			}
 		}).Should(Succeed())
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			st := of.getInstanceStatus(cluster.PodHostname(i))
 			Expect(st).NotTo(BeNil())
 			switch i {
@@ -633,7 +633,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -671,7 +671,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -712,7 +712,7 @@ var _ = Describe("manager", func() {
 		}
 		Expect(failOverEvents).To(Equal(1))
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			switch i {
 			case 1:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
@@ -741,7 +741,7 @@ var _ = Describe("manager", func() {
 
 		// confirm the pods' metadata are not updated
 		Consistently(func(g Gomega) {
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -754,7 +754,7 @@ var _ = Describe("manager", func() {
 			}
 		}).Should(Succeed())
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			switch i {
 			case 0:
 				// Any positive kill connection count is acceptable for the primary pod.
@@ -796,7 +796,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -830,7 +830,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -862,7 +862,7 @@ var _ = Describe("manager", func() {
 			Expect(st1.ReplicaStatus.ReplicaIORunning).NotTo(Equal("Yes"))
 		}
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(0))
 		}
 
@@ -888,7 +888,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -933,7 +933,7 @@ var _ = Describe("manager", func() {
 		By("re-initializing the errant replica")
 		of.resetKillConnectionsCount()
 		testSetGTID(cluster.PodHostname(1), "")
-		Eventually(func() interface{} {
+		Eventually(func() any {
 			return ms.errantReplicas
 		}).Should(MetricsIs("==", 0))
 
@@ -947,7 +947,7 @@ var _ = Describe("manager", func() {
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				pod := &corev1.Pod{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PodName(i)}, pod)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -962,7 +962,7 @@ var _ = Describe("manager", func() {
 			}
 		}).Should(Succeed())
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			switch i {
 			case 1:
 				Expect(of.getKillConnectionsCount(cluster.PodHostname(i))).To(Equal(1))
@@ -1013,7 +1013,7 @@ var _ = Describe("manager", func() {
 
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
 
-		Eventually(func() interface{} {
+		Eventually(func() any {
 			return ms.backupTimestamp
 		}).ShouldNot(MetricsIs("==", 0))
 		time.Sleep(10 * time.Millisecond)
@@ -1060,7 +1060,7 @@ var _ = Describe("manager", func() {
 
 		// set replication delay to 100sec
 		primary := cluster.Status.CurrentPrimaryIndex
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			if i == primary {
 				continue
 			}
@@ -1076,7 +1076,7 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		// set replication delay to 0sec
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			if i == primary {
 				continue
 			}

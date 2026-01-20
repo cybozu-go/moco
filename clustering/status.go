@@ -335,7 +335,7 @@ func containErrantTransactions(primaryUUID, gtidSet string) bool {
 	//   (n >= 1)
 	// ref: https: //dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html
 
-	for _, uuidSet := range strings.Split(gtidSet, ",") {
+	for uuidSet := range strings.SplitSeq(gtidSet, ",") {
 		split := strings.SplitN(uuidSet, ":", 2)
 		if split[0] != primaryUUID {
 			return true

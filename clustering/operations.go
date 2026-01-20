@@ -130,7 +130,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	// wait until the instance restarts after clone
 	op := ss.DBOps[ss.Primary]
 	time.Sleep(waitForCloneRestartDuration)
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -613,7 +613,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 
 		// wait until the instance restarts after clone
 		time.Sleep(waitForCloneRestartDuration)
-		for i := 0; i < 60; i++ {
+		for range 60 {
 			select {
 			case <-time.After(1 * time.Second):
 			case <-ctx.Done():

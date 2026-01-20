@@ -15,11 +15,11 @@ type MOCOEvent struct {
 	Message string
 }
 
-func (e MOCOEvent) Emit(obj runtime.Object, r record.EventRecorder, args ...interface{}) {
+func (e MOCOEvent) Emit(obj runtime.Object, r record.EventRecorder, args ...any) {
 	r.Eventf(obj, e.Type, e.Reason, e.Message, args...)
 }
 
-func (e MOCOEvent) ToEvent(ref *corev1.ObjectReference, args ...interface{}) *corev1.Event {
+func (e MOCOEvent) ToEvent(ref *corev1.ObjectReference, args ...any) *corev1.Event {
 	msg := fmt.Sprintf(e.Message, args...)
 	t := metav1.Now()
 	namespace := ref.Namespace

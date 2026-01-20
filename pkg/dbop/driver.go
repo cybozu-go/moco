@@ -13,7 +13,7 @@ type logger struct {
 
 var _ mysql.Logger = logger{}
 
-func (l logger) Print(v ...interface{}) {
+func (l logger) Print(v ...any) {
 	l.log.Info(fmt.Sprint(v...))
 }
 

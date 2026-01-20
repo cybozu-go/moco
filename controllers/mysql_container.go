@@ -54,10 +54,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithProtocol(corev1.ProtocolTCP),
 	)
 
-	failureThreshold := cluster.Spec.StartupWaitSeconds / 10
-	if failureThreshold < 1 {
-		failureThreshold = 1
-	}
+	failureThreshold := max(cluster.Spec.StartupWaitSeconds/10, 1)
 
 	if source.StartupProbe == nil {
 		source.WithStartupProbe(corev1ac.Probe())

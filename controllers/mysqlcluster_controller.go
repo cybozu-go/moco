@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -87,12 +88,8 @@ func labelSetForJob(cluster *mocov1beta2.MySQLCluster) map[string]string {
 
 func mergeMap(m1, m2 map[string]string) map[string]string {
 	m := make(map[string]string)
-	for k, v := range m1 {
-		m[k] = v
-	}
-	for k, v := range m2 {
-		m[k] = v
-	}
+	maps.Copy(m, m1)
+	maps.Copy(m, m2)
 	if len(m) == 0 {
 		return nil
 	}

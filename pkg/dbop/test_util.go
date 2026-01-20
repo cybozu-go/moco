@@ -233,7 +233,7 @@ func (f *testFactory) Cleanup() {
 	if err != nil {
 		return
 	}
-	for _, name := range strings.Fields(string(out)) {
+	for name := range strings.FieldsSeq(string(out)) {
 		if strings.HasPrefix(name, "moco-") {
 			exec.Command("docker", "kill", name).Run()
 		}

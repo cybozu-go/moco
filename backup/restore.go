@@ -89,7 +89,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	rm.log.Info("waiting for a pod to become ready", "name", podName)
 	var pod *corev1.Pod
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -114,7 +114,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	// ping the database until it becomes ready
 	rm.log.Info("waiting for the mysqld to become ready", "name", podName)
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():

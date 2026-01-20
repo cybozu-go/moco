@@ -12,7 +12,7 @@ func FindTopRunner(ctx context.Context, o Operator, status []*MySQLInstanceStatu
 	latest := -1
 	var latestGTIDs string
 
-	for i := 0; i < len(status); i++ {
+	for i := range status {
 		if status[i] == nil {
 			continue
 		}
