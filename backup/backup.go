@@ -234,7 +234,7 @@ func (bm *BackupManager) GetUUIDSet(ctx context.Context, pods []*corev1.Pod) (ma
 // ChoosePod chooses a pod to take a backup from.
 // It returns the index of the chosen pod and whether backupBinlog should be called.
 func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int, bool, error) {
-	currentPrimaryIndex := int(bm.cluster.Status.CurrentPrimaryIndex)
+	currentPrimaryIndex := bm.cluster.Status.CurrentPrimaryIndex
 	lastBackup := &bm.cluster.Status.Backup
 	// if this is the first time
 	if lastBackup.Time.IsZero() {
