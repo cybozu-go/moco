@@ -501,7 +501,7 @@ func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *S
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }
 
 func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (redo bool, e error) {
@@ -527,7 +527,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	}
 
 	if ss.Cluster.Spec.Replicas == 1 {
-		return
+		return redo, e
 	}
 
 	waitFor := int(ss.Cluster.Spec.Replicas / 2)
@@ -538,7 +538,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }
 
 func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, index int) (redo bool, e error) {
@@ -549,10 +549,10 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 	// for an errant replica, stop replication
 	if st.IsErrant {
 		if st.ReplicaStatus == nil {
-			return
+			return redo, e
 		}
 		if st.ReplicaStatus.ReplicaIORunning != "Yes" {
-			return
+			return redo, e
 		}
 		log.Info("stop replica IO thread due to an errant transaction", "instance", index)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
@@ -649,5 +649,5 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }
