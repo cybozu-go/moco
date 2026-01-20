@@ -102,7 +102,7 @@ type StatusSet struct {
 func (ss *StatusSet) Close() {
 	for _, op := range ss.DBOps {
 		if op != nil {
-			op.Close()
+			_ = op.Close()
 		}
 	}
 }

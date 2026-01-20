@@ -128,8 +128,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		// mysqlsh command creates some files in $HOME.
-		os.Setenv("HOME", commonArgs.workDir)
-		return nil
+		err := os.Setenv("HOME", commonArgs.workDir)
+		return err
 	},
 }
 

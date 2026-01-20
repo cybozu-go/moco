@@ -19,7 +19,7 @@ func (l logger) Print(v ...interface{}) {
 
 // SetLogger configures MySQL driver logging to use `log`.
 func SetLogger(log logr.Logger) {
-	mysql.SetLogger(logger{log: log})
+	_ = mysql.SetLogger(logger{log: log})
 }
 
 func init() {

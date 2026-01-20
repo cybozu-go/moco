@@ -116,7 +116,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	if err != nil {
 		return false, fmt.Errorf("failed to connect to moco-agent for instance %d: %w", ss.Primary, err)
 	}
-	defer ag.Close()
+	defer func() { _ = ag.Close() }()
 
 	log := logFromContext(ctx)
 	log.Info("begin cloning data", "source", req.Host)
@@ -600,7 +600,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		if err != nil {
 			return false, fmt.Errorf("failed to connect moco-agent of instance %d: %w", index, err)
 		}
-		defer ag.Close()
+		defer func() { _ = ag.Close() }()
 
 		log.Info("begin cloning data", "instance", index)
 		if _, err := ag.Clone(ctx, req); err != nil {
