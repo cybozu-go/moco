@@ -42,7 +42,8 @@ var _ = Context("partition_test", Ordered, func() {
 		return
 	}
 
-	It("should construct a cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("should construct a cluster")
 		kubectlSafe(fillTemplate(partitionTestYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("partition", "test")
@@ -63,6 +64,26 @@ var _ = Context("partition_test", Ordered, func() {
 
 		kubectlSafe(nil, "moco", "-n", "partition", "mysql", "-u", "moco-writable", "test", "--",
 			"-e", "CREATE DATABASE test")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("should delete clusters")
+			kubectlSafe(nil, "delete", "-n", "partition", "mysqlclusters", "--all")
+
+			Eventually(func() error {
+				out, err := kubectl(nil, "get", "-n", "partition", "pod", "-o", "json")
+				if err != nil {
+					return err
+				}
+				pods := &corev1.PodList{}
+				if err := json.Unmarshal(out, pods); err != nil {
+					return err
+				}
+				if len(pods.Items) > 0 {
+					return errors.New("wait until all Pods are deleted")
+				}
+				return nil
+			}).Should(Succeed())
+		})
 	})
 
 	It("should pod template change succeed", func() {
@@ -377,24 +398,5 @@ var _ = Context("partition_test", Ordered, func() {
 		err = json.Unmarshal(out, sts)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sts.Spec.UpdateStrategy.RollingUpdate).To(BeNil())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "partition", "mysqlclusters", "--all")
-
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "partition", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
 	})
 })

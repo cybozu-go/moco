@@ -26,7 +26,8 @@ var _ = Context("lifecycle", Ordered, func() {
 		return
 	}
 
-	It("should construct a single-instance cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a single-instance cluster")
 		kubectlSafe(fillTemplate(singleYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("foo", "single")
@@ -59,6 +60,12 @@ var _ = Context("lifecycle", Ordered, func() {
 			}
 			return nil
 		}).Should(Succeed())
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "foo", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("foo")
+		})
 	})
 
 	It("should give a pod the guarranteed QoS class", func() {
@@ -279,10 +286,5 @@ var _ = Context("lifecycle", Ordered, func() {
 			}
 			return fmt.Errorf("pending services: %+v", services.Items)
 		}).Should(Succeed())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "foo", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("foo")
 	})
 })

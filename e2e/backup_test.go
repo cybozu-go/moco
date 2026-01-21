@@ -36,7 +36,8 @@ var _ = Context("backup", Ordered, func() {
 
 	var restorePoint time.Time
 
-	It("should create a bucket", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("create a bucket")
 		kubectlSafe([]byte(makeBucketYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "get", "jobs", "make-bucket", "-o", "json")
@@ -48,9 +49,8 @@ var _ = Context("backup", Ordered, func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket has not been finished")
 		}).Should(Succeed())
-	})
 
-	It("should construct a source cluster", func() {
+		GinkgoWriter.Println("construct a source cluster")
 		kubectlSafe(fillTemplate(backupYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup", "source")
@@ -72,6 +72,20 @@ var _ = Context("backup", Ordered, func() {
 			"-D", "test2", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test2", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
+
+			Eventually(func(g Gomega) {
+				out, err := kubectl(nil, "get", "-n", "backup", "pod", "-o", "json")
+				g.Expect(err).NotTo(HaveOccurred())
+				pods := &corev1.PodList{}
+				err = json.Unmarshal(out, pods)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(len(pods.Items)).To(BeNumerically(">", 0), "wait until all Pods are deleted")
+			}).Should(Succeed())
+		})
 	})
 
 	It("should take a full dump", func() {
@@ -191,18 +205,5 @@ var _ = Context("backup", Ordered, func() {
 			"-N", "-e", "SHOW DATABASES LIKE 'test%'")
 		databases := strings.Fields(string(out))
 		Expect(databases).Should(ConsistOf("test2"))
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
-
-		Eventually(func(g Gomega) {
-			out, err := kubectl(nil, "get", "-n", "backup", "pod", "-o", "json")
-			g.Expect(err).NotTo(HaveOccurred())
-			pods := &corev1.PodList{}
-			err = json.Unmarshal(out, pods)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(len(pods.Items)).To(BeNumerically(">", 0), "wait until all Pods are deleted")
-		}).Should(Succeed())
 	})
 })

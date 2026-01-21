@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,7 +19,8 @@ var _ = Context("switchover", Ordered, func() {
 		return
 	}
 
-	It("should construct a 3-instance cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a 3-instance cluster")
 		kubectlSafe(fillTemplate(switchoverYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("switchover", "test")
@@ -57,6 +59,12 @@ var _ = Context("switchover", Ordered, func() {
 			"-n", "switchover",
 			"-u", "moco-writable",
 			"--", "-e", "INSERT INTO test.t1 (foo) VALUES (1); COMMIT;")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete cluster")
+			kubectlSafe(nil, "delete", "-n", "switchover", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("switchover")
+		})
 	})
 
 	It("should switch the primary if requested, even when a long global read lock is acquired", func() {
@@ -138,10 +146,5 @@ var _ = Context("switchover", Ordered, func() {
 			}
 			return errors.New("no health condition")
 		}).Should(Succeed())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "switchover", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("switchover")
 	})
 })

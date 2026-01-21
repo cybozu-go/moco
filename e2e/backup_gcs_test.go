@@ -32,7 +32,8 @@ var _ = Context("backup-gcs", Ordered, func() {
 
 	var restorePoint time.Time
 
-	It("should construct a source cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a source cluster")
 		kubectlSafe(fillTemplate(backupGCSYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("backup-gcs", "source")
@@ -57,6 +58,26 @@ var _ = Context("backup-gcs", Ordered, func() {
 			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "backup-gcs", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete namespace")
+			kubectlSafe(nil, "delete", "-n", "backup-gcs", "mysqlclusters", "--all")
+
+			Eventually(func() error {
+				out, err := kubectl(nil, "get", "-n", "backup-gcs", "pod", "-o", "json")
+				if err != nil {
+					return err
+				}
+				pods := &corev1.PodList{}
+				if err := json.Unmarshal(out, pods); err != nil {
+					return err
+				}
+				if len(pods.Items) > 0 {
+					return errors.New("wait until all Pods are deleted")
+				}
+				return nil
+			}).Should(Succeed())
+		})
 	})
 
 	It("should take a full dump", func() {
@@ -157,24 +178,5 @@ var _ = Context("backup-gcs", Ordered, func() {
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
-	})
-
-	It("should delete namespace", func() {
-		kubectlSafe(nil, "delete", "-n", "backup-gcs", "mysqlclusters", "--all")
-
-		Eventually(func() error {
-			out, err := kubectl(nil, "get", "-n", "backup-gcs", "pod", "-o", "json")
-			if err != nil {
-				return err
-			}
-			pods := &corev1.PodList{}
-			if err := json.Unmarshal(out, pods); err != nil {
-				return err
-			}
-			if len(pods.Items) > 0 {
-				return errors.New("wait until all Pods are deleted")
-			}
-			return nil
-		}).Should(Succeed())
 	})
 })

@@ -33,7 +33,8 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 
 	var restorePoint time.Time
 
-	It("should create a bucket", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("create a bucket")
 		kubectlSafe([]byte(makeBucketWithEnvYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "get", "jobs", "make-bucket-with-env", "-o", "json")
@@ -45,9 +46,8 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket-with-env has not been finished")
 		}).Should(Succeed())
-	})
 
-	It("should construct a source cluster", func() {
+		GinkgoWriter.Println("construct a source cluster")
 		kubectlSafe(fillTemplate(backupWithEnvYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup-with-env", "source")
@@ -63,6 +63,12 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "backup-with-env", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "backup-with-env", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("backup-with-env")
+		})
 	})
 
 	It("should take a full dump", func() {
@@ -137,10 +143,5 @@ var _ = Context("backup with ObjectBucketName is set in environments variables",
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "backup-with-env", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("backup-with-env")
 	})
 })

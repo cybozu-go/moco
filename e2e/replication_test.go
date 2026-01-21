@@ -27,7 +27,8 @@ var _ = Context("replication", Ordered, func() {
 		return
 	}
 
-	It("should prepare a donor instance", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a 3-instance cluster")
 		kubectlSafe(fillTemplate(donorYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("donor", "single")
@@ -46,6 +47,16 @@ var _ = Context("replication", Ordered, func() {
 			return errors.New("no health condition")
 		}).Should(Succeed())
 
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "donor", "mysqlclusters", "--all")
+			kubectlSafe(nil, "delete", "-n", "repl", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("donor")
+			verifyAllPodsDeleted("repl")
+		})
+	})
+
+	It("should prepare a donor instance", func() {
 		kubectlSafe(nil, "moco", "-n", "donor", "mysql", "-u", "moco-writable", "single", "--",
 			"-e", "CREATE DATABASE test")
 		kubectlSafe(nil, "moco", "-n", "donor", "mysql", "-u", "moco-writable", "single", "--",
@@ -399,13 +410,5 @@ var _ = Context("replication", Ordered, func() {
 			count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
 			return count
 		}).Should(Equal(6))
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "donor", "mysqlclusters", "--all")
-		kubectlSafe(nil, "delete", "-n", "repl", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("donor")
-		verifyAllPodsDeleted("repl")
-
 	})
 })
