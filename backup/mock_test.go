@@ -97,7 +97,7 @@ func (o *mockOperator) PrepareRestore(_ context.Context) error {
 	return nil
 }
 
-func (o *mockOperator) LoadDump(ctx context.Context, dir string, schema string) error {
+func (o *mockOperator) LoadDump(ctx context.Context, dir string, schema, users string) error {
 	if !o.prepared {
 		return errors.New("not prepared")
 	}

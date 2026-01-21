@@ -631,9 +631,18 @@ type RestoreSpec struct {
 	// This is used for `mysqlbinlog` option `--database`.
 	// Thus, this option changes behavior depending on binlog_format.
 	// For more information, please read the following documentation.
-	// https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_database
+	// https://dev.mysql.com/doc/refman/8.4/en/mysqlbinlog.html#option_mysqlbinlog_database
 	// +optional
 	Schema string `json:"schema,omitempty"`
+
+	// Users is the name of the comma separated users to restore.
+	// example: "user1@%,user2@host,user3"
+	// If empty, all users are restored.
+	// This is used for `mysqlsh load-dump utility` option `--includeUsers`.
+	// For more information, please read the following documentation.
+	// https://dev.mysql.com/doc/mysql-shell/8.4/en/mysql-shell-utilities-load-dump.html#mysql-shell-utilities-load-dump-opt-filtering
+	// +optional
+	Users string `json:"users,omitempty"`
 }
 
 // MySQLClusterStatus defines the observed state of MySQLCluster
