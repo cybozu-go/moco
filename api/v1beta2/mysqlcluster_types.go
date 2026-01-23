@@ -632,6 +632,7 @@ type RestoreSpec struct {
 	// Thus, this option changes behavior depending on binlog_format.
 	// For more information, please read the following documentation.
 	// https://dev.mysql.com/doc/refman/8.4/en/mysqlbinlog.html#option_mysqlbinlog_database
+	// NOTE: Restore will fail if any user holds privileges on tables outside the target schema.
 	// +optional
 	Schema string `json:"schema,omitempty"`
 

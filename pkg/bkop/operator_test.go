@@ -249,8 +249,8 @@ var _ = Describe("Operator", func() {
 		Expect(restoredUserCount).To(Equal(3))
 	})
 
-	// NOTE: Restore fails if there are users with table privileges outside the restore schema.
-	// For example, when restoring schema db1, if user db2 exists with SELECT privilege on schema db2, the restore will fail.
+	// NOTE: Restore will fail if any user holds privileges on tables outside the target schema.
+	// For example, when restoring schema db1, the process will fail if a user also has privileges on db2.t1.
 	// This is due to mysqlsh's specification, and moco will not handle this case.
 	// https://dev.mysql.com/doc/mysql-shell/8.4/en/mysql-shell-utilities-load-dump.html#mysql-shell-utilities-load-dump-opt-filtering
 	// In this test, db3 user has SELECT privilege on db3 schema, so trying to restore only db1 schema would fail.
