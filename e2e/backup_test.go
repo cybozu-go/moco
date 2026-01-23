@@ -77,11 +77,11 @@ var _ = Context("backup", Ordered, func() {
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
 			"-e", "CREATE USER 'test_user1'@'%' IDENTIFIED BY 'password1'")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
-			"-e", "GRANT SELECT ON test1.* TO 'test_user1'@'%'")
+			"-e", "GRANT SELECT ON test1.t TO 'test_user1'@'%'")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
 			"-e", "CREATE USER 'test_user2'@'%' IDENTIFIED BY 'password2'")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
-			"-e", "GRANT SELECT ON test2.* TO 'test_user2'@'%'")
+			"-e", "GRANT SELECT ON test2.t TO 'test_user2'@'%'")
 	})
 
 	It("should take a full dump", func() {
