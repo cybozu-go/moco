@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a567a214.js";
+            window.path_to_searchindex_js = "searchindex-9a6239db.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -391,7 +391,8 @@
 <tr><td>sourceNamespace</td><td>SourceNamespace is the namespace of the source <code>MySQLCluster</code>.</td><td>string</td><td>true</td></tr>
 <tr><td>restorePoint</td><td>RestorePoint is the target date and time to restore data. The format is RFC3339.  e.g. "2006-01-02T15:04:05Z"</td><td><a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">metav1.Time</a></td><td>true</td></tr>
 <tr><td>jobConfig</td><td>Specifies parameters for restore Pod.</td><td><a href="#jobconfig">JobConfig</a></td><td>true</td></tr>
-<tr><td>schema</td><td>Schema is the name of the schema to restore. If empty, all schemas are restored. This is used for <code>mysqlbinlog</code> option <code>--database</code>. Thus, this option changes behavior depending on binlog_format. For more information, please read the following documentation. https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html#option_mysqlbinlog_database</td><td>string</td><td>false</td></tr>
+<tr><td>schema</td><td>Schema is the name of the schema to restore. If empty, all schemas are restored. This is used for <code>mysqlbinlog</code> option <code>--database</code>. Thus, this option changes behavior depending on binlog_format. For more information, please read the following documentation. https://dev.mysql.com/doc/refman/8.4/en/mysqlbinlog.html#option_mysqlbinlog_database NOTE: Restore will fail if any user holds privileges on tables outside the target schema.</td><td>string</td><td>false</td></tr>
+<tr><td>users</td><td>Users is the name of the comma separated users to restore. example: "user1@%,user2@host,user3" If empty, all users are restored. This is used for <code>mysqlsh load-dump utility</code> option <code>--includeUsers</code>. For more information, please read the following documentation. https://dev.mysql.com/doc/mysql-shell/8.4/en/mysql-shell-utilities-load-dump.html#mysql-shell-utilities-load-dump-opt-filtering</td><td>string</td><td>false</td></tr>
 </tbody>
 </table>
 </div>
