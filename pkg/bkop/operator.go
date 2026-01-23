@@ -37,7 +37,7 @@ type Operator interface {
 	PrepareRestore(context.Context) error
 
 	// LoadDump loads data dumped by `DumpFull`.
-	LoadDump(ctx context.Context, dir string, schema string) error
+	LoadDump(ctx context.Context, dir string, schema, users string) error
 
 	// LoadBinLog applies binary logs up to `restorePoint`.
 	LoadBinlog(ctx context.Context, binlogDir, tmpDir string, restorePoint time.Time, schema string) error

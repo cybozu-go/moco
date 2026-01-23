@@ -8336,6 +8336,9 @@ spec:
                       description: SourceNamespace is the namespace of the source...
                       minLength: 1
                       type: string
+                    users:
+                      description: Users is the name of the comma separated users to...
+                      type: string
                   required:
                     - jobConfig
                     - restorePoint
