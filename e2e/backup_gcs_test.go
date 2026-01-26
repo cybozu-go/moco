@@ -62,21 +62,7 @@ var _ = Context("backup-gcs", Ordered, func() {
 		DeferCleanup(func() {
 			GinkgoWriter.Println("delete namespace")
 			kubectlSafe(nil, "delete", "-n", "backup-gcs", "mysqlclusters", "--all")
-
-			Eventually(func() error {
-				out, err := kubectl(nil, "get", "-n", "backup-gcs", "pod", "-o", "json")
-				if err != nil {
-					return err
-				}
-				pods := &corev1.PodList{}
-				if err := json.Unmarshal(out, pods); err != nil {
-					return err
-				}
-				if len(pods.Items) > 0 {
-					return errors.New("wait until all Pods are deleted")
-				}
-				return nil
-			}).Should(Succeed())
+			verifyAllPodsDeleted("backup-gcs")
 		})
 	})
 
