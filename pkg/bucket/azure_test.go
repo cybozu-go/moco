@@ -30,10 +30,12 @@ func (m *mockTokenCredential) GetToken(ctx context.Context, opts policy.TokenReq
 var _ = Describe("AzureBucket", func() {
 	ctx := context.Background()
 	var dataDir string
+	// Azurite well-known storage account and key for local development/testing.
+	// Reference: https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key
 	const (
 		accountName   = "devstoreaccount1"
 		accountKey    = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-		name = "test"
+		containerName = "test"
 		azuriteURL    = "http://127.0.0.1:10000/devstoreaccount1"
 	)
 
@@ -67,7 +69,7 @@ var _ = Describe("AzureBucket", func() {
 		serviceClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = serviceClient.CreateContainer(ctx, name, nil)
+		_, err = serviceClient.CreateContainer(ctx, containerName, nil)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -77,23 +79,26 @@ var _ = Describe("AzureBucket", func() {
 		os.RemoveAll(dataDir)
 	})
 
-	createBucket := func() Bucket {
+	createBucketFromConnectionString := func() Bucket {
 		connectionString := fmt.Sprintf("DefaultEndpointsProtocol=http;AccountName=%s;AccountKey=%s;BlobEndpoint=%s;",
 			accountName, accountKey, azuriteURL)
 
-		// For testing, we'll create the client directly with connection string
-		// In production, users would use proper credentials
-		serviceClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
+		bucket, err := NewAzureBucketFromConnectionString(ctx, connectionString, containerName)
 		Expect(err).NotTo(HaveOccurred())
-
-		return &azureBucket{
-			name:   name,
-			client: serviceClient,
-		}
+		return bucket
 	}
 
+	It("should create bucket using NewAzureBucket with token credential", func() {
+		// Test the NewAzureBucket constructor with mock credentials
+		// Note: Azurite doesn't support token-based auth, so we just verify the constructor works
+		_, err := NewAzureBucket(ctx, azuriteURL, containerName, &mockTokenCredential{})
+		// This will fail to authenticate with Azurite (which uses shared key),
+		// but we verify the constructor itself works without error
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("should put and get objects", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		err := b.Put(ctx, "foo/bar", strings.NewReader("01234567890123456789"), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
@@ -122,7 +127,7 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should put unseekable objects", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		dateCmd := exec.Command("date")
 		pr, pw, err := os.Pipe()
@@ -157,7 +162,7 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should put objects and get list of objects up to delimiter", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		err := b.Put(ctx, "foo1/bar", strings.NewReader("01234567890123456789"), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
@@ -189,7 +194,7 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should set correct content types", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		// Test .tar file
 		err := b.Put(ctx, "backup.tar", strings.NewReader("tar content"), 128<<20)
@@ -210,7 +215,7 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should handle empty prefix in List", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		err := b.Put(ctx, "file1", strings.NewReader("content1"), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
@@ -225,7 +230,7 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should handle large file uploads", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		// Create a large string (10 MB)
 		largeContent := strings.Repeat("A", 10*1024*1024)
@@ -243,14 +248,14 @@ var _ = Describe("AzureBucket", func() {
 	})
 
 	It("should return error for non-existent blob", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		_, err := b.Get(ctx, "non-existent-blob")
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should list no keys when prefix matches nothing", func() {
-		b := createBucket()
+		b := createBucketFromConnectionString()
 
 		err := b.Put(ctx, "foo/bar", strings.NewReader("content"), 128<<20)
 		Expect(err).NotTo(HaveOccurred())
