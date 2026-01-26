@@ -5,6 +5,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.33.0] - 2026/01/23
+
+### Added
+- Allow restoring specific users. [#872](https://github.com/cybozu-go/moco/pull/872)
+
 ## [0.32.0] - 2026/01/19
 
 ### Added
@@ -769,7 +774,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/cybozu-go/moco/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/cybozu-go/moco/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/cybozu-go/moco/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/cybozu-go/moco/compare/v0.29.0...v0.30.0

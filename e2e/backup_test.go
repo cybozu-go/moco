@@ -73,6 +73,16 @@ var _ = Context("backup", Ordered, func() {
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test2", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
 
+		// Create test users for the users option test
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
+			"-e", "CREATE USER 'test_user1'@'%' IDENTIFIED BY 'password1'")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
+			"-e", "GRANT SELECT ON test1.t TO 'test_user1'@'%'")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
+			"-e", "CREATE USER 'test_user2'@'%' IDENTIFIED BY 'password2'")
+		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
+			"-e", "GRANT SELECT ON test2.t TO 'test_user2'@'%'")
+
 		DeferCleanup(func() {
 			GinkgoWriter.Println("delete clusters")
 			kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
@@ -165,7 +175,7 @@ var _ = Context("backup", Ordered, func() {
 		Expect(databases).Should(ConsistOf("test1", "test2"))
 	})
 
-	It("should restore only test2 schema", func() {
+	It("should restore only test2 schema and test_user2", func() {
 		tmpl, err := template.New("").Parse(restore2YAML)
 		Expect(err).NotTo(HaveOccurred())
 		buf := new(bytes.Buffer)
@@ -187,15 +197,23 @@ var _ = Context("backup", Ordered, func() {
 			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue), "target2 is not healthy")
 		}).Should(Succeed())
 
+		// Verify that test2 table data is restored
 		out := kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target2", "--",
 			"-N", "-D", "test2", "-e", "SELECT COUNT(*) FROM t")
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
 
+		// Verify that only test2 schema exists
 		out = kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target2", "--",
 			"-N", "-e", "SHOW DATABASES LIKE 'test%'")
 		databases := strings.Fields(string(out))
 		Expect(databases).Should(ConsistOf("test2"))
+
+		// Verify that only test_user2 exists
+		out = kubectlSafe(nil, "moco", "-n", "backup", "mysql", "target2", "--",
+			"-N", "-e", "SELECT User FROM mysql.user WHERE User LIKE 'test_user%'")
+		users := strings.Fields(string(out))
+		Expect(users).Should(ConsistOf("test_user2"))
 	})
 })

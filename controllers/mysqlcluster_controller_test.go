@@ -1583,6 +1583,8 @@ dummyKey: dummyValue
 			SourceName:      "single",
 			SourceNamespace: "ns",
 			RestorePoint:    now,
+			Schema:          "db1",
+			Users:           "user1,user2@%,user3@localhost",
 		}
 		jc := &cluster.Spec.Restore.JobConfig
 		jc.Threads = 3
@@ -1671,7 +1673,8 @@ dummyKey: dummyValue
 			"test",
 			"test",
 			now.UTC().Format(constants.BackupTimeFormat),
-			"",
+			"db1",
+			"user1,user2@%,user3@localhost",
 		}))
 		Expect(c.EnvFrom).To(HaveLen(1))
 		Expect(c.Env).To(HaveLen(2))

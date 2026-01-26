@@ -11,6 +11,7 @@ spec:
     sourceNamespace: backup
     restorePoint: "{{ .RestorePoint }}"
     schema: "test2"
+    users: "test_user2@%"
     jobConfig:
       serviceAccountName: backup-owner
       env:

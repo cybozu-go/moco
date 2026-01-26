@@ -1511,6 +1511,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 		args = append(args, cluster.Namespace, cluster.Name)
 		args = append(args, cluster.Spec.Restore.RestorePoint.UTC().Format(constants.BackupTimeFormat))
 		args = append(args, cluster.Spec.Restore.Schema)
+		args = append(args, cluster.Spec.Restore.Users)
 
 		resources := corev1ac.ResourceRequirements()
 		if !noJobResource {

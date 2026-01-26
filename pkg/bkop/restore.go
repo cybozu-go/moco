@@ -21,7 +21,7 @@ func (o operator) PrepareRestore(ctx context.Context) error {
 	return nil
 }
 
-func (o operator) LoadDump(ctx context.Context, dir string, schema string) error {
+func (o operator) LoadDump(ctx context.Context, dir string, schema, users string) error {
 	args := []string{
 		fmt.Sprintf("mysql://%s@%s", o.user, net.JoinHostPort(o.host, fmt.Sprint(o.port))),
 		"-p" + o.password,
@@ -41,7 +41,9 @@ func (o operator) LoadDump(ctx context.Context, dir string, schema string) error
 	if schema != "" {
 		args = append(args, "--includeSchemas="+schema)
 	}
-
+	if users != "" {
+		args = append(args, "--includeUsers="+users)
+	}
 	cmd := exec.CommandContext(ctx, "mysqlsh", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
