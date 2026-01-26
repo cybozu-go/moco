@@ -68,21 +68,7 @@ var _ = Context("partition_test", Ordered, func() {
 		DeferCleanup(func() {
 			GinkgoWriter.Println("should delete clusters")
 			kubectlSafe(nil, "delete", "-n", "partition", "mysqlclusters", "--all")
-
-			Eventually(func() error {
-				out, err := kubectl(nil, "get", "-n", "partition", "pod", "-o", "json")
-				if err != nil {
-					return err
-				}
-				pods := &corev1.PodList{}
-				if err := json.Unmarshal(out, pods); err != nil {
-					return err
-				}
-				if len(pods.Items) > 0 {
-					return errors.New("wait until all Pods are deleted")
-				}
-				return nil
-			}).Should(Succeed())
+			verifyAllPodsDeleted("partition")
 		})
 	})
 
