@@ -12,7 +12,7 @@ import (
 )
 
 type azureBucket struct {
-	name string
+	name   string
 	client *azblob.Client
 }
 
@@ -46,8 +46,8 @@ func NewAzureBucket(ctx context.Context, serviceURL, name string, credential azc
 	}
 
 	return &azureBucket{
-		name: name,
-		client:        client,
+		name:   name,
+		client: client,
 	}, nil
 }
 
