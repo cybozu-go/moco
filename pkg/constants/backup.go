@@ -11,7 +11,7 @@ const (
 )
 
 const (
-	BackendTypeS3  = "s3"
-	BackendTypeGCS = "gcs"
+	BackendTypeS3    = "s3"
+	BackendTypeGCS   = "gcs"
 	BackendTypeAzure = "azure"
 )

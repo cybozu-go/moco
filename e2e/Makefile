@@ -43,13 +43,16 @@ ifdef USE_LOCAL_MYSQL_IMAGE
 	$(KIND) load docker-image ghcr.io/cybozu-go/moco/mysql:$(MYSQL_VERSION) --name=moco
 endif
 	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v$(CERT_MANAGER_VERSION)/cert-manager.yaml
+	# Increased timeout to 360s to reduce flaky CI failures when cert-manager is slow to start
 	$(KUBECTL) -n cert-manager wait --for=condition=available --timeout=360s --all deployments
 	$(KUSTOMIZE) build . | $(KUBECTL) apply -f -
+	# Increased timeout to 360s to reduce flaky CI failures when moco-system is slow to start
 	$(KUBECTL) -n moco-system wait --for=condition=available --timeout=360s --all deployments
 	$(KUBECTL) apply -f minio.yaml
 	$(KUBECTL) apply -f minio-tls.yaml
 	$(KUBECTL) apply -f fake-gcs-server.yaml
 	$(KUBECTL) apply -f azurite.yaml
+	# Increased timeout to 180s to account for additional storage emulators (minio, fake-gcs, azurite)
 	$(KUBECTL) wait --timeout=180s --for=condition=Ready --all pods
 
 .PHONY: aqua-install
