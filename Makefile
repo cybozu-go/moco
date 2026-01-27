@@ -103,7 +103,7 @@ clustering-envtest: aqua-install
 .PHONY: controller-envtest
 controller-envtest: aqua-install
 	export DEBUG_CONTROLLER=1; \
-    go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
+	go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
 
 .PHONY: api-envtest
 api-envtest: aqua-install
