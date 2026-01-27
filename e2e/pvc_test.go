@@ -28,7 +28,8 @@ var _ = Context("pvc_test", Ordered, func() {
 		return
 	}
 
-	It("should construct a cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a cluster")
 		kubectlSafe(fillTemplate(pvcTestYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("pvc", "cluster")
@@ -53,6 +54,12 @@ var _ = Context("pvc_test", Ordered, func() {
 			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "pvc", "mysql", "-u", "moco-writable", "cluster", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "pvc", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("pvc")
+		})
 	})
 
 	It("should pvc template change succeed", func() {
@@ -180,10 +187,5 @@ var _ = Context("pvc_test", Ordered, func() {
 		stsMetric := findMetric(stsMf, map[string]string{"namespace": "pvc", "name": "cluster"})
 		Expect(stsMetric).NotTo(BeNil())
 		Expect(stsMetric.GetCounter().GetValue()).To(BeNumerically("==", 2))
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "pvc", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("pvc")
 	})
 })

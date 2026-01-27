@@ -22,7 +22,8 @@ var _ = Context("failure", Ordered, func() {
 		return
 	}
 
-	It("should construct a 3-instance cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a 3-instance cluster")
 		kubectlSafe(fillTemplate(failureYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("failure", "test")
@@ -45,6 +46,12 @@ var _ = Context("failure", Ordered, func() {
 			"-e", "CREATE DATABASE test")
 		kubectlSafe(nil, "moco", "-n", "failure", "mysql", "-u", "moco-writable", "test", "--",
 			"-D", "test", "-e", "CREATE TABLE t (x char(32)) ENGINE=InnoDB")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "failure", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("failure")
+		})
 	})
 
 	It("should make a new replica pod ready", func() {
@@ -92,10 +99,5 @@ var _ = Context("failure", Ordered, func() {
 
 		cancel()
 		wg.Wait()
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "failure", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("failure")
 	})
 })

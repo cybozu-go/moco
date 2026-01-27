@@ -94,15 +94,27 @@ check-generate:
 	go mod tidy
 	git diff --exit-code --name-only
 
-.PHONY: envtest
-envtest: aqua-install
+.PHONY: clustering-envtest
+clustering-envtest: aqua-install
 	export MOCO_CHECK_INTERVAL=100ms; \
 	export MOCO_CLONE_WAIT_DURATION=100ms; \
-	go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	go test -v -count 1 -race ./clustering -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
+
+.PHONY: controller-envtest
+controller-envtest: aqua-install
 	export DEBUG_CONTROLLER=1; \
-	go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
-	go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v
-	go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast
+	go test -v -count 1 -race ./controllers -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
+
+.PHONY: api-envtest
+api-envtest: aqua-install
+	go test -v -count 1 -race ./api/... -ginkgo.randomize-all -ginkgo.v $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
+
+.PHONY: backup-envtest
+backup-envtest: aqua-install
+	go test -v -count 1 -race ./backup -ginkgo.randomize-all -ginkgo.v -ginkgo.fail-fast $(if $(FOCUS),-ginkgo.focus="$(FOCUS)")
+
+.PHONY: envtest
+envtest: aqua-install clustering-envtest controller-envtest api-envtest backup-envtest
 
 .PHONY: test-dbop
 test-dbop:

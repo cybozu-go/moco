@@ -36,7 +36,8 @@ var _ = Context("backup", Ordered, func() {
 
 	var restorePoint time.Time
 
-	It("should create a bucket", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("create a bucket")
 		kubectlSafe([]byte(makeBucketYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			out, err := kubectl(nil, "get", "jobs", "make-bucket", "-o", "json")
@@ -48,9 +49,8 @@ var _ = Context("backup", Ordered, func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "make-bucket has not been finished")
 		}).Should(Succeed())
-	})
 
-	It("should construct a source cluster", func() {
+		GinkgoWriter.Println("construct a source cluster")
 		kubectlSafe(fillTemplate(backupYAML), "apply", "-f", "-")
 		Eventually(func(g Gomega) {
 			cluster, err := getCluster("backup", "source")
@@ -82,6 +82,12 @@ var _ = Context("backup", Ordered, func() {
 			"-e", "CREATE USER 'test_user2'@'%' IDENTIFIED BY 'password2'")
 		kubectlSafe(nil, "moco", "-n", "backup", "mysql", "-u", "moco-admin", "source", "--",
 			"-e", "GRANT SELECT ON test2.t TO 'test_user2'@'%'")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("backup")
+		})
 	})
 
 	It("should take a full dump", func() {
@@ -209,18 +215,5 @@ var _ = Context("backup", Ordered, func() {
 			"-N", "-e", "SELECT User FROM mysql.user WHERE User LIKE 'test_user%'")
 		users := strings.Fields(string(out))
 		Expect(users).Should(ConsistOf("test_user2"))
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "backup", "mysqlclusters", "--all")
-
-		Eventually(func(g Gomega) {
-			out, err := kubectl(nil, "get", "-n", "backup", "pod", "-o", "json")
-			g.Expect(err).NotTo(HaveOccurred())
-			pods := &corev1.PodList{}
-			err = json.Unmarshal(out, pods)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(len(pods.Items)).To(BeNumerically(">", 0), "wait until all Pods are deleted")
-		}).Should(Succeed())
 	})
 })
