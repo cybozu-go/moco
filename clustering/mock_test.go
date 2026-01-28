@@ -303,8 +303,7 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 }
 
 // ConfigurePrimary configures server-side semi-synchronous replication.
-// For asynchronous replication, this method should not be called.
-func (o *mockOperator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
+func (o *mockOperator) ConfigurePrimary(ctx context.Context, semisync bool, waitForCount int) error {
 	if o.failing {
 		return errors.New("mysqld is down")
 	}
@@ -312,7 +311,7 @@ func (o *mockOperator) ConfigurePrimary(ctx context.Context, waitForCount int) e
 	defer o.mysql.mu.Unlock()
 
 	o.mysql.status.GlobalVariables.WaitForSlaveCount = waitForCount
-	o.mysql.status.GlobalVariables.SemiSyncMasterEnabled = true
+	o.mysql.status.GlobalVariables.SemiSyncMasterEnabled = semisync
 	return nil
 }
 
