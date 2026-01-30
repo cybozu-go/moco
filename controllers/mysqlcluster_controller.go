@@ -106,7 +106,7 @@ type clientObjectConstraint[S any] interface {
 	client.Object
 }
 
-func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r client.Client, key client.ObjectKey, expected runtime.ApplyConfiguration, extractFunc func(T, string) (U, error)) (T, error) {
+func apply[S any, T clientObjectConstraint[S], U runtime.ApplyConfiguration](ctx context.Context, r client.Client, key client.ObjectKey, expected runtime.ApplyConfiguration, extractFunc func(T, string) (U, error)) (T, error) {
 	var orig S
 	if err := r.Get(ctx, key, T(&orig)); err != nil && !apierrors.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get resource %s/%s: %w", key.Namespace, key.Name, err)
