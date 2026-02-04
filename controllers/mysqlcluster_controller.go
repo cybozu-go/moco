@@ -30,7 +30,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -107,7 +106,7 @@ type clientObjectConstraint[S any] interface {
 	client.Object
 }
 
-func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r client.Client, key client.ObjectKey, expected U, extractFunc func(T, string) (U, error)) (T, error) {
+func apply[S any, T clientObjectConstraint[S], U runtime.ApplyConfiguration](ctx context.Context, r client.Client, key client.ObjectKey, expected runtime.ApplyConfiguration, extractFunc func(T, string) (U, error)) (T, error) {
 	var orig S
 	if err := r.Get(ctx, key, T(&orig)); err != nil && !apierrors.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get resource %s/%s: %w", key.Namespace, key.Name, err)
@@ -122,17 +121,9 @@ func apply[S any, T clientObjectConstraint[S], U any](ctx context.Context, r cli
 		return nil, ErrApplyConfigurationNotChanged
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(expected)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert resource %s/%s to unstructured: %w", key.Namespace, key.Name, err)
-	}
-	patch := client.ApplyConfigurationFromUnstructured(&unstructured.Unstructured{
-		Object: obj,
-	})
-
-	return &orig, r.Apply(ctx, patch, &client.ApplyOptions{
+	return &orig, r.Apply(ctx, expected, &client.ApplyOptions{
 		FieldManager: fieldManager,
-		Force:        ptr.To[bool](true),
+		Force:        ptr.To(true),
 	})
 }
 
@@ -970,14 +961,6 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		return fmt.Errorf("failed to set ownerReference to StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
 	}
 
-	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
-	if err != nil {
-		return fmt.Errorf("failed to convert StatefulSet %s/%s to unstructured: %w", cluster.Namespace, cluster.PrefixedName(), err)
-	}
-	patch := client.ApplyConfigurationFromUnstructured(&unstructured.Unstructured{
-		Object: obj,
-	})
-
 	origApplyConfig, err := appsv1ac.ExtractStatefulSet(&orig, fieldManager)
 	if err != nil {
 		return fmt.Errorf("failed to extract StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
@@ -1024,9 +1007,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		}
 	}
 
-	err = r.Apply(ctx, patch, &client.ApplyOptions{
+	err = r.Apply(ctx, sts, &client.ApplyOptions{
 		FieldManager: fieldManager,
-		Force:        ptr.To[bool](true),
+		Force:        ptr.To(true),
 	})
 	if err != nil {
 		if needRecreate {
