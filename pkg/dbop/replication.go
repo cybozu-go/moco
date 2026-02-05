@@ -15,8 +15,7 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 	if err := o.db.GetContext(ctx, &version, `SELECT SUBSTRING_INDEX(VERSION(), '.', 2)`); err != nil {
 		return fmt.Errorf("failed to get version: %w", err)
 	}
-	var cmd string
-	cmd = `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
+	cmd := `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
 	if _, err := o.db.NamedExecContext(ctx, cmd, primary); err != nil {
 		return fmt.Errorf("failed to change primary: %w", err)
 	}
