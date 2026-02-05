@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const semiSyncMasterTimeout = 24 * 60 * 60 * 1000
+const semiSyncSourceTimeout = 24 * 60 * 60 * 1000
 
 func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, semisync bool) error {
 	if _, err := o.db.ExecContext(ctx, `STOP REPLICA`); err != nil {
@@ -16,21 +16,15 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 		return fmt.Errorf("failed to get version: %w", err)
 	}
 	var cmd string
-	if version == "8.4" {
-		cmd = `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
-	} else if version == "8.0" {
-		cmd = `CHANGE MASTER TO MASTER_HOST = :Host, MASTER_PORT = :Port, MASTER_USER = :User, MASTER_PASSWORD = :Password, MASTER_AUTO_POSITION = 1, GET_MASTER_PUBLIC_KEY = 1`
-	} else {
-		return fmt.Errorf("unsupported version: %s", version)
-	}
+	cmd = `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
 	if _, err := o.db.NamedExecContext(ctx, cmd, primary); err != nil {
 		return fmt.Errorf("failed to change primary: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_slave_enabled=?", semisync); err != nil {
-		return fmt.Errorf("failed to set rpl_semi_sync_slave_enabled: %w", err)
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_replica_enabled=?", semisync); err != nil {
+		return fmt.Errorf("failed to set rpl_semi_sync_replica_enabled: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_enabled=OFF"); err != nil {
-		return fmt.Errorf("failed to disable rpl_semi_sync_master_enabled: %w", err)
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_source_enabled=OFF"); err != nil {
+		return fmt.Errorf("failed to disable rpl_semi_sync_source_enabled: %w", err)
 	}
 	if _, err := o.db.ExecContext(ctx, `START REPLICA`); err != nil {
 		return fmt.Errorf("failed to start replica: %w", err)
@@ -39,13 +33,13 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 }
 
 func (o *operator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_timeout=?", semiSyncMasterTimeout); err != nil {
-		return fmt.Errorf("failed to set rpl_semi_sync_master_timeout count: %w", err)
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_source_timeout=?", semiSyncSourceTimeout); err != nil {
+		return fmt.Errorf("failed to set rpl_semi_sync_source_timeout count: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", waitForCount); err != nil {
-		return fmt.Errorf("failed to set rpl_semi_sync_master_wait_for_slave_count count: %w", err)
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_source_wait_for_replica_count=?", waitForCount); err != nil {
+		return fmt.Errorf("failed to set rpl_semi_sync_source_wait_for_replica_count count: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_enabled=ON"); err != nil {
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_source_enabled=ON"); err != nil {
 		return fmt.Errorf("failed to enable semi-sync primary: %w", err)
 	}
 	return nil

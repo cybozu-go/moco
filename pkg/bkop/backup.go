@@ -52,7 +52,7 @@ func (o operator) DumpBinlog(ctx context.Context, dir, binlogName, filterGTID st
 		"-u", o.user,
 		"-p" + o.password,
 		"--get-server-public-key",
-		"--read-from-remote-master=BINLOG-DUMP-GTIDS",
+		"--read-from-remote-source=BINLOG-DUMP-GTIDS",
 		"--exclude-gtids=" + filterGTID,
 		"-t",
 		"--raw",

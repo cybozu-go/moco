@@ -41,9 +41,9 @@ As a special case, if `spec.replicationSourceSecretName` is set for MySQLCluster
 
 If `spec.replicationSourceSecretName` is _not_ set, MOCO configures [semisynchronous replication](https://dev.mysql.com/doc/refman/8.0/en/replication-semisync.html) between the primary and replicas.  Otherwise, the replication is asynchronous.
 
-For semi-synchronous replication, MOCO configures [`rpl_semi_sync_master_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_timeout) long enough so that it never degrades to asynchronous replication.
+For semi-synchronous replication, MOCO configures [`rpl_semi_sync_source_timeout`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_source_timeout) long enough so that it never degrades to asynchronous replication.
 
-Likewise, MOCO configures [`rpl_semi_sync_master_wait_for_slave_count`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_master_wait_for_slave_count) to (`spec.replicas` - 1 / 2) to make sure that at least half of replica instances have the same commit as the primary.  e.g., If `spec.replicas` is 5, `rpl_semi_sync_master_wait_for_slave_count` will be set to 2.
+Likewise, MOCO configures [`rpl_semi_sync_source_wait_for_replica_count`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html#sysvar_rpl_semi_sync_source_wait_for_replica_count) to (`spec.replicas` - 1 / 2) to make sure that at least half of replica instances have the same commit as the primary.  e.g., If `spec.replicas` is 5, `rpl_semi_sync_source_wait_for_replica_count` will be set to 2.
 
 MOCO also disables [`relay_log_recovery`](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html#sysvar_relay_log_recovery) because enabling it would drop the relay logs on replicas.
 
@@ -93,7 +93,7 @@ Likewise, if a replica Pod is ready, the `mysqld` is assured read-only and runni
     - For intermediate primary instance, the primary works as a replica for an external `mysqld` and is read-only.
     - Half or more replicas are ready, read-only, connected to the primary, and have no errant transactions.  For example, if `spec.replicas` is 5, two or more such replicas are needed.
     - At least one replica has some problems.
-      - This also includes cases where a replica's `rpl_semi_sync_master_wait_sessions` is greater than 0. See related issues. [#813](https://github.com/cybozu-go/moco/issues/813)
+      - This also includes cases where a replica's `rpl_semi_sync_source_wait_sessions` is greater than 0. See related issues. [#813](https://github.com/cybozu-go/moco/issues/813)
 5. Failed
     - The primary instance is not running or lost data.
     - More than half of replicas are running and have data without errant transactions.  For example, if `spec.replicas` is 5, three or more such replicas are needed.

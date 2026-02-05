@@ -58,20 +58,20 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariabl
 func (o *operator) getGlobalStatus(ctx context.Context) (*GlobalStatus, error) {
 	var value sql.NullString
 
-	semiSyncMasterWaitSessions := 0
-	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Rpl_semi_sync_master_wait_sessions'")
+	semiSyncSourceWaitSessions := 0
+	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Rpl_semi_sync_source_wait_sessions'")
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("failed to get Rpl_semi_sync_master_wait_sessions: %w", err)
+		return nil, fmt.Errorf("failed to get Rpl_semi_sync_source_wait_sessions: %w", err)
 	}
 	if value.Valid {
-		semiSyncMasterWaitSessions, err = strconv.Atoi(value.String)
+		semiSyncSourceWaitSessions, err = strconv.Atoi(value.String)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse semi_sync_wait_master_sessions: %w", err)
+			return nil, fmt.Errorf("failed to parse semi_sync_wait_source_sessions: %w", err)
 		}
 	}
 
 	return &GlobalStatus{
-		SemiSyncMasterWaitSessions: semiSyncMasterWaitSessions,
+		SemiSyncSourceWaitSessions: semiSyncSourceWaitSessions,
 	}, nil
 }
 

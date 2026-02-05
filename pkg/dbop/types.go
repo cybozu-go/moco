@@ -27,25 +27,25 @@ var statusGlobalVars = []string{
 	"@@gtid_purged",
 	"@@read_only",
 	"@@super_read_only",
-	"@@rpl_semi_sync_master_wait_for_slave_count",
-	"@@rpl_semi_sync_master_enabled",
-	"@@rpl_semi_sync_slave_enabled",
+	"@@rpl_semi_sync_source_wait_for_replica_count",
+	"@@rpl_semi_sync_source_enabled",
+	"@@rpl_semi_sync_replica_enabled",
 }
 
 // GlobalVariables defines the observed global variable values of a MySQL instance
 type GlobalVariables struct {
-	UUID                  string `db:"@@server_uuid"`
-	ExecutedGTID          string `db:"@@gtid_executed"`
-	PurgedGTID            string `db:"@@gtid_purged"`
-	ReadOnly              bool   `db:"@@read_only"`
-	SuperReadOnly         bool   `db:"@@super_read_only"`
-	WaitForSlaveCount     int    `db:"@@rpl_semi_sync_master_wait_for_slave_count"`
-	SemiSyncMasterEnabled bool   `db:"@@rpl_semi_sync_master_enabled"`
-	SemiSyncSlaveEnabled  bool   `db:"@@rpl_semi_sync_slave_enabled"`
+	UUID                   string `db:"@@server_uuid"`
+	ExecutedGTID           string `db:"@@gtid_executed"`
+	PurgedGTID             string `db:"@@gtid_purged"`
+	ReadOnly               bool   `db:"@@read_only"`
+	SuperReadOnly          bool   `db:"@@super_read_only"`
+	WaitForReplicaCount    int    `db:"@@rpl_semi_sync_source_wait_for_replica_count"`
+	SemiSyncSourceEnabled  bool   `db:"@@rpl_semi_sync_source_enabled"`
+	SemiSyncReplicaEnabled bool   `db:"@@rpl_semi_sync_replica_enabled"`
 }
 
 type GlobalStatus struct {
-	SemiSyncMasterWaitSessions int
+	SemiSyncSourceWaitSessions int
 }
 
 // ReplicaHost defines the columns from `SHOW REPLICAS`

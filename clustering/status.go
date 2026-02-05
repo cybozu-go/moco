@@ -297,9 +297,9 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		if ist == nil {
 			continue
 		}
-		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
+		if ist.GlobalStatus.SemiSyncSourceWaitSessions > 0 {
 			ss.MySQLStatus[i] = nil
-			log.Info("Detected a hangup replica. rpl_semi_sync_master_wait_sessions is greater than 0.", "instance", i)
+			log.Info("Detected a hangup replica. rpl_semi_sync_source_wait_sessions is greater than 0.", "instance", i)
 		}
 	}
 
