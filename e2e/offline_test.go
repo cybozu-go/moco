@@ -25,7 +25,8 @@ var _ = Context("offline", Ordered, func() {
 		return
 	}
 
-	It("should construct a cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("should construct a cluster")
 		kubectlSafe(fillTemplate(offlineYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("offline", "test")
@@ -50,6 +51,12 @@ var _ = Context("offline", Ordered, func() {
 			"-D", "test", "-e", "CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT, data VARCHAR(32) NOT NULL, PRIMARY KEY (id), KEY key1 (data), KEY key2 (data, id)) ENGINE=InnoDB")
 		kubectlSafe(nil, "moco", "-n", "offline", "mysql", "-u", "moco-writable", "test", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('aaa')")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("should delete clusters")
+			kubectlSafe(nil, "delete", "-n", "offline", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("offline")
+		})
 	})
 
 	It("should offline change succeed", func() {
@@ -96,10 +103,5 @@ var _ = Context("offline", Ordered, func() {
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(1))
-	})
-
-	It("should delete namespace", func() {
-		kubectlSafe(nil, "delete", "-n", "offline", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("offline")
 	})
 })
