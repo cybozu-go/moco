@@ -372,7 +372,7 @@ func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ct
 		WithLabels(labelSet(cluster, false)).
 		WithData(newSecret.Data)
 
-	if err := setControllerReferenceWithSecret(cluster, secret, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, secret, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -408,7 +408,7 @@ func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req c
 		WithLabels(labelSet(cluster, false)).
 		WithData(mycnfSecret.Data)
 
-	if err := setControllerReferenceWithSecret(cluster, secret, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, secret, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Secret %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -483,7 +483,7 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 		WithLabels(labelSet(cluster, false)).
 		WithData(cmData)
 
-	if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, cm, r.Scheme); err != nil {
 		return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 	}
 
@@ -553,7 +553,7 @@ func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Conte
 			WithLabels(labelSet(cluster, false)).
 			WithData(data)
 
-		if err := setControllerReferenceWithConfigMap(cluster, cm, r.Scheme); err != nil {
+		if err := setControllerReference(cluster, cm, r.Scheme); err != nil {
 			return nil, fmt.Errorf("failed to set ownerReference to ConfigMap %s/%s: %w", cluster.Namespace, cmName, err)
 		}
 
@@ -625,7 +625,7 @@ func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, 
 	sa := corev1ac.ServiceAccount(name, cluster.Namespace).
 		WithLabels(labelSet(cluster, false))
 
-	if err := setControllerReferenceWithServiceAccount(cluster, sa, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, sa, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -736,7 +736,7 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 		)
 	}
 
-	if err := setControllerReferenceWithService(cluster, svc, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, svc, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Service %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -957,7 +957,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 	sts.Spec.Template.WithSpec(&podSpec)
 
-	if err := setControllerReferenceWithStatefulSet(cluster, sts, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, sts, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to StatefulSet %s/%s: %w", cluster.Namespace, cluster.PrefixedName(), err)
 	}
 
@@ -1080,7 +1080,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 			),
 		)
 
-	if err := setControllerReferenceWithPDB(cluster, pdbApplyConfig, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, pdbApplyConfig, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to PDB %s/%s: %w", pdb.Namespace, pdb.Name, err)
 	}
 
@@ -1332,7 +1332,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		)
 	}
 
-	if err := setControllerReferenceWithCronJob(cluster, cronJob, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, cronJob, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
 	}
 
@@ -1392,7 +1392,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, r
 				WithVerbs("create", "update", "patch"),
 		)
 
-	if err := setControllerReferenceWithRole(cluster, role, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, role, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -1437,7 +1437,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Con
 			WithName(bp.Spec.JobConfig.ServiceAccountName).
 			WithNamespace(cluster.Namespace))
 
-	if err := setControllerReferenceWithRoleBinding(cluster, roleBinding, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, roleBinding, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -1594,7 +1594,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 				),
 			)
 
-		if err := setControllerReferenceWithJob(cluster, job, r.Scheme); err != nil {
+		if err := setControllerReference(cluster, job, r.Scheme); err != nil {
 			return fmt.Errorf("failed to set ownerReference to Job %s/%s: %w", cluster.Namespace, jobName, err)
 		}
 
@@ -1655,7 +1655,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, 
 				WithVerbs("create"),
 		)
 
-	if err := setControllerReferenceWithRole(cluster, role, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, role, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to Role %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -1700,7 +1700,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Co
 			WithName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
 			WithNamespace(cluster.Namespace))
 
-	if err := setControllerReferenceWithRoleBinding(cluster, roleBinding, r.Scheme); err != nil {
+	if err := setControllerReference(cluster, roleBinding, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to RoleBinding %s/%s: %w", cluster.Namespace, name, err)
 	}
 
@@ -1909,57 +1909,16 @@ func isForceRollingUpdate(cluster *mocov1beta2.MySQLCluster) bool {
 	return cluster.Annotations[constants.AnnForceRollingUpdate] == "true"
 }
 
-func setControllerReferenceWithConfigMap(cluster *mocov1beta2.MySQLCluster, cm *corev1ac.ConfigMapApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	cm.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
+type ownerRefSetter[T any] interface {
+	WithOwnerReferences(...*metav1ac.OwnerReferenceApplyConfiguration) T
 }
 
-func setControllerReferenceWithSecret(cluster *mocov1beta2.MySQLCluster, secret *corev1ac.SecretApplyConfiguration, scheme *runtime.Scheme) error {
+func setControllerReference[T ownerRefSetter[T]](cluster *mocov1beta2.MySQLCluster, obj T, scheme *runtime.Scheme) error {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
 		return err
 	}
-	secret.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithService(cluster *mocov1beta2.MySQLCluster, svc *corev1ac.ServiceApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	svc.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithStatefulSet(cluster *mocov1beta2.MySQLCluster, sts *appsv1ac.StatefulSetApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	sts.WithOwnerReferences(metav1ac.OwnerReference().
+	obj.WithOwnerReferences(metav1ac.OwnerReference().
 		WithAPIVersion(gvk.GroupVersion().String()).
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
@@ -1995,96 +1954,6 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 		WithBlockOwnerDeletion(true).
 		WithController(true))
 
-	return nil
-}
-
-func setControllerReferenceWithServiceAccount(cluster *mocov1beta2.MySQLCluster, sa *corev1ac.ServiceAccountApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	sa.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithPDB(cluster *mocov1beta2.MySQLCluster, pdb *policyv1ac.PodDisruptionBudgetApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	pdb.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithRole(cluster *mocov1beta2.MySQLCluster, role *rbacv1ac.RoleApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	role.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithRoleBinding(cluster *mocov1beta2.MySQLCluster, roleBinding *rbacv1ac.RoleBindingApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	roleBinding.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithJob(cluster *mocov1beta2.MySQLCluster, job *batchv1ac.JobApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	job.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
-	return nil
-}
-
-func setControllerReferenceWithCronJob(cluster *mocov1beta2.MySQLCluster, cronJob *batchv1ac.CronJobApplyConfiguration, scheme *runtime.Scheme) error {
-	gvk, err := apiutil.GVKForObject(cluster, scheme)
-	if err != nil {
-		return err
-	}
-	cronJob.WithOwnerReferences(metav1ac.OwnerReference().
-		WithAPIVersion(gvk.GroupVersion().String()).
-		WithKind(gvk.Kind).
-		WithName(cluster.Name).
-		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
-		WithController(true))
 	return nil
 }
 
