@@ -26,7 +26,7 @@ Blog article: [Introducing MOCO, a modern MySQL operator on Kubernetes](https://
 
 ## Supported software
 
-- MySQL: 8.0.28, 8.0.42, 8.0.43, 8.0.44, 8.4.4, 8.4.7
+- MySQL: 8.0.28, 8.0.43, 8.0.44, 8.0.45, 8.4.4, 8.4.8
 - Kubernetes: 1.32, 1.33, 1.34
 
 MOCO supports (tests) the LTS releases of MySQL 8.
@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.8
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
