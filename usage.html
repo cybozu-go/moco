@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9a6239db.js";
+            window.path_to_searchindex_js = "searchindex-42563478.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -288,7 +288,7 @@ spec:
       containers:
       # At least a container named "mysqld" must be defined.
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.8
         # By limiting CPU and memory, Pods will have Guaranteed QoS class.
         # requests can be omitted; it will be set to the same value as limits.
         resources:
@@ -376,7 +376,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.7  # must be the same version as the donor
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.8  # must be the same version as the donor
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
@@ -785,7 +785,7 @@ spec:
       containers:
       - name: mysqld
         # Edit the next line
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.7
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.8
 </code></pre>
 <p>You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read <a href="upgrading.html"><code>upgrading.md</code></a> for further details.</p>
