@@ -30,7 +30,8 @@ var _ = Context("stop reconciliation and clustering", Ordered, func() {
 		return
 	}
 
-	It("should construct a 3-instance cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a 3-instance cluster")
 		kubectlSafe(fillTemplate(stopYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("stop", "test")
@@ -61,6 +62,12 @@ var _ = Context("stop reconciliation and clustering", Ordered, func() {
 			"-n", "stop",
 			"-u", "moco-writable",
 			"--", "-e", "INSERT INTO test.t1 (foo) VALUES (1); COMMIT;")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "stop", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("stop")
+		})
 	})
 
 	It("should stop reconciliation", func() {
@@ -338,10 +345,5 @@ var _ = Context("stop reconciliation and clustering", Ordered, func() {
 		errantReplicasMetric := findMetric(errantReplicasMf, map[string]string{"namespace": "stop", "name": "test"})
 		Expect(errantReplicasMetric).NotTo(BeNil())
 		Expect(math.IsNaN(errantReplicasMetric.GetGauge().GetValue())).To(BeTrue())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "stop", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("stop")
 	})
 })

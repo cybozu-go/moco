@@ -19,7 +19,8 @@ var _ = Context("failover", Ordered, func() {
 		return
 	}
 
-	It("should construct a 3-instance cluster", func() {
+	BeforeAll(func() {
+		GinkgoWriter.Println("construct a 3-instance cluster")
 		kubectlSafe(fillTemplate(failoverYAML), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("failover", "test")
@@ -50,6 +51,12 @@ var _ = Context("failover", Ordered, func() {
 			"-n", "failover",
 			"-u", "moco-writable",
 			"--", "-e", "INSERT INTO test.t1 (foo) VALUES (1); COMMIT;")
+
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "failover", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("failover")
+		})
 	})
 
 	It("should successful failover ", func() {
@@ -132,10 +139,5 @@ var _ = Context("failover", Ordered, func() {
 			}
 			return errors.New("no health condition")
 		}).Should(Succeed())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "failover", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("failover")
 	})
 })

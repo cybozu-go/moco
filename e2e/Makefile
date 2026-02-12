@@ -58,7 +58,7 @@ aqua-install:
 .PHONY: test
 test:
 	env PATH="$$(pwd)/../bin:$$PATH" RUN_E2E=1 \
-		go run github.com/onsi/ginkgo/v2/ginkgo run -v --procs 5 --fail-fast --randomize-all --timeout 90m .
+		go run github.com/onsi/ginkgo/v2/ginkgo run -v --procs 5 --fail-fast --randomize-all --timeout 90m $(if $(FOCUS),--focus="$(FOCUS)") .
 
 .PHONY: test-upgrade
 test-upgrade:
