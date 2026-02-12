@@ -4,7 +4,7 @@ resources:
 - validate_preventdelete.yaml
 
 patchesStrategicMerge:
-- statefulset_webhook_objectselector_patch.yaml
+- patches/statefulset_webhook_objectselector.yaml
 
 configurations:
 - kustomizeconfig.yaml
