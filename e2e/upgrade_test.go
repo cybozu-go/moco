@@ -28,8 +28,8 @@ var _ = Context("upgrade", Ordered, func() {
 		return
 	}
 
-	It("should upgrade MySQL successfully", func() {
-		By("creating a 5-instance cluster with MySQL " + mysqlVersionOld)
+	BeforeAll(func() {
+		GinkgoWriter.Println("creating a 5-instance cluster with MySQL " + mysqlVersionOld)
 		kubectlSafe(fillTemplateWithVersion(upgradeYAML, mysqlVersionOld), "apply", "-f", "-")
 		Eventually(func() error {
 			cluster, err := getCluster("upgrade", "test")
@@ -48,6 +48,14 @@ var _ = Context("upgrade", Ordered, func() {
 			return errors.New("no health condition")
 		}).Should(Succeed())
 
+		DeferCleanup(func() {
+			GinkgoWriter.Println("delete clusters")
+			kubectlSafe(nil, "delete", "-n", "upgrade", "mysqlclusters", "--all")
+			verifyAllPodsDeleted("upgrade")
+		})
+	})
+
+	It("should upgrade MySQL successfully", func() {
 		By("doing a failover")
 		kubectlSafe(nil, "moco", "-n", "upgrade", "mysql", "-u", "moco-writable", "test", "--",
 			"-e", "CREATE DATABASE test")
@@ -164,10 +172,5 @@ var _ = Context("upgrade", Ordered, func() {
 			}
 			return nil
 		}).Should(Succeed())
-	})
-
-	It("should delete clusters", func() {
-		kubectlSafe(nil, "delete", "-n", "upgrade", "mysqlclusters", "--all")
-		verifyAllPodsDeleted("upgrade")
 	})
 })

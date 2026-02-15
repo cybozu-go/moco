@@ -324,7 +324,8 @@ var _ = Describe("StatefulSet reconciler", func() {
 				testUpdatePartition(ctx, updateInterval)
 			},
 			Entry("without interval", 0*time.Millisecond),
-			Entry("with 1000ms interval", 1000*time.Millisecond),
+			// The minimum unit for CreationTimestamp is seconds, so specify a value greater than 1 second.
+			Entry("with 1000ms interval", 2000*time.Millisecond),
 		)
 	})
 })
