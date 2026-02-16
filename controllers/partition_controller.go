@@ -54,11 +54,6 @@ type StatefulSetPartitionReconciler struct {
 func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	if !r.RateLimiter.Allow() {
-		metrics.PartitionUpdateRetriesTotalVec.WithLabelValues(req.Namespace).Inc()
-		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
-	}
-
 	sts := &appsv1.StatefulSet{}
 	err := r.Get(ctx, req.NamespacedName, sts)
 	if err != nil {
@@ -94,6 +89,11 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 	}
 	if !ready {
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
+	if !r.RateLimiter.Allow() {
+		metrics.PartitionUpdateRetriesTotalVec.WithLabelValues(req.Namespace).Inc()
+		return reconcile.Result{RequeueAfter: r.UpdateInterval}, nil
 	}
 
 	if err := r.patchNewPartition(ctx, sts); err != nil {
