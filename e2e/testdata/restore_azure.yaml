@@ -1,0 +1,35 @@
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: backup-azure
+  name: target
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 1
+  restore:
+    sourceName: source
+    sourceNamespace: backup-azure
+    restorePoint: "{{ .RestorePoint }}"
+    jobConfig:
+      serviceAccountName: backup-owner
+      envFrom:
+      - secretRef:
+          name: azurite-secret
+      bucketConfig:
+        bucketName: moco
+        backendType: azure
+      workVolume:
+        emptyDir: {}
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: ghcr.io/cybozu-go/moco/mysql:{{ .MySQLVersion }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
