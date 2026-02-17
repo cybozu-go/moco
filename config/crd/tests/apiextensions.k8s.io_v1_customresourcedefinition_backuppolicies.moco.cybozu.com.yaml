@@ -2300,6 +2300,10 @@ spec:
                 minimum: 0
                 nullable: true
                 type: integer
+              timeZone:
+                description: The time zone name for the given schedule, see...
+                nullable: true
+                type: string
             required:
             - jobConfig
             - schedule

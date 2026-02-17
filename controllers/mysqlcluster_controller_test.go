@@ -74,6 +74,7 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 	bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
 	bp.Spec.Schedule = "*/5 * * * *"
+	bp.Spec.TimeZone = ptr.To("America/New_York")
 	bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
 	bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
 	jc := &bp.Spec.JobConfig
@@ -1410,6 +1411,7 @@ dummyKey: dummyValue
 		Expect(cj.Labels).NotTo(BeEmpty())
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
+		Expect(cj.Spec.TimeZone).To(Equal(ptr.To("America/New_York")))
 		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(ptr.To[int64](10)))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
@@ -1470,6 +1472,7 @@ dummyKey: dummyValue
 		bp.Spec.ConcurrencyPolicy = batchv1.AllowConcurrent
 		bp.Spec.StartingDeadlineSeconds = nil
 		bp.Spec.Schedule = "*/5 1 * * *"
+		bp.Spec.TimeZone = nil
 		bp.Spec.SuccessfulJobsHistoryLimit = nil
 		bp.Spec.FailedJobsHistoryLimit = nil
 		jc := &bp.Spec.JobConfig
@@ -1504,6 +1507,7 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
+		Expect(cj.Spec.TimeZone).To(BeNil())
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](3)))
