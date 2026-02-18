@@ -107,6 +107,20 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 }
 
 func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	stsPrct := partitionControllerPredicate()
+	podPrct := partitionControllerPredicate()
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
+		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
+		WithOptions(
+			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
+		).
+		Complete(r)
+}
+
+// partitionControllerPredicate filters StatefulSets and Pods managed by MOCO.
+func partitionControllerPredicate() predicate.Funcs {
 	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
 	prctFunc := func(o client.Object) bool {
 		if !strings.HasPrefix(o.GetName(), "moco-") {
@@ -123,23 +137,12 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 		return true
 	}
 
-	stsPrct := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
-		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
+	return predicate.Funcs{
+		UpdateFunc:  func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
+		CreateFunc:  func(e event.CreateEvent) bool { return prctFunc(e.Object) },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return prctFunc(e.Object) },
+		GenericFunc: func(e event.GenericEvent) bool { return prctFunc(e.Object) },
 	}
-
-	podPrct := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
-		CreateFunc: func(e event.CreateEvent) bool { return prctFunc(e.Object) },
-	}
-
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
-		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
-		WithOptions(
-			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
-		).
-		Complete(r)
 }
 
 // isRolloutReady returns true if the StatefulSet is ready for rolling update.
