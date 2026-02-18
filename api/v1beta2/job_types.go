@@ -86,6 +86,11 @@ type JobConfig struct {
 	//
 	// +optional
 	VolumeMounts []VolumeMountApplyConfiguration `json:"volumeMounts,omitempty"`
+
+	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling any images.
+	//
+	// +optional
+	ImagePullSecrets []LocalObjectReferenceApplyConfiguration `json:"imagePullSecrets,omitempty"`
 }
 
 // VolumeSourceApplyConfiguration is the type defined to implement the DeepCopy method.
@@ -210,9 +215,26 @@ type BucketConfig struct {
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.
 type AffinityApplyConfiguration corev1ac.AffinityApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new EnvVarApplyConfiguration.
+// DeepCopy is copying the receiver, creating a new AffinityApplyConfiguration.
 func (in *AffinityApplyConfiguration) DeepCopy() *AffinityApplyConfiguration {
 	out := new(AffinityApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// LocalObjectReferenceApplyConfiguration is the type defined to implement the DeepCopy method.
+type LocalObjectReferenceApplyConfiguration corev1ac.LocalObjectReferenceApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new LocalObjectReferenceApplyConfiguration.
+func (in *LocalObjectReferenceApplyConfiguration) DeepCopy() *LocalObjectReferenceApplyConfiguration {
+	out := new(LocalObjectReferenceApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")
