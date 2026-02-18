@@ -10,6 +10,7 @@ import (
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,9 +23,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -129,6 +132,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 	ctx := context.Background()
 	var stopFunc func()
 	var mockMgr *mockManager
+	var mockOpFactory *mockOperatorFactory
 
 	BeforeEach(func() {
 		cs := &mocov1beta2.MySQLClusterList{}
@@ -154,11 +158,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace(testMocoSystemNamespace))
+		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &corev1.ConfigMap{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &corev1.ServiceAccount{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &policyv1.PodDisruptionBudget{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Event{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -176,12 +184,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		mockMgr = &mockManager{
 			clusters: make(map[string]struct{}),
 		}
+		mockOpFactory = newMockOperatorFactory()
 		mysqlr := &MySQLClusterReconciler{
 			Client:                     mgr.GetClient(),
 			Scheme:                     scheme,
 			Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
 			SystemNamespace:            testMocoSystemNamespace,
 			ClusterManager:             mockMgr,
+			OpFactory:                  mockOpFactory,
 			AgentImage:                 testAgentImage,
 			BackupImage:                testBackupImage,
 			FluentBitImage:             testFluentBitImage,
@@ -525,14 +535,17 @@ dummyKey: dummyValue
 		err = k8sClient.Create(ctx, userCM)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster = &mocov1beta2.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
-		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithRequests(corev1.ResourceList{
-			corev1.ResourceMemory: resource.MustParse("500Mi"),
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
+			cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithRequests(corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("500Mi"),
+			})
+			return k8sClient.Update(ctx, cluster)
 		})
-		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
@@ -1364,11 +1377,9 @@ dummyKey: dummyValue
 			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
 				return fmt.Errorf("not yet reconciled")
 			}
-			return nil
+			cluster.Spec.Replicas = 1
+			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
-		cluster.Spec.Replicas = 1
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
 			pdb = &policyv1.PodDisruptionBudget{}
@@ -1847,13 +1858,14 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
-		cluster = &mocov1beta2.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-
-		cluster.Annotations = map[string]string{"foo": "bar"}
-		err = k8sClient.Update(ctx, cluster)
-		Expect(err).NotTo(HaveOccurred())
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cluster.Annotations = map[string]string{"foo": "bar"}
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
 
 		Consistently(func() error {
 			cluster2 := &mocov1beta2.MySQLCluster{}
@@ -2360,5 +2372,493 @@ dummyKey: dummyValue
 			}
 			return nil
 		}).Should(Succeed())
+	})
+
+	It("should handle password rotation (rotate → discard)", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("setting password-rotate annotation with rotationID")
+		rotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = rotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking rotation reaches Distributed phase and annotation is removed")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
+				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			}
+			if !cluster.Status.SystemUserRotation.RotateApplied {
+				return fmt.Errorf("rotateApplied should be true")
+			}
+			if cluster.Status.SystemUserRotation.RotationID == "" {
+				return fmt.Errorf("rotationID should be set")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("verifying ALTER USER RETAIN was called for all users")
+		Eventually(func() int {
+			return len(mockOpFactory.getRotatedUsers())
+		}).Should(Equal(len(constants.MocoUsers)))
+
+		By("verifying pending passwords exist in source secret")
+		sourceSecret := &corev1.Secret{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, sourceSecret)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sourceSecret.Data).To(HaveKey("ADMIN_PASSWORD_PENDING"))
+		Expect(sourceSecret.Data).To(HaveKey("ROTATION_ID"))
+
+		By("setting password-discard annotation")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordDiscard] = rotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("simulating StatefulSet rollout completion and checking rotation completes")
+		Eventually(func() error {
+			// Re-simulate rollout on every poll because the reconciler's SSA
+			// apply may bump the STS generation, invalidating a previous status.
+			sts := &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err != nil {
+				return err
+			}
+			sts.Status.Replicas = 3
+			sts.Status.ReadyReplicas = 3
+			sts.Status.UpdatedReplicas = 3
+			sts.Status.ObservedGeneration = sts.Generation
+			sts.Status.CurrentRevision = "test-revision"
+			sts.Status.UpdateRevision = "test-revision"
+			if err := k8sClient.Status().Update(ctx, sts); err != nil {
+				return err
+			}
+
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseIdle {
+				return fmt.Errorf("expected Idle phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			}
+			if cluster.Status.SystemUserRotation.RotationID != "" {
+				return fmt.Errorf("rotationID should be cleared")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("verifying DISCARD OLD PASSWORD was called for all users")
+		Expect(len(mockOpFactory.getDiscardedUsers())).To(Equal(len(constants.MocoUsers)))
+
+		By("verifying source secret has no pending keys")
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, sourceSecret)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sourceSecret.Data).NotTo(HaveKey("ADMIN_PASSWORD_PENDING"))
+		Expect(sourceSecret.Data).NotTo(HaveKey("ROTATION_ID"))
+		Expect(sourceSecret.Data).To(HaveKey("ADMIN_PASSWORD"))
+
+		By("verifying LastRotationID is set to the completed rotationID")
+		Expect(cluster.Status.SystemUserRotation.LastRotationID).To(Equal(rotationID))
+
+		By("verifying password rotation events were emitted")
+		events := &corev1.EventList{}
+		err = k8sClient.List(ctx, events, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		eventReasons := make(map[string]string)
+		for _, ev := range events.Items {
+			eventReasons[ev.Reason] = ev.Type
+		}
+		Expect(eventReasons).To(HaveKeyWithValue("RotationStarted", corev1.EventTypeNormal))
+		Expect(eventReasons).To(HaveKeyWithValue("RetainApplied", corev1.EventTypeNormal))
+		Expect(eventReasons).To(HaveKeyWithValue("PasswordsDistributed", corev1.EventTypeNormal))
+		Expect(eventReasons).To(HaveKeyWithValue("DiscardApplied", corev1.EventTypeNormal))
+		Expect(eventReasons).To(HaveKeyWithValue("RotationCompleted", corev1.EventTypeNormal))
+	})
+
+	It("should skip discard when rotation is not in Distributed phase", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("setting password-discard annotation without prior rotate")
+		bogusDiscardID := "no-such-rotation"
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordDiscard] = bogusDiscardID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking annotation is removed and phase stays Idle")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if _, ok := cluster.Annotations[constants.AnnPasswordDiscard]; ok {
+				return fmt.Errorf("password-discard annotation should be removed")
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseIdle))
+		Expect(len(mockOpFactory.getDiscardedUsers())).To(Equal(0))
+	})
+
+	It("should recover from partial RETAIN failure without re-executing RETAIN on already-rotated users", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("injecting an error for the 3rd user (moco-repl)")
+		mockOpFactory.setRotateFailUser(constants.ReplicationUser)
+
+		By("setting password-rotate annotation")
+		rotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = rotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking that the mock has rotated some users but not the failed one")
+		Eventually(func() int {
+			return len(mockOpFactory.getRotatedUsers())
+		}).Should(BeNumerically(">=", 2))
+
+		// Verify the failed user is NOT in the mock's rotated users
+		Expect(mockOpFactory.getRotatedUsers()).NotTo(HaveKey(constants.ReplicationUser))
+
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cluster.Status.SystemUserRotation.RotateApplied).To(BeFalse())
+
+		// Record how many times each user was rotated before clearing the error
+		rotatedBefore := mockOpFactory.getRotatedUsers()
+		Expect(rotatedBefore).NotTo(HaveKey(constants.ReplicationUser))
+		Expect(rotatedBefore).To(HaveKey(constants.AdminUser))
+		Expect(rotatedBefore).To(HaveKey(constants.AgentUser))
+
+		By("clearing the injected error and waiting for rotation to complete")
+		mockOpFactory.setRotateFailUser("")
+
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
+				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			}
+			if !cluster.Status.SystemUserRotation.RotateApplied {
+				return fmt.Errorf("rotateApplied should be true")
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("verifying that the first 2 users were NOT re-rotated after error recovery")
+		rotatedAfter := mockOpFactory.getRotatedUsers()
+		// All 8 users should be rotated now
+		Expect(len(rotatedAfter)).To(Equal(len(constants.MocoUsers)))
+		// The first 2 users' passwords should be the same as before (not re-executed)
+		Expect(rotatedAfter[constants.AdminUser]).To(Equal(rotatedBefore[constants.AdminUser]))
+		Expect(rotatedAfter[constants.AgentUser]).To(Equal(rotatedBefore[constants.AgentUser]))
+	})
+
+	It("should detect and remove stale rotate annotation after completed rotation", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		completedRotationID := uuid.NewString()
+
+		By("simulating a completed rotation by setting LastRotationID in status")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			base := cluster.DeepCopy()
+			cluster.Status.SystemUserRotation.LastRotationID = completedRotationID
+			return k8sClient.Status().Patch(ctx, cluster, client.MergeFrom(base))
+		}).Should(Succeed())
+
+		By("setting a stale rotate annotation (same rotationID as LastRotationID)")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = completedRotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking stale annotation is removed without starting a new rotation")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if ann := cluster.Annotations[constants.AnnPasswordRotate]; ann != "" {
+				return fmt.Errorf("stale password-rotate annotation should be removed, got %q", ann)
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseIdle))
+		Expect(cluster.Status.SystemUserRotation.RotationID).To(BeEmpty())
+		Expect(len(mockOpFactory.getRotatedUsers())).To(Equal(0))
+
+		By("verifying StaleAnnotationRemoved warning event was emitted")
+		events := &corev1.EventList{}
+		err = k8sClient.List(ctx, events, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		found := false
+		for _, ev := range events.Items {
+			if ev.Reason == "StaleAnnotationRemoved" && ev.Type == corev1.EventTypeWarning {
+				found = true
+				break
+			}
+		}
+		Expect(found).To(BeTrue(), "expected StaleAnnotationRemoved warning event")
+
+		By("verifying a fresh rotation with a different rotationID still works")
+		freshRotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = freshRotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking fresh rotation starts and reaches Distributed phase")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
+				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			}
+			if cluster.Status.SystemUserRotation.RotationID != freshRotationID {
+				return fmt.Errorf("expected rotationID %q, got %q", freshRotationID, cluster.Status.SystemUserRotation.RotationID)
+			}
+			return nil
+		}).Should(Succeed())
+	})
+
+	It("should refuse rotation when dual passwords exist in Phase=Idle", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("pre-setting a dual password on instance 0 for moco-admin")
+		mockOpFactory.setInstanceDual(0, constants.AdminUser, true)
+
+		By("setting password-rotate annotation")
+		rotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = rotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking phase stays Idle (rotation refused)")
+		// Give the reconciler time to process and fail
+		Consistently(func(g Gomega) {
+			cluster = &mocov1beta2.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseIdle))
+		}, "3s", "500ms").Should(Succeed())
+
+		By("verifying no ALTER USER RETAIN was called")
+		Expect(len(mockOpFactory.getRotatedUsers())).To(Equal(0))
+	})
+
+	It("should refuse rotation when replicas is 0", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("scaling down to replicas=0 and setting annotation atomically via JSON merge patch")
+		// Replicas has omitempty, so setting it to 0 via Update is dropped.
+		// Use a raw JSON merge patch to set replicas=0 and the annotation
+		// in a single API call, preventing a race where the reconciler sees
+		// the annotation while replicas is still non-zero.
+		rotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			patch := fmt.Sprintf(`{"spec":{"replicas":0},"metadata":{"annotations":{"%s":"%s"}}}`,
+				constants.AnnPasswordRotate, rotationID)
+			return k8sClient.Patch(ctx, cluster,
+				client.RawPatch(types.MergePatchType, []byte(patch)))
+		}).Should(Succeed())
+
+		By("checking phase stays Idle (rotation refused due to replicas=0)")
+		Consistently(func(g Gomega) {
+			cluster = &mocov1beta2.MySQLCluster{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseIdle))
+		}, "3s", "500ms").Should(Succeed())
+
+		By("verifying no pending passwords were created")
+		sourceSecret := &corev1.Secret{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, sourceSecret)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sourceSecret.Data).NotTo(HaveKey("ADMIN_PASSWORD_PENDING"))
+		Expect(sourceSecret.Data).NotTo(HaveKey("ROTATION_ID"))
+	})
+
+	It("should skip discard when rotationID does not match active rotation", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for controller secret to be created")
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
+		}).Should(Succeed())
+
+		By("running rotation to reach Distributed phase")
+		rotationID := uuid.NewString()
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordRotate] = rotationID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
+				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			}
+			return nil
+		}).Should(Succeed())
+
+		By("setting password-discard annotation with a wrong rotationID")
+		wrongDiscardID := "wrong-rotation-id"
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if cluster.Annotations == nil {
+				cluster.Annotations = make(map[string]string)
+			}
+			cluster.Annotations[constants.AnnPasswordDiscard] = wrongDiscardID
+			return k8sClient.Update(ctx, cluster)
+		}).Should(Succeed())
+
+		By("checking annotation is consumed and phase stays Distributed")
+		Eventually(func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			if _, ok := cluster.Annotations[constants.AnnPasswordDiscard]; ok {
+				return fmt.Errorf("password-discard annotation should be removed")
+			}
+			return nil
+		}).Should(Succeed())
+
+		Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseDistributed))
+		Expect(len(mockOpFactory.getDiscardedUsers())).To(Equal(0))
 	})
 })
