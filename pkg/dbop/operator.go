@@ -61,6 +61,25 @@ type Operator interface {
 	// KillConnections kills all connections except for ones from `localhost`
 	// and ones for MOCO.
 	KillConnections(context.Context) error
+
+	// SetSuperReadOnly sets or unsets super_read_only on the instance.
+	// Unlike SetReadOnly, this does NOT stop replication or reset replica state.
+	SetSuperReadOnly(ctx context.Context, on bool) error
+
+	// RotateUserPassword executes ALTER USER ... IDENTIFIED BY '<new>' RETAIN CURRENT PASSWORD
+	// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	RotateUserPassword(ctx context.Context, user, newPassword string) error
+
+	// DiscardOldPassword executes ALTER USER ... DISCARD OLD PASSWORD
+	// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	DiscardOldPassword(ctx context.Context, user string) error
+
+	// HasDualPassword checks whether the given user currently has a dual password
+	// (i.e., User_attributes contains additional_password in mysql.user).
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	HasDualPassword(ctx context.Context, user string) (bool, error)
 }
 
 // OperatorFactory represents the factory for Operators.

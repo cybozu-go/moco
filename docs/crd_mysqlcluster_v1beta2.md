@@ -16,6 +16,7 @@
 * [ReconcileInfo](#reconcileinfo)
 * [RestoreSpec](#restorespec)
 * [ServiceTemplate](#servicetemplate)
+* [SystemUserRotationStatus](#systemuserrotationstatus)
 * [BucketConfig](#bucketconfig)
 * [JobConfig](#jobconfig)
 
@@ -107,6 +108,7 @@ MySQLClusterStatus defines the observed state of MySQLCluster
 | restoredTime | RestoredTime is the time when the cluster data is restored. | *[metav1.Time](https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time) | false |
 | cloned | Cloned indicates if the initial cloning from an external source has been completed. | bool | false |
 | reconcileInfo | ReconcileInfo represents version information for reconciler. | [ReconcileInfo](#reconcileinfo) | true |
+| systemUserRotation | SystemUserRotation represents the status of the system user password rotation. | [SystemUserRotationStatus](#systemuserrotationstatus) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -191,6 +193,20 @@ ServiceTemplate defines the desired spec and annotations of Service
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard object's metadata.  Only `annotations` and `labels` are valid. | [ObjectMeta](#objectmeta) | false |
 | spec | Spec is the ServiceSpec | *[ServiceSpecApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ServiceSpecApplyConfiguration) | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SystemUserRotationStatus
+
+SystemUserRotationStatus represents the status of a system user password rotation.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| rotationID | RotationID is the unique identifier for the current rotation. | string | false |
+| phase | Phase is the current phase of the rotation. | RotationPhase | false |
+| rotateApplied | RotateApplied indicates whether ALTER USER ... RETAIN CURRENT PASSWORD has been applied to all instances for all system users. | bool | false |
+| discardApplied | DiscardApplied indicates whether ALTER USER ... DISCARD OLD PASSWORD has been applied to all instances. | bool | false |
+| lastRotationID | LastRotationID is the rotationID of the most recently completed rotation. Used to detect stale rotate annotations that linger after a completed cycle (best-effort annotation removal may fail). If the annotation's rotationID matches this value, the annotation is stale and should be removed without starting a new rotation. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

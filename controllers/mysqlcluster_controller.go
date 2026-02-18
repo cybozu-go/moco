@@ -17,6 +17,7 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/mycnf"
 	"github.com/cybozu-go/moco/pkg/password"
@@ -140,6 +141,7 @@ type MySQLClusterReconciler struct {
 	PVCSyncAnnotationKeys      []string
 	PVCSyncLabelKeys           []string
 	ClusterManager             clustering.ClusterManager
+	OpFactory                  dbop.OperatorFactory
 	MaxConcurrentReconciles    int
 	MySQLConfigMapHistoryLimit int
 }
@@ -254,8 +256,22 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		}
 	}()
 
+	// reconcileV1Secret runs before reconcileV1PasswordRotation intentionally.
+	// During password rotation (Phase != Idle), reconcileV1Secret returns early
+	// without distributing current passwords, because the rotation handler owns
+	// distribution responsibility. This Phase guard prevents reconcileV1Secret
+	// from overwriting distributed pending passwords with stale current passwords.
+	// The guard is safe because the Phase transition from Idle to Rotating is
+	// persisted via Status.Patch immediately before any MySQL operation, ensuring
+	// that a crash cannot leave Phase=Idle with ALTER USER already executed.
 	if err = r.reconcileV1Secret(ctx, req, cluster); err != nil {
 		log.Error(err, "failed to reconcile secret")
+		return ctrl.Result{}, err
+	}
+
+	rotResult, err := r.reconcileV1PasswordRotation(ctx, req, cluster)
+	if err != nil {
+		log.Error(err, "failed to reconcile password rotation")
 		return ctrl.Result{}, err
 	}
 
@@ -318,7 +334,12 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 
 	r.ClusterManager.Update(client.ObjectKeyFromObject(cluster), string(controller.ReconcileIDFromContext(ctx)))
 	metrics.ClusteringStoppedVec.WithLabelValues(cluster.Name, cluster.Namespace).Set(0)
-	return ctrl.Result{}, nil
+
+	// Return password rotation result (e.g. RequeueAfter for rollout wait).
+	// This is deferred to the end so that reconcileV1StatefulSet always runs,
+	// ensuring the Pod template annotation is updated before the discard gate
+	// checks it on the next reconcile.
+	return rotResult, nil
 }
 
 func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
@@ -346,6 +367,17 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		return err
 	}
 
+	// During password rotation (Phase != Idle), the rotation handler
+	// (reconcileV1PasswordRotation) owns the distribution responsibility. Skip
+	// normal distribution to prevent overwriting pending passwords that the rotation
+	// handler has already distributed. This guard works in conjunction with the
+	// ordering in reconcileV1: Secret reconcile runs first, so it checks Phase
+	// before rotation may advance it. Within a single reconcile there is no race
+	// because controller-runtime processes one reconcile at a time per controller.
+	if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseIdle {
+		return nil
+	}
+
 	if err := r.reconcileUserSecret(ctx, req, cluster, secret); err != nil {
 		return err
 	}
@@ -358,13 +390,27 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 }
 
 func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
-	log := crlog.FromContext(ctx)
-
 	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
 	if err != nil {
 		return fmt.Errorf("failed to create password from secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
 	}
+	// Preserve ROTATION_ID in user Secret across normal reconciles so that it
+	// remains available for audit/debug after rotation completes. The value
+	// reflects the last rotation that was distributed to this Secret.
+	rotationID := cluster.Status.SystemUserRotation.RotationID
+	if rotationID == "" {
+		rotationID = cluster.Status.SystemUserRotation.LastRotationID
+	}
+	return r.reconcileUserSecretWith(ctx, cluster, passwd, rotationID)
+}
+
+func (r *MySQLClusterReconciler) reconcileUserSecretWith(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword, rotationID string) error {
+	log := crlog.FromContext(ctx)
+
 	newSecret := passwd.ToSecret()
+	if rotationID != "" {
+		newSecret.Data[password.RotationIDKey] = []byte(rotationID)
+	}
 
 	name := cluster.UserSecretName()
 	secret := corev1ac.Secret(name, cluster.Namespace).
@@ -394,12 +440,16 @@ func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ct
 }
 
 func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
-	log := crlog.FromContext(ctx)
-
 	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
 	if err != nil {
 		return fmt.Errorf("failed to create password from Secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
 	}
+	return r.reconcileMyCnfSecretWith(ctx, cluster, passwd)
+}
+
+func (r *MySQLClusterReconciler) reconcileMyCnfSecretWith(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword) error {
+	log := crlog.FromContext(ctx)
+
 	mycnfSecret := passwd.ToMyCnfSecret()
 
 	name := cluster.MyCnfSecretName()
@@ -814,8 +864,22 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	}
 	sts.Spec.WithVolumeClaimTemplates(volumeClaimTemplates...)
 
+	// Build pod template annotations: copy user-supplied ones, then add
+	// the rotation restart key if a rotation has occurred.
+	podAnnotations := make(map[string]string, len(cluster.Spec.PodTemplate.Annotations)+1)
+	for k, v := range cluster.Spec.PodTemplate.Annotations {
+		podAnnotations[k] = v
+	}
+	rotationID := cluster.Status.SystemUserRotation.RotationID
+	if rotationID == "" {
+		rotationID = cluster.Status.SystemUserRotation.LastRotationID
+	}
+	if rotationID != "" {
+		podAnnotations[constants.AnnPasswordRotationRestart] = rotationID
+	}
+
 	sts.Spec.WithTemplate(corev1ac.PodTemplateSpec().
-		WithAnnotations(cluster.Spec.PodTemplate.Annotations).
+		WithAnnotations(podAnnotations).
 		WithLabels(cluster.Spec.PodTemplate.Labels).
 		WithLabels(labelSet(cluster, false)))
 
