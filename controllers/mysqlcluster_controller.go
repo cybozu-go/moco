@@ -1068,7 +1068,7 @@ func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Re
 	if backupCronJobIsRunning {
 		maxUnavailable = intstr.FromInt(0)
 	} else {
-		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas / 2))
+		maxUnavailable = intstr.FromInt(int(cluster.Spec.Replicas) - clustering.RequiredSemiSyncAcks(int(cluster.Spec.Replicas)))
 	}
 
 	pdbApplyConfig := policyv1ac.PodDisruptionBudget(pdb.Name, pdb.Namespace).
