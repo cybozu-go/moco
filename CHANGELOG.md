@@ -5,6 +5,20 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.34.0] - 2026/02/18
+
+### Added
+- Support MySQL 8.4.8/8.0.45 [#877](https://github.com/cybozu-go/moco/pull/877),[#881](https://github.com/cybozu-go/moco/pull/881)
+
+### Changed
+- Check rate-limit before patch new partition [#884](https://github.com/cybozu-go/moco/pull/884)
+
+### Fixed
+- use native SSA support (controller-runtime v0.22) and remove unstructured conversion. [#875](https://github.com/cybozu-go/moco/pull/875)
+- Improve the test code base [#871](https://github.com/cybozu-go/moco/pull/871)
+- Fix StatefulSetPartitionReconciler event filtering [#879](https://github.com/cybozu-go/moco/pull/879)
+- Introduce generic setControllerReference helper [#880](https://github.com/cybozu-go/moco/pull/880)
+
 ## [0.33.0] - 2026/01/23
 
 ### Added
@@ -774,7 +788,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/cybozu-go/moco/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/cybozu-go/moco/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/cybozu-go/moco/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/cybozu-go/moco/compare/v0.30.0...v0.31.0
