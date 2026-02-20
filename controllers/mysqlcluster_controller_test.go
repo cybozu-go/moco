@@ -110,6 +110,9 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 			MountPath: ptr.To[string]("/path/to/dir"),
 		},
 	}
+	jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
+		{Name: ptr.To[string]("my-registry-secret")},
+	}
 	jc.BucketConfig.BucketName = "mybucket"
 	jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 	jc.BucketConfig.Region = "us-east-1"
@@ -1422,6 +1425,8 @@ dummyKey: dummyValue
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
+		Expect(js.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+		Expect(js.Template.Spec.ImagePullSecrets[0].Name).To(Equal("my-registry-secret"))
 		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
 		Expect(js.Template.Spec.Volumes[1].EmptyDir).NotTo(BeNil())
@@ -1620,6 +1625,9 @@ dummyKey: dummyValue
 				MountPath: ptr.To[string]("/path/to/dir"),
 			},
 		}
+		jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
+			{Name: ptr.To[string]("my-registry-secret")},
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
@@ -1653,6 +1661,8 @@ dummyKey: dummyValue
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
+		Expect(js.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+		Expect(js.Template.Spec.ImagePullSecrets[0].Name).To(Equal("my-registry-secret"))
 		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
 		Expect(js.Template.Spec.Volumes[1].EmptyDir).NotTo(BeNil())
