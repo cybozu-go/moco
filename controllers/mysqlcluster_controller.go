@@ -1331,6 +1331,9 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 			),
 		)
 	}
+	if bp.Spec.TimeZone != nil {
+		cronJob.Spec.WithTimeZone(*bp.Spec.TimeZone)
+	}
 
 	if err := setControllerReference(cluster, cronJob, r.Scheme); err != nil {
 		return fmt.Errorf("failed to set ownerReference to CronJob %s/%s: %w", cluster.Namespace, cronJobName, err)
