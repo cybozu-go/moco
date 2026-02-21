@@ -63,7 +63,15 @@ func (o NopOperator) SetSuperReadOnly(context.Context, bool) error {
 	return ErrNop
 }
 
+func (o NopOperator) GetAuthPlugin(ctx context.Context) (string, error) {
+	return "", ErrNop
+}
+
 func (o NopOperator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
+	return ErrNop
+}
+
+func (o NopOperator) MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error {
 	return ErrNop
 }
 

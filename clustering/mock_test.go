@@ -420,7 +420,15 @@ func (o *mockOperator) SetSuperReadOnly(ctx context.Context, on bool) error {
 	return nil
 }
 
+func (o *mockOperator) GetAuthPlugin(ctx context.Context) (string, error) {
+	return "caching_sha2_password", nil
+}
+
 func (o *mockOperator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
+	return nil
+}
+
+func (o *mockOperator) MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error {
 	return nil
 }
 

@@ -79,11 +79,16 @@ MySQL 8.0.14+ supports dual passwords via:
 ```sql
 ALTER USER 'user'@'%' IDENTIFIED BY 'new_password' RETAIN CURRENT PASSWORD;
 ALTER USER 'user'@'%' DISCARD OLD PASSWORD;
+ALTER USER 'user'@'%' IDENTIFIED WITH caching_sha2_password BY 'new_password';
 ```
 
 After `RETAIN`, both old and new passwords are accepted for authentication.
 After `DISCARD`, only the new password is valid.
 MySQL keeps only one secondary password per user; a second `RETAIN` with different credentials overwrites the secondary slot.
+
+The `RETAIN` step uses plain `IDENTIFIED BY` (without `IDENTIFIED WITH <plugin>`) because MySQL Error 3894 prevents changing the authentication plugin in a `RETAIN CURRENT PASSWORD` statement.
+Instead, authentication plugin migration is performed after `DISCARD` in Phase 2 using `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`.
+The target plugin is determined from `@@global.authentication_policy` (see [Authentication Plugin Determination](#authentication-plugin-determination)).
 
 ### Cross-Cluster Replication Safety
 
@@ -138,6 +143,25 @@ type SystemUserRotationStatus struct {
 `LastRotationID` records the rotationID of the most recently completed cycle.
 It is used to detect stale rotate annotations (see [Stale Annotation Detection](#stale-annotation-detection)).
 
+### Authentication Plugin Determination
+
+Before executing auth plugin migration in Phase 2, the controller determines the target authentication plugin by querying `@@global.authentication_policy` from the primary instance.
+This variable (introduced in MySQL 8.0.27) controls the allowed authentication plugins per authentication factor.
+Its format is `"plugin1,plugin2,plugin3"` where each element controls one factor.
+
+Only the first element (primary authentication) is relevant for MOCO system users.
+The controller parses it as follows:
+
+* If the first element is a concrete plugin name (e.g. `caching_sha2_password`): use that plugin.
+* If the first element is `*` (any plugin allowed) or empty: default to `caching_sha2_password`.
+
+`authentication_policy` is a global variable, so its value is the same across all instances in the cluster; querying a single instance is sufficient.
+
+The determined plugin is passed to `MigrateUserAuthPlugin` in Phase 2 (after DISCARD OLD PASSWORD) and used in the `IDENTIFIED WITH <plugin>` clause.
+This ensures that even if the cluster was originally configured with a legacy plugin like `mysql_native_password`, all system users are migrated to the cluster's current target plugin during rotation.
+
+The plugin name is validated against `^[a-zA-Z0-9_]+$` before interpolation into SQL to prevent injection.
+
 ### Phase 1: handlePasswordRotate
 
 | Step | Action | Persistence |
@@ -145,7 +169,7 @@ It is used to detect stale rotate annotations (see [Stale Annotation Detection](
 | 0 | Pre-check: if Phase=Idle and replicas>0, scan all instances × all MOCO system users via `HasDualPassword`. Refuse with `DualPasswordExists` Event if any dual password is found. | - |
 | 1 | If Phase=Idle, use rotationID from annotation, set Phase=Rotating | **Status.Patch** (immediate) |
 | 2 | Generate `*_PENDING` passwords in source Secret | Secret.Update |
-| 3 | For each instance (0..replicas-1), for each user: check `HasDualPassword`, skip if true, else ALTER USER RETAIN with sql_log_bin=0 | MySQL |
+| 3 | For each instance (0..replicas-1), for each user: check `HasDualPassword`, skip if true, else `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` with sql_log_bin=0 | MySQL |
 | 4 | Set RotateApplied=true | **Status.Patch** (immediate) |
 | 5 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
 | 6 | Set Phase=Distributed | **Status.Patch** (immediate) |
@@ -161,7 +185,7 @@ For each instance:
 3. For each user in `constants.MocoUsers`:
    a. Query `mysql.user.User_attributes` via `HasDualPassword` to check if the user already has an `additional_password`
    b. If yes: skip (RETAIN was already applied on a previous attempt)
-   c. If no: execute `ALTER USER ... RETAIN CURRENT PASSWORD` (with `sql_log_bin=0`)
+   c. If no: execute `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` (with `sql_log_bin=0`)
 4. If the instance is a replica: `SET GLOBAL super_read_only=ON` (best-effort; clustering loop recovers on failure)
 
 Phase advances only after **all instances** complete.
@@ -225,7 +249,8 @@ This preserves the two-phase design: after rotate completes (Phase=Distributed),
 | 0 | Validate preconditions (Phase=Distributed, RotateApplied=true) | - |
 | 0b | Validate pending passwords exist in source Secret (once) | - |
 | 0c | Gate: wait for StatefulSet rollout to complete | - |
-| 1 | DISCARD OLD PASSWORD on ALL instances with sql_log_bin=0 (using pending password) | MySQL |
+| 0d | Determine target authentication plugin via `GetAuthPlugin` on the primary instance | MySQL (read-only) |
+| 1 | For each instance: DISCARD OLD PASSWORD + `MigrateUserAuthPlugin` with sql_log_bin=0 (using pending password) | MySQL |
 | 2 | Set DiscardApplied=true | **Status.Patch** (immediate) |
 | 3 | ConfirmPendingPasswords: copy pending to current, delete pending keys | Secret.Update |
 | 4 | Reset status to Idle, save LastRotationID | **Status.Patch** (immediate) |
@@ -236,6 +261,11 @@ This preserves the two-phase design: after rotate completes (Phase=Distributed),
 Like Phase 1, DISCARD is executed on every instance (primary + all replicas) with `sql_log_bin=0` to prevent binlog propagation.
 For replicas, `super_read_only` is temporarily disabled.
 DISCARD OLD PASSWORD is idempotent in MySQL (no-op when there is no secondary password), so per-user tracking is not needed for crash safety.
+
+After DISCARD, `MigrateUserAuthPlugin` is called for each user on each instance to migrate to the target authentication plugin.
+This is done after DISCARD (not during RETAIN in Phase 1) because MySQL Error 3894 prevents changing the authentication plugin in a `RETAIN CURRENT PASSWORD` statement.
+`MigrateUserAuthPlugin` executes `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` which re-hashes the password under the new plugin.
+This is idempotent: re-executing with the same password and plugin is a no-op in effect.
 
 **Why the rollout gate exists (Step 0c):**
 
@@ -637,9 +667,13 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- mysql -u moco-admin -p<
 
 ## Security Considerations
 
-`RotateUserPassword` and `DiscardOldPassword` interpolate the user name directly into SQL because MySQL does not support placeholders for the user position of `ALTER USER`.
+`RotateUserPassword`, `DiscardOldPassword`, and `MigrateUserAuthPlugin` interpolate the user name directly into SQL because MySQL does not support placeholders for the user position of `ALTER USER`.
 The user name is always one of the 8 fixed constants from `pkg/constants/users.go`.
 Callers must never pass arbitrary or user-supplied strings.
+
+`MigrateUserAuthPlugin` also interpolates the authentication plugin name into the `IDENTIFIED WITH` clause because MySQL does not support placeholders in this position.
+The plugin name is validated against `^[a-zA-Z0-9_]+$` before interpolation to prevent SQL injection.
+The value is derived from `@@global.authentication_policy`, a MySQL server variable, and never from user input.
 
 All ALTER USER operations use `SET sql_log_bin=0` to prevent password changes from propagating to cross-cluster replicas via the binary log.
 A dedicated connection (`db.Conn`) is used to ensure `sql_log_bin=0` applies to the same session as the ALTER USER statement.
