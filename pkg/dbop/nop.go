@@ -58,3 +58,27 @@ func (o NopOperator) SetReadOnly(context.Context, bool) error {
 func (o NopOperator) KillConnections(context.Context) error {
 	return ErrNop
 }
+
+func (o NopOperator) SetSuperReadOnly(context.Context, bool) error {
+	return ErrNop
+}
+
+func (o NopOperator) GetAuthPlugin(ctx context.Context) (string, error) {
+	return "", ErrNop
+}
+
+func (o NopOperator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
+	return ErrNop
+}
+
+func (o NopOperator) MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error {
+	return ErrNop
+}
+
+func (o NopOperator) DiscardOldPassword(ctx context.Context, user string) error {
+	return ErrNop
+}
+
+func (o NopOperator) HasDualPassword(ctx context.Context, user string) (bool, error) {
+	return false, ErrNop
+}
