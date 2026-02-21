@@ -497,10 +497,33 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 			return ctrl.Result{}, err
 		}
 
-		// Execute DISCARD OLD PASSWORD on ALL instances with sql_log_bin=0.
-		// DISCARD is idempotent in MySQL (no-op when there is no secondary password),
-		// so re-execution on crash is safe and per-user tracking is not needed.
+		pendingMap, err := password.PendingKeyMap(sourceSecret)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Determine the target authentication plugin from the primary instance.
+		// authentication_policy is a global variable, so it is the same across
+		// all instances in the cluster.
 		primaryIndex := cluster.Status.CurrentPrimaryIndex
+		authPlugin, err := func() (string, error) {
+			op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, primaryIndex)
+			if err != nil {
+				return "", err
+			}
+			defer op.Close()
+			return op.GetAuthPlugin(ctx)
+		}()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", rotation.RotationID)
+
+		// Execute DISCARD OLD PASSWORD + auth plugin migration on ALL instances
+		// with sql_log_bin=0.
+		// DISCARD is idempotent in MySQL (no-op when there is no secondary password).
+		// MigrateUserAuthPlugin is also idempotent (re-hashes the same password).
+		// Re-execution on crash is safe and per-user tracking is not needed.
 		for idx := 0; idx < int(replicas); idx++ {
 			isReplica := idx != primaryIndex
 			op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, idx)
@@ -508,12 +531,12 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 				return ctrl.Result{}, err
 			}
 
-			if err := r.discardInstanceUsers(ctx, op, idx, isReplica); err != nil {
+			if err := r.discardInstanceUsers(ctx, op, pendingMap, idx, isReplica, authPlugin); err != nil {
 				op.Close()
 				return ctrl.Result{}, err
 			}
 			op.Close()
-			log.Info("applied DISCARD OLD PASSWORD for instance", "instance", idx, "rotationID", rotation.RotationID)
+			log.Info("applied DISCARD OLD PASSWORD and auth plugin migration for instance", "instance", idx, "rotationID", rotation.RotationID)
 		}
 
 		// Persist discardApplied=true immediately so that a crash here will not
@@ -525,7 +548,7 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 		}
 		log.Info("applied DISCARD OLD PASSWORD for all instances", "rotationID", rotation.RotationID)
 		r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "DiscardApplied",
-			"Applied DISCARD OLD PASSWORD for all %d instances (rotationID: %s)", replicas, rotation.RotationID)
+			"Applied DISCARD OLD PASSWORD and migrated auth plugin to %s for all %d instances (rotationID: %s)", authPlugin, replicas, rotation.RotationID)
 	}
 
 	// Step 2: Confirm the source secret (pending → current, delete pending keys).
@@ -632,13 +655,21 @@ func (r *MySQLClusterReconciler) rotateInstanceUsers(
 	return nil
 }
 
-// discardInstanceUsers executes DISCARD OLD PASSWORD for all users on a single instance.
+// discardInstanceUsers executes DISCARD OLD PASSWORD for all users on a single instance,
+// then migrates each user to the target authentication plugin.
 // For replicas, super_read_only is temporarily disabled to allow ALTER USER.
+//
+// The auth plugin migration is done after DISCARD because MySQL Error 3894 prevents
+// changing the authentication plugin in an ALTER USER ... RETAIN CURRENT PASSWORD statement.
+// After DISCARD, the user has only a single password, so IDENTIFIED WITH can be used safely.
+// Both DISCARD and MigrateUserAuthPlugin are idempotent, so re-execution on crash is safe.
 func (r *MySQLClusterReconciler) discardInstanceUsers(
 	ctx context.Context,
 	op dbop.Operator,
+	pendingMap map[string]string,
 	instanceIndex int,
 	isReplica bool,
+	authPlugin string,
 ) error {
 	log := crlog.FromContext(ctx)
 
@@ -658,6 +689,20 @@ func (r *MySQLClusterReconciler) discardInstanceUsers(
 		if err := op.DiscardOldPassword(ctx, user); err != nil {
 			return fmt.Errorf("failed to discard old password for %s on instance %d: %w", user, instanceIndex, err)
 		}
+	}
+
+	// Migrate each user to the target authentication plugin.
+	// This re-hashes the password under the new plugin (e.g. caching_sha2_password)
+	// without RETAIN, which is safe because DISCARD has already cleared the secondary.
+	for _, user := range constants.MocoUsers {
+		pwd, ok := pendingMap[user]
+		if !ok {
+			return fmt.Errorf("pending password not found for user %s during auth plugin migration", user)
+		}
+		if err := op.MigrateUserAuthPlugin(ctx, user, pwd, authPlugin); err != nil {
+			return fmt.Errorf("failed to migrate auth plugin for %s on instance %d: %w", user, instanceIndex, err)
+		}
+		log.Info("migrated auth plugin", "user", user, "instance", instanceIndex, "authPlugin", authPlugin)
 	}
 
 	return nil

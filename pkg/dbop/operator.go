@@ -66,10 +66,23 @@ type Operator interface {
 	// Unlike SetReadOnly, this does NOT stop replication or reset replica state.
 	SetSuperReadOnly(ctx context.Context, on bool) error
 
-	// RotateUserPassword executes ALTER USER ... IDENTIFIED BY '<new>' RETAIN CURRENT PASSWORD
-	// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
+	// GetAuthPlugin returns the default authentication plugin for the first factor
+	// by parsing @@global.authentication_policy. If the first element is '*' (any
+	// plugin allowed) or empty, "caching_sha2_password" is returned as the default.
+	GetAuthPlugin(ctx context.Context) (string, error)
+
+	// RotateUserPassword executes ALTER USER ... IDENTIFIED BY '<new>'
+	// RETAIN CURRENT PASSWORD with sql_log_bin=0 to prevent binlog propagation to
+	// cross-cluster replicas.
 	// user must be one of the fixed system user names from pkg/constants/users.go.
 	RotateUserPassword(ctx context.Context, user, newPassword string) error
+
+	// MigrateUserAuthPlugin executes ALTER USER ... IDENTIFIED WITH <authPlugin> BY '<password>'
+	// with sql_log_bin=0 to migrate the user to the target authentication plugin.
+	// This is called after DISCARD OLD PASSWORD in Phase 2, so the user has only
+	// a single password at this point. The password is re-hashed under the new plugin.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error
 
 	// DiscardOldPassword executes ALTER USER ... DISCARD OLD PASSWORD
 	// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
