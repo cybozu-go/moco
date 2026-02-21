@@ -3,9 +3,18 @@ package dbop
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/cybozu-go/moco/pkg/constants"
 )
+
+// defaultAuthPlugin is the fallback when authentication_policy's first element
+// is '*' (any plugin allowed) or empty.
+const defaultAuthPlugin = "caching_sha2_password"
+
+// validPluginName matches MySQL authentication plugin names (alphanumeric + underscore).
+var validPluginName = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
 // validMocoUsers is a set of allowed user names for password rotation SQL operations.
 var validMocoUsers map[string]struct{}
@@ -27,6 +36,38 @@ func validateMocoUser(user string) error {
 	return nil
 }
 
+// GetAuthPlugin returns the default authentication plugin for the first factor
+// by parsing @@global.authentication_policy (introduced in MySQL 8.0.27).
+//
+// The variable format is "plugin1,plugin2,plugin3" where each element controls
+// one authentication factor. Only the first element (primary authentication) is
+// relevant for MOCO system users.
+//
+// If the first element is '*' (any plugin allowed) or empty, "caching_sha2_password"
+// is returned as the default.
+func (o *operator) GetAuthPlugin(ctx context.Context) (string, error) {
+	var policy string
+	if err := o.db.GetContext(ctx, &policy, "SELECT @@global.authentication_policy"); err != nil {
+		return "", fmt.Errorf("failed to get authentication_policy: %w", err)
+	}
+	return parseAuthPlugin(policy)
+}
+
+// parseAuthPlugin extracts the first-factor authentication plugin from the
+// authentication_policy value. See GetAuthPlugin for the full specification.
+func parseAuthPlugin(policy string) (string, error) {
+	first := strings.SplitN(policy, ",", 2)[0]
+	first = strings.TrimSpace(first)
+
+	if first == "" || first == "*" {
+		return defaultAuthPlugin, nil
+	}
+	if !validPluginName.MatchString(first) {
+		return "", fmt.Errorf("invalid authentication plugin name %q from authentication_policy", first)
+	}
+	return first, nil
+}
+
 // SetSuperReadOnly sets or unsets super_read_only on the instance.
 // Unlike SetReadOnly, this does NOT stop replication or reset replica state.
 func (o *operator) SetSuperReadOnly(ctx context.Context, on bool) error {
@@ -40,16 +81,22 @@ func (o *operator) SetSuperReadOnly(ctx context.Context, on bool) error {
 	return nil
 }
 
-// RotateUserPassword executes ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD
-// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
+// RotateUserPassword executes ALTER USER ... IDENTIFIED BY ...
+// RETAIN CURRENT PASSWORD with sql_log_bin=0 to prevent binlog propagation to
+// cross-cluster replicas.
+//
+// Unlike the previous implementation, this does NOT specify IDENTIFIED WITH <plugin>.
+// Using plain IDENTIFIED BY avoids MySQL Error 3894 which is raised when the
+// authentication plugin is changed in a RETAIN CURRENT PASSWORD statement.
+// Plugin migration is handled separately by MigrateUserAuthPlugin after DISCARD.
 //
 // A dedicated connection (db.Conn) is used to ensure sql_log_bin=0 is set on the
 // same session as the ALTER USER statement. sql_log_bin is a session variable, so
 // it does not affect other connections in the pool.
 //
 // user must be one of the fixed system user names defined in pkg/constants/users.go.
-// The user name is interpolated directly into the SQL statement because MySQL
-// does not support placeholders in the user position of ALTER USER.
+// The user name is interpolated directly into the SQL statement because MySQL does
+// not support placeholders for the user position of ALTER USER.
 func (o *operator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
 	if err := validateMocoUser(user); err != nil {
 		return err
@@ -67,6 +114,44 @@ func (o *operator) RotateUserPassword(ctx context.Context, user, newPassword str
 	query := fmt.Sprintf("ALTER USER '%s'@'%%' IDENTIFIED BY ? RETAIN CURRENT PASSWORD", user)
 	if _, err := conn.ExecContext(ctx, query, newPassword); err != nil {
 		return fmt.Errorf("failed to rotate password for %s: %w", user, err)
+	}
+	return nil
+}
+
+// MigrateUserAuthPlugin executes ALTER USER ... IDENTIFIED WITH <authPlugin> BY ...
+// with sql_log_bin=0 to migrate the user to the target authentication plugin.
+//
+// This is called after DISCARD OLD PASSWORD in Phase 2, so the user has only
+// a single password at this point. The statement re-hashes the password under
+// the new plugin without RETAIN, which is safe because there is no secondary
+// password to preserve.
+//
+// A dedicated connection (db.Conn) is used to ensure sql_log_bin=0 is set on the
+// same session as the ALTER USER statement.
+//
+// user must be one of the fixed system user names defined in pkg/constants/users.go.
+// The user name and authPlugin are interpolated directly into the SQL statement
+// because MySQL does not support placeholders in these positions of ALTER USER.
+func (o *operator) MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error {
+	if err := validateMocoUser(user); err != nil {
+		return err
+	}
+	if !validPluginName.MatchString(authPlugin) {
+		return fmt.Errorf("invalid authentication plugin name %q", authPlugin)
+	}
+
+	conn, err := o.db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire connection for auth plugin migration: %w", err)
+	}
+	defer conn.Close()
+
+	if _, err := conn.ExecContext(ctx, "SET sql_log_bin=0"); err != nil {
+		return fmt.Errorf("failed to set sql_log_bin=0: %w", err)
+	}
+	query := fmt.Sprintf("ALTER USER '%s'@'%%' IDENTIFIED WITH %s BY ?", user, authPlugin)
+	if _, err := conn.ExecContext(ctx, query, password); err != nil {
+		return fmt.Errorf("failed to migrate auth plugin for %s: %w", user, err)
 	}
 	return nil
 }

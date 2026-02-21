@@ -765,8 +765,8 @@ You can rotate these passwords in-place without downtime using MySQL's [dual pas
 
 Password rotation is a two-phase process:
 
-1. **Rotate** (Phase 1): Generate new passwords, apply them to MySQL with `ALTER USER ... RETAIN CURRENT PASSWORD`, and distribute the new passwords to Secrets. After this step, both old and new passwords are valid.
-2. **Discard** (Phase 2): After verifying that applications work with the new passwords, discard the old passwords with `ALTER USER ... DISCARD OLD PASSWORD`.
+1. **Rotate** (Phase 1): Generate new passwords, apply them to MySQL with `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD`, and distribute the new passwords to Secrets. After this step, both old and new passwords are valid.
+2. **Discard** (Phase 2): After verifying that applications work with the new passwords, discard the old passwords with `ALTER USER ... DISCARD OLD PASSWORD`, then migrate the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`. The authentication plugin is determined from the server's `authentication_policy` variable, enabling transparent migration from legacy plugins like `mysql_native_password`.
 
 #### Phase 1: Rotate
 
@@ -778,7 +778,7 @@ This command:
 
 1. Generates a unique rotation ID and sets the `moco.cybozu.com/password-rotate` annotation on the MySQLCluster.
 2. The controller generates new passwords and stores them as pending entries in the source Secret.
-3. Executes `ALTER USER ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
+3. Executes `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
 4. Distributes the new passwords to per-namespace Secrets (user Secret and my.cnf Secret).
 5. Triggers a rolling restart of the StatefulSet so that agents pick up the new passwords.
 
@@ -804,8 +804,9 @@ This command:
 1. Sets the `moco.cybozu.com/password-discard` annotation on the MySQLCluster.
 2. The controller waits for the StatefulSet rolling restart to complete (all Pods are running with the new passwords).
 3. Executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
-4. Confirms the new passwords in the source Secret (pending passwords become current, pending keys are removed).
-5. Resets the rotation status to Idle.
+4. Migrates the authentication plugin for all system users with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` on all instances (with `sql_log_bin=0`). The plugin is determined from `@@global.authentication_policy`, enabling transparent migration from legacy plugins like `mysql_native_password`.
+5. Confirms the new passwords in the source Secret (pending passwords become current, pending keys are removed).
+6. Resets the rotation status to Idle.
 
 After Phase 2 completes, only the new passwords are valid.
 

@@ -73,13 +73,14 @@ Fetch the credential information of a specified user.
 ### `kubectl moco credential rotate CLUSTER_NAME`
 
 Trigger Phase 1 of system user password rotation.
-This generates new passwords, executes `ALTER USER ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`), and distributes the new passwords to per-namespace Secrets.
+This generates new passwords, executes `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`), and distributes the new passwords to per-namespace Secrets.
 After this command, both old and new passwords are valid (MySQL dual password).
 
 ### `kubectl moco credential discard CLUSTER_NAME`
 
 Trigger Phase 2 of system user password rotation.
-This executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`), confirms the new passwords in the source Secret, and resets the rotation status to Idle.
+This executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`), then migrates the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` (determined from `@@global.authentication_policy`, enabling transparent migration from legacy plugins like `mysql_native_password`).
+Finally, it confirms the new passwords in the source Secret and resets the rotation status to Idle.
 This command requires that `kubectl moco credential rotate` has been run first and completed successfully.
 
 ## `kubectl moco switchover CLUSTER_NAME`

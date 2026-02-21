@@ -2487,18 +2487,26 @@ dummyKey: dummyValue
 		Expect(cluster.Status.SystemUserRotation.LastRotationID).To(Equal(rotationID))
 
 		By("verifying password rotation events were emitted")
-		events := &corev1.EventList{}
-		err = k8sClient.List(ctx, events, client.InNamespace("test"))
-		Expect(err).NotTo(HaveOccurred())
-		eventReasons := make(map[string]string)
-		for _, ev := range events.Items {
-			eventReasons[ev.Reason] = ev.Type
-		}
-		Expect(eventReasons).To(HaveKeyWithValue("RotationStarted", corev1.EventTypeNormal))
-		Expect(eventReasons).To(HaveKeyWithValue("RetainApplied", corev1.EventTypeNormal))
-		Expect(eventReasons).To(HaveKeyWithValue("PasswordsDistributed", corev1.EventTypeNormal))
-		Expect(eventReasons).To(HaveKeyWithValue("DiscardApplied", corev1.EventTypeNormal))
-		Expect(eventReasons).To(HaveKeyWithValue("RotationCompleted", corev1.EventTypeNormal))
+		// RotationCompleted is emitted after Status.Patch(Idle), so there is a
+		// brief window where Phase=Idle is observable but the event has not yet
+		// been recorded. Use Eventually to tolerate this race.
+		Eventually(func() map[string]string {
+			events := &corev1.EventList{}
+			if err := k8sClient.List(ctx, events, client.InNamespace("test")); err != nil {
+				return nil
+			}
+			eventReasons := make(map[string]string)
+			for _, ev := range events.Items {
+				eventReasons[ev.Reason] = ev.Type
+			}
+			return eventReasons
+		}).Should(And(
+			HaveKeyWithValue("RotationStarted", corev1.EventTypeNormal),
+			HaveKeyWithValue("RetainApplied", corev1.EventTypeNormal),
+			HaveKeyWithValue("PasswordsDistributed", corev1.EventTypeNormal),
+			HaveKeyWithValue("DiscardApplied", corev1.EventTypeNormal),
+			HaveKeyWithValue("RotationCompleted", corev1.EventTypeNormal),
+		))
 	})
 
 	It("should skip discard when rotation is not in Distributed phase", func() {

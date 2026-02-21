@@ -68,8 +68,8 @@ var credentialRotateCmd = &cobra.Command{
 	Use:   "rotate CLUSTER_NAME",
 	Short: "Rotate system user passwords for the specified MySQLCluster",
 	Long: `rotate triggers Phase 1 of password rotation for the specified MySQLCluster.
-This generates new passwords, executes ALTER USER ... RETAIN CURRENT PASSWORD on all instances
-(with sql_log_bin=0), and distributes the new passwords to per-namespace Secrets.
+This generates new passwords, executes ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD
+on all instances (with sql_log_bin=0), and distributes the new passwords to per-namespace Secrets.
 After this command, both old and new passwords are valid (MySQL dual password).
 Run "kubectl moco credential discard" after verifying that applications work with the new credentials.`,
 	Args: cobra.ExactArgs(1),
@@ -133,7 +133,9 @@ var credentialDiscardCmd = &cobra.Command{
 	Short: "Discard old system user passwords for the specified MySQLCluster",
 	Long: `discard triggers Phase 2 of password rotation for the specified MySQLCluster.
 This executes ALTER USER ... DISCARD OLD PASSWORD on all instances (with sql_log_bin=0),
-confirms the new passwords in the source Secret, and resets the rotation status to Idle.
+then migrates the authentication plugin with ALTER USER ... IDENTIFIED WITH <plugin> BY ...
+(determined from @@global.authentication_policy, enabling transparent migration from legacy plugins).
+Finally, it confirms the new passwords in the source Secret and resets the rotation status to Idle.
 This command requires that "kubectl moco credential rotate" has been run first and completed successfully.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

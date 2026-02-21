@@ -167,6 +167,9 @@ func (o *mockRotationOperator) WaitForGTID(ctx context.Context, gtidSet string, 
 func (o *mockRotationOperator) SetReadOnly(context.Context, bool) error      { return nil }
 func (o *mockRotationOperator) SetSuperReadOnly(context.Context, bool) error { return nil }
 func (o *mockRotationOperator) KillConnections(context.Context) error        { return nil }
+func (o *mockRotationOperator) GetAuthPlugin(ctx context.Context) (string, error) {
+	return "caching_sha2_password", nil
+}
 
 func (o *mockRotationOperator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
 	o.factory.mu.Lock()
@@ -179,6 +182,10 @@ func (o *mockRotationOperator) RotateUserPassword(ctx context.Context, user, new
 		o.factory.instanceDual[o.instanceIndex] = make(map[string]bool)
 	}
 	o.factory.instanceDual[o.instanceIndex][user] = true
+	return nil
+}
+
+func (o *mockRotationOperator) MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error {
 	return nil
 }
 
