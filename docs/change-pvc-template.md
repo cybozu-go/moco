@@ -9,7 +9,7 @@ Re-creation StatefulSet is done with the same behavior as `kubectl delete sts mo
 
 > NOTE: It may be possible to edit the StatefulSet directly in the future.
 >
-> ref: https://github.com/kubernetes/enhancements/issues/661
+> ref: https://github.com/kubernetes/enhancements/issues/4650
 
 When re-creating a StatefulSet, moco-controller supports no operation except for volume expansion as described below.
 It simply re-creates the StatefulSet.
