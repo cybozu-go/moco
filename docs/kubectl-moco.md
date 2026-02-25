@@ -61,6 +61,8 @@ $ kubectl moco mysql --index 2 -it mycluster
 
 Manage credentials for MySQLCluster.
 
+> **Note:** `kubectl moco credential CLUSTER_NAME` (without the `show` subcommand) still works for backward compatibility but is deprecated. Use `kubectl moco credential show CLUSTER_NAME` instead.
+
 ### `kubectl moco credential show [options] CLUSTER_NAME`
 
 Fetch the credential information of a specified user.

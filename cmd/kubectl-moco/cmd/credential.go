@@ -30,6 +30,9 @@ var credentialCmd = &cobra.Command{
 		}
 		return cmd.Help()
 	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return mysqlClusterCandidates(cmd.Context(), cmd, args, toComplete)
+	},
 }
 
 var credentialShowCmd = &cobra.Command{
@@ -208,16 +211,20 @@ func rotationPhaseDisplay(phase mocov1beta2.RotationPhase) string {
 }
 
 func init() {
-	fs := credentialShowCmd.Flags()
-	fs.StringVarP(&credentialConfig.user, "mysql-user", "u", constants.ReadOnlyUser, "User for login to mysql")
-	fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `mycnf`]")
+	// Register flags on both credentialCmd (deprecated direct usage) and credentialShowCmd
+	// to maintain backward compatibility with `kubectl moco credential CLUSTER_NAME [--mysql-user=...] [--format=...]`.
+	for _, cmd := range []*cobra.Command{credentialCmd, credentialShowCmd} {
+		fs := cmd.Flags()
+		fs.StringVarP(&credentialConfig.user, "mysql-user", "u", constants.ReadOnlyUser, "User for login to mysql")
+		fs.StringVar(&credentialConfig.format, "format", "plain", "The format of output [`plain` or `mycnf`]")
 
-	_ = credentialShowCmd.RegisterFlagCompletionFunc("mysql-user", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{constants.ReadOnlyUser, constants.WritableUser, constants.AdminUser}, cobra.ShellCompDirectiveDefault
-	})
-	_ = credentialShowCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"plain", "mycnf"}, cobra.ShellCompDirectiveDefault
-	})
+		_ = cmd.RegisterFlagCompletionFunc("mysql-user", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return []string{constants.ReadOnlyUser, constants.WritableUser, constants.AdminUser}, cobra.ShellCompDirectiveDefault
+		})
+		_ = cmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return []string{"plain", "mycnf"}, cobra.ShellCompDirectiveDefault
+		})
+	}
 
 	credentialCmd.AddCommand(credentialShowCmd)
 	credentialCmd.AddCommand(credentialRotateCmd)
