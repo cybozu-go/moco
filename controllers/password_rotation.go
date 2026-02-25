@@ -92,7 +92,7 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 
 // handlePasswordRotate drives the rotate phase (Phase 1) of password rotation.
 //
-// State machine:
+// Phase transitions:
 //
 //	Idle ──(annotation)──▶ Rotating ──(RETAIN on all instances)──▶ Rotating(rotateApplied) ──(distribute)──▶ Rotated
 //
@@ -327,7 +327,7 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 
 // handlePasswordDiscard drives the discard phase (Phase 2) of password rotation.
 //
-// State machine:
+// Phase transitions:
 //
 //	Rotated ──(DISCARD OLD PASSWORD)──▶ Rotated(discardApplied) ──(confirm Secret)──▶ Idle
 //
