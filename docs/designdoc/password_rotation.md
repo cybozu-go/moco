@@ -139,7 +139,7 @@ The controller tracks progress in `.status.systemUserRotation`:
 ```go
 type SystemUserRotationStatus struct {
     RotationID     string        // UUID of the current rotation cycle
-    Phase          RotationPhase // Idle, Rotating, or Distributed
+    Phase          RotationPhase // Idle, Rotating, or Rotated
     RotateApplied  bool          // ALTER USER RETAIN completed on all instances?
     DiscardApplied bool          // DISCARD OLD PASSWORD completed on all instances?
     LastRotationID string        // UUID of the last completed cycle (for stale detection)
@@ -156,7 +156,7 @@ type SystemUserRotationStatus struct {
 | 3 | For each instance: ALTER USER ... RETAIN CURRENT PASSWORD (with `sql_log_bin=0`) | MySQL |
 | 4 | Set RotateApplied=true | Status.Patch |
 | 5 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
-| 6 | Set Phase=Distributed | Status.Patch |
+| 6 | Set Phase=Rotated | Status.Patch |
 | 7 | Remove the `password-rotate` annotation (best-effort) | Patch |
 
 **Instance loop (Step 3):**
@@ -171,7 +171,7 @@ For each instance:
 If any instance is unreachable, the reconcile returns an error and retries.
 
 **Rolling restart:**
-When Phase transitions to Distributed, a Pod template annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) is added to the StatefulSet, triggering a rolling restart so the agent sidecar picks up the new passwords via `EnvFrom`.
+When Phase transitions to Rotated, a Pod template annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) is added to the StatefulSet, triggering a rolling restart so the agent sidecar picks up the new passwords via `EnvFrom`.
 
 **Scaled-down clusters (replicas=0):**
 Rotation is refused with a Warning Event (`RotateRefused`).
@@ -181,7 +181,7 @@ Without running instances, ALTER USER cannot execute, and distributing new passw
 
 | Step | Action | Persistence |
 |------|--------|-------------|
-| 0 | Validate: Phase=Distributed, RotateApplied=true, pending passwords exist | - |
+| 0 | Validate: Phase=Rotated, RotateApplied=true, pending passwords exist | - |
 | 0b | Wait for StatefulSet rollout to complete | - |
 | 0c | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) |
 | 1 | For each instance: DISCARD OLD PASSWORD + auth plugin migration (with `sql_log_bin=0`) | MySQL |
@@ -236,7 +236,7 @@ The controller compares the annotation's rotationID with `LastRotationID`:
 
 ### Precondition-Not-Met Handling for Discard
 
-If `password-discard` is set but Phase != Distributed or RotateApplied != true:
+If `password-discard` is set but Phase != Rotated or RotateApplied != true:
 1. The annotation is consumed (removed)
 2. A Warning Event (`DiscardSkipped`) is emitted
 3. The user can re-apply after completing Phase 1
@@ -402,10 +402,10 @@ $ kubectl -n <namespace> rollout status statefulset <cluster-name>
 
 **Symptom:** Warning Event `MissingRotationPending`
 
-**Cause:** The source Secret lost its pending keys (manual edit, restore from backup, etc.) while status still shows Distributed.
+**Cause:** The source Secret lost its pending keys (manual edit, restore from backup, etc.) while status still shows Rotated.
 
 **Why this is dangerous:**
-At Phase=Distributed, all instances hold dual passwords and Pods may be using the pending passwords.
+At Phase=Rotated, all instances hold dual passwords and Pods may be using the pending passwords.
 The pending passwords are irrecoverable (MySQL stores only hashes).
 Without recovery, dual-password state persists indefinitely and blocks future rotations.
 

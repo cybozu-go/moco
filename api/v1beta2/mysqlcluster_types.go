@@ -654,8 +654,8 @@ const (
 	RotationPhaseIdle RotationPhase = ""
 	// RotationPhaseRotating means ALTER USER RETAIN has been (or is being) applied.
 	RotationPhaseRotating RotationPhase = "Rotating"
-	// RotationPhaseDistributed means new passwords have been distributed to secrets.
-	RotationPhaseDistributed RotationPhase = "Distributed"
+	// RotationPhaseRotated means Phase 1 (rotate) is complete and the cluster is ready for Phase 2 (discard).
+	RotationPhaseRotated RotationPhase = "Rotated"
 )
 
 // SystemUserRotationStatus represents the status of a system user password rotation.

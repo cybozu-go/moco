@@ -94,7 +94,7 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 //
 // State machine:
 //
-//	Idle ──(annotation)──▶ Rotating ──(RETAIN on all instances)──▶ Rotating(rotateApplied) ──(distribute)──▶ Distributed
+//	Idle ──(annotation)──▶ Rotating ──(RETAIN on all instances)──▶ Rotating(rotateApplied) ──(distribute)──▶ Rotated
 //
 // All ALTER USER statements use sql_log_bin=0 to prevent binlog propagation to
 // cross-cluster replicas. Because binlog is disabled, RETAIN must be executed on
@@ -119,7 +119,7 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 //	Phase=Rotating, RotateApplied=true:
 //	  All instances completed. Distribution (Step 3) is idempotent.
 //
-//	Phase=Distributed:
+//	Phase=Rotated:
 //	  Stale annotation is silently removed.
 func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, cluster *mocov1beta2.MySQLCluster, rotation *mocov1beta2.SystemUserRotationStatus, rotateID string) error {
 	log := crlog.FromContext(ctx)
@@ -194,12 +194,12 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 			"Started password rotation (rotationID: %s)", rotation.RotationID)
 	}
 
-	// === Phase: Distributed (already done) ===
-	// The new passwords have already been distributed. The annotation is stale;
+	// === Phase: Rotated (already done) ===
+	// Phase 1 has already completed. The annotation is stale;
 	// remove it silently without emitting an Event to avoid noise on every reconcile
 	// if the annotation is not cleaned up promptly.
-	if rotation.Phase == mocov1beta2.RotationPhaseDistributed {
-		log.Info("removing stale password-rotate annotation in Distributed phase", "rotationID", rotation.RotationID)
+	if rotation.Phase == mocov1beta2.RotationPhaseRotated {
+		log.Info("removing stale password-rotate annotation in Rotated phase", "rotationID", rotation.RotationID)
 		r.removeAnnotation(ctx, cluster, constants.AnnPasswordRotate)
 		return nil
 	}
@@ -309,16 +309,16 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 		return err
 	}
 
-	// Persist Distributed phase immediately so that reconcileV1Secret no longer
+	// Persist Rotated phase immediately so that reconcileV1Secret no longer
 	// overwrites the distributed Secrets with the old (current) passwords.
 	base := cluster.DeepCopy()
-	rotation.Phase = mocov1beta2.RotationPhaseDistributed
+	rotation.Phase = mocov1beta2.RotationPhaseRotated
 	if err := r.Status().Patch(ctx, cluster, client.MergeFrom(base)); err != nil {
-		return fmt.Errorf("failed to persist Distributed status: %w", err)
+		return fmt.Errorf("failed to persist Rotated status: %w", err)
 	}
 	log.Info("distributed pending passwords", "rotationID", rotation.RotationID)
-	r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "PasswordsDistributed",
-		"Distributed pending passwords to user secrets (rotationID: %s)", rotation.RotationID)
+	r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "PasswordRotated",
+		"Phase 1 complete: pending passwords distributed to user secrets (rotationID: %s)", rotation.RotationID)
 
 	// Step 4: Remove annotation (best-effort).
 	r.removeAnnotation(ctx, cluster, constants.AnnPasswordRotate)
@@ -329,10 +329,10 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 //
 // State machine:
 //
-//	Distributed ──(DISCARD OLD PASSWORD)──▶ Distributed(discardApplied) ──(confirm Secret)──▶ Idle
+//	Rotated ──(DISCARD OLD PASSWORD)──▶ Rotated(discardApplied) ──(confirm Secret)──▶ Idle
 //
 // Preconditions:
-//   - Phase must be Distributed with RotateApplied=true. If not met, the annotation
+//   - Phase must be Rotated with RotateApplied=true. If not met, the annotation
 //     is consumed (removed) and a Warning Event tells the user what to do.
 //   - Pending passwords must exist in the source Secret with matching rotationID.
 //     This is validated once at the top; subsequent steps proceed without re-checking
@@ -358,14 +358,14 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, cluster *mocov1beta2.MySQLCluster, rotation *mocov1beta2.SystemUserRotationStatus, discardID string) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	// Precondition: must be in Distributed phase with rotateApplied=true,
+	// Precondition: must be in Rotated phase with rotateApplied=true,
 	// and the discard annotation's rotationID must match the active rotation.
-	if !rotation.RotateApplied || rotation.Phase != mocov1beta2.RotationPhaseDistributed {
-		log.Info("discard skipped: rotation not in Distributed phase",
+	if !rotation.RotateApplied || rotation.Phase != mocov1beta2.RotationPhaseRotated {
+		log.Info("discard skipped: rotation not in Rotated phase",
 			"phase", rotation.Phase, "rotateApplied", rotation.RotateApplied)
 		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardSkipped",
 			"password-discard annotation was removed because preconditions are not met: "+
-				"rotation phase is %q (expected Distributed with rotateApplied=true). "+
+				"rotation phase is %q (expected Rotated with rotateApplied=true). "+
 				"Run password-rotate first, then password-discard.", rotation.Phase)
 		r.removeAnnotation(ctx, cluster, constants.AnnPasswordDiscard)
 		return ctrl.Result{}, nil
