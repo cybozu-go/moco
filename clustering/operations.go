@@ -531,7 +531,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	}
 
 	waitFor := int(ss.Cluster.Spec.Replicas / 2)
-	if !pst.GlobalVariables.SemiSyncMasterEnabled || pst.GlobalVariables.WaitForSlaveCount != waitFor {
+	if !pst.GlobalVariables.SemiSyncSourceEnabled || pst.GlobalVariables.WaitForReplicaCount != waitFor {
 		redo = true
 		log.Info("enable semi-sync primary")
 		if err := op.ConfigurePrimary(ctx, waitFor); err != nil {
@@ -642,7 +642,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		Password: ss.Password.Replicator(),
 	}
 	semisync := ss.Cluster.Spec.ReplicationSourceSecretName == nil
-	if st.ReplicaStatus == nil || st.ReplicaStatus.ReplicaIORunning != "Yes" || st.ReplicaStatus.SourceHost != ai.Host || st.GlobalVariables.SemiSyncSlaveEnabled != semisync {
+	if st.ReplicaStatus == nil || st.ReplicaStatus.ReplicaIORunning != "Yes" || st.ReplicaStatus.SourceHost != ai.Host || st.GlobalVariables.SemiSyncReplicaEnabled != semisync {
 		redo = true
 		log.Info("start replication", "instance", index, "semisync", semisync)
 		if err := op.ConfigureReplica(ctx, ai, semisync); err != nil {
