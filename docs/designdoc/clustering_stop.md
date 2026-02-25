@@ -24,20 +24,20 @@ Therefore, we are implementing a function to temporarily stop MOCO's clustering 
 Users can stop the MySQL Cluster clustering or reconciliation with the following command:
 
 ```console
-$ kubectl moco stop clustering <CLSUTER_NAME>
-$ kubectl moco stop reconciliation <CLSUTER_NAME>
+$ kubectl moco stop clustering <CLUSTER_NAME>
+$ kubectl moco stop reconciliation <CLUSTER_NAME>
 ```
 
 To resume clustering or reconciliation, use the following command:
 
 ```console
-$ kubectl moco start clustering <CLSUTER_NAME>
-$ kubectl moco start reconciliation <CLSUTER_NAME>
+$ kubectl moco start clustering <CLUSTER_NAME>
+$ kubectl moco start reconciliation <CLUSTER_NAME>
 ```
 
 ### Clustering
 
-When you execute `kubectl moco stop clustering <CLSUTER_NAME>`,
+When you execute `kubectl moco stop clustering <CLUSTER_NAME>`,
 the `moco.cybozu.com/clustering-stopped: "true"` is added to the `.metadata.annotation` of MySQLCluster.
 
 ```yaml
@@ -54,7 +54,7 @@ r.ClusterManager.Stop(req.NamespacedName)
 ```
 
 The process of stopping the `ClusterManager` is carried out only at the first reconcile
-after the execution of `kubectl moco stop clustering <CLSUTER_NAME>`.
+after the execution of `kubectl moco stop clustering <CLUSTER_NAME>`.
 
 The `ClusteringActive` is added to `.status.conditions` of MySQLCluster.
 Normally `True` is recorded, but `False` is recorded when the clustering is stopped.
@@ -82,7 +82,7 @@ NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUST
 test   Unknown     Unknown   0         2                                   False                True              <no value>
 ```
 
-When you execute `kubectl moco start clustering <CLSUTER_NAME>`,
+When you execute `kubectl moco start clustering <CLUSTER_NAME>`,
 `moco.cybozu.com/clustering-stopped: "true"` is removed from `.metadata.annotation` of MySQLCluster.
 
 The controller resumes the `ClusterManager` for `MySQLCluster` that does not have the `moco.cybozu.com/clustering-stopped: "true"` annotation.
@@ -91,7 +91,7 @@ and the `.status` of other `.status.conditions` is also updated from `Unknown`.
 
 ### Reconciliation
 
-When you execute `kubectl moco stop reconciliation <CLSUTER_NAME>`,
+When you execute `kubectl moco stop reconciliation <CLUSTER_NAME>`,
 the `moco.cybozu.com/reconciliation-stopped: "true"` is added to the `.metadata.annotation` of MySQLCluster.
 
 ```yaml
@@ -125,7 +125,7 @@ NAME   AVAILABLE   HEALTHY   PRIMARY   SYNCED REPLICAS   ERRANT REPLICAS   CLUST
 test   Unknown     Unknown   0         2                                   True                False              <no value>
 ```
 
-When you execute `kubectl moco start reconciliation <CLSUTER_NAME>`,
+When you execute `kubectl moco start reconciliation <CLUSTER_NAME>`,
 `moco.cybozu.com/reconciliation-stopped: "true"` is removed from `.metadata.annotation` of MySQLCluster.
 
 The controller will resume the reconcile of MySQLCluster resources that do not have `moco.cybozu.com/clustering-stopped: "true"`.
