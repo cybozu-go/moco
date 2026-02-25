@@ -98,7 +98,7 @@ func rotatePassword(ctx context.Context, name string) error {
 
 	// Block if a rotation is already in progress (any non-Idle phase).
 	if rotationStatus.Phase != mocov1beta2.RotationPhaseIdle {
-		if rotationStatus.Phase == mocov1beta2.RotationPhaseDistributed {
+		if rotationStatus.Phase == mocov1beta2.RotationPhaseRotated {
 			return fmt.Errorf("password rotation is complete but old passwords have not been discarded yet (rotationID: %s). Run \"kubectl moco credential discard %s\" first", rotationStatus.RotationID, name)
 		}
 		return fmt.Errorf("password rotation is already in progress (rotationID: %s, phase: %s). Wait for it to complete before requesting a new rotation", rotationStatus.RotationID, rotationPhaseDisplay(rotationStatus.Phase))
@@ -160,8 +160,8 @@ func discardPassword(ctx context.Context, name string) error {
 
 	rotationStatus := cluster.Status.SystemUserRotation
 
-	if rotationStatus.Phase != mocov1beta2.RotationPhaseDistributed {
-		return fmt.Errorf("cannot discard: password rotation is not in Distributed phase (current phase: %s). Run \"kubectl moco credential rotate %s\" first", rotationPhaseDisplay(rotationStatus.Phase), name)
+	if rotationStatus.Phase != mocov1beta2.RotationPhaseRotated {
+		return fmt.Errorf("cannot discard: password rotation is not in Rotated phase (current phase: %s). Run \"kubectl moco credential rotate %s\" first", rotationPhaseDisplay(rotationStatus.Phase), name)
 	}
 
 	if ann := cluster.Annotations[constants.AnnPasswordDiscard]; ann != "" {

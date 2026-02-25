@@ -2399,14 +2399,14 @@ dummyKey: dummyValue
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		By("checking rotation reaches Distributed phase and annotation is removed")
+		By("checking rotation reaches Rotated phase and annotation is removed")
 		Eventually(func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
-				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
+				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
 			}
 			if !cluster.Status.SystemUserRotation.RotateApplied {
 				return fmt.Errorf("rotateApplied should be true")
@@ -2503,13 +2503,13 @@ dummyKey: dummyValue
 		}).Should(And(
 			HaveKeyWithValue("RotationStarted", corev1.EventTypeNormal),
 			HaveKeyWithValue("RetainApplied", corev1.EventTypeNormal),
-			HaveKeyWithValue("PasswordsDistributed", corev1.EventTypeNormal),
+			HaveKeyWithValue("PasswordRotated", corev1.EventTypeNormal),
 			HaveKeyWithValue("DiscardApplied", corev1.EventTypeNormal),
 			HaveKeyWithValue("RotationCompleted", corev1.EventTypeNormal),
 		))
 	})
 
-	It("should skip discard when rotation is not in Distributed phase", func() {
+	It("should skip discard when rotation is not in Rotated phase", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -2605,8 +2605,8 @@ dummyKey: dummyValue
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
-				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
+				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
 			}
 			if !cluster.Status.SystemUserRotation.RotateApplied {
 				return fmt.Errorf("rotateApplied should be true")
@@ -2703,14 +2703,14 @@ dummyKey: dummyValue
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		By("checking fresh rotation starts and reaches Distributed phase")
+		By("checking fresh rotation starts and reaches Rotated phase")
 		Eventually(func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
-				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
+				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
 			}
 			if cluster.Status.SystemUserRotation.RotationID != freshRotationID {
 				return fmt.Errorf("expected rotationID %q, got %q", freshRotationID, cluster.Status.SystemUserRotation.RotationID)
@@ -2815,7 +2815,7 @@ dummyKey: dummyValue
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testMocoSystemNamespace, Name: "mysql-test.test"}, secret)
 		}).Should(Succeed())
 
-		By("running rotation to reach Distributed phase")
+		By("running rotation to reach Rotated phase")
 		rotationID := uuid.NewString()
 		Eventually(func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
@@ -2834,8 +2834,8 @@ dummyKey: dummyValue
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseDistributed {
-				return fmt.Errorf("expected Distributed phase, got %q", cluster.Status.SystemUserRotation.Phase)
+			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
+				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
 			}
 			return nil
 		}).Should(Succeed())
@@ -2854,7 +2854,7 @@ dummyKey: dummyValue
 			return k8sClient.Update(ctx, cluster)
 		}).Should(Succeed())
 
-		By("checking annotation is consumed and phase stays Distributed")
+		By("checking annotation is consumed and phase stays Rotated")
 		Eventually(func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
@@ -2866,7 +2866,7 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
-		Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseDistributed))
+		Expect(cluster.Status.SystemUserRotation.Phase).To(Equal(mocov1beta2.RotationPhaseRotated))
 		Expect(len(mockOpFactory.getDiscardedUsers())).To(Equal(0))
 	})
 })

@@ -788,7 +788,7 @@ After Phase 1 completes, you can check the rotation status:
 $ kubectl get mysqlcluster <CLUSTER_NAME> -o jsonpath='{.status.systemUserRotation}'
 ```
 
-The `phase` field should be `Distributed` and `rotateApplied` should be `true`.
+The `phase` field should be `Rotated` and `rotateApplied` should be `true`.
 
 At this point, both old and new passwords are accepted by MySQL.
 You should verify that your applications work correctly before proceeding to Phase 2.
