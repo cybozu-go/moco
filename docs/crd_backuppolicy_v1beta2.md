@@ -83,6 +83,6 @@ JobConfig is a set of parameters for backup and restore job Pods.
 | affinity | If specified, the pod's scheduling constraints. | *[AffinityApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration) | false |
 | volumes | Volumes defines the list of volumes that can be mounted by containers in the Pod. | []VolumeApplyConfiguration | false |
 | volumeMounts | VolumeMounts describes a list of volume mounts that are to be mounted in a container. | []VolumeMountApplyConfiguration | false |
-| imagePullSecrets | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling any images. | []LocalObjectReferenceApplyConfiguration | false |
+| imagePullSecrets | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods. To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead. | []LocalObjectReferenceApplyConfiguration | false |
 
 [Back to Custom Resources](#custom-resources)

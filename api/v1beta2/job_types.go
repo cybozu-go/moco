@@ -87,7 +87,9 @@ type JobConfig struct {
 	// +optional
 	VolumeMounts []VolumeMountApplyConfiguration `json:"volumeMounts,omitempty"`
 
-	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling any images.
+	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling
+	// backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods.
+	// To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead.
 	//
 	// +optional
 	ImagePullSecrets []LocalObjectReferenceApplyConfiguration `json:"imagePullSecrets,omitempty"`
