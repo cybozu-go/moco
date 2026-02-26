@@ -3,6 +3,7 @@ package clustering
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -526,15 +527,66 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 		}
 	}
 
-	if ss.Cluster.Spec.Replicas == 1 {
-		return
+	readyReplicas := 0
+	neverReadyReplicas := 0
+	for i, ist := range ss.MySQLStatus {
+		if i == ss.Primary {
+			continue
+		}
+		if ist == nil {
+			// This happens during provisioning new pod
+			neverReadyReplicas++
+			continue
+		}
+
+		rs := ist.ReplicaStatus
+		if rs == nil {
+			// This happens when new secondary is cloning, uncofrunately `ist.CloneStatus` does not seem to be realible for these checks...
+			neverReadyReplicas++
+			continue
+		}
+
+		// log.Info("DUMPING IST BECAUSE OTHER CHECKS DID NOT HIT!",
+		// 	"ist", spew.Sdump(ist))
+
+		if !rs.IsRunning() {
+			continue
+		}
+		if !rs.SecondsBehindSource.Valid || rs.SecondsBehindSource.Int64 >= 10 {
+			continue
+		}
+
+		readyReplicas++
 	}
 
-	waitFor := int(ss.Cluster.Spec.Replicas / 2)
-	if !pst.GlobalVariables.SemiSyncMasterEnabled || pst.GlobalVariables.WaitForSlaveCount != waitFor {
+	desiredInstances := int(ss.Cluster.Spec.Replicas)
+	desiredReplicas := desiredInstances - 1
+	instancesForAckCalc := desiredInstances
+
+	scaleUpInProgress := (desiredReplicas > 0 && readyReplicas < desiredReplicas && neverReadyReplicas > 0)
+
+	if scaleUpInProgress {
+		instancesForAckCalc = min(1+readyReplicas, desiredInstances)
+	}
+
+	log.Info(fmt.Sprintf(
+		"semi-sync calc: desiredInstances=%d desiredReplicas=%d readyReplicas=%d neverReadyReplicas=%d instancesForAckCalc=%d scaleUpInProgress=%t",
+		desiredInstances, desiredReplicas, readyReplicas, neverReadyReplicas, instancesForAckCalc, scaleUpInProgress,
+	))
+
+	waitFor := RequiredSemiSyncAcks(instancesForAckCalc)
+	enableSemiSync := waitFor > 0
+	waitFor = int((math.Max(1, float64(waitFor)))) // The minimum value mysql accepts for rpl_semi_sync_master_wait_for_slave_count is 1 (even if replication is disabled)
+
+	if pst.GlobalVariables.SemiSyncMasterEnabled != enableSemiSync || pst.GlobalVariables.WaitForSlaveCount != waitFor {
 		redo = true
-		log.Info("enable semi-sync primary")
-		if err := op.ConfigurePrimary(ctx, waitFor); err != nil {
+		log.Info("updating primary",
+			"enableSemiSync", enableSemiSync,
+			"waitFor", waitFor,
+			"currentEnableSemiSync", pst.GlobalVariables.SemiSyncMasterEnabled,
+			"currentWaitFor", pst.GlobalVariables.WaitForSlaveCount,
+		)
+		if err := op.ConfigurePrimary(ctx, enableSemiSync, waitFor); err != nil {
 			return false, err
 		}
 	}

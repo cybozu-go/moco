@@ -38,14 +38,14 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 	return nil
 }
 
-func (o *operator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
+func (o *operator) ConfigurePrimary(ctx context.Context, semisync bool, waitForCount int) error {
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_timeout=?", semiSyncMasterTimeout); err != nil {
 		return fmt.Errorf("failed to set rpl_semi_sync_master_timeout count: %w", err)
 	}
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_wait_for_slave_count=?", waitForCount); err != nil {
 		return fmt.Errorf("failed to set rpl_semi_sync_master_wait_for_slave_count count: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_enabled=ON"); err != nil {
+	if _, err := o.db.ExecContext(ctx, "SET GLOBAL rpl_semi_sync_master_enabled=?", semisync); err != nil {
 		return fmt.Errorf("failed to enable semi-sync primary: %w", err)
 	}
 	return nil
