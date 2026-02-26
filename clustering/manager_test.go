@@ -436,11 +436,11 @@ var _ = Describe("manager", func() {
 		st0 := of.getInstanceStatus(cluster.PodHostname(0))
 		Expect(st0).NotTo(BeNil())
 		Expect(st0.GlobalVariables.SuperReadOnly).To(BeTrue())
-		Expect(st0.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
+		Expect(st0.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
 		for i := 1; i < 3; i++ {
 			st := of.getInstanceStatus(cluster.PodHostname(1))
 			Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
-			Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+			Expect(st.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
 			Expect(st.ReplicaStatus).NotTo(BeNil())
 			Expect(st.ReplicaStatus.ReplicaIORunning).To(Equal("Yes"))
 		}
@@ -534,7 +534,7 @@ var _ = Describe("manager", func() {
 			st := of.getInstanceStatus(cluster.PodHostname(i))
 			Expect(st).NotTo(BeNil())
 			Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
-			Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+			Expect(st.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
 			Expect(st.ReplicaStatus).NotTo(BeNil())
 			if i == newPrimary {
 				Expect(st.ReplicaStatus.SourceHost).To(Equal("external"))
@@ -590,12 +590,12 @@ var _ = Describe("manager", func() {
 			switch i {
 			case newPrimary:
 				Expect(st.GlobalVariables.ReadOnly).To(BeFalse())
-				Expect(st.GlobalVariables.SemiSyncMasterEnabled).To(BeTrue())
+				Expect(st.GlobalVariables.SemiSyncSourceEnabled).To(BeTrue())
 				Expect(st.ReplicaStatus).To(BeNil())
 				Expect(st.ReplicaHosts).To(HaveLen(2))
 			default:
 				Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
-				Expect(st.GlobalVariables.SemiSyncSlaveEnabled).To(BeTrue())
+				Expect(st.GlobalVariables.SemiSyncReplicaEnabled).To(BeTrue())
 				Expect(st.ReplicaStatus).NotTo(BeNil())
 				Expect(st.ReplicaStatus.SourceHost).To(Equal(cluster.PodHostname(newPrimary)))
 			}
