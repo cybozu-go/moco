@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backup-azure
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: backup-azure
+  name: mycnf
+data:
+  innodb_log_file_size: "10M"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: backup-azure
+  name: azurite-secret
+stringData:
+  AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite.default.svc:10000/devstoreaccount1;"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: backup-azure
+  name: backup-owner
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-bucket
+  namespace: backup-azure
+spec:
+  ttlSecondsAfterFinished: 180
+  backoffLimit: 3
+  activeDeadlineSeconds: 180
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: mcr.microsoft.com/azure-cli
+          command: 
+          - sh
+          - -c
+          - |
+            az storage container create -n moco --debug --connection-string "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite.default:10000/devstoreaccount1;QueueEndpoint=http://azurite.default:10000/devstoreaccount1;"
+            exit
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      serviceAccountName: default
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  namespace: backup-azure
+  name: daily
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    envFrom:
+    - secretRef:
+        name: azurite-secret
+    bucketConfig:
+      bucketName: moco
+      backendType: azure
+    workVolume:
+      emptyDir: {}
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: backup-azure
+  name: source
+spec:
+  mysqlConfigMapName: mycnf
+  replicas: 3
+  backupPolicyName: daily
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
