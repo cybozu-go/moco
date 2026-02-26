@@ -1279,6 +1279,14 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 								}
 								return volumes
 							}()...).
+							WithImagePullSecrets(func() []*corev1ac.LocalObjectReferenceApplyConfiguration {
+								imagePullSecrets := make([]*corev1ac.LocalObjectReferenceApplyConfiguration, 0, len(jc.ImagePullSecrets))
+								for _, s := range jc.ImagePullSecrets {
+									s := s
+									imagePullSecrets = append(imagePullSecrets, (*corev1ac.LocalObjectReferenceApplyConfiguration)(&s))
+								}
+								return imagePullSecrets
+							}()...).
 							WithContainers(container).
 							WithSecurityContext(corev1ac.PodSecurityContext().
 								WithFSGroup(constants.ContainerGID).
@@ -1584,6 +1592,14 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 								volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
 							}
 							return volumes
+						}()...).
+						WithImagePullSecrets(func() []*corev1ac.LocalObjectReferenceApplyConfiguration {
+							imagePullSecrets := make([]*corev1ac.LocalObjectReferenceApplyConfiguration, 0, len(jc.ImagePullSecrets))
+							for _, s := range jc.ImagePullSecrets {
+								s := s
+								imagePullSecrets = append(imagePullSecrets, (*corev1ac.LocalObjectReferenceApplyConfiguration)(&s))
+							}
+							return imagePullSecrets
 						}()...).
 						WithContainers(container).
 						WithSecurityContext(corev1ac.PodSecurityContext().
