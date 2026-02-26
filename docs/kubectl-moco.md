@@ -57,14 +57,33 @@ To run `mysql` interactively for the instance 2 in `mycluster` in the default na
 $ kubectl moco mysql --index 2 -it mycluster
 ```
 
-## `kubectl moco credential [options] CLUSTER_NAME`
+## `kubectl moco credential <subcommand>`
 
-Fetch the credential information of a specified user
+Manage credentials for MySQLCluster.
+
+> **Note:** `kubectl moco credential CLUSTER_NAME` (without the `show` subcommand) still works for backward compatibility but is deprecated. Use `kubectl moco credential show CLUSTER_NAME` instead.
+
+### `kubectl moco credential show [options] CLUSTER_NAME`
+
+Fetch the credential information of a specified user.
 
 | Options            | Default value   | Description                                |
 | ------------------ | --------------- | ------------------------------------------ |
 | `-u, --mysql-user` | `moco-readonly` | Fetch the credential of the specified user |
 | `--format`         | `plain`         | Output format: `plain` or `mycnf`          |
+
+### `kubectl moco credential rotate CLUSTER_NAME`
+
+Trigger Phase 1 of system user password rotation.
+This generates new passwords, executes `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`), and distributes the new passwords to per-namespace Secrets.
+After this command, both old and new passwords are valid (MySQL dual password).
+
+### `kubectl moco credential discard CLUSTER_NAME`
+
+Trigger Phase 2 of system user password rotation.
+This executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`), then migrates the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` (determined from `@@global.authentication_policy`, enabling transparent migration from legacy plugins like `mysql_native_password`).
+Finally, it confirms the new passwords in the source Secret and resets the rotation status to Idle.
+This command requires that `kubectl moco credential rotate` has been run first and completed successfully.
 
 ## `kubectl moco switchover CLUSTER_NAME`
 

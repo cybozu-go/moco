@@ -114,6 +114,7 @@ func subMain(ns, addr string, port int) error {
 		PVCSyncAnnotationKeys:      config.pvcSyncAnnotationKeys,
 		PVCSyncLabelKeys:           config.pvcSyncLabelKeys,
 		ClusterManager:             clusterMgr,
+		OpFactory:                  opf,
 		MaxConcurrentReconciles:    config.maxConcurrentReconciles,
 		MySQLConfigMapHistoryLimit: config.mySQLConfigMapHistoryLimit,
 	}).SetupWithManager(mgr); err != nil {

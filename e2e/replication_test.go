@@ -76,7 +76,7 @@ var _ = Context("replication", Ordered, func() {
 	It("should construct an intermediate primary and replicas", func() {
 		kubectlSafe(fillTemplate(replYAML), "apply", "-f", "-")
 
-		out := kubectlSafe(nil, "moco", "-n", "donor", "credential", "-u", "moco-admin", "single")
+		out := kubectlSafe(nil, "moco", "-n", "donor", "credential", "show", "-u", "moco-admin", "single")
 		adminPasswd := strings.TrimSpace(string(out))
 
 		kubectlSafe(nil, "-n", "repl", "create", "secret", "generic", "donor",
@@ -397,7 +397,7 @@ var _ = Context("replication", Ordered, func() {
 
 	It("should allow reads via Service", func() {
 		By("obtaining the credential")
-		out := kubectlSafe(nil, "moco", "-n", "repl", "credential", "-u", "moco-readonly", "test")
+		out := kubectlSafe(nil, "moco", "-n", "repl", "credential", "show", "-u", "moco-readonly", "test")
 		passwd := strings.TrimSpace(string(out))
 
 		By("running mysql in a pod")

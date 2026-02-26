@@ -6817,6 +6817,25 @@ spec:
               syncedReplicas:
                 description: SyncedReplicas is the number of synced instances...
                 type: integer
+              systemUserRotation:
+                description: SystemUserRotation represents the status of the...
+                properties:
+                  discardApplied:
+                    description: DiscardApplied indicates whether ALTER USER ...
+                    type: boolean
+                  lastRotationID:
+                    description: LastRotationID is the rotationID of the most...
+                    type: string
+                  phase:
+                    description: Phase is the current phase of the rotation.
+                    type: string
+                  rotateApplied:
+                    description: RotateApplied indicates whether ALTER USER ...
+                    type: boolean
+                  rotationID:
+                    description: RotationID is the unique identifier for the...
+                    type: string
+                type: object
             required:
             - currentPrimaryIndex
             type: object

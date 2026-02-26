@@ -128,7 +128,7 @@ var _ = Context("lifecycle", Ordered, func() {
 
 	It("should allow writes via Service", func() {
 		By("obtaining the credential")
-		out := kubectlSafe(nil, "moco", "-n", "foo", "credential", "-u", "moco-writable", "single")
+		out := kubectlSafe(nil, "moco", "-n", "foo", "credential", "show", "-u", "moco-writable", "single")
 		passwd := strings.TrimSpace(string(out))
 
 		By("running mysql in a pod")
