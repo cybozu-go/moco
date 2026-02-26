@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e4ebd213.js";
+            window.path_to_searchindex_js = "searchindex-de783665.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -1034,12 +1034,12 @@ Delete such pending Pods until PVC is actually removed.</p>
 <h3 id="stop-clustering-and-reconciliation"><a class="header" href="#stop-clustering-and-reconciliation">Stop Clustering and Reconciliation</a></h3>
 <p>In MOCO, you can optionally stop the clustering and reconciliation of a MySQLCluster.</p>
 <p>To stop clustering and reconciliation, use the following commands.</p>
-<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLSUTER_NAME&gt;
-$ kubectl moco stop reconciliation &lt;CLSUTER_NAME&gt;
+<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLUSTER_NAME&gt;
+$ kubectl moco stop reconciliation &lt;CLUSTER_NAME&gt;
 </code></pre>
 <p>To resume the stopped clustering and reconciliation, use the following commands.</p>
-<pre><code class="language-console">$ kubectl moco start clustering &lt;CLSUTER_NAME&gt;
-$ kubectl moco start reconciliation &lt;CLSUTER_NAME&gt;
+<pre><code class="language-console">$ kubectl moco start clustering &lt;CLUSTER_NAME&gt;
+$ kubectl moco start reconciliation &lt;CLUSTER_NAME&gt;
 </code></pre>
 <p>You could use this feature in the following cases:</p>
 <ol>
@@ -1075,11 +1075,11 @@ moco_cluster_errant_replicas{name="test",namespace="default"} NaN
 <p>When you want to set MOCO’s MySQL to read-only, use the the following commands.</p>
 <p>MOCO makes the primary instance writable in the clustering process.
 Therefore, please be sure to stop clustering when you set it to read-only.</p>
-<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLSUTER_NAME&gt;
-$ kubectl moco mysql -u moco-admin &lt;CLSUTER_NAME&gt; -- -e "SET GLOBAL super_read_only=1"
+<pre><code class="language-console">$ kubectl moco stop clustering &lt;CLUSTER_NAME&gt;
+$ kubectl moco mysql -u moco-admin &lt;CLUSTER_NAME&gt; -- -e "SET GLOBAL super_read_only=1"
 </code></pre>
 <p>You can check whether the cluster is read-only with the following command.</p>
-<pre><code class="language-console">$ kubectl moco mysql -it &lt;CLSUTER_NAME&gt; -- -e "SELECT @@super_read_only"
+<pre><code class="language-console">$ kubectl moco mysql -it &lt;CLUSTER_NAME&gt; -- -e "SELECT @@super_read_only"
 +-------------------+
 | @@super_read_only |
 +-------------------+
@@ -1087,7 +1087,7 @@ $ kubectl moco mysql -u moco-admin &lt;CLSUTER_NAME&gt; -- -e "SET GLOBAL super_
 +-------------------+
 </code></pre>
 <p>If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.</p>
-<pre><code class="language-console">$ kubectl moco start clustering &lt;CLSUTER_NAME&gt;
+<pre><code class="language-console">$ kubectl moco start clustering &lt;CLUSTER_NAME&gt;
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="advanced-topics"><a class="header" href="#advanced-topics">Advanced topics</a></h1>
