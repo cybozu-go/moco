@@ -216,11 +216,12 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 
 	hasPending, err := password.HasPendingPasswords(sourceSecret, rotation.RotationID)
 	if err != nil {
-		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "StaleRotationPending",
+		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "RotationPendingError",
 			"Failed to verify pending passwords in source secret %s: %v. "+
-				"To recover, manually delete *_PENDING and ROTATION_ID keys from the secret: "+
-				"kubectl -n %s edit secret %s",
-			cluster.ControllerSecretName(), err, r.SystemNamespace, cluster.ControllerSecretName())
+				"If ALTER USER RETAIN was already applied on any instance, follow the full rollback procedure "+
+				"in docs/designdoc/password_rotation.md (status → Secret → rollout → MySQL reset). "+
+				"Do NOT recover by only deleting *_PENDING or ROTATION_ID keys from the Secret.",
+			cluster.ControllerSecretName(), err)
 		return fmt.Errorf("failed to verify pending passwords in source secret: %w", err)
 	}
 	if !hasPending {
@@ -393,21 +394,18 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 	if err != nil {
 		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "RotationPendingCheckFailed",
 			"Cannot discard: failed to validate pending passwords in source secret %s for rotationID %s: %v. "+
-				"To recover: (1) delete *_PENDING and ROTATION_ID keys from the secret: "+
-				"kubectl -n %s edit secret %s  "+
-				"(2) if needed, reset status.systemUserRotation as a last resort.",
-			cluster.ControllerSecretName(), rotation.RotationID, err,
-			r.SystemNamespace, cluster.ControllerSecretName())
+				"Follow the full rollback procedure in docs/designdoc/password_rotation.md "+
+				"(status → Secret → rollout → MySQL reset). "+
+				"Do NOT recover by only deleting *_PENDING or ROTATION_ID keys from the Secret.",
+			cluster.ControllerSecretName(), rotation.RotationID, err)
 		return ctrl.Result{}, fmt.Errorf("cannot discard: failed to validate pending passwords for rotationID %s: %w", rotation.RotationID, err)
 	}
 	if !hasPending {
 		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "MissingRotationPending",
 			"Cannot discard: pending passwords not found in source secret %s for rotationID %s. "+
-				"To recover: (1) delete *_PENDING and ROTATION_ID keys from the secret: "+
-				"kubectl -n %s edit secret %s  "+
-				"(2) if needed, reset status.systemUserRotation as a last resort.",
-			cluster.ControllerSecretName(), rotation.RotationID,
-			r.SystemNamespace, cluster.ControllerSecretName())
+				"Follow the full rollback procedure in docs/designdoc/password_rotation.md "+
+				"(status → Secret → rollout → MySQL reset).",
+			cluster.ControllerSecretName(), rotation.RotationID)
 		return ctrl.Result{}, fmt.Errorf("cannot discard: pending passwords not found for rotationID %s", rotation.RotationID)
 	}
 

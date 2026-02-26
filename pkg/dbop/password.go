@@ -91,8 +91,8 @@ func (o *operator) SetSuperReadOnly(ctx context.Context, on bool) error {
 // Plugin migration is handled separately by MigrateUserAuthPlugin after DISCARD.
 //
 // A dedicated connection (db.Conn) is used to ensure sql_log_bin=0 is set on the
-// same session as the ALTER USER statement. sql_log_bin is a session variable, so
-// it does not affect other connections in the pool.
+// same session as the ALTER USER statement. sql_log_bin is restored to 1 before the
+// connection is returned to the pool to prevent leaking into subsequent operations.
 //
 // user must be one of the fixed system user names defined in pkg/constants/users.go.
 // The user name is interpolated directly into the SQL statement because MySQL does
@@ -111,6 +111,8 @@ func (o *operator) RotateUserPassword(ctx context.Context, user, newPassword str
 	if _, err := conn.ExecContext(ctx, "SET sql_log_bin=0"); err != nil {
 		return fmt.Errorf("failed to set sql_log_bin=0: %w", err)
 	}
+	// Restore sql_log_bin before the connection is returned to the pool.
+	defer conn.ExecContext(ctx, "SET sql_log_bin=1") //nolint:errcheck
 	query := fmt.Sprintf("ALTER USER '%s'@'%%' IDENTIFIED BY ? RETAIN CURRENT PASSWORD", user)
 	if _, err := conn.ExecContext(ctx, query, newPassword); err != nil {
 		return fmt.Errorf("failed to rotate password for %s: %w", user, err)
@@ -149,6 +151,8 @@ func (o *operator) MigrateUserAuthPlugin(ctx context.Context, user, password, au
 	if _, err := conn.ExecContext(ctx, "SET sql_log_bin=0"); err != nil {
 		return fmt.Errorf("failed to set sql_log_bin=0: %w", err)
 	}
+	// Restore sql_log_bin before the connection is returned to the pool.
+	defer conn.ExecContext(ctx, "SET sql_log_bin=1") //nolint:errcheck
 	query := fmt.Sprintf("ALTER USER '%s'@'%%' IDENTIFIED WITH %s BY ?", user, authPlugin)
 	if _, err := conn.ExecContext(ctx, query, password); err != nil {
 		return fmt.Errorf("failed to migrate auth plugin for %s: %w", user, err)
@@ -191,6 +195,8 @@ func (o *operator) DiscardOldPassword(ctx context.Context, user string) error {
 	if _, err := conn.ExecContext(ctx, "SET sql_log_bin=0"); err != nil {
 		return fmt.Errorf("failed to set sql_log_bin=0: %w", err)
 	}
+	// Restore sql_log_bin before the connection is returned to the pool.
+	defer conn.ExecContext(ctx, "SET sql_log_bin=1") //nolint:errcheck
 	query := fmt.Sprintf("ALTER USER '%s'@'%%' DISCARD OLD PASSWORD", user)
 	if _, err := conn.ExecContext(ctx, query); err != nil {
 		return fmt.Errorf("failed to discard old password for %s: %w", user, err)

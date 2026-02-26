@@ -359,7 +359,7 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- \
 
 ### Stale Pending Passwords (RotationID Mismatch)
 
-**Symptom:** Warning Event `StaleRotationPending`
+**Symptom:** Warning Event `RotationPendingError`
 
 **Cause:** A previous rotation was interrupted, leaving `*_PENDING` and `ROTATION_ID` from a different rotation cycle in the source Secret.
 This typically happens when the status was manually reset to Idle while the Secret still contains pending data.
