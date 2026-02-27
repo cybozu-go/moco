@@ -34,11 +34,12 @@ BackupPolicyList contains a list of BackupPolicy
 
 #### BackupPolicySpec
 
-BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit
+BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe following fields will be copied to CronJob.spec:\n\n- Schedule - TimeZone - StartingDeadlineSeconds - ConcurrencyPolicy - SuccessfulJobsHistoryLimit - FailedJobsHistoryLimit\n\nThe following fields will be copied to CronJob.spec.jobTemplate.\n\n- ActiveDeadlineSeconds - BackoffLimit
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | schedule | The schedule in Cron format for periodic backups. See https://en.wikipedia.org/wiki/Cron | string | true |
+| timeZone | The time zone name for the given schedule, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones. If not specified, this defaults to the time zone of the kube-controller-manager process (native Kubernetes CronJob behavior). More information can be found in https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones | *string | false |
 | jobConfig | Specifies parameters for backup Pod. | [JobConfig](#jobconfig) | true |
 | startingDeadlineSeconds | Optional deadline in seconds for starting the job if it misses scheduled time for any reason.  Missed jobs executions will be counted as failed ones. | *int64 | false |
 | concurrencyPolicy | Specifies how to treat concurrent executions of a Job. Valid values are: - \"Allow\" (default): allows CronJobs to run concurrently; - \"Forbid\": forbids concurrent runs, skipping next run if previous run hasn't finished yet; - \"Replace\": cancels currently running job and replaces it with a new one | [batchv1.ConcurrencyPolicy](https://pkg.go.dev/k8s.io/api/batch/v1#ConcurrencyPolicy) | false |
