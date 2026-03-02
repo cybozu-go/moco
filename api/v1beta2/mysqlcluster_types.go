@@ -668,16 +668,6 @@ type SystemUserRotationStatus struct {
 	// +optional
 	Phase RotationPhase `json:"phase,omitempty"`
 
-	// RotateApplied indicates whether ALTER USER ... RETAIN CURRENT PASSWORD
-	// has been applied to all instances for all system users.
-	// +optional
-	RotateApplied bool `json:"rotateApplied,omitempty"`
-
-	// DiscardApplied indicates whether ALTER USER ... DISCARD OLD PASSWORD
-	// has been applied to all instances.
-	// +optional
-	DiscardApplied bool `json:"discardApplied,omitempty"`
-
 	// LastRotationID is the rotationID of the most recently completed rotation.
 	// Used to detect stale rotate annotations that linger after a completed cycle
 	// (best-effort annotation removal may fail). If the annotation's rotationID

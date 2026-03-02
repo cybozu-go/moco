@@ -2408,9 +2408,6 @@ dummyKey: dummyValue
 			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
 				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
 			}
-			if !cluster.Status.SystemUserRotation.RotateApplied {
-				return fmt.Errorf("rotateApplied should be true")
-			}
 			if cluster.Status.SystemUserRotation.RotationID == "" {
 				return fmt.Errorf("rotationID should be set")
 			}
@@ -2589,7 +2586,6 @@ dummyKey: dummyValue
 		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(cluster.Status.SystemUserRotation.RotateApplied).To(BeFalse())
 
 		// Record how many times each user was rotated before clearing the error
 		rotatedBefore := mockOpFactory.getRotatedUsers()
@@ -2607,9 +2603,6 @@ dummyKey: dummyValue
 			}
 			if cluster.Status.SystemUserRotation.Phase != mocov1beta2.RotationPhaseRotated {
 				return fmt.Errorf("expected Rotated phase, got %q", cluster.Status.SystemUserRotation.Phase)
-			}
-			if !cluster.Status.SystemUserRotation.RotateApplied {
-				return fmt.Errorf("rotateApplied should be true")
 			}
 			return nil
 		}).Should(Succeed())

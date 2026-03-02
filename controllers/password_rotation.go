@@ -94,7 +94,7 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 //
 // Phase transitions:
 //
-//	Idle ──(annotation)──▶ Rotating ──(RETAIN on all instances)──▶ Rotating(rotateApplied) ──(distribute)──▶ Rotated
+//	Idle ──(annotation)──▶ Rotating ──(RETAIN + distribute)──▶ Rotated
 //
 // All ALTER USER statements use sql_log_bin=0 to prevent binlog propagation to
 // cross-cluster replicas. Because binlog is disabled, RETAIN must be executed on
@@ -109,15 +109,13 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 //	  Rotating via Status.Patch. On re-reconcile the same rotationID is
 //	  reused from status, not regenerated.
 //
-//	Phase=Rotating, RotateApplied=false:
+//	Phase=Rotating:
 //	  Instances are processed sequentially. For each instance, each user is
 //	  checked via HasDualPassword (querying mysql.user for additional_password).
 //	  If a user already has a dual password, RETAIN is skipped; otherwise it is
 //	  executed. This makes MySQL the source of truth and eliminates per-user
-//	  Status.Patch calls.
-//
-//	Phase=Rotating, RotateApplied=true:
-//	  All instances completed. Distribution (Step 3) is idempotent.
+//	  Status.Patch calls. RETAIN is idempotent via HasDualPassword, and
+//	  distribution is idempotent via apply-based reconciliation.
 //
 //	Phase=Rotated:
 //	  Stale annotation is silently removed.
@@ -184,8 +182,6 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 		base := cluster.DeepCopy()
 		rotation.RotationID = rotateID
 		rotation.Phase = mocov1beta2.RotationPhaseRotating
-		rotation.RotateApplied = false
-		rotation.DiscardApplied = false
 		if err := r.Status().Patch(ctx, cluster, client.MergeFrom(base)); err != nil {
 			return fmt.Errorf("failed to persist Rotating status: %w", err)
 		}
@@ -235,7 +231,6 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 	}
 
 	// Step 2: Execute ALTER USER ... RETAIN CURRENT PASSWORD on ALL instances.
-	// Guarded by RotateApplied: if true, this step is skipped entirely.
 	//
 	// Each ALTER USER is executed with sql_log_bin=0 to prevent binlog
 	// propagation to cross-cluster replicas. Because binlog is disabled,
@@ -244,60 +239,52 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 	//
 	// For each instance, each user is checked via HasDualPassword. If a user
 	// already has a dual password (from a previous partial run), RETAIN is
-	// skipped. This makes MySQL the source of truth for crash recovery.
-	// Phase advances only after ALL instances complete.
+	// skipped. This makes MySQL the source of truth for crash recovery and
+	// makes this step idempotent on re-reconcile.
 	//
 	// replicas=0 (scaled-down mid-rotation): the Idle→Rotating transition
 	// already refuses replicas=0, but the cluster may be scaled down after
 	// the transition. Refuse here as well to prevent distributing passwords
 	// that MySQL has not yet accepted.
-	if !rotation.RotateApplied {
-		replicas := int(cluster.Spec.Replicas)
-		if replicas == 0 {
-			log.Info("refusing to rotate: cluster is scaled down (replicas=0), scale up first",
-				"rotationID", rotation.RotationID)
-			r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "RotateRefused",
-				"Cannot rotate passwords while cluster is scaled down (replicas=0). "+
-					"Scale the cluster up first so that ALTER USER can be executed on running instances.")
-			return fmt.Errorf("cannot rotate passwords: cluster is scaled down (replicas=0)")
-		}
-
-		pendingMap, err := password.PendingKeyMap(sourceSecret)
-		if err != nil {
-			return err
-		}
-		currentPasswd, err := password.NewMySQLPasswordFromSecret(sourceSecret)
-		if err != nil {
-			return err
-		}
-
-		primaryIndex := cluster.Status.CurrentPrimaryIndex
-
-		for idx := 0; idx < replicas; idx++ {
-			isReplica := idx != primaryIndex
-			op, err := r.OpFactory.New(ctx, cluster, currentPasswd, idx)
-			if err != nil {
-				return err
-			}
-
-			if err := r.rotateInstanceUsers(ctx, op, pendingMap, idx, isReplica); err != nil {
-				op.Close()
-				return err
-			}
-			op.Close()
-			log.Info("completed ALTER USER RETAIN for instance", "instance", idx, "rotationID", rotation.RotationID)
-		}
-
-		// All instances rotated. Set RotateApplied=true.
-		base := cluster.DeepCopy()
-		rotation.RotateApplied = true
-		if err := r.Status().Patch(ctx, cluster, client.MergeFrom(base)); err != nil {
-			return fmt.Errorf("failed to persist rotateApplied: %w", err)
-		}
-		log.Info("applied ALTER USER RETAIN for all instances", "rotationID", rotation.RotationID)
-		r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "RetainApplied",
-			"Applied ALTER USER RETAIN for all %d instances (rotationID: %s)", replicas, rotation.RotationID)
+	replicas := int(cluster.Spec.Replicas)
+	if replicas == 0 {
+		log.Info("refusing to rotate: cluster is scaled down (replicas=0), scale up first",
+			"rotationID", rotation.RotationID)
+		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "RotateRefused",
+			"Cannot rotate passwords while cluster is scaled down (replicas=0). "+
+				"Scale the cluster up first so that ALTER USER can be executed on running instances.")
+		return fmt.Errorf("cannot rotate passwords: cluster is scaled down (replicas=0)")
 	}
+
+	pendingMap, err := password.PendingKeyMap(sourceSecret)
+	if err != nil {
+		return err
+	}
+	currentPasswd, err := password.NewMySQLPasswordFromSecret(sourceSecret)
+	if err != nil {
+		return err
+	}
+
+	primaryIndex := cluster.Status.CurrentPrimaryIndex
+
+	for idx := 0; idx < replicas; idx++ {
+		isReplica := idx != primaryIndex
+		op, err := r.OpFactory.New(ctx, cluster, currentPasswd, idx)
+		if err != nil {
+			return err
+		}
+
+		if err := r.rotateInstanceUsers(ctx, op, pendingMap, idx, isReplica); err != nil {
+			op.Close()
+			return err
+		}
+		op.Close()
+		log.Info("completed ALTER USER RETAIN for instance", "instance", idx, "rotationID", rotation.RotationID)
+	}
+
+	log.Info("applied ALTER USER RETAIN for all instances", "rotationID", rotation.RotationID)
+	r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "RetainApplied",
+		"Applied ALTER USER RETAIN for all %d instances (rotationID: %s)", replicas, rotation.RotationID)
 
 	// Step 3: Distribute the pending (new) passwords to per-namespace Secrets.
 	// This is idempotent: the apply-based reconciliation only writes if the content
@@ -330,43 +317,36 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 //
 // Phase transitions:
 //
-//	Rotated ──(DISCARD OLD PASSWORD)──▶ Rotated(discardApplied) ──(confirm Secret)──▶ Idle
+//	Rotated ──(DISCARD + confirm Secret)──▶ Idle
 //
 // Preconditions:
-//   - Phase must be Rotated with RotateApplied=true. If not met, the annotation
-//     is consumed (removed) and a Warning Event tells the user what to do.
+//   - Phase must be Rotated. If not met, the annotation is consumed (removed)
+//     and a Warning Event tells the user what to do.
 //   - Pending passwords must exist in the source Secret with matching rotationID.
 //     This is validated once at the top; subsequent steps proceed without re-checking
 //     to avoid a mid-flow inconsistency ("DISCARD succeeded but Secret not confirmed").
 //   - Replicas must be > 0. Discard is rejected when the cluster is scaled down because
 //     we cannot verify that the new passwords work without running Pods.
 //
-// Re-reconcile behaviour at each state:
+// All steps are idempotent on re-reconcile:
+//   - DISCARD OLD PASSWORD is idempotent in MySQL (no-op when there is no secondary).
+//   - ConfirmPendingPasswords is idempotent (if pending keys are already gone, it's a no-op).
 //
-//	DiscardApplied=false:
-//	  DISCARD OLD PASSWORD is executed. The connection uses the pending (new) password,
-//	  which serves as an implicit verification that distribution succeeded. DISCARD is
-//	  idempotent in MySQL, so re-execution on crash is safe.
+// After reset to Idle:
 //
-//	DiscardApplied=true:
-//	  DISCARD is skipped. ConfirmPendingPasswords (pending→current, delete pending keys)
-//	  is called. This is idempotent: if a crash occurred after Secret.Update but before
-//	  Status.Patch, the pending keys are already gone and Confirm is a no-op.
-//
-//	After reset to Idle:
-//	  reconcileV1Secret resumes normal distribution using the (now-confirmed) current
-//	  passwords. The source Secret's current passwords are already the new ones.
+//	reconcileV1Secret resumes normal distribution using the (now-confirmed) current
+//	passwords. The source Secret's current passwords are already the new ones.
 func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, cluster *mocov1beta2.MySQLCluster, rotation *mocov1beta2.SystemUserRotationStatus, discardID string) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	// Precondition: must be in Rotated phase with rotateApplied=true,
+	// Precondition: must be in Rotated phase,
 	// and the discard annotation's rotationID must match the active rotation.
-	if !rotation.RotateApplied || rotation.Phase != mocov1beta2.RotationPhaseRotated {
+	if rotation.Phase != mocov1beta2.RotationPhaseRotated {
 		log.Info("discard skipped: rotation not in Rotated phase",
-			"phase", rotation.Phase, "rotateApplied", rotation.RotateApplied)
+			"phase", rotation.Phase)
 		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardSkipped",
 			"password-discard annotation was removed because preconditions are not met: "+
-				"rotation phase is %q (expected Rotated with rotateApplied=true). "+
+				"rotation phase is %q (expected Rotated). "+
 				"Run password-rotate first, then password-discard.", rotation.Phase)
 		r.removeAnnotation(ctx, cluster, constants.AnnPasswordDiscard)
 		return ctrl.Result{}, nil
@@ -412,156 +392,145 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 	// Step 1: Execute DISCARD OLD PASSWORD using the pending (new) password.
 	// We connect with the pending password to verify that distribution succeeded;
 	// if the pending password does not work, the old password is not yet discardable.
-	if !rotation.DiscardApplied {
-		// Gate: Wait for StatefulSet rollout to complete before discarding.
-		// The Pod template annotation change (from Phase 1) triggers a rolling
-		// restart so that agents pick up the new passwords via EnvFrom. We must
-		// not discard old passwords until all Pods are running the new template.
-		sts := &appsv1.StatefulSet{}
-		if err := r.Get(ctx, client.ObjectKey{
-			Namespace: cluster.Namespace,
-			Name:      cluster.PrefixedName(),
-		}, sts); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get StatefulSet for rollout check: %w", err)
-		}
-		replicas := ptr.Deref(sts.Spec.Replicas, 1)
-
-		// replicas=0 (scaled-down cluster): reject discard because we cannot
-		// verify that the new passwords actually work without running Pods.
-		// The operator should scale the cluster up first.
-		if replicas == 0 {
-			log.Info("refusing to discard: cluster is scaled down (replicas=0), scale up first",
-				"rotationID", rotation.RotationID)
-			r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardRefused",
-				"Cannot discard old passwords while cluster is scaled down (replicas=0). "+
-					"Scale the cluster up first so that Pods can verify the new passwords.")
-			return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
-		}
-
-		// Verify the StatefulSet template annotation matches the active rotation.
-		// This confirms that reconcileV1StatefulSet has applied the template change
-		// that triggers the rolling restart. Without this check, the rollout
-		// conditions below could pass vacuously if the template hasn't been
-		// updated yet (no pending rollout → all conditions true).
-		var stsRotationID string
-		if sts.Spec.Template.Annotations != nil {
-			stsRotationID = sts.Spec.Template.Annotations[constants.AnnPasswordRotationRestart]
-		}
-		if stsRotationID != rotation.RotationID {
-			log.Info("waiting for StatefulSet template to reflect rotation",
-				"stsAnnotation", stsRotationID, "expected", rotation.RotationID)
-			return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
-		}
-
-		// Verify the user Secret contains the expected ROTATION_ID.
-		// distributeSecret writes {new passwords + ROTATION_ID} in a single SSA
-		// apply, so matching ROTATION_ID proves the new passwords are present.
-		// Combined with the rollout check below, this completes the guarantee:
-		//   Secret has new passwords → template updated → all Pods restarted
-		//   → all agents have new passwords via EnvFrom.
-		userSecret := &corev1.Secret{}
-		if err := r.Get(ctx, client.ObjectKey{
-			Namespace: cluster.Namespace,
-			Name:      cluster.UserSecretName(),
-		}, userSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get user Secret for rotation check: %w", err)
-		}
-		if string(userSecret.Data[password.RotationIDKey]) != rotation.RotationID {
-			log.Info("waiting for user Secret to reflect rotation",
-				"secretRotationID", string(userSecret.Data[password.RotationIDKey]),
-				"expected", rotation.RotationID)
-			return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
-		}
-
-		rolloutDone := sts.Status.ObservedGeneration >= sts.Generation &&
-			sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
-			sts.Status.UpdatedReplicas == replicas &&
-			sts.Status.ReadyReplicas == replicas
-		if !rolloutDone {
-			log.Info("waiting for StatefulSet rollout to complete before discarding old passwords",
-				"observedGeneration", sts.Status.ObservedGeneration,
-				"generation", sts.Generation,
-				"currentRevision", sts.Status.CurrentRevision,
-				"updateRevision", sts.Status.UpdateRevision,
-				"updatedReplicas", sts.Status.UpdatedReplicas,
-				"readyReplicas", sts.Status.ReadyReplicas,
-				"expectedReplicas", replicas,
-				"rotationID", rotation.RotationID)
-			return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
-		}
-
-		pendingPasswd, err := password.NewMySQLPasswordFromPending(sourceSecret)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		pendingMap, err := password.PendingKeyMap(sourceSecret)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// Determine the target authentication plugin from the primary instance.
-		// authentication_policy is a global variable, so it is the same across
-		// all instances in the cluster.
-		primaryIndex := cluster.Status.CurrentPrimaryIndex
-		authPlugin, err := func() (string, error) {
-			op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, primaryIndex)
-			if err != nil {
-				return "", err
-			}
-			defer op.Close()
-			return op.GetAuthPlugin(ctx)
-		}()
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", rotation.RotationID)
-
-		// Execute DISCARD OLD PASSWORD + auth plugin migration on ALL instances
-		// with sql_log_bin=0.
-		// DISCARD is idempotent in MySQL (no-op when there is no secondary password).
-		// MigrateUserAuthPlugin is also idempotent (re-hashes the same password).
-		// Re-execution on crash is safe and per-user tracking is not needed.
-		for idx := 0; idx < int(replicas); idx++ {
-			isReplica := idx != primaryIndex
-			op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, idx)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			if err := r.discardInstanceUsers(ctx, op, pendingMap, idx, isReplica, authPlugin); err != nil {
-				op.Close()
-				return ctrl.Result{}, err
-			}
-			op.Close()
-			log.Info("applied DISCARD OLD PASSWORD and auth plugin migration for instance", "instance", idx, "rotationID", rotation.RotationID)
-		}
-
-		// Persist discardApplied=true immediately so that a crash here will not
-		// re-execute DISCARD on the next reconcile.
-		base := cluster.DeepCopy()
-		rotation.DiscardApplied = true
-		if err := r.Status().Patch(ctx, cluster, client.MergeFrom(base)); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to persist discardApplied: %w", err)
-		}
-		log.Info("applied DISCARD OLD PASSWORD for all instances", "rotationID", rotation.RotationID)
-		r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "DiscardApplied",
-			"Applied DISCARD OLD PASSWORD and migrated auth plugin to %s for all %d instances (rotationID: %s)", authPlugin, replicas, rotation.RotationID)
+	//
+	// Gate: Wait for StatefulSet rollout to complete before discarding.
+	// The Pod template annotation change (from Phase 1) triggers a rolling
+	// restart so that agents pick up the new passwords via EnvFrom. We must
+	// not discard old passwords until all Pods are running the new template.
+	sts := &appsv1.StatefulSet{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.PrefixedName(),
+	}, sts); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get StatefulSet for rollout check: %w", err)
 	}
+	replicas := ptr.Deref(sts.Spec.Replicas, 1)
+
+	// replicas=0 (scaled-down cluster): reject discard because we cannot
+	// verify that the new passwords actually work without running Pods.
+	// The operator should scale the cluster up first.
+	if replicas == 0 {
+		log.Info("refusing to discard: cluster is scaled down (replicas=0), scale up first",
+			"rotationID", rotation.RotationID)
+		r.Recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardRefused",
+			"Cannot discard old passwords while cluster is scaled down (replicas=0). "+
+				"Scale the cluster up first so that Pods can verify the new passwords.")
+		return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
+	}
+
+	// Verify the StatefulSet template annotation matches the active rotation.
+	// This confirms that reconcileV1StatefulSet has applied the template change
+	// that triggers the rolling restart. Without this check, the rollout
+	// conditions below could pass vacuously if the template hasn't been
+	// updated yet (no pending rollout → all conditions true).
+	var stsRotationID string
+	if sts.Spec.Template.Annotations != nil {
+		stsRotationID = sts.Spec.Template.Annotations[constants.AnnPasswordRotationRestart]
+	}
+	if stsRotationID != rotation.RotationID {
+		log.Info("waiting for StatefulSet template to reflect rotation",
+			"stsAnnotation", stsRotationID, "expected", rotation.RotationID)
+		return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
+	}
+
+	// Verify the user Secret contains the expected ROTATION_ID.
+	// distributeSecret writes {new passwords + ROTATION_ID} in a single SSA
+	// apply, so matching ROTATION_ID proves the new passwords are present.
+	// Combined with the rollout check below, this completes the guarantee:
+	//   Secret has new passwords → template updated → all Pods restarted
+	//   → all agents have new passwords via EnvFrom.
+	userSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.UserSecretName(),
+	}, userSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get user Secret for rotation check: %w", err)
+	}
+	if string(userSecret.Data[password.RotationIDKey]) != rotation.RotationID {
+		log.Info("waiting for user Secret to reflect rotation",
+			"secretRotationID", string(userSecret.Data[password.RotationIDKey]),
+			"expected", rotation.RotationID)
+		return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
+	}
+
+	rolloutDone := sts.Status.ObservedGeneration >= sts.Generation &&
+		sts.Status.CurrentRevision == sts.Status.UpdateRevision &&
+		sts.Status.UpdatedReplicas == replicas &&
+		sts.Status.ReadyReplicas == replicas
+	if !rolloutDone {
+		log.Info("waiting for StatefulSet rollout to complete before discarding old passwords",
+			"observedGeneration", sts.Status.ObservedGeneration,
+			"generation", sts.Generation,
+			"currentRevision", sts.Status.CurrentRevision,
+			"updateRevision", sts.Status.UpdateRevision,
+			"updatedReplicas", sts.Status.UpdatedReplicas,
+			"readyReplicas", sts.Status.ReadyReplicas,
+			"expectedReplicas", replicas,
+			"rotationID", rotation.RotationID)
+		return ctrl.Result{RequeueAfter: rotationRequeueInterval}, nil
+	}
+
+	pendingPasswd, err := password.NewMySQLPasswordFromPending(sourceSecret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	pendingMap, err := password.PendingKeyMap(sourceSecret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Determine the target authentication plugin from the primary instance.
+	// authentication_policy is a global variable, so it is the same across
+	// all instances in the cluster.
+	primaryIndex := cluster.Status.CurrentPrimaryIndex
+	authPlugin, err := func() (string, error) {
+		op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, primaryIndex)
+		if err != nil {
+			return "", err
+		}
+		defer op.Close()
+		return op.GetAuthPlugin(ctx)
+	}()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", rotation.RotationID)
+
+	// Execute DISCARD OLD PASSWORD + auth plugin migration on ALL instances
+	// with sql_log_bin=0.
+	// DISCARD is idempotent in MySQL (no-op when there is no secondary password).
+	// MigrateUserAuthPlugin is also idempotent (re-hashes the same password).
+	// Re-execution on crash is safe and per-user tracking is not needed.
+	for idx := 0; idx < int(replicas); idx++ {
+		isReplica := idx != primaryIndex
+		op, err := r.OpFactory.New(ctx, cluster, pendingPasswd, idx)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err := r.discardInstanceUsers(ctx, op, pendingMap, idx, isReplica, authPlugin); err != nil {
+			op.Close()
+			return ctrl.Result{}, err
+		}
+		op.Close()
+		log.Info("applied DISCARD OLD PASSWORD and auth plugin migration for instance", "instance", idx, "rotationID", rotation.RotationID)
+	}
+
+	log.Info("applied DISCARD OLD PASSWORD for all instances", "rotationID", rotation.RotationID)
+	r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "DiscardApplied",
+		"Applied DISCARD OLD PASSWORD and migrated auth plugin to %s for all %d instances (rotationID: %s)", authPlugin, replicas, rotation.RotationID)
 
 	// Step 2: Confirm the source secret (pending → current, delete pending keys).
-	// Guarded by DiscardApplied to ensure DISCARD has completed before confirming.
 	// ConfirmPendingPasswords is idempotent: if a crash occurred after Secret.Update
 	// but before Status.Patch, the pending keys are already gone and Confirm is a no-op.
-	if rotation.DiscardApplied {
-		if err := password.ConfirmPendingPasswords(sourceSecret); err != nil {
-			return ctrl.Result{}, err
-		}
-		if err := r.Update(ctx, sourceSecret); err != nil {
-			return ctrl.Result{}, err
-		}
-		log.Info("confirmed source secret", "rotationID", rotation.RotationID)
+	if err := password.ConfirmPendingPasswords(sourceSecret); err != nil {
+		return ctrl.Result{}, err
 	}
+	if err := r.Update(ctx, sourceSecret); err != nil {
+		return ctrl.Result{}, err
+	}
+	log.Info("confirmed source secret", "rotationID", rotation.RotationID)
 
 	// Step 3: Reset status to Idle. Once Idle, reconcileV1Secret will resume normal
 	// distribution using the (now-confirmed) current passwords.
@@ -571,8 +540,6 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 	rotation.LastRotationID = rotation.RotationID
 	rotation.RotationID = ""
 	rotation.Phase = mocov1beta2.RotationPhaseIdle
-	rotation.RotateApplied = false
-	rotation.DiscardApplied = false
 	if err := r.Status().Patch(ctx, cluster, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to persist Idle status: %w", err)
 	}

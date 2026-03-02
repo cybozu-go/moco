@@ -140,8 +140,6 @@ The controller tracks progress in `.status.systemUserRotation`:
 type SystemUserRotationStatus struct {
     RotationID     string        // UUID of the current rotation cycle
     Phase          RotationPhase // Idle, Rotating, or Rotated
-    RotateApplied  bool          // ALTER USER RETAIN completed on all instances?
-    DiscardApplied bool          // DISCARD OLD PASSWORD completed on all instances?
     LastRotationID string        // UUID of the last completed cycle (for stale detection)
 }
 ```
@@ -154,10 +152,9 @@ type SystemUserRotationStatus struct {
 | 1 | Set Phase=Rotating with the rotationID from the annotation | Status.Patch |
 | 2 | Generate `*_PENDING` passwords in the source Secret | Secret.Update |
 | 3 | For each instance: ALTER USER ... RETAIN CURRENT PASSWORD (with `sql_log_bin=0`) | MySQL |
-| 4 | Set RotateApplied=true | Status.Patch |
-| 5 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
-| 6 | Set Phase=Rotated | Status.Patch |
-| 7 | Remove the `password-rotate` annotation (best-effort) | Patch |
+| 4 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
+| 5 | Set Phase=Rotated | Status.Patch |
+| 6 | Remove the `password-rotate` annotation (best-effort) | Patch |
 
 **Instance loop (Step 3):**
 Instances are processed sequentially (ordinal 0, 1, 2, ...).
@@ -181,14 +178,13 @@ Without running instances, ALTER USER cannot execute, and distributing new passw
 
 | Step | Action | Persistence |
 |------|--------|-------------|
-| 0 | Validate: Phase=Rotated, RotateApplied=true, pending passwords exist | - |
+| 0 | Validate: Phase=Rotated, pending passwords exist | - |
 | 0b | Wait for StatefulSet rollout to complete | - |
 | 0c | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) |
 | 1 | For each instance: DISCARD OLD PASSWORD + auth plugin migration (with `sql_log_bin=0`) | MySQL |
-| 2 | Set DiscardApplied=true | Status.Patch |
-| 3 | Confirm pending passwords: copy `*_PENDING` → current, delete pending keys | Secret.Update |
-| 4 | Reset status to Idle, save LastRotationID | Status.Patch |
-| 5 | Remove both annotations (best-effort) | Patch |
+| 2 | Confirm pending passwords: copy `*_PENDING` → current, delete pending keys | Secret.Update |
+| 3 | Reset status to Idle, save LastRotationID | Status.Patch |
+| 4 | Remove both annotations (best-effort) | Patch |
 
 **Why wait for the rollout (Step 0b)?**
 The agent sidecar reads passwords from `EnvFrom`, evaluated only at Pod startup.
@@ -222,8 +218,8 @@ This makes MySQL the source of truth and is safe on re-reconcile because the que
 
 ### ConfirmPendingPasswords Idempotency
 
-A crash between Secret.Update and Status.Patch leaves the Secret already confirmed but DiscardApplied=true in status.
-On re-reconcile, Confirm finds no pending keys and returns nil.
+A crash between Secret.Update and Status.Patch leaves the Secret already confirmed but Phase still Rotated.
+On re-reconcile, DISCARD is idempotent (no-op) and Confirm finds no pending keys and returns nil.
 
 ### Stale Annotation Detection
 
@@ -236,7 +232,7 @@ The controller compares the annotation's rotationID with `LastRotationID`:
 
 ### Precondition-Not-Met Handling for Discard
 
-If `password-discard` is set but Phase != Rotated or RotateApplied != true:
+If `password-discard` is set but Phase != Rotated:
 1. The annotation is consumed (removed)
 2. A Warning Event (`DiscardSkipped`) is emitted
 3. The user can re-apply after completing Phase 1
@@ -383,8 +379,6 @@ $ kubectl edit mysqlcluster <name>
 # Set in status.systemUserRotation:
 #   phase: ""
 #   rotationID: ""
-#   rotateApplied: false
-#   discardApplied: false
 # Leave lastRotationID unchanged.
 
 # Step 2: Clean the source Secret.
@@ -417,8 +411,6 @@ $ kubectl edit mysqlcluster <name>
 # Set in status.systemUserRotation:
 #   phase: ""
 #   rotationID: ""
-#   rotateApplied: false
-#   discardApplied: false
 # Leave lastRotationID unchanged.
 
 # Step 2: Clean any remaining pending keys from the source Secret.
