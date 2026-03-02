@@ -123,7 +123,7 @@ func (o *operator) RotateUserPassword(ctx context.Context, user, newPassword str
 // MigrateUserAuthPlugin executes ALTER USER ... IDENTIFIED WITH <authPlugin> BY ...
 // with sql_log_bin=0 to migrate the user to the target authentication plugin.
 //
-// This is called after DISCARD OLD PASSWORD in Phase 2, so the user has only
+// This is called after DISCARD OLD PASSWORD in the discard operation, so the user has only
 // a single password at this point. The statement re-hashes the password under
 // the new plugin without RETAIN, which is safe because there is no secondary
 // password to preserve.

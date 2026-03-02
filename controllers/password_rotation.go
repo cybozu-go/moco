@@ -90,7 +90,7 @@ func (r *MySQLClusterReconciler) reconcileV1PasswordRotation(ctx context.Context
 	return ctrl.Result{}, nil
 }
 
-// handlePasswordRotate drives the rotate phase (Phase 1) of password rotation.
+// handlePasswordRotate drives the rotate operation of password rotation.
 //
 // Phase transitions:
 //
@@ -191,7 +191,7 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 	}
 
 	// === Phase: Rotated (already done) ===
-	// Phase 1 has already completed. The annotation is stale;
+	// The rotate operation has already completed. The annotation is stale;
 	// remove it silently without emitting an Event to avoid noise on every reconcile
 	// if the annotation is not cleaned up promptly.
 	if rotation.Phase == mocov1beta2.RotationPhaseRotated {
@@ -306,14 +306,14 @@ func (r *MySQLClusterReconciler) handlePasswordRotate(ctx context.Context, clust
 	}
 	log.Info("distributed pending passwords", "rotationID", rotation.RotationID)
 	r.Recorder.Eventf(cluster, corev1.EventTypeNormal, "PasswordRotated",
-		"Phase 1 complete: pending passwords distributed to user secrets (rotationID: %s)", rotation.RotationID)
+		"Rotate complete: pending passwords distributed to user secrets (rotationID: %s)", rotation.RotationID)
 
 	// Step 4: Remove annotation (best-effort).
 	r.removeAnnotation(ctx, cluster, constants.AnnPasswordRotate)
 	return nil
 }
 
-// handlePasswordDiscard drives the discard phase (Phase 2) of password rotation.
+// handlePasswordDiscard drives the discard operation of password rotation.
 //
 // Phase transitions:
 //
@@ -394,7 +394,7 @@ func (r *MySQLClusterReconciler) handlePasswordDiscard(ctx context.Context, clus
 	// if the pending password does not work, the old password is not yet discardable.
 	//
 	// Gate: Wait for StatefulSet rollout to complete before discarding.
-	// The Pod template annotation change (from Phase 1) triggers a rolling
+	// The Pod template annotation change (from the rotate operation) triggers a rolling
 	// restart so that agents pick up the new passwords via EnvFrom. We must
 	// not discard old passwords until all Pods are running the new template.
 	sts := &appsv1.StatefulSet{}

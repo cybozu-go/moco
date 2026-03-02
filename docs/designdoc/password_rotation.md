@@ -27,56 +27,63 @@ This design introduces an in-place password rotation mechanism that avoids downt
 
 ## Overview
 
-Password rotation is a **two-phase process** using MySQL's dual password feature (8.0.14+).
-The operator explicitly triggers each phase, with a verification window in between.
+Password rotation is a **two-step process** — **rotate** then **discard** — using MySQL's dual password feature (8.0.14+).
+The operator explicitly triggers each step, with a verification window in between.
 
 ```mermaid
+---
+config:
+  flowchart:
+    useMaxWidth: false
+---
 flowchart TD
-    idle1["Idle"]
+    idle1["Phase: Idle"]
 
-    subgraph phase1 ["Phase 1: rotate"]
+    subgraph rotate_op ["Rotate"]
         direction TB
-        p1_pre["Pre-check: no dual passwords exist"]
-        p1_gen["Generate pending passwords in source Secret"]
-        p1_retain["ALTER USER ... RETAIN CURRENT PASSWORD\n(on all instances, sql_log_bin=0)"]
-        p1_dist["Distribute pending passwords to per-namespace Secrets"]
-        p1_restart["Rolling restart (Pods pick up new passwords)"]
-        p1_pre --> p1_gen --> p1_retain --> p1_dist --> p1_restart
+        p1_pre["Pre-check: no dual passwords"]
+        p1_phase1["Phase → Rotating"]
+        p1_gen["Generate pending passwords"]
+        p1_retain["ALTER USER RETAIN CURRENT PASSWORD<br/>(all instances, sql_log_bin=0)"]
+        p1_dist["Distribute to per-namespace Secrets"]
+        p1_phase2["Phase → Rotated"]
+        p1_restart["Rolling restart"]
+        p1_pre --> p1_phase1 --> p1_gen --> p1_retain --> p1_dist --> p1_phase2 --> p1_restart
     end
 
-    verify{{"Operator verifies applications work\nwith new credentials"}}
+    verify{{"Operator verifies applications<br/>work with new credentials"}}
 
-    subgraph phase2 ["Phase 2: discard"]
+    subgraph discard_op ["Discard"]
         direction TB
-        p2_gate["Wait for rollout to complete"]
-        p2_discard["ALTER USER ... DISCARD OLD PASSWORD\n(on all instances, sql_log_bin=0)"]
-        p2_migrate["Migrate auth plugin\n(ALTER USER ... IDENTIFIED WITH plugin BY ...)"]
-        p2_confirm["Confirm: pending → current in source Secret"]
-        p2_gate --> p2_discard --> p2_migrate --> p2_confirm
+        p2_gate["Wait for rollout completion"]
+        p2_discard["ALTER USER DISCARD OLD PASSWORD<br/>(all instances, sql_log_bin=0)"]
+        p2_migrate["Migrate auth plugin"]
+        p2_confirm["Promote pending → current in Secret"]
+        p2_idle["Phase → Idle"]
+        p2_gate --> p2_discard --> p2_migrate --> p2_confirm --> p2_idle
     end
 
-    idle2["Idle"]
-
-    idle1 -- "kubectl moco credential rotate" --> phase1
-    phase1 --> verify
-    verify -- "kubectl moco credential discard" --> phase2
-    phase2 --> idle2
+    idle1 -- "kubectl moco credential rotate" --> rotate_op
+    rotate_op --> verify
+    verify -- "kubectl moco credential discard" --> discard_op
 
     style verify fill:#fff3cd,stroke:#ffc107
     style idle1 fill:#e8f5e9,stroke:#4caf50
-    style idle2 fill:#e8f5e9,stroke:#4caf50
+    style p1_phase1 fill:#e3f2fd,stroke:#1976d2
+    style p1_phase2 fill:#e3f2fd,stroke:#1976d2
+    style p2_idle fill:#e8f5e9,stroke:#4caf50
 ```
 
-After Phase 1, both old and new passwords are valid (MySQL dual password).
+After the rotate operation, both old and new passwords are valid (MySQL dual password).
 The operator can verify that applications work with the new credentials before committing to discard the old ones.
 
 ## User Interface
 
 ```console
-# Phase 1
+# Rotate (generate new passwords and apply RETAIN)
 $ kubectl moco credential rotate <cluster-name>
 
-# Phase 2 (after verifying applications work)
+# Discard (after verifying applications work)
 $ kubectl moco credential discard <cluster-name>
 ```
 
@@ -116,10 +123,10 @@ If propagated, a downstream cluster would receive the upstream's passwords, brea
 All ALTER USER operations use `SET sql_log_bin=0` (session-scoped, via a dedicated `db.Conn`) to suppress binlog writes.
 As a consequence, within-cluster replicas also do not receive the change via replication, so the controller executes ALTER USER on **every instance individually**.
 
-### Why Auth Plugin Migration Is in Phase 2?
+### Why Auth Plugin Migration Is in the Discard Operation?
 
 MySQL Error 3894 prevents changing the authentication plugin in a `RETAIN CURRENT PASSWORD` statement.
-Instead, plugin migration happens after DISCARD in Phase 2 using `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`.
+Instead, plugin migration happens after DISCARD using `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`.
 
 The target plugin is determined from `@@global.authentication_policy` on the primary instance:
 - If the first element is a concrete plugin name (e.g. `caching_sha2_password`): use it
@@ -144,17 +151,18 @@ type SystemUserRotationStatus struct {
 }
 ```
 
-## Phase 1: Rotate (`handlePasswordRotate`)
+## Rotate (`handlePasswordRotate`)
 
 | Step | Action | Persistence |
 |------|--------|-------------|
 | 0 | Pre-check: scan all instances for pre-existing dual passwords. Refuse if found. | - |
-| 1 | Set Phase=Rotating with the rotationID from the annotation | Status.Patch |
-| 2 | Generate `*_PENDING` passwords in the source Secret | Secret.Update |
-| 3 | For each instance: ALTER USER ... RETAIN CURRENT PASSWORD (with `sql_log_bin=0`) | MySQL |
+| 1 | Set Phase to Rotating with the rotationID from the annotation | Status.Patch |
+| 2 | Generate pending passwords (e.g. `ADMIN_PASSWORD_PENDING`) in the source Secret | Secret.Update |
+| 3 | For each instance: execute `ALTER USER ... RETAIN CURRENT PASSWORD` with `sql_log_bin=0` | MySQL |
 | 4 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
-| 5 | Set Phase=Rotated | Status.Patch |
-| 6 | Remove the `password-rotate` annotation (best-effort) | Patch |
+| 5 | Set Phase to Rotated; add restart annotation to StatefulSet template | Status.Patch, StatefulSet |
+| 6 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - |
+| 7 | Remove the `password-rotate` annotation (best-effort) | Patch |
 
 **Instance loop (Step 3):**
 Instances are processed sequentially (ordinal 0, 1, 2, ...).
@@ -162,28 +170,29 @@ For each instance:
 
 1. Connect using the current (old) password
 2. For replicas: temporarily disable `super_read_only`
-3. For each user: check `HasDualPassword` → skip if already applied, else execute RETAIN
+3. For each user: check `HasDualPassword`. If the user already has a dual password (from a previous partial run), skip RETAIN; otherwise execute RETAIN.
 4. For replicas: re-enable `super_read_only` (best-effort; the clustering loop recovers)
 
 If any instance is unreachable, the reconcile returns an error and retries.
 
-**Rolling restart:**
-When Phase transitions to Rotated, a Pod template annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) is added to the StatefulSet, triggering a rolling restart so the agent sidecar picks up the new passwords via `EnvFrom`.
+**Rolling restart (Step 6):**
+Step 5 adds a Pod template annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) to the StatefulSet template, which triggers a rolling restart managed by the StatefulSet controller.
+The agent sidecar picks up the new passwords via `EnvFrom` at Pod startup.
 
 **Scaled-down clusters (replicas=0):**
 Rotation is refused with a Warning Event (`RotateRefused`).
 Without running instances, ALTER USER cannot execute, and distributing new passwords would break connectivity when the cluster scales back up.
 
-## Phase 2: Discard (`handlePasswordDiscard`)
+## Discard (`handlePasswordDiscard`)
 
 | Step | Action | Persistence |
 |------|--------|-------------|
-| 0 | Validate: Phase=Rotated, pending passwords exist | - |
+| 0 | Validate that Phase is Rotated and pending passwords exist in the source Secret | - |
 | 0b | Wait for StatefulSet rollout to complete | - |
 | 0c | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) |
-| 1 | For each instance: DISCARD OLD PASSWORD + auth plugin migration (with `sql_log_bin=0`) | MySQL |
-| 2 | Confirm pending passwords: copy `*_PENDING` → current, delete pending keys | Secret.Update |
-| 3 | Reset status to Idle, save LastRotationID | Status.Patch |
+| 1 | For each instance: execute `DISCARD OLD PASSWORD` and auth plugin migration with `sql_log_bin=0` | MySQL |
+| 2 | Promote pending passwords to current in the source Secret (copy each `*_PENDING` value to its corresponding key and remove the `*_PENDING` keys and `ROTATION_ID`) | Secret.Update |
+| 3 | Reset status to Idle and save LastRotationID | Status.Patch |
 | 4 | Remove both annotations (best-effort) | Patch |
 
 **Why wait for the rollout (Step 0b)?**
@@ -218,8 +227,8 @@ This makes MySQL the source of truth and is safe on re-reconcile because the que
 
 ### ConfirmPendingPasswords Idempotency
 
-A crash between Secret.Update and Status.Patch leaves the Secret already confirmed but Phase still Rotated.
-On re-reconcile, DISCARD is idempotent (no-op) and Confirm finds no pending keys and returns nil.
+If the controller crashes after updating the Secret but before patching the status, the Secret has already been promoted (pending passwords are now current) but the Phase is still Rotated.
+On re-reconcile, DISCARD is a no-op (idempotent) and `ConfirmPendingPasswords` finds no pending keys remaining, so it returns nil without making changes.
 
 ### Stale Annotation Detection
 
@@ -227,15 +236,15 @@ After a completed cycle, the best-effort annotation removal may fail.
 Without detection, the next reconcile would start a spurious new rotation.
 
 The controller compares the annotation's rotationID with `LastRotationID`:
-- **Match**: stale annotation → remove silently
-- **Mismatch**: fresh trigger → proceed with rotation
+- **Match**: the annotation is stale, so the controller removes it silently
+- **Mismatch**: the annotation is a fresh trigger, so the controller proceeds with rotation
 
 ### Precondition-Not-Met Handling for Discard
 
 If `password-discard` is set but Phase != Rotated:
 1. The annotation is consumed (removed)
 2. A Warning Event (`DiscardSkipped`) is emitted
-3. The user can re-apply after completing Phase 1
+3. The user can re-apply after completing the rotate operation
 
 ## Interaction with Other Reconcile Steps
 
@@ -264,8 +273,8 @@ AGENT_PASSWORD_PENDING: <new>       # only during rotation
 ROTATION_ID:            <uuid>      # only during rotation
 ```
 
-`HasPendingPasswords` validates that all 8 `*_PENDING` keys and `ROTATION_ID` are present and match the expected rotation ID.
-Partial or mismatched state is treated as an error.
+`HasPendingPasswords` validates that all 8 pending keys (e.g. `ADMIN_PASSWORD_PENDING`) and `ROTATION_ID` are present and that the rotation ID matches the expected value.
+If some pending keys are missing or the rotation ID does not match, the function returns an error.
 
 ## Assumptions
 
@@ -357,7 +366,7 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- \
 
 **Symptom:** Warning Event `RotationPendingError`
 
-**Cause:** A previous rotation was interrupted, leaving `*_PENDING` and `ROTATION_ID` from a different rotation cycle in the source Secret.
+**Cause:** A previous rotation was interrupted, leaving pending password keys (e.g. `ADMIN_PASSWORD_PENDING`) and `ROTATION_ID` from a different rotation cycle in the source Secret.
 This typically happens when the status was manually reset to Idle while the Secret still contains pending data.
 
 **Why this needs MySQL cleanup:**
@@ -383,7 +392,7 @@ $ kubectl edit mysqlcluster <name>
 
 # Step 2: Clean the source Secret.
 $ kubectl -n <system-namespace> edit secret <controller-secret-name>
-# Delete all *_PENDING keys and ROTATION_ID
+# Delete all pending password keys (e.g. ADMIN_PASSWORD_PENDING) and ROTATION_ID
 
 # Step 3: Wait for all Pods to restart with old passwords.
 $ kubectl -n <namespace> rollout status statefulset <cluster-name>
@@ -415,7 +424,7 @@ $ kubectl edit mysqlcluster <name>
 
 # Step 2: Clean any remaining pending keys from the source Secret.
 $ kubectl -n <system-namespace> edit secret <controller-secret-name>
-# Delete any remaining *_PENDING keys and ROTATION_ID
+# Delete any remaining pending password keys (e.g. ADMIN_PASSWORD_PENDING) and ROTATION_ID
 
 # Step 3: Wait for all Pods to restart with old passwords.
 $ kubectl -n <namespace> rollout status statefulset <cluster-name>

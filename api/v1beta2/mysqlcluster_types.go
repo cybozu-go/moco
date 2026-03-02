@@ -654,7 +654,7 @@ const (
 	RotationPhaseIdle RotationPhase = ""
 	// RotationPhaseRotating means ALTER USER RETAIN has been (or is being) applied.
 	RotationPhaseRotating RotationPhase = "Rotating"
-	// RotationPhaseRotated means Phase 1 (rotate) is complete and the cluster is ready for Phase 2 (discard).
+	// RotationPhaseRotated means the rotate operation is complete and the cluster is ready for the discard operation.
 	RotationPhaseRotated RotationPhase = "Rotated"
 )
 

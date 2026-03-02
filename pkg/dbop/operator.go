@@ -79,7 +79,7 @@ type Operator interface {
 
 	// MigrateUserAuthPlugin executes ALTER USER ... IDENTIFIED WITH <authPlugin> BY '<password>'
 	// with sql_log_bin=0 to migrate the user to the target authentication plugin.
-	// This is called after DISCARD OLD PASSWORD in Phase 2, so the user has only
+	// This is called after DISCARD OLD PASSWORD in the discard operation, so the user has only
 	// a single password at this point. The password is re-hashed under the new plugin.
 	// user must be one of the fixed system user names from pkg/constants/users.go.
 	MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error

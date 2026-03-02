@@ -763,12 +763,12 @@ MOCO manages 8 system MySQL users (e.g. `moco-admin`, `moco-agent`, `moco-readon
 Their passwords are generated at cluster creation time and stored in Secrets.
 You can rotate these passwords in-place without downtime using MySQL's [dual password][] mechanism.
 
-Password rotation is a two-phase process:
+Password rotation is a two-step process — **rotate** then **discard**:
 
-1. **Rotate** (Phase 1): Generate new passwords, apply them to MySQL with `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD`, and distribute the new passwords to Secrets. After this step, both old and new passwords are valid.
-2. **Discard** (Phase 2): After verifying that applications work with the new passwords, discard the old passwords with `ALTER USER ... DISCARD OLD PASSWORD`, then migrate the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`. The authentication plugin is determined from the server's `authentication_policy` variable, enabling transparent migration from legacy plugins like `mysql_native_password`.
+1. **Rotate**: Generate new passwords, apply them to MySQL with `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD`, and distribute the new passwords to Secrets. After this step, both old and new passwords are valid.
+2. **Discard**: After verifying that applications work with the new passwords, discard the old passwords with `ALTER USER ... DISCARD OLD PASSWORD`, then migrate the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`. The authentication plugin is determined from the server's `authentication_policy` variable, enabling transparent migration from legacy plugins like `mysql_native_password`.
 
-#### Phase 1: Rotate
+#### Rotate
 
 ```console
 $ kubectl moco credential rotate <CLUSTER_NAME>
@@ -782,7 +782,7 @@ This command:
 4. Distributes the new passwords to per-namespace Secrets (user Secret and my.cnf Secret).
 5. Triggers a rolling restart of the StatefulSet so that agents pick up the new passwords.
 
-After Phase 1 completes, you can check the rotation status:
+After the rotate operation completes, you can check the rotation status:
 
 ```console
 $ kubectl get mysqlcluster <CLUSTER_NAME> -o jsonpath='{.status.systemUserRotation}'
@@ -791,9 +791,9 @@ $ kubectl get mysqlcluster <CLUSTER_NAME> -o jsonpath='{.status.systemUserRotati
 The `phase` field should be `Rotated`.
 
 At this point, both old and new passwords are accepted by MySQL.
-You should verify that your applications work correctly before proceeding to Phase 2.
+You should verify that your applications work correctly before proceeding to the discard operation.
 
-#### Phase 2: Discard
+#### Discard
 
 ```console
 $ kubectl moco credential discard <CLUSTER_NAME>
@@ -805,16 +805,16 @@ This command:
 2. The controller waits for the StatefulSet rolling restart to complete (all Pods are running with the new passwords).
 3. Executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
 4. Migrates the authentication plugin for all system users with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` on all instances (with `sql_log_bin=0`). The plugin is determined from `@@global.authentication_policy`, enabling transparent migration from legacy plugins like `mysql_native_password`.
-5. Confirms the new passwords in the source Secret (pending passwords become current, pending keys are removed).
+5. Promotes the pending passwords to current in the source Secret and removes the pending keys.
 6. Resets the rotation status to Idle.
 
-After Phase 2 completes, only the new passwords are valid.
+After the discard operation completes, only the new passwords are valid.
 
 #### Notes
 
 - **Warning:** Do not manually execute `ALTER USER ... RETAIN CURRENT PASSWORD` on MOCO system users. The rotation controller uses `HasDualPassword` (checking `mysql.user.User_attributes` for `additional_password`) to detect whether RETAIN has already been applied on each instance. If a dual password exists from a manual operation, the controller will skip RETAIN for that user, leaving MOCO's new password unapplied in MySQL while distributing it to Secrets — breaking connectivity after the rolling restart.
-- Both phases are **idempotent and crash-safe**. If the controller restarts during rotation, it resumes from the persisted state.
-- Phase 2 is rejected when `replicas=0` (scaled-down cluster), because the new passwords cannot be verified without running Pods.
+- Both operations are **idempotent and crash-safe**. If the controller restarts during rotation, it resumes from the persisted state.
+- The discard operation is rejected when `replicas=0` (scaled-down cluster), because the new passwords cannot be verified without running Pods.
 - If the source Secret is in an inconsistent state (e.g. partial pending keys), the controller emits a Warning Event with manual recovery instructions.
 - You can also trigger rotation by setting annotations directly with `kubectl annotate`, using a unique rotation ID as the value:
 
