@@ -226,6 +226,12 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 		if i == nextRolloutTarget {
 			continue
 		}
+		if i >= int(ptr.Deref(sts.Spec.UpdateStrategy.RollingUpdate.Partition, 0)) {
+			if pod.Labels[appsv1.ControllerRevisionHashLabelKey] != sts.Status.UpdateRevision {
+				log.Info("Pod is not yet updated", "pod", pod.Name, "expected", sts.Status.UpdateRevision, "actual", pod.Labels[appsv1.ControllerRevisionHashLabelKey])
+				return false
+			}
+		}
 		if pod.DeletionTimestamp != nil {
 			log.Info("Pod is in the process of being terminated", "pod", pod.Name)
 			return false
