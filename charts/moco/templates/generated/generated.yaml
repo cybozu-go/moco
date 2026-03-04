@@ -432,6 +432,29 @@ webhooks:
       service:
         name: moco-webhook-service
         namespace: '{{ .Release.Namespace }}'
+        path: /mutate-apps-v1-statefulset
+    failurePolicy: Fail
+    name: statefulset.kb.io
+    objectSelector:
+      matchLabels:
+        app.kubernetes.io/created-by: moco
+    rules:
+      - apiGroups:
+          - apps
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - statefulsets
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: moco-webhook-service
+        namespace: '{{ .Release.Namespace }}'
         path: /mutate-moco-cybozu-com-v1beta2-mysqlcluster
     failurePolicy: Fail
     matchPolicy: Equivalent
@@ -445,26 +468,6 @@ webhooks:
           - CREATE
         resources:
           - mysqlclusters
-    sideEffects: None
-  - admissionReviewVersions:
-      - v1
-    clientConfig:
-      service:
-        name: moco-webhook-service
-        namespace: '{{ .Release.Namespace }}'
-        path: /mutate-apps-v1-statefulset
-    failurePolicy: Fail
-    name: statefulset.kb.io
-    rules:
-      - apiGroups:
-          - apps
-        apiVersions:
-          - v1
-        operations:
-          - CREATE
-          - UPDATE
-        resources:
-          - statefulsets
     sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
