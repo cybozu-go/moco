@@ -17,7 +17,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/clustering"
 	"github.com/cybozu-go/moco/pkg/constants"
-	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/mycnf"
 	"github.com/cybozu-go/moco/pkg/password"
@@ -141,7 +140,6 @@ type MySQLClusterReconciler struct {
 	PVCSyncAnnotationKeys      []string
 	PVCSyncLabelKeys           []string
 	ClusterManager             clustering.ClusterManager
-	OpFactory                  dbop.OperatorFactory
 	MaxConcurrentReconciles    int
 	MySQLConfigMapHistoryLimit int
 }

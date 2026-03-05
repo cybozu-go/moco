@@ -99,7 +99,7 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 	af := clustering.NewAgentFactory(r, reloader)
-	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
+	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog, ns)
 	defer clusterMgr.StopAll()
 
 	if err = (&controllers.MySQLClusterReconciler{
@@ -114,7 +114,6 @@ func subMain(ns, addr string, port int) error {
 		PVCSyncAnnotationKeys:      config.pvcSyncAnnotationKeys,
 		PVCSyncLabelKeys:           config.pvcSyncLabelKeys,
 		ClusterManager:             clusterMgr,
-		OpFactory:                  opf,
 		MaxConcurrentReconciles:    config.maxConcurrentReconciles,
 		MySQLConfigMapHistoryLimit: config.mySQLConfigMapHistoryLimit,
 	}).SetupWithManager(mgr); err != nil {

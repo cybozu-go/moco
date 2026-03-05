@@ -41,14 +41,12 @@ flowchart TD
 
     subgraph rotate_op ["Rotate"]
         direction TB
-        p1_pre["Pre-check: no dual passwords"]
-        p1_phase1["Phase → Rotating"]
-        p1_gen["Generate pending passwords"]
-        p1_retain["ALTER USER RETAIN CURRENT PASSWORD<br/>(all instances, sql_log_bin=0)"]
+        p1_phase1["Phase → Rotating<br/>(controller: generate pending passwords)"]
+        p1_retain["Phase → Retained<br/>(clusterManager: ALTER USER RETAIN<br/>all instances, sql_log_bin=0)"]
         p1_dist["Distribute to per-namespace Secrets"]
-        p1_phase2["Phase → Rotated"]
+        p1_phase2["Phase → Rotated<br/>(controller)"]
         p1_restart["Rolling restart"]
-        p1_pre --> p1_phase1 --> p1_gen --> p1_retain --> p1_dist --> p1_phase2 --> p1_restart
+        p1_phase1 --> p1_retain --> p1_dist --> p1_phase2 --> p1_restart
     end
 
     verify{{"Operator verifies applications<br/>work with new credentials"}}
@@ -56,11 +54,11 @@ flowchart TD
     subgraph discard_op ["Discard"]
         direction TB
         p2_gate["Wait for rollout completion"]
-        p2_discard["ALTER USER DISCARD OLD PASSWORD<br/>(all instances, sql_log_bin=0)"]
-        p2_migrate["Migrate auth plugin"]
+        p2_phase_disc["Phase → Discarding<br/>(controller)"]
+        p2_discard["Phase → Discarded<br/>(clusterManager: DISCARD OLD PASSWORD<br/>+ auth plugin migration<br/>all instances, sql_log_bin=0)"]
         p2_confirm["Promote pending → current in Secret"]
-        p2_idle["Phase → Idle"]
-        p2_gate --> p2_discard --> p2_migrate --> p2_confirm --> p2_idle
+        p2_idle["Phase → Idle<br/>(controller)"]
+        p2_gate --> p2_phase_disc --> p2_discard --> p2_confirm --> p2_idle
     end
 
     idle1 -- "kubectl moco credential rotate" --> rotate_op
@@ -70,7 +68,10 @@ flowchart TD
     style verify fill:#fff3cd,stroke:#ffc107
     style idle1 fill:#e8f5e9,stroke:#4caf50
     style p1_phase1 fill:#e3f2fd,stroke:#1976d2
+    style p1_retain fill:#fce4ec,stroke:#c62828
     style p1_phase2 fill:#e3f2fd,stroke:#1976d2
+    style p2_phase_disc fill:#e3f2fd,stroke:#1976d2
+    style p2_discard fill:#fce4ec,stroke:#c62828
     style p2_idle fill:#e8f5e9,stroke:#4caf50
 ```
 
@@ -121,7 +122,7 @@ ALTER USER is a DDL written to the binary log.
 If propagated, a downstream cluster would receive the upstream's passwords, breaking its own credentials.
 
 All ALTER USER operations use `SET sql_log_bin=0` (session-scoped, via a dedicated `db.Conn`) to suppress binlog writes.
-As a consequence, within-cluster replicas also do not receive the change via replication, so the controller executes ALTER USER on **every instance individually**.
+As a consequence, within-cluster replicas also do not receive the change via replication, so ALTER USER must be executed on **every instance individually**.
 
 ### Why Auth Plugin Migration Is in the Discard Operation?
 
@@ -134,37 +135,49 @@ The target plugin is determined from `@@global.authentication_policy` on the pri
 
 This enables transparent migration from legacy plugins like `mysql_native_password` during rotation.
 
-### Why the Controller (Not ClusterManager)?
+### Responsibility Split: Controller vs ClusterManager
 
-Password rotation is a **state-driven lifecycle operation** with persistent phases stored in `MySQLCluster.Status`.
-This matches the controller's reconciliation pattern, not the clusterManager's transient operational tasks (switchover, failover, replica configuration).
+The controller handles **K8s resource operations** (Phase transitions, Secret management, annotation handling, rollout checks).
+The clusterManager handles **DB operations** (ALTER USER RETAIN, DISCARD OLD PASSWORD, auth plugin migration, dual password pre-checks).
+
+This follows the existing separation in MOCO where the controller manages K8s objects and the clusterManager manages MySQL state.
+The phase flow ensures clear handoffs:
+
+```
+Idle → Rotating → Retained → Rotated → Discarding → Discarded → Idle
+ ↑controller  ↑clusterMgr  ↑controller             ↑clusterMgr  ↑controller
+```
 
 ## Internal Phase Tracking
 
-The controller tracks progress in `.status.systemUserRotation`:
+The progress is tracked in `.status.systemUserRotation`:
 
 ```go
 type SystemUserRotationStatus struct {
     RotationID     string        // UUID of the current rotation cycle
-    Phase          RotationPhase // Idle, Rotating, or Rotated
+    Phase          RotationPhase // Idle, Rotating, Retained, Rotated, Discarding, Discarded
     LastRotationID string        // UUID of the last completed cycle (for stale detection)
 }
 ```
 
-## Rotate (`handlePasswordRotate`)
+## Rotate
 
-| Step | Action | Persistence |
-|------|--------|-------------|
-| 0 | Pre-check: scan all instances for pre-existing dual passwords. Refuse if found. | - |
-| 1 | Set Phase to Rotating with the rotationID from the annotation | Status.Patch |
-| 2 | Generate pending passwords (e.g. `ADMIN_PASSWORD_PENDING`) in the source Secret | Secret.Update |
-| 3 | For each instance: execute `ALTER USER ... RETAIN CURRENT PASSWORD` with `sql_log_bin=0` | MySQL |
-| 4 | Distribute pending passwords to per-namespace Secrets | Secret.Apply |
-| 5 | Set Phase to Rotated; add restart annotation to StatefulSet template | Status.Patch, StatefulSet |
-| 6 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - |
-| 7 | Remove the `password-rotate` annotation (best-effort) | Patch |
+### Controller: Idle → Rotating
 
-**Instance loop (Step 3):**
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Set Phase to Rotating with the rotationID from the annotation | Status.Patch | controller |
+| 2 | Generate pending passwords (e.g. `ADMIN_PASSWORD_PENDING`) in the source Secret | Secret.Update | controller |
+
+### ClusterManager: Rotating → Retained
+
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Pre-check: scan all instances for pre-existing dual passwords. Wait if found. | - | clusterManager |
+| 2 | For each instance: execute `ALTER USER ... RETAIN CURRENT PASSWORD` with `sql_log_bin=0` | MySQL | clusterManager |
+| 3 | Set Phase to Retained | Status.Update | clusterManager |
+
+**Instance loop (Step 2):**
 Instances are processed sequentially (ordinal 0, 1, 2, ...).
 For each instance:
 
@@ -173,29 +186,48 @@ For each instance:
 3. For each user: check `HasDualPassword`. If the user already has a dual password (from a previous partial run), skip RETAIN; otherwise execute RETAIN.
 4. For replicas: re-enable `super_read_only` (best-effort; the clustering loop recovers)
 
-If any instance is unreachable, the reconcile returns an error and retries.
+If any instance is unreachable, the clusterManager returns an error and retries on the next cycle.
 
-**Rolling restart (Step 6):**
-Step 5 adds a Pod template annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) to the StatefulSet template, which triggers a rolling restart managed by the StatefulSet controller.
-The agent sidecar picks up the new passwords via `EnvFrom` at Pod startup.
+### Controller: Retained → Rotated
+
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Distribute pending passwords to per-namespace Secrets | Secret.Apply | controller |
+| 2 | Set Phase to Rotated; add restart annotation to StatefulSet template | Status.Patch, StatefulSet | controller |
+| 3 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - | StatefulSet controller |
+| 4 | Remove the `password-rotate` annotation (best-effort) | Patch | controller |
 
 **Scaled-down clusters (replicas=0):**
 Rotation is refused with a Warning Event (`RotateRefused`).
 Without running instances, ALTER USER cannot execute, and distributing new passwords would break connectivity when the cluster scales back up.
 
-## Discard (`handlePasswordDiscard`)
+## Discard
 
-| Step | Action | Persistence |
-|------|--------|-------------|
-| 0 | Validate that Phase is Rotated and pending passwords exist in the source Secret | - |
-| 0b | Wait for StatefulSet rollout to complete | - |
-| 0c | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) |
-| 1 | For each instance: execute `DISCARD OLD PASSWORD` and auth plugin migration with `sql_log_bin=0` | MySQL |
-| 2 | Promote pending passwords to current in the source Secret (copy each `*_PENDING` value to its corresponding key and remove the `*_PENDING` keys and `ROTATION_ID`) | Secret.Update |
-| 3 | Reset status to Idle and save LastRotationID | Status.Patch |
-| 4 | Remove both annotations (best-effort) | Patch |
+### Controller: Rotated → Discarding
 
-**Why wait for the rollout (Step 0b)?**
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Validate that Phase is Rotated and pending passwords exist in the source Secret | - | controller |
+| 2 | Wait for StatefulSet rollout to complete | - | controller |
+| 3 | Set Phase to Discarding | Status.Patch | controller |
+
+### ClusterManager: Discarding → Discarded
+
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) | clusterManager |
+| 2 | For each instance: execute `DISCARD OLD PASSWORD` and auth plugin migration with `sql_log_bin=0` | MySQL | clusterManager |
+| 3 | Set Phase to Discarded | Status.Update | clusterManager |
+
+### Controller: Discarded → Idle
+
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Promote pending passwords to current in the source Secret | Secret.Update | controller |
+| 2 | Reset status to Idle and save LastRotationID | Status.Patch | controller |
+| 3 | Remove both annotations (best-effort) | Patch | controller |
+
+**Why wait for the rollout (Rotated → Discarding)?**
 The agent sidecar reads passwords from `EnvFrom`, evaluated only at Pod startup.
 If old Pods are still running when DISCARD executes, they lose connectivity.
 The gate checks: ObservedGeneration, CurrentRevision == UpdateRevision, UpdatedReplicas == Replicas, ReadyReplicas == Replicas.
@@ -212,14 +244,27 @@ The operator should scale the cluster up first.
 
 ## Crash Safety
 
+### Phase Boundary Safety
+
+| Crash Point | Recovery |
+|---|---|
+| Phase=Rotating set, pending passwords not yet generated | controller re-reconcile generates them |
+| Pending passwords generated, clusterManager RETAIN not started | clusterManager picks up Phase=Rotating on next cycle |
+| RETAIN partially applied (some instances only) | HasDualPassword makes re-execution idempotent (skip already-retained users) |
+| RETAIN all complete, Phase=Retained not yet set | clusterManager re-runs → all skip → sets Retained |
+| Phase=Retained set, Secrets not yet distributed | controller re-reconcile distributes |
+| Phase=Discarding set, DISCARD not yet executed | clusterManager picks up Phase=Discarding on next cycle |
+| DISCARD all complete, Phase=Discarded not yet set | DISCARD is idempotent → re-execution → sets Discarded |
+| Phase=Discarded set, Secret not yet confirmed | ConfirmPendingPasswords is idempotent |
+
 ### HasDualPassword Instead of Per-User Status Tracking
 
 MySQL holds only one secondary password per user.
-If the controller re-runs RETAIN with the same pending password after a crash, the pending password (now the primary) moves into the secondary slot, evicting the original password.
+If RETAIN is re-run with the same pending password after a crash, the pending password (now the primary) moves into the secondary slot, evicting the original password.
 The controller can no longer connect.
 
-Instead of tracking per-user progress in Kubernetes status (which can fail independently of MySQL), the controller queries MySQL directly: if `mysql.user.User_attributes` contains `additional_password`, RETAIN is skipped.
-This makes MySQL the source of truth and is safe on re-reconcile because the query is read-only.
+Instead of tracking per-user progress in Kubernetes status (which can fail independently of MySQL), the clusterManager queries MySQL directly: if `mysql.user.User_attributes` contains `additional_password`, RETAIN is skipped.
+This makes MySQL the source of truth and is safe on re-execution because the query is read-only.
 
 ### Idempotency of DISCARD
 
@@ -227,8 +272,14 @@ This makes MySQL the source of truth and is safe on re-reconcile because the que
 
 ### ConfirmPendingPasswords Idempotency
 
-If the controller crashes after updating the Secret but before patching the status, the Secret has already been promoted (pending passwords are now current) but the Phase is still Rotated.
-On re-reconcile, DISCARD is a no-op (idempotent) and `ConfirmPendingPasswords` finds no pending keys remaining, so it returns nil without making changes.
+If the controller crashes after updating the Secret but before patching the status, the Secret has already been promoted (pending passwords are now current) but the Phase is still Discarded.
+On re-reconcile, `ConfirmPendingPasswords` finds no pending keys remaining, so it returns nil without making changes.
+
+### Status.Update Conflict Handling
+
+The clusterManager uses `retry.RetryOnConflict` with `Status().Update()` for Phase transitions.
+The rotation handler runs within `do()` after `updateStatus()`.
+Rotation Phase updates use an independent `retry.RetryOnConflict` block that re-reads the cluster before updating, so conflicts with `updateStatus` are safely retried.
 
 ### Stale Annotation Detection
 
@@ -253,6 +304,15 @@ If `password-discard` is set but Phase != Rotated:
 `reconcileV1Secret` runs before password rotation in the reconcile loop.
 During rotation (Phase != Idle), it returns early without distributing — the rotation handler owns distribution.
 After discard completes and Phase resets to Idle, the source Secret already contains confirmed passwords, so normal distribution works correctly.
+
+### GatherStatus and ClusterManager Connection
+
+GatherStatus reads passwords from the user Secret (per-namespace).
+During rotation phases, the user Secret always contains passwords that MySQL accepts:
+- Phase=Rotating/Retained: user Secret has old passwords, MySQL accepts old via dual password
+- Phase=Rotated onwards: controller has distributed new passwords to user Secret
+
+The rotation handler reads passwords directly from the source (controller) Secret and creates its own DB connections, independent of GatherStatus.
 
 ### Rotate and Discard Never Run in the Same Reconcile
 
@@ -279,8 +339,8 @@ If some pending keys are missing or the rotation ID does not match, the function
 ## Assumptions
 
 No MOCO system user has a dual password when rotation starts.
-The controller checks this at Phase=Idle using `HasDualPassword` across all instances and all users.
-If a stale dual password is found, rotation is refused with a `DualPasswordExists` Warning Event.
+The clusterManager checks this at Phase=Rotating using `HasDualPassword` across all instances and all users.
+If a stale dual password is found, the clusterManager waits (emitting a `DualPasswordExists` Warning Event) instead of proceeding.
 See [Recovery: Dual Password Exists While Phase=Idle](#dual-password-exists-while-phaseidle).
 
 ## Security Considerations

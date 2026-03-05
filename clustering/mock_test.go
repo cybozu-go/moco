@@ -425,6 +425,13 @@ func (o *mockOperator) GetAuthPlugin(ctx context.Context) (string, error) {
 }
 
 func (o *mockOperator) RotateUserPassword(ctx context.Context, user, newPassword string) error {
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.rotatedUsers[user] = newPassword
+	if o.factory.instanceDual[o.index] == nil {
+		o.factory.instanceDual[o.index] = make(map[string]bool)
+	}
+	o.factory.instanceDual[o.index][user] = true
 	return nil
 }
 
@@ -433,11 +440,19 @@ func (o *mockOperator) MigrateUserAuthPlugin(ctx context.Context, user, password
 }
 
 func (o *mockOperator) DiscardOldPassword(ctx context.Context, user string) error {
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.discardedUsers[user] = true
 	return nil
 }
 
 func (o *mockOperator) HasDualPassword(ctx context.Context, user string) (bool, error) {
-	return false, nil
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	if o.factory.instanceDual[o.index] == nil {
+		return false, nil
+	}
+	return o.factory.instanceDual[o.index][user], nil
 }
 
 type mockMySQL struct {
@@ -485,6 +500,11 @@ type mockOpFactory struct {
 	mysqls               map[string]*mockMySQL
 	failing              map[string]bool
 	countKillConnections map[string]int
+
+	// rotation tracking
+	rotatedUsers   map[string]string       // user → newPassword
+	discardedUsers map[string]bool         // user → true
+	instanceDual   map[int]map[string]bool // per-instance dual password tracking
 }
 
 func newMockOpFactory() *mockOpFactory {
@@ -492,6 +512,9 @@ func newMockOpFactory() *mockOpFactory {
 		mysqls:               make(map[string]*mockMySQL),
 		failing:              make(map[string]bool),
 		countKillConnections: make(map[string]int),
+		rotatedUsers:         make(map[string]string),
+		discardedUsers:       make(map[string]bool),
+		instanceDual:         make(map[int]map[string]bool),
 	}
 }
 
@@ -586,4 +609,33 @@ func (f *mockOpFactory) getKillConnectionsCount(name string) int {
 func (f *mockOpFactory) setSecondsBehindSource(name string, seconds int64) {
 	m := f.getInstance(name)
 	m.setSecondsBehindSource(seconds)
+}
+
+func (f *mockOpFactory) getRotatedUsers() map[string]string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make(map[string]string, len(f.rotatedUsers))
+	for k, v := range f.rotatedUsers {
+		result[k] = v
+	}
+	return result
+}
+
+func (f *mockOpFactory) getDiscardedUsers() map[string]bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make(map[string]bool, len(f.discardedUsers))
+	for k, v := range f.discardedUsers {
+		result[k] = v
+	}
+	return result
+}
+
+func (f *mockOpFactory) setInstanceDual(instanceIndex int, user string, hasDual bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.instanceDual[instanceIndex] == nil {
+		f.instanceDual[instanceIndex] = make(map[string]bool)
+	}
+	f.instanceDual[instanceIndex][user] = hasDual
 }

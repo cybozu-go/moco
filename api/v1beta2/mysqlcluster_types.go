@@ -652,10 +652,20 @@ type RotationPhase string
 const (
 	// RotationPhaseIdle means no rotation is in progress.
 	RotationPhaseIdle RotationPhase = ""
-	// RotationPhaseRotating means ALTER USER RETAIN has been (or is being) applied.
+	// RotationPhaseRotating means pending passwords have been generated and the
+	// clusterManager should apply ALTER USER RETAIN on all instances.
 	RotationPhaseRotating RotationPhase = "Rotating"
+	// RotationPhaseRetained means ALTER USER RETAIN has been applied on all
+	// instances by the clusterManager. The controller should distribute secrets.
+	RotationPhaseRetained RotationPhase = "Retained"
 	// RotationPhaseRotated means the rotate operation is complete and the cluster is ready for the discard operation.
 	RotationPhaseRotated RotationPhase = "Rotated"
+	// RotationPhaseDiscarding means the controller has verified rollout completion
+	// and the clusterManager should apply DISCARD OLD PASSWORD on all instances.
+	RotationPhaseDiscarding RotationPhase = "Discarding"
+	// RotationPhaseDiscarded means DISCARD OLD PASSWORD has been applied on all
+	// instances by the clusterManager. The controller should confirm secrets.
+	RotationPhaseDiscarded RotationPhase = "Discarded"
 )
 
 // SystemUserRotationStatus represents the status of a system user password rotation.
