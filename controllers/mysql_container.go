@@ -354,6 +354,9 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 				),
 		).WithVolumeMounts(
 		corev1ac.VolumeMount().
+			WithName(constants.TmpVolumeName).
+			WithMountPath(constants.TmpPath),
+		corev1ac.VolumeMount().
 			WithName(constants.MySQLDataVolumeName).
 			WithMountPath(constants.MySQLDataPath),
 		corev1ac.VolumeMount().
