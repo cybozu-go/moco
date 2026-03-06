@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1357,18 +1358,14 @@ dummyKey: dummyValue
 		Expect(pdb.Spec.MaxUnavailable).NotTo(BeNil())
 		Expect(pdb.Spec.MaxUnavailable.IntVal).To(Equal(int32(1)))
 
-		Eventually(func() error {
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
-				return fmt.Errorf("not yet reconciled")
-			}
-			return nil
-		}).Should(Succeed())
-		cluster.Spec.Replicas = 1
-		err = k8sClient.Update(ctx, cluster)
+			cluster.Spec.Replicas = 1
+			return k8sClient.Update(ctx, cluster)
+		})
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
