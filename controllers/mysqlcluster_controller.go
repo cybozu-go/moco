@@ -121,10 +121,7 @@ func apply[S any, T clientObjectConstraint[S], U runtime.ApplyConfiguration](ctx
 		return nil, ErrApplyConfigurationNotChanged
 	}
 
-	return &orig, r.Apply(ctx, expected, &client.ApplyOptions{
-		FieldManager: fieldManager,
-		Force:        ptr.To(true),
-	})
+	return &orig, r.Apply(ctx, expected, client.FieldOwner(fieldManager), client.ForceOwnership)
 }
 
 // MySQLClusterReconciler reconciles a MySQLCluster object
@@ -980,10 +977,8 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 
 			// Don’t delete the Pod, only delete the StatefulSet.
 			// Same behavior as `kubectl delete sts moco-xxx --cascade=orphan`
-			opt := metav1.DeletePropagationOrphan
-			if err := r.Delete(ctx, &orig, &client.DeleteOptions{
-				PropagationPolicy: &opt,
-			}); err != nil {
+			propagationPolicy := metav1.DeletePropagationOrphan
+			if err := r.Delete(ctx, &orig, client.PropagationPolicy(propagationPolicy)); err != nil {
 				metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 				return err
 			}
@@ -1007,11 +1002,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 		}
 	}
 
-	err = r.Apply(ctx, sts, &client.ApplyOptions{
-		FieldManager: fieldManager,
-		Force:        ptr.To(true),
-	})
-	if err != nil {
+	if err := r.Apply(ctx, sts, client.FieldOwner(fieldManager), client.ForceOwnership); err != nil {
 		if needRecreate {
 			metrics.StatefulSetRecreateErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 		}
