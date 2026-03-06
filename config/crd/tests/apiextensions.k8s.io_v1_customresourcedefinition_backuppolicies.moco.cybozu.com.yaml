@@ -471,6 +471,7 @@ spec:
                         enum:
                         - s3
                         - gcs
+                        - azure
                         type: string
                       bucketName:
                         description: The name of the bucket
