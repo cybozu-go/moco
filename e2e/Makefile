@@ -49,7 +49,7 @@ endif
 	$(KUBECTL) apply -f minio.yaml
 	$(KUBECTL) apply -f minio-tls.yaml
 	$(KUBECTL) apply -f fake-gcs-server.yaml
-	$(KUBECTL) wait --timeout=90s --for=condition=Ready --all pods
+	$(KUBECTL) wait --timeout=180s --for=condition=Ready --all pods
 
 .PHONY: aqua-install
 aqua-install:
