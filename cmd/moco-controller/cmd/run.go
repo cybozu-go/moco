@@ -99,7 +99,7 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 	af := clustering.NewAgentFactory(r, reloader)
-	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
+	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog, ns)
 	defer clusterMgr.StopAll()
 
 	if err = (&controllers.MySQLClusterReconciler{
@@ -141,6 +141,17 @@ func subMain(ns, addr string, port int) error {
 		return err
 	}
 
+	if err = (&controllers.CredentialRotationReconciler{
+		Client:                  mgr.GetClient(),
+		Scheme:                  mgr.GetScheme(),
+		Recorder:                mgr.GetEventRecorderFor("moco-controller"),
+		SystemNamespace:         ns,
+		MaxConcurrentReconciles: config.maxConcurrentReconciles,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CredentialRotation")
+		return err
+	}
+
 	if err = (&mocov1beta2.MySQLCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "MySQLCluster")
 		return err
@@ -148,6 +159,11 @@ func subMain(ns, addr string, port int) error {
 
 	if err = (&mocov1beta2.BackupPolicy{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to setup webhook", "webhook", "BackupPolicy")
+		return err
+	}
+
+	if err = (&mocov1beta2.CredentialRotation{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup webhook", "webhook", "CredentialRotation")
 		return err
 	}
 

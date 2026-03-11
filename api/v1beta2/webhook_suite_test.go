@@ -104,6 +104,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	err = mocov1beta2.SetupStatefulSetWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
+	err = (&mocov1beta2.CredentialRotation{}).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:webhook
 
