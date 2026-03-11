@@ -340,6 +340,31 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		return err
 	}
 
+	// During credential rotation, the CredentialRotationReconciler owns
+	// secret distribution starting from the Retained phase (when it applies
+	// pending passwords to user Secrets). Skip distribution in phases where
+	// pending passwords are being or have been distributed to prevent
+	// overwriting them with old (current) passwords.
+	// In the Rotating phase, pending passwords have NOT been distributed to
+	// user Secrets yet, so normal reconciliation continues — this allows
+	// self-healing and keeps the clustering loop operational.
+	// On any Get error for the CR (NotFound, CRD missing, cache not ready),
+	// assume no active rotation and proceed with distribution.
+	var cr mocov1beta2.CredentialRotation
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.Name,
+	}, &cr); err == nil {
+		switch cr.Status.Phase {
+		case mocov1beta2.RotationPhaseRetained,
+			mocov1beta2.RotationPhaseRotated,
+			mocov1beta2.RotationPhaseDiscarding,
+			mocov1beta2.RotationPhaseDiscarded:
+			log.Info("credential rotation in progress, skipping secret distribution", "phase", cr.Status.Phase)
+			return nil
+		}
+	}
+
 	if err := r.reconcileUserSecret(ctx, cluster, secret); err != nil {
 		return err
 	}

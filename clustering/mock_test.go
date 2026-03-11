@@ -416,6 +416,76 @@ func (o *mockOperator) KillConnections(ctx context.Context) error {
 	return nil
 }
 
+func (o *mockOperator) SetSuperReadOnly(_ context.Context, on bool) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+	o.mysql.status.GlobalVariables.SuperReadOnly = on
+	return nil
+}
+
+func (o *mockOperator) GetAuthPlugin(_ context.Context) (string, error) {
+	if o.failing {
+		return "", errors.New("mysqld is down")
+	}
+	return "caching_sha2_password", nil
+}
+
+func (o *mockOperator) RotateUserPassword(_ context.Context, user, newPassword string) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.rotatedUsers[o.Name()] = append(o.factory.rotatedUsers[o.Name()], user)
+	return nil
+}
+
+func (o *mockOperator) MigrateUserAuthPlugin(_ context.Context, user, _, _ string) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.migratedUsers[o.Name()] = append(o.factory.migratedUsers[o.Name()], user)
+	return nil
+}
+
+func (o *mockOperator) DiscardOldPassword(_ context.Context, user string) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	o.factory.discardedUsers[o.Name()] = append(o.factory.discardedUsers[o.Name()], user)
+	return nil
+}
+
+func (o *mockOperator) GetUserAuthPlugin(_ context.Context, _ string) (string, error) {
+	if o.failing {
+		return "", errors.New("mysqld is down")
+	}
+	// Return a different plugin to trigger migration.
+	o.factory.mu.Lock()
+	authPlugin := o.factory.userAuthPlugin
+	o.factory.mu.Unlock()
+	if authPlugin != "" {
+		return authPlugin, nil
+	}
+	return "caching_sha2_password", nil
+}
+
+func (o *mockOperator) HasDualPassword(_ context.Context, user string) (bool, error) {
+	if o.failing {
+		return false, errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	return o.factory.dualPasswords[o.Name()+"/"+user], nil
+}
+
 type mockMySQL struct {
 	mu     sync.Mutex
 	status dbop.MySQLInstanceStatus
@@ -461,6 +531,13 @@ type mockOpFactory struct {
 	mysqls               map[string]*mockMySQL
 	failing              map[string]bool
 	countKillConnections map[string]int
+
+	// Password rotation tracking
+	rotatedUsers   map[string][]string // hostname -> users that had RotateUserPassword called
+	discardedUsers map[string][]string // hostname -> users that had DiscardOldPassword called
+	migratedUsers  map[string][]string // hostname -> users that had MigrateUserAuthPlugin called
+	dualPasswords  map[string]bool     // "hostname/user" -> has dual password
+	userAuthPlugin string              // auth plugin returned by GetUserAuthPlugin (empty = "caching_sha2_password")
 }
 
 func newMockOpFactory() *mockOpFactory {
@@ -468,6 +545,10 @@ func newMockOpFactory() *mockOpFactory {
 		mysqls:               make(map[string]*mockMySQL),
 		failing:              make(map[string]bool),
 		countKillConnections: make(map[string]int),
+		rotatedUsers:         make(map[string][]string),
+		discardedUsers:       make(map[string][]string),
+		migratedUsers:        make(map[string][]string),
+		dualPasswords:        make(map[string]bool),
 	}
 }
 
@@ -562,4 +643,34 @@ func (f *mockOpFactory) getKillConnectionsCount(name string) int {
 func (f *mockOpFactory) setSecondsBehindSource(name string, seconds int64) {
 	m := f.getInstance(name)
 	m.setSecondsBehindSource(seconds)
+}
+
+func (f *mockOpFactory) getRotatedUsers(name string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.rotatedUsers[name]
+}
+
+func (f *mockOpFactory) getDiscardedUsers(name string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.discardedUsers[name]
+}
+
+func (f *mockOpFactory) getMigratedUsers(name string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.migratedUsers[name]
+}
+
+func (f *mockOpFactory) setDualPassword(name, user string, hasDual bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.dualPasswords[name+"/"+user] = hasDual
+}
+
+func (f *mockOpFactory) setUserAuthPlugin(plugin string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.userAuthPlugin = plugin
 }

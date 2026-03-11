@@ -57,14 +57,34 @@ To run `mysql` interactively for the instance 2 in `mycluster` in the default na
 $ kubectl moco mysql --index 2 -it mycluster
 ```
 
-## `kubectl moco credential [options] CLUSTER_NAME`
+## `kubectl moco credential`
 
-Fetch the credential information of a specified user
+Manage MySQL credentials for a MOCO cluster.
+
+When called with a cluster name and no subcommand (e.g. `kubectl moco credential CLUSTER_NAME`), it shows the credential for backward compatibility.
+
+### `kubectl moco credential show [options] CLUSTER_NAME`
+
+Show the credential of a specified user.
 
 | Options            | Default value   | Description                                |
 | ------------------ | --------------- | ------------------------------------------ |
 | `-u, --mysql-user` | `moco-readonly` | Fetch the credential of the specified user |
 | `--format`         | `plain`         | Output format: `plain` or `mycnf`          |
+
+### `kubectl moco credential rotate CLUSTER_NAME`
+
+Rotate system user passwords for a MOCO cluster.
+Creates a CredentialRotation CR if it doesn't exist, or increments `rotationGeneration` to trigger a new rotation cycle.
+
+This can only be run when there is no rotation in progress (Phase is empty or `Completed`).
+
+### `kubectl moco credential discard CLUSTER_NAME`
+
+Discard old passwords after a successful credential rotation.
+Sets `spec.discardOldPassword=true` on the CredentialRotation CR.
+
+This can only be run when the rotation Phase is `Rotated`.
 
 ## `kubectl moco switchover CLUSTER_NAME`
 
