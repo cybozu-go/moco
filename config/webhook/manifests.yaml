@@ -78,6 +78,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-moco-cybozu-com-v1beta2-credentialrotation
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: vcredentialrotation.kb.io
+  rules:
+  - apiGroups:
+    - moco.cybozu.com
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - credentialrotations
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-moco-cybozu-com-v1beta2-mysqlcluster
   failurePolicy: Fail
   matchPolicy: Equivalent

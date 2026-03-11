@@ -205,6 +205,7 @@ rules:
   - apiGroups:
       - moco.cybozu.com
     resources:
+      - credentialrotations
       - mysqlclusters
     verbs:
       - get
@@ -215,16 +216,17 @@ rules:
   - apiGroups:
       - moco.cybozu.com
     resources:
-      - mysqlclusters/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - moco.cybozu.com
-    resources:
+      - credentialrotations/status
       - mysqlclusters/status
     verbs:
       - get
       - patch
+      - update
+  - apiGroups:
+      - moco.cybozu.com
+    resources:
+      - mysqlclusters/finalizers
+    verbs:
       - update
   - apiGroups:
       - policy
@@ -503,6 +505,27 @@ webhooks:
           - DELETE
         resources:
           - backuppolicies
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: moco-webhook-service
+        namespace: '{{ .Release.Namespace }}'
+        path: /validate-moco-cybozu-com-v1beta2-credentialrotation
+    failurePolicy: Fail
+    matchPolicy: Equivalent
+    name: vcredentialrotation.kb.io
+    rules:
+      - apiGroups:
+          - moco.cybozu.com
+        apiVersions:
+          - v1beta2
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - credentialrotations
     sideEffects: None
   - admissionReviewVersions:
       - v1
