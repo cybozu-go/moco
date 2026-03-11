@@ -106,12 +106,21 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 	}
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)
+
+	// Detect semi-sync plugin type. If the instance is unreachable (e.g. during failover),
+	// default to new names. Subsequent queries will also fail and be handled gracefully.
+	ss, _ := DetectSemiSyncNames(ctx, db)
+	if ss == nil {
+		ss = &NewSemiSyncNames
+	}
+
 	return &operator{
 		namespace: cluster.Namespace,
 		name:      cluster.PodName(index),
 		passwd:    pwd,
 		index:     index,
 		db:        db,
+		semisync:  ss,
 	}, nil
 }
 
@@ -123,6 +132,7 @@ type operator struct {
 	passwd    *password.MySQLPassword
 	index     int
 	db        *sqlx.DB
+	semisync  *SemiSyncNames
 }
 
 var _ Operator = &operator{}
