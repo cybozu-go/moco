@@ -43,14 +43,15 @@ type metricsSet struct {
 }
 
 type managerProcess struct {
-	client   client.Client
-	reader   client.Reader
-	recorder record.EventRecorder
-	dbf      dbop.OperatorFactory
-	agentf   AgentFactory
-	name     types.NamespacedName
-	cancel   func()
-	pause    bool
+	client          client.Client
+	reader          client.Reader
+	recorder        record.EventRecorder
+	dbf             dbop.OperatorFactory
+	agentf          AgentFactory
+	name            types.NamespacedName
+	cancel          func()
+	pause           bool
+	systemNamespace string
 
 	ch            chan string
 	metrics       metricsSet
@@ -58,16 +59,17 @@ type managerProcess struct {
 	pauseMetrics  func()
 }
 
-func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func()) *managerProcess {
+func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func(), systemNamespace string) *managerProcess {
 	return &managerProcess{
-		client:   c,
-		reader:   r,
-		recorder: recorder,
-		dbf:      dbf,
-		agentf:   agentf,
-		name:     name,
-		cancel:   cancel,
-		ch:       make(chan string, 1),
+		client:          c,
+		reader:          r,
+		recorder:        recorder,
+		dbf:             dbf,
+		agentf:          agentf,
+		name:            name,
+		cancel:          cancel,
+		systemNamespace: systemNamespace,
+		ch:              make(chan string, 1),
 		metrics: metricsSet{
 			checkCount:         metrics.CheckCountVec.WithLabelValues(name.Name, name.Namespace),
 			errorCount:         metrics.ErrorCountVec.WithLabelValues(name.Name, name.Namespace),
@@ -195,6 +197,14 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("failed to remove annotation to prevent pod deletion: %w", err)
 		}
+	}
+
+	rotationRedo, rotErr := p.handlePasswordRotation(ctx, ss)
+	if rotErr != nil {
+		return false, fmt.Errorf("failed to handle password rotation: %w", rotErr)
+	}
+	if rotationRedo {
+		return true, nil
 	}
 
 	logFromContext(ctx).Info("cluster state is " + ss.State.String())

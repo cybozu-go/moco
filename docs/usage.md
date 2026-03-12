@@ -36,6 +36,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
   - [Failover](#failover)
   - [Upgrading mysql version](#upgrading-mysql-version)
   - [Re-initializing an errant replica](#re-initializing-an-errant-replica)
+  - [System user password rotation](#system-user-password-rotation)
   - [Stop Clustering and Reconciliation](#stop-clustering-and-reconciliation)
   - [Set to Read Only](#set-to-read-only)
 
@@ -756,6 +757,74 @@ Delete such pending Pods until PVC is actually removed.
 [EKS]: https://aws.amazon.com/eks/
 [CronJob]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
 
+### System user password rotation
+
+MOCO manages 8 system MySQL users (e.g. `moco-admin`, `moco-agent`, `moco-readonly`, `moco-writable`, etc.).
+Their passwords are generated at cluster creation time and stored in Secrets.
+You can rotate these passwords in-place without downtime using MySQL's [dual password][] mechanism.
+
+Password rotation is a two-step process — **rotate** then **discard**:
+
+1. **Rotate**: Generate new passwords, apply them to MySQL with `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD`, and distribute the new passwords to Secrets. After this step, both old and new passwords are valid.
+2. **Discard**: After verifying that applications work with the new passwords, discard the old passwords with `ALTER USER ... DISCARD OLD PASSWORD`, then migrate the authentication plugin with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...`. The authentication plugin is determined from the server's `authentication_policy` variable, enabling transparent migration from legacy plugins like `mysql_native_password`.
+
+#### Rotate
+
+```console
+$ kubectl moco credential rotate <CLUSTER_NAME>
+```
+
+This command:
+
+1. Generates a unique rotation ID and sets the `moco.cybozu.com/password-rotate` annotation on the MySQLCluster.
+2. The controller generates new passwords and stores them as pending entries in the source Secret.
+3. Executes `ALTER USER ... IDENTIFIED BY ... RETAIN CURRENT PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
+4. Distributes the new passwords to per-namespace Secrets (user Secret and my.cnf Secret).
+5. Triggers a rolling restart of the StatefulSet so that agents pick up the new passwords.
+
+After the rotate operation completes, you can check the rotation status:
+
+```console
+$ kubectl get mysqlcluster <CLUSTER_NAME> -o jsonpath='{.status.systemUserRotation}'
+```
+
+The `phase` field should be `Rotated`.
+
+At this point, both old and new passwords are accepted by MySQL.
+You should verify that your applications work correctly before proceeding to the discard operation.
+
+#### Discard
+
+```console
+$ kubectl moco credential discard <CLUSTER_NAME>
+```
+
+This command:
+
+1. Sets the `moco.cybozu.com/password-discard` annotation on the MySQLCluster.
+2. The controller waits for the StatefulSet rolling restart to complete (all Pods are running with the new passwords).
+3. Executes `ALTER USER ... DISCARD OLD PASSWORD` on all instances (with `sql_log_bin=0`) for all 8 system users.
+4. Migrates the authentication plugin for all system users with `ALTER USER ... IDENTIFIED WITH <plugin> BY ...` on all instances (with `sql_log_bin=0`). The plugin is determined from `@@global.authentication_policy`, enabling transparent migration from legacy plugins like `mysql_native_password`.
+5. Promotes the pending passwords to current in the source Secret and removes the pending keys.
+6. Resets the rotation status to Idle.
+
+After the discard operation completes, only the new passwords are valid.
+
+#### Notes
+
+- **Warning:** Do not manually execute `ALTER USER ... RETAIN CURRENT PASSWORD` on MOCO system users. The rotation controller uses `HasDualPassword` (checking `mysql.user.User_attributes` for `additional_password`) to detect whether RETAIN has already been applied on each instance. If a dual password exists from a manual operation, the controller will skip RETAIN for that user, leaving MOCO's new password unapplied in MySQL while distributing it to Secrets — breaking connectivity after the rolling restart.
+- Both operations are **idempotent and crash-safe**. If the controller restarts during rotation, it resumes from the persisted state.
+- The discard operation is rejected when `replicas=0` (scaled-down cluster), because the new passwords cannot be verified without running Pods.
+- If the source Secret is in an inconsistent state (e.g. partial pending keys), the controller emits a Warning Event with manual recovery instructions.
+- You can also trigger rotation by setting annotations directly with `kubectl annotate`, using a unique rotation ID as the value:
+
+```console
+$ kubectl annotate mysqlcluster <CLUSTER_NAME> moco.cybozu.com/password-rotate=<ROTATION_ID>
+$ kubectl annotate mysqlcluster <CLUSTER_NAME> moco.cybozu.com/password-discard=<ROTATION_ID>
+```
+
+[dual password]: https://dev.mysql.com/doc/refman/8.0/en/password-management.html#dual-passwords
+
 ### Stop Clustering and Reconciliation
 
 In MOCO, you can optionally stop the clustering and reconciliation of a MySQLCluster.
@@ -763,15 +832,15 @@ In MOCO, you can optionally stop the clustering and reconciliation of a MySQLClu
 To stop clustering and reconciliation, use the following commands.
 
 ```console
-$ kubectl moco stop clustering <CLSUTER_NAME>
-$ kubectl moco stop reconciliation <CLSUTER_NAME>
+$ kubectl moco stop clustering <CLUSTER_NAME>
+$ kubectl moco stop reconciliation <CLUSTER_NAME>
 ```
 
 To resume the stopped clustering and reconciliation, use the following commands.
 
 ```console
-$ kubectl moco start clustering <CLSUTER_NAME>
-$ kubectl moco start reconciliation <CLSUTER_NAME>
+$ kubectl moco start clustering <CLUSTER_NAME>
+$ kubectl moco start reconciliation <CLUSTER_NAME>
 ```
 
 You could use this feature in the following cases:
@@ -815,14 +884,14 @@ MOCO makes the primary instance writable in the clustering process.
 Therefore, please be sure to stop clustering when you set it to read-only.
 
 ```console
-$ kubectl moco stop clustering <CLSUTER_NAME>
-$ kubectl moco mysql -u moco-admin <CLSUTER_NAME> -- -e "SET GLOBAL super_read_only=1"
+$ kubectl moco stop clustering <CLUSTER_NAME>
+$ kubectl moco mysql -u moco-admin <CLUSTER_NAME> -- -e "SET GLOBAL super_read_only=1"
 ```
 
 You can check whether the cluster is read-only with the following command.
 
 ```console
-$ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SELECT @@super_read_only"
+$ kubectl moco mysql -it <CLUSTER_NAME> -- -e "SELECT @@super_read_only"
 +-------------------+
 | @@super_read_only |
 +-------------------+
@@ -833,5 +902,5 @@ $ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SELECT @@super_read_only"
 If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.
 
 ```console
-$ kubectl moco start clustering <CLSUTER_NAME>
+$ kubectl moco start clustering <CLUSTER_NAME>
 ```
