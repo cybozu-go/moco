@@ -30,29 +30,31 @@ type ClusterManager interface {
 	Pause(types.NamespacedName)
 }
 
-func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, af AgentFactory, log logr.Logger) ClusterManager {
+func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.OperatorFactory, af AgentFactory, log logr.Logger, systemNamespace string) ClusterManager {
 	return &clusterManager{
-		client:    m.GetClient(),
-		reader:    m.GetAPIReader(),
-		recorder:  m.GetEventRecorderFor("moco-controller"),
-		dbf:       opf,
-		agentf:    af,
-		interval:  interval,
-		log:       log,
-		processes: make(map[string]*managerProcess),
+		client:          m.GetClient(),
+		reader:          m.GetAPIReader(),
+		recorder:        m.GetEventRecorderFor("moco-controller"),
+		dbf:             opf,
+		agentf:          af,
+		interval:        interval,
+		log:             log,
+		systemNamespace: systemNamespace,
+		processes:       make(map[string]*managerProcess),
 	}
 }
 
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update;patch
 
 type clusterManager struct {
-	client   client.Client
-	reader   client.Reader
-	recorder record.EventRecorder
-	dbf      dbop.OperatorFactory
-	agentf   AgentFactory
-	interval time.Duration
-	log      logr.Logger
+	client          client.Client
+	reader          client.Reader
+	recorder        record.EventRecorder
+	dbf             dbop.OperatorFactory
+	agentf          AgentFactory
+	interval        time.Duration
+	log             logr.Logger
+	systemNamespace string
 
 	mu        sync.Mutex
 	processes map[string]*managerProcess
@@ -89,7 +91,7 @@ func (m *clusterManager) update(name types.NamespacedName, noStart bool, origin 
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, cancel)
+	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, cancel, m.systemNamespace)
 	m.wg.Add(1)
 	go func() {
 		p.Start(ctx, m.log.WithName(key), m.interval)

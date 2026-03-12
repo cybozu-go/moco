@@ -646,6 +646,47 @@ type RestoreSpec struct {
 	Users string `json:"users,omitempty"`
 }
 
+// RotationPhase represents the phase of a system user password rotation.
+type RotationPhase string
+
+const (
+	// RotationPhaseIdle means no rotation is in progress.
+	RotationPhaseIdle RotationPhase = ""
+	// RotationPhaseRotating means pending passwords have been generated and the
+	// clusterManager should apply ALTER USER RETAIN on all instances.
+	RotationPhaseRotating RotationPhase = "Rotating"
+	// RotationPhaseRetained means ALTER USER RETAIN has been applied on all
+	// instances by the clusterManager. The controller should distribute secrets.
+	RotationPhaseRetained RotationPhase = "Retained"
+	// RotationPhaseRotated means the rotate operation is complete and the cluster is ready for the discard operation.
+	RotationPhaseRotated RotationPhase = "Rotated"
+	// RotationPhaseDiscarding means the controller has verified rollout completion
+	// and the clusterManager should apply DISCARD OLD PASSWORD on all instances.
+	RotationPhaseDiscarding RotationPhase = "Discarding"
+	// RotationPhaseDiscarded means DISCARD OLD PASSWORD has been applied on all
+	// instances by the clusterManager. The controller should confirm secrets.
+	RotationPhaseDiscarded RotationPhase = "Discarded"
+)
+
+// SystemUserRotationStatus represents the status of a system user password rotation.
+type SystemUserRotationStatus struct {
+	// RotationID is the unique identifier for the current rotation.
+	// +optional
+	RotationID string `json:"rotationID,omitempty"`
+
+	// Phase is the current phase of the rotation.
+	// +optional
+	Phase RotationPhase `json:"phase,omitempty"`
+
+	// LastRotationID is the rotationID of the most recently completed rotation.
+	// Used to detect stale rotate annotations that linger after a completed cycle
+	// (best-effort annotation removal may fail). If the annotation's rotationID
+	// matches this value, the annotation is stale and should be removed without
+	// starting a new rotation.
+	// +optional
+	LastRotationID string `json:"lastRotationID,omitempty"`
+}
+
 // MySQLClusterStatus defines the observed state of MySQLCluster
 type MySQLClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -686,6 +727,10 @@ type MySQLClusterStatus struct {
 	// ReconcileInfo represents version information for reconciler.
 	// +optional
 	ReconcileInfo ReconcileInfo `json:"reconcileInfo"`
+
+	// SystemUserRotation represents the status of the system user password rotation.
+	// +optional
+	SystemUserRotation SystemUserRotationStatus `json:"systemUserRotation,omitempty"`
 }
 
 const (
