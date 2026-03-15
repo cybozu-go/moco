@@ -31,9 +31,7 @@ func mysqlClusterCandidates(ctx context.Context, cmd *cobra.Command, args []stri
 	}
 
 	clusters := &mocov1beta2.MySQLClusterList{}
-	if err := kubeClient.List(ctx, clusters, &client.ListOptions{
-		Namespace: namespace,
-	}); err != nil {
+	if err := kubeClient.List(ctx, clusters, client.InNamespace(namespace)); err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 
