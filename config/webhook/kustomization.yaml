@@ -3,5 +3,8 @@ resources:
 - service.yaml
 - validate_preventdelete.yaml
 
+patchesStrategicMerge:
+- patches/statefulset_webhook_objectselector.yaml
+
 configurations:
 - kustomizeconfig.yaml
