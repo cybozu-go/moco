@@ -186,7 +186,7 @@ var _ = Context("backup-azure", Ordered, func() {
 	It("should delete namespace", func() {
 		kubectlSafe(nil, "delete", "-n", "backup-azure", "mysqlclusters", "--all")
 		// Delete the create-bucket job to clean up its pods
-		kubectl(nil, "delete", "-n", "backup-azure", "job", "create-bucket", "--ignore-not-found=true")
+		kubectlSafe(nil, "delete", "-n", "backup-azure", "job", "create-bucket", "--ignore-not-found=true")
 
 		Eventually(func() error {
 			out, err := kubectl(nil, "get", "-n", "backup-azure", "pod", "-o", "json")
