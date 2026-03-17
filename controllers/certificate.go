@@ -49,7 +49,7 @@ func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, clu
 	if err == nil {
 		return nil
 	}
-	if err != nil && !apierrors.IsNotFound(err) {
+	if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get certificate %s: %w", cluster.CertificateName(), err)
 	}
 
