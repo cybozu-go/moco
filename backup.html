@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1f978abe.js";
+            window.path_to_searchindex_js = "searchindex-c506d4f4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -396,10 +396,11 @@ It also has many useful features such as <a href="https://docs.aws.amazon.com/Am
 <ul>
 <li>Amazon S3</li>
 <li>Google Cloud Storage</li>
+<li>Azure Blob Storage</li>
 </ul>
 <p>MOCO uses the Amazon S3 API by default.
 You can specify <code>BackupPolicy.spec.jobConfig.bucketConfig.backendType</code> to specify the object storage API to use.
-Currently, two identifiers can be specified, <code>backendType</code> for <code>s3</code> or <code>gcs</code>.
+Currently, three identifiers can be specified, <code>backendType</code> for <code>s3</code>, <code>gcs</code>, or <code>azure</code>.
 If not specified, it will be defaults to <code>s3</code>.</p>
 <p>The following is an example of a backup setup using Google Cloud Storage:</p>
 <pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
@@ -416,6 +417,22 @@ spec:
       bucketName: moco
       endpointURL: https://storage.googleapis.com
       backendType: gcs
+    workVolume:
+      emptyDir: {}
+</code></pre>
+<p>For Azure Blob Storage setup and authentication options, see <a href="azure-blob-storage.html">Azure Blob Storage</a>.</p>
+<p>The following is an example of a backup setup using Azure Blob Storage:</p>
+<pre><code class="language-yaml">apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+...
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    bucketConfig:
+      bucketName: moco-backups
+      endpointURL: https://myaccount.blob.core.windows.net/
+      backendType: azure
     workVolume:
       emptyDir: {}
 </code></pre>
