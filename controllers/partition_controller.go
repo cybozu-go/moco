@@ -241,14 +241,14 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 			return false
 		}
 		for _, c := range pod.Status.InitContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}
 		for _, c := range pod.Status.ContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}
