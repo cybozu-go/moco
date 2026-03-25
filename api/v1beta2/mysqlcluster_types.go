@@ -454,7 +454,7 @@ type PodTemplateSpec struct {
 }
 
 // OverwriteableContainerName is the name of the container.
-// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
+// +kubebuilder:validation:Enum=agent;copy-moco-init;moco-init;slow-log;mysqld-exporter
 type OverwriteableContainerName string
 
 // String implements the fmt.Stringer interface.
