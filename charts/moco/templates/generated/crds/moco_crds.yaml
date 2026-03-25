@@ -450,6 +450,7 @@ spec:
                           enum:
                             - s3
                             - gcs
+                            - azure
                           type: string
                         bucketName:
                           description: The name of the bucket
@@ -2210,6 +2211,10 @@ spec:
                   minimum: 0
                   nullable: true
                   type: integer
+                timeZone:
+                  description: The time zone name for the given schedule, see...
+                  nullable: true
+                  type: string
               required:
                 - jobConfig
                 - schedule
@@ -6593,6 +6598,7 @@ spec:
                               enum:
                                 - s3
                                 - gcs
+                                - azure
                               type: string
                             bucketName:
                               description: The name of the bucket

@@ -251,10 +251,11 @@ MOCO currently supports the following object storage APIs:
 
 * Amazon S3
 * Google Cloud Storage
+* Azure Blob Storage
 
 MOCO uses the Amazon S3 API by default.
 You can specify `BackupPolicy.spec.jobConfig.bucketConfig.backendType` to specify the object storage API to use.
-Currently, two identifiers can be specified, `backendType` for `s3` or `gcs`.
+Currently, three identifiers can be specified, `backendType` for `s3`, `gcs`, or `azure`.
 If not specified, it will be defaults to `s3`.
 
 The following is an example of a backup setup using Google Cloud Storage:
@@ -274,6 +275,26 @@ spec:
       bucketName: moco
       endpointURL: https://storage.googleapis.com
       backendType: gcs
+    workVolume:
+      emptyDir: {}
+```
+
+For Azure Blob Storage setup and authentication options, see [Azure Blob Storage](azure-blob-storage.md).
+
+The following is an example of a backup setup using Azure Blob Storage:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+...
+spec:
+  schedule: "@daily"
+  jobConfig:
+    serviceAccountName: backup-owner
+    bucketConfig:
+      bucketName: moco-backups
+      endpointURL: https://myaccount.blob.core.windows.net/
+      backendType: azure
     workVolume:
       emptyDir: {}
 ```

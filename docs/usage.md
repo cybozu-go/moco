@@ -763,15 +763,15 @@ In MOCO, you can optionally stop the clustering and reconciliation of a MySQLClu
 To stop clustering and reconciliation, use the following commands.
 
 ```console
-$ kubectl moco stop clustering <CLSUTER_NAME>
-$ kubectl moco stop reconciliation <CLSUTER_NAME>
+$ kubectl moco stop clustering <CLUSTER_NAME>
+$ kubectl moco stop reconciliation <CLUSTER_NAME>
 ```
 
 To resume the stopped clustering and reconciliation, use the following commands.
 
 ```console
-$ kubectl moco start clustering <CLSUTER_NAME>
-$ kubectl moco start reconciliation <CLSUTER_NAME>
+$ kubectl moco start clustering <CLUSTER_NAME>
+$ kubectl moco start reconciliation <CLUSTER_NAME>
 ```
 
 You could use this feature in the following cases:
@@ -815,14 +815,14 @@ MOCO makes the primary instance writable in the clustering process.
 Therefore, please be sure to stop clustering when you set it to read-only.
 
 ```console
-$ kubectl moco stop clustering <CLSUTER_NAME>
-$ kubectl moco mysql -u moco-admin <CLSUTER_NAME> -- -e "SET GLOBAL super_read_only=1"
+$ kubectl moco stop clustering <CLUSTER_NAME>
+$ kubectl moco mysql -u moco-admin <CLUSTER_NAME> -- -e "SET GLOBAL super_read_only=1"
 ```
 
 You can check whether the cluster is read-only with the following command.
 
 ```console
-$ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SELECT @@super_read_only"
+$ kubectl moco mysql -it <CLUSTER_NAME> -- -e "SELECT @@super_read_only"
 +-------------------+
 | @@super_read_only |
 +-------------------+
@@ -833,5 +833,5 @@ $ kubectl moco mysql -it <CLSUTER_NAME> -- -e "SELECT @@super_read_only"
 If you want to leave read-only mode, restart clustering as follows. Then, MOCO will make the cluster writable.
 
 ```console
-$ kubectl moco start clustering <CLSUTER_NAME>
+$ kubectl moco start clustering <CLUSTER_NAME>
 ```

@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,6 +75,7 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 	bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
 	bp.Spec.Schedule = "*/5 * * * *"
+	bp.Spec.TimeZone = ptr.To("America/New_York")
 	bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
 	bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
 	jc := &bp.Spec.JobConfig
@@ -1359,18 +1361,14 @@ dummyKey: dummyValue
 		Expect(pdb.Spec.MaxUnavailable).NotTo(BeNil())
 		Expect(pdb.Spec.MaxUnavailable.IntVal).To(Equal(int32(1)))
 
-		Eventually(func() error {
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			cluster = &mocov1beta2.MySQLCluster{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
 				return err
 			}
-			if cluster.Status.ReconcileInfo.Generation != cluster.Generation {
-				return fmt.Errorf("not yet reconciled")
-			}
-			return nil
-		}).Should(Succeed())
-		cluster.Spec.Replicas = 1
-		err = k8sClient.Update(ctx, cluster)
+			cluster.Spec.Replicas = 1
+			return k8sClient.Update(ctx, cluster)
+		})
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() bool {
@@ -1413,6 +1411,7 @@ dummyKey: dummyValue
 		Expect(cj.Labels).NotTo(BeEmpty())
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
+		Expect(cj.Spec.TimeZone).To(Equal(ptr.To("America/New_York")))
 		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(ptr.To[int64](10)))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
@@ -1475,6 +1474,7 @@ dummyKey: dummyValue
 		bp.Spec.ConcurrencyPolicy = batchv1.AllowConcurrent
 		bp.Spec.StartingDeadlineSeconds = nil
 		bp.Spec.Schedule = "*/5 1 * * *"
+		bp.Spec.TimeZone = nil
 		bp.Spec.SuccessfulJobsHistoryLimit = nil
 		bp.Spec.FailedJobsHistoryLimit = nil
 		jc := &bp.Spec.JobConfig
@@ -1509,6 +1509,7 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
+		Expect(cj.Spec.TimeZone).To(BeNil())
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
 		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](3)))

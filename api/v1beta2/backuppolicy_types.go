@@ -16,6 +16,7 @@ import (
 // The following fields will be copied to CronJob.spec:
 //
 // - Schedule
+// - TimeZone
 // - StartingDeadlineSeconds
 // - ConcurrencyPolicy
 // - SuccessfulJobsHistoryLimit
@@ -32,6 +33,13 @@ type BackupPolicySpec struct {
 	// The schedule in Cron format for periodic backups.
 	// See https://en.wikipedia.org/wiki/Cron
 	Schedule string `json:"schedule"`
+
+	// The time zone name for the given schedule, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones.
+	// If not specified, this defaults to the time zone of the kube-controller-manager process (native Kubernetes CronJob behavior).
+	// More information can be found in https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones
+	// +nullable
+	// +optional
+	TimeZone *string `json:"timeZone,omitempty"`
 
 	// Specifies parameters for backup Pod.
 	JobConfig JobConfig `json:"jobConfig"`

@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -328,4 +329,56 @@ var _ = Describe("StatefulSet reconciler", func() {
 			Entry("with 1000ms interval", 2000*time.Millisecond),
 		)
 	})
+})
+
+var _ = Describe("StatefulSetPartitionReconciler predicates", func() {
+	DescribeTable("should filter events",
+		func(obj client.Object, expect bool) {
+			prct := partitionControllerPredicate()
+			Expect(prct.Update(event.UpdateEvent{ObjectNew: obj})).To(Equal(expect))
+			Expect(prct.Create(event.CreateEvent{Object: obj})).To(Equal(expect))
+			Expect(prct.Delete(event.DeleteEvent{Object: obj})).To(Equal(expect))
+			Expect(prct.Generic(event.GenericEvent{Object: obj})).To(Equal(expect))
+		},
+		Entry("statefulset with moco labels", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "moco-test",
+			Labels: map[string]string{
+				constants.LabelAppName:      constants.AppNameMySQL,
+				constants.LabelAppCreatedBy: constants.AppCreator,
+			},
+		}}, true),
+		Entry("pod with moco labels", &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Name: "moco-test-0",
+			Labels: map[string]string{
+				constants.LabelAppName:      constants.AppNameMySQL,
+				constants.LabelAppCreatedBy: constants.AppCreator,
+			},
+		}}, true),
+		Entry("statefulset without prefix", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Labels: map[string]string{
+				constants.LabelAppName:      constants.AppNameMySQL,
+				constants.LabelAppCreatedBy: constants.AppCreator,
+			},
+		}}, false),
+		Entry("statefulset without app label", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "moco-test",
+			Labels: map[string]string{
+				constants.LabelAppCreatedBy: constants.AppCreator,
+			},
+		}}, false),
+		Entry("statefulset without creator label", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "moco-test",
+			Labels: map[string]string{
+				constants.LabelAppName: constants.AppNameMySQL,
+			},
+		}}, false),
+		Entry("statefulset with wrong labels", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "moco-test",
+			Labels: map[string]string{
+				constants.LabelAppName:      constants.AppNameMySQL,
+				constants.LabelAppCreatedBy: "other",
+			},
+		}}, false),
+	)
 })

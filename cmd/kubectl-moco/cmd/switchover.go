@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var switchoverCmd = &cobra.Command{
@@ -44,12 +45,17 @@ func switchover(ctx context.Context, name string) error {
 		return err
 	}
 
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
+	if pod.Annotations[constants.AnnDemote] == "true" {
+		return nil
 	}
-	pod.Annotations[constants.AnnDemote] = "true"
 
-	return kubeClient.Update(ctx, pod)
+	newPod := pod.DeepCopy()
+	if newPod.Annotations == nil {
+		newPod.Annotations = make(map[string]string)
+	}
+	newPod.Annotations[constants.AnnDemote] = "true"
+
+	return kubeClient.Patch(ctx, newPod, client.MergeFrom(pod))
 }
 
 func init() {
