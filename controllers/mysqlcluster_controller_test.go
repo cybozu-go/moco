@@ -1126,6 +1126,15 @@ dummyKey: dummyValue
 					WithCapabilities(corev1ac.Capabilities().WithDrop("ALL"))),
 			},
 			{
+				Name: mocov1beta2.CopyInitContainerName,
+				Resources: (*mocov1beta2.ResourceRequirementsApplyConfiguration)(corev1ac.ResourceRequirements().
+					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}).
+					WithRequests(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}),
+				),
+				SecurityContext: (*mocov1beta2.SecurityContextApplyConfiguration)(corev1ac.SecurityContext().
+					WithCapabilities(corev1ac.Capabilities().WithDrop("ALL"))),
+			},
+			{
 				Name: mocov1beta2.InitContainerName,
 				Resources: (*mocov1beta2.ResourceRequirementsApplyConfiguration)(corev1ac.ResourceRequirements().
 					WithLimits(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}).
@@ -1271,6 +1280,12 @@ dummyKey: dummyValue
 		for _, c := range sts.Spec.Template.Spec.InitContainers {
 			Expect(c.SecurityContext).NotTo(BeNil())
 			switch c.Name {
+			case constants.CopyInitContainerName:
+				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
+				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
+				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+				Expect(c.SecurityContext.RunAsUser).To(BeNil())
+				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
 			case constants.InitContainerName:
 				Expect(c.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
 				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))

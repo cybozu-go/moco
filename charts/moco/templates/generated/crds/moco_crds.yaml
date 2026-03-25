@@ -2361,6 +2361,7 @@ spec:
                             description: Name of the container to overwrite.
                             enum:
                               - agent
+                              - copy-moco-init
                               - moco-init
                               - slow-log
                               - mysqld-exporter
