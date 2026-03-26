@@ -11,10 +11,12 @@ namespace: moco-system
 namePrefix: moco-
 
 # Labels to add to all resources and selectors.
-commonLabels:
-  app.kubernetes.io/name: moco
+labels:
+- pairs:
+    app.kubernetes.io/name: moco
+  includeSelectors: true
 
-bases:
+resources:
 - ../crd
 - ../rbac
 - ../manager
@@ -34,7 +36,7 @@ vars:
     version: v1
     name: serving-cert # this name should match the one in certificate.yaml
   fieldref:
-    fieldpath: metadata.namespace
+    fieldPath: metadata.namespace
 - name: CERTIFICATE_NAME
   objref:
     kind: Certificate
@@ -47,7 +49,7 @@ vars:
     version: v1
     name: webhook-service
   fieldref:
-    fieldpath: metadata.namespace
+    fieldPath: metadata.namespace
 - name: SERVICE_NAME
   objref:
     kind: Service
