@@ -97,7 +97,7 @@ func readStatefulSet(raw []byte) (*appsv1.StatefulSet, error) {
 		return nil, err
 	}
 
-	sts.TypeMeta.APIVersion = appsv1.SchemeGroupVersion.Group + "/" + appsv1.SchemeGroupVersion.Version
+	sts.APIVersion = appsv1.SchemeGroupVersion.Group + "/" + appsv1.SchemeGroupVersion.Version
 
 	return &sts, nil
 }

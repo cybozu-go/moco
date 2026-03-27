@@ -89,7 +89,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	rm.log.Info("waiting for a pod to become ready", "name", podName)
 	var pod *corev1.Pod
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -114,7 +114,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	// ping the database until it becomes ready
 	rm.log.Info("waiting for the mysqld to become ready", "name", podName)
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -243,11 +243,11 @@ func (rm *RestoreManager) loadDump(ctx context.Context, op bkop.Operator, key st
 	if err != nil {
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	dumpDir := filepath.Join(rm.workDir, "dump")
 	defer func() {
-		os.RemoveAll(dumpDir)
+		_ = os.RemoveAll(dumpDir)
 	}()
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-C", rm.workDir, "-x", "-f", "-")
@@ -266,11 +266,11 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	if err != nil {
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	binlogDir := filepath.Join(rm.workDir, "binlog")
 	defer func() {
-		os.RemoveAll(binlogDir)
+		_ = os.RemoveAll(binlogDir)
 	}()
 
 	pr, pw, err := os.Pipe()
@@ -279,10 +279,10 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	}
 	defer func() {
 		if pr != nil {
-			pr.Close()
+			_ = pr.Close()
 		}
 		if pw != nil {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 
@@ -297,7 +297,7 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	if err := zstdCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start zstd: %w", err)
 	}
-	pw.Close()
+	_ = pw.Close()
 	pw = nil
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-C", rm.workDir, "-x", "-f", "-")
@@ -318,7 +318,7 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 		return fmt.Errorf("failed to create %s: %w", tmpDir, err)
 	}
 	defer func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}()
 
 	return op.LoadBinlog(ctx, binlogDir, tmpDir, rm.restorePoint, rm.schema)

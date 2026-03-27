@@ -86,7 +86,7 @@ var _ = Describe("S3Bucket", func() {
 
 		Expect(data).To(Equal([]byte("01234567890123456789")))
 
-		for i := 0; i < 1100; i++ {
+		for i := range 1100 {
 			err = b.Put(ctx, fmt.Sprintf("foo/baz%d", i), strings.NewReader("01234567890123456789"), 128<<20)
 			Expect(err).NotTo(HaveOccurred())
 		}

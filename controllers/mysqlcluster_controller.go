@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -87,12 +88,8 @@ func labelSetForJob(cluster *mocov1beta2.MySQLCluster) map[string]string {
 
 func mergeMap(m1, m2 map[string]string) map[string]string {
 	m := make(map[string]string)
-	for k, v := range m1 {
-		m[k] = v
-	}
-	for k, v := range m2 {
-		m[k] = v
-	}
+	maps.Copy(m, m1)
+	maps.Copy(m, m2)
 	if len(m) == 0 {
 		return nil
 	}
@@ -251,58 +248,58 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 		}
 	}()
 
-	if err = r.reconcileV1Secret(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1Secret(ctx, cluster); err != nil {
 		log.Error(err, "failed to reconcile secret")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1Certificate(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1Certificate(ctx, cluster); err != nil {
 		log.Error(err, "failed to reconcile certificate")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1GRPCSecret(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1GRPCSecret(ctx, cluster); err != nil {
 		log.Error(err, "failed to reconcile gRPC secret")
 		return ctrl.Result{}, err
 	}
 
-	mycnf, err := r.reconcileV1MyCnf(ctx, req, cluster)
+	mycnf, err := r.reconcileV1MyCnf(ctx, cluster)
 	if err != nil {
 		log.Error(err, "failed to reconcile my.conf config map")
 		return ctrl.Result{}, err
 	}
-	slowlogConf, err := r.reconcileV1FluentBitConfigMap(ctx, req, cluster)
+	slowlogConf, err := r.reconcileV1FluentBitConfigMap(ctx, cluster)
 	if err != nil {
 		log.Error(err, "failed to reconcile config maps for fluent-bit")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1ServiceAccount(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1ServiceAccount(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1Service(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1Service(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcilePVC(ctx, req, cluster); err != nil {
+	if err = r.reconcilePVC(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1StatefulSet(ctx, req, cluster, mycnf, slowlogConf); err != nil {
+	if err = r.reconcileV1StatefulSet(ctx, cluster, mycnf, slowlogConf); err != nil {
 		log.Error(err, "failed to reconcile stateful set")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1PDB(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1PDB(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1BackupJob(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1BackupJob(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileV1RestoreJob(ctx, req, cluster); err != nil {
+	if err = r.reconcileV1RestoreJob(ctx, cluster); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -318,7 +315,7 @@ func (r *MySQLClusterReconciler) reconcileV1(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.ControllerSecretName()
@@ -334,7 +331,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		secret.Namespace = r.SystemNamespace
 		secret.Name = name
 		secret.Labels = labelSet(cluster, true)
-		if err := r.Client.Create(ctx, secret); err != nil {
+		if err := r.Create(ctx, secret); err != nil {
 			return err
 		}
 
@@ -343,18 +340,18 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, req ctrl
 		return err
 	}
 
-	if err := r.reconcileUserSecret(ctx, req, cluster, secret); err != nil {
+	if err := r.reconcileUserSecret(ctx, cluster, secret); err != nil {
 		return err
 	}
 
-	if err := r.reconcileMyCnfSecret(ctx, req, cluster, secret); err != nil {
+	if err := r.reconcileMyCnfSecret(ctx, cluster, secret); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
 	log := crlog.FromContext(ctx)
 
 	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
@@ -390,7 +387,7 @@ func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, req ct
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
 	log := crlog.FromContext(ctx)
 
 	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
@@ -422,7 +419,7 @@ func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, req c
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
+func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
 	log := crlog.FromContext(ctx)
 
 	var mysqldContainer *corev1ac.ContainerApplyConfiguration
@@ -501,7 +498,7 @@ func (r *MySQLClusterReconciler) reconcileV1MyCnf(ctx context.Context, req ctrl.
 	return cm, nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
+func (r *MySQLClusterReconciler) reconcileV1FluentBitConfigMap(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (*corev1ac.ConfigMapApplyConfiguration, error) {
 	log := crlog.FromContext(ctx)
 
 	defaultConfigTmpl := `[SERVICE]
@@ -595,7 +592,7 @@ func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, clust
 
 	// Sort ConfigMaps by creation timestamp in descending order
 	sort.Slice(cms.Items, func(i, j int) bool {
-		return cms.Items[i].CreationTimestamp.Time.After(cms.Items[j].CreationTimestamp.Time)
+		return cms.Items[i].CreationTimestamp.After(cms.Items[j].CreationTimestamp.Time)
 	})
 
 	oldConfigCount := 0
@@ -615,7 +612,7 @@ func (r *MySQLClusterReconciler) cleanupOldConfigMaps(ctx context.Context, clust
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.PrefixedName()
@@ -639,7 +636,7 @@ func (r *MySQLClusterReconciler) reconcileV1ServiceAccount(ctx context.Context, 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Service(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1Service(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	if err := r.reconcileV1Service1(ctx, cluster, nil, cluster.HeadlessServiceName(), true, labelSet(cluster, false)); err != nil {
 		return err
 	}
@@ -763,7 +760,8 @@ func (r *MySQLClusterReconciler) reconcileV1Service1(ctx context.Context, cluste
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration, slowlogConf *corev1ac.ConfigMapApplyConfiguration) error {
+//nolint:gocyclo
+func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, cluster *mocov1beta2.MySQLCluster, mycnf *corev1ac.ConfigMapApplyConfiguration, slowlogConf *corev1ac.ConfigMapApplyConfiguration) error {
 	log := crlog.FromContext(ctx)
 
 	var orig appsv1.StatefulSet
@@ -1029,7 +1027,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, req
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1PDB(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	pdb := &policyv1.PodDisruptionBudget{}
@@ -1122,7 +1120,8 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	return append(args, bc.BucketName)
 }
 
-func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+//nolint:gocyclo
+func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	if cluster.Spec.BackupPolicyName == nil {
@@ -1213,7 +1212,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 			for _, e := range jc.Env {
-				e := e
 				envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
 			}
 			return envFrom
@@ -1221,7 +1219,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
 			for _, e := range jc.EnvFrom {
-				e := e
 				envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
 			}
 			return envFrom
@@ -1233,7 +1230,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 		WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
 			volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
 			for _, v := range jc.VolumeMounts {
-				v := v
 				volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
 			}
 			return volumeMounts
@@ -1265,7 +1261,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 							WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
 								volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
 								for _, v := range jc.Volumes {
-									v := v
 									volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
 								}
 								return volumes
@@ -1353,18 +1348,18 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, req c
 
 	log.Info("reconciled CronJob for backup", "cronJobName", cronJobName)
 
-	if err := r.reconcileV1BackupJobRole(ctx, req, cluster); err != nil {
+	if err := r.reconcileV1BackupJobRole(ctx, cluster); err != nil {
 		return err
 	}
 
-	if err := r.reconcileV1BackupJobRoleBinding(ctx, req, cluster, bp); err != nil {
+	if err := r.reconcileV1BackupJobRoleBinding(ctx, cluster, bp); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.BackupRoleName()
@@ -1416,7 +1411,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRole(ctx context.Context, r
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster, bp *mocov1beta2.BackupPolicy) error {
+func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Context, cluster *mocov1beta2.MySQLCluster, bp *mocov1beta2.BackupPolicy) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.BackupRoleName()
@@ -1461,7 +1456,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJobRoleBinding(ctx context.Con
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	// `spec.restore` is not editable, so we can safely return early if it is nil.
 	if cluster.Spec.Restore == nil {
 		return nil
@@ -1530,7 +1525,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 				for _, e := range jc.Env {
-					e := e
 					envFrom = append(envFrom, (*corev1ac.EnvVarApplyConfiguration)(&e))
 				}
 				return envFrom
@@ -1538,7 +1532,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithEnvFrom(func() []*corev1ac.EnvFromSourceApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvFromSourceApplyConfiguration, 0, len(jc.EnvFrom))
 				for _, e := range jc.EnvFrom {
-					e := e
 					envFrom = append(envFrom, (*corev1ac.EnvFromSourceApplyConfiguration)(&e))
 				}
 				return envFrom
@@ -1549,7 +1542,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 			WithVolumeMounts(func() []*corev1ac.VolumeMountApplyConfiguration {
 				volumeMounts := make([]*corev1ac.VolumeMountApplyConfiguration, 0, len(jc.VolumeMounts))
 				for _, v := range jc.VolumeMounts {
-					v := v
 					volumeMounts = append(volumeMounts, (*corev1ac.VolumeMountApplyConfiguration)(&v))
 				}
 				return volumeMounts
@@ -1574,7 +1566,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 						WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
 							volumes := make([]*corev1ac.VolumeApplyConfiguration, 0, len(jc.Volumes))
 							for _, v := range jc.Volumes {
-								v := v
 								volumes = append(volumes, (*corev1ac.VolumeApplyConfiguration)(&v))
 							}
 							return volumes
@@ -1616,18 +1607,18 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, req 
 		log.Info("reconciled Job for restore", "jobName", jobName)
 	}
 
-	if err := r.reconcileV1RestoreJobRole(ctx, req, cluster); err != nil {
+	if err := r.reconcileV1RestoreJobRole(ctx, cluster); err != nil {
 		return err
 	}
 
-	if err := r.reconcileV1RestoreJobRoleBinding(ctx, req, cluster); err != nil {
+	if err := r.reconcileV1RestoreJobRoleBinding(ctx, cluster); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.RestoreRoleName()
@@ -1679,7 +1670,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1RestoreJobRoleBinding(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	name := cluster.RestoreRoleName()

@@ -80,10 +80,10 @@ func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, rest
 	}
 	defer func() {
 		if pr != nil {
-			pr.Close()
+			_ = pr.Close()
 		}
 		if pw != nil {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 
@@ -121,7 +121,7 @@ func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, rest
 	if err := binlogCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start mysqlbinlog: %w", err)
 	}
-	pw.Close()
+	_ = pw.Close()
 	pw = nil
 	if err := mysqlCmd.Run(); err != nil {
 		return fmt.Errorf("failed to apply binlog: %w", err)

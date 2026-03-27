@@ -54,10 +54,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithProtocol(corev1.ProtocolTCP),
 	)
 
-	failureThreshold := cluster.Spec.StartupWaitSeconds / 10
-	if failureThreshold < 1 {
-		failureThreshold = 1
-	}
+	failureThreshold := max(cluster.Spec.StartupWaitSeconds/10, 1)
 
 	if source.StartupProbe == nil {
 		source.WithStartupProbe(corev1ac.Probe())
@@ -282,7 +279,6 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, c := range spec.Containers {
-		c := c
 
 		if c.Name == nil {
 			continue
@@ -454,7 +450,7 @@ func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, c
 	}
 
 	for _, overwrite := range cluster.Spec.PodTemplate.OverwriteContainers {
-		overwrite := overwrite
+
 		if container.Name != nil && *container.Name == overwrite.Name.String() {
 			if overwrite.Resources != nil {
 				container.WithResources((*corev1ac.ResourceRequirementsApplyConfiguration)(overwrite.Resources))

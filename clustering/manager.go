@@ -90,11 +90,9 @@ func (m *clusterManager) update(name types.NamespacedName, noStart bool, origin 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	p = newManagerProcess(m.client, m.reader, m.recorder, m.dbf, m.agentf, name, cancel)
-	m.wg.Add(1)
-	go func() {
+	m.wg.Go(func() {
 		p.Start(ctx, m.log.WithName(key), m.interval)
-		m.wg.Done()
-	}()
+	})
 	m.processes[key] = p
 	p.Update(origin)
 }

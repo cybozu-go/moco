@@ -82,5 +82,5 @@ func (o operator) Ping() error {
 }
 
 func (o operator) Close() {
-	o.db.Close()
+	_ = o.db.Close()
 }

@@ -202,7 +202,7 @@ func (r *StatefulSetPartitionReconciler) getSortedPodList(ctx context.Context, s
 		client.MatchingLabels(sts.Spec.Selector.MatchLabels),
 	}
 
-	err := r.Client.List(ctx, podList, listOpts...)
+	err := r.List(ctx, podList, listOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func (r *StatefulSetPartitionReconciler) patchNewPartition(ctx context.Context, 
 	patch := client.MergeFrom(sts.DeepCopy())
 	sts.Spec.UpdateStrategy.RollingUpdate.Partition = &newPartition
 
-	if err := r.Client.Patch(ctx, sts, patch); err != nil {
+	if err := r.Patch(ctx, sts, patch); err != nil {
 		return fmt.Errorf("failed to patch new partition to StatefulSet %s/%s: %w", sts.Namespace, sts.Name, err)
 	}
 

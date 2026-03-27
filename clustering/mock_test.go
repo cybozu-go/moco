@@ -181,10 +181,10 @@ func (o *mockOperator) SubtractGTID(ctx context.Context, set1, set2 string) (str
 	}
 
 	map1 := map[string]struct{}{}
-	for _, s := range strings.Split(set1, ",") {
+	for s := range strings.SplitSeq(set1, ",") {
 		map1[s] = struct{}{}
 	}
-	for _, s := range strings.Split(set2, ",") {
+	for s := range strings.SplitSeq(set2, ",") {
 		delete(map1, s)
 	}
 
@@ -209,10 +209,10 @@ func (o *mockOperator) IsSubsetGTID(ctx context.Context, set1, set2 string) (boo
 	}
 
 	map1 := map[string]struct{}{}
-	for _, s := range strings.Split(set1, ",") {
+	for s := range strings.SplitSeq(set1, ",") {
 		map1[s] = struct{}{}
 	}
-	for _, s := range strings.Split(set2, ",") {
+	for s := range strings.SplitSeq(set2, ",") {
 		delete(map1, s)
 	}
 	return len(map1) == 0, nil

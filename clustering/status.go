@@ -102,7 +102,7 @@ type StatusSet struct {
 func (ss *StatusSet) Close() {
 	for _, op := range ss.DBOps {
 		if op != nil {
-			op.Close()
+			_ = op.Close()
 		}
 	}
 }
@@ -138,6 +138,8 @@ func (ss *StatusSet) DecideState() {
 
 // GatherStatus collects information and Kubernetes resources and construct
 // StatusSet.  It calls `StatusSet.DecideState` before returning.
+//
+//nolint:gocyclo
 func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	ss := &StatusSet{}
 	log := logFromContext(ctx)
@@ -333,7 +335,7 @@ func containErrantTransactions(primaryUUID, gtidSet string) bool {
 	//   (n >= 1)
 	// ref: https: //dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html
 
-	for _, uuidSet := range strings.Split(gtidSet, ",") {
+	for uuidSet := range strings.SplitSeq(gtidSet, ",") {
 		split := strings.SplitN(uuidSet, ":", 2)
 		if split[0] != primaryUUID {
 			return true
