@@ -1,7 +1,7 @@
 ---
 name: Clustering Consistency Invariants
 description: Critical consistency and safety rules for MOCO clustering logic. These rules must be followed to prevent data loss and split-brain when modifying the clustering engine.
-applyTo: clustering/*
+applyTo: clustering/**
 ---
 
 # Cluster consistency rules for `MySQLCluster`
@@ -71,7 +71,7 @@ Why this matters: Pod readiness alone is not enough for safe replication.
 
 - `Failed`: more than half of non-primary replicas are reachable, non-errant, have replication status, and have GTID data.
 - `Lost`: this majority condition is not met.
-- In normal mode, this is used together with loss-less semi-sync settings:
+- In normal mode, this is used together with lossless semi-sync settings:
   - primary: `rpl_semi_sync_master_enabled=ON`, `rpl_semi_sync_master_wait_for_slave_count=floor(spec.replicas/2)`
   - replicas: `rpl_semi_sync_slave_enabled=ON`
 
