@@ -446,8 +446,7 @@ var _ = Describe("partition_controller helpers", func() {
 	}
 
 	DescribeTable("areAllChildPodsRolloutReady",
-		func(partition int32, pods []corev1.Pod, expect bool) {
-			ctx := context.Background()
+		func(ctx SpecContext, partition int32, pods []corev1.Pod, expect bool) {
 			r := &StatefulSetPartitionReconciler{}
 			sts := &appsv1.StatefulSet{}
 			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To(partition)}
@@ -577,8 +576,7 @@ var _ = Describe("partition_controller helpers", func() {
 		),
 	)
 
-	It("patchNewPartition should be no-op when partition is 0", func() {
-		ctx := context.Background()
+	It("patchNewPartition should be no-op when partition is 0", func(ctx SpecContext) {
 		sts := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
 			Spec: appsv1.StatefulSetSpec{
@@ -601,8 +599,7 @@ var _ = Describe("partition_controller helpers", func() {
 		Expect(fakeRecorder.Events).NotTo(Receive())
 	})
 
-	It("patchNewPartition should decrement partition and persist", func() {
-		ctx := context.Background()
+	It("patchNewPartition should decrement partition and persist", func(ctx SpecContext) {
 		partition := ptr.To[int32](2)
 		sts := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
