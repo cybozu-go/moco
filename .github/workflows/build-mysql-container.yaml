@@ -14,9 +14,13 @@ on:
       - ".github/workflows/build-mysql-container.yaml"
       - "!**.md"
 
+permissions: {}
+
 jobs:
   filter:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
     steps:
@@ -42,6 +46,8 @@ jobs:
     if: ${{ (github.event_name == 'pull_request') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
@@ -118,6 +124,9 @@ jobs:
     if: ${{ (github.ref == 'refs/heads/main') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
