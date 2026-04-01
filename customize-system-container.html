@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c506d4f4.js";
+            window.path_to_searchindex_js = "searchindex-4c3ede7a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2f0ab44.js"></script>
@@ -217,6 +217,7 @@ Specifying container names in <code>overwriteContainers</code> that are not list
 </thead>
 <tbody>
 <tr><td>agent</td><td><code>100m</code> / <code>100m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MOCO’s agent container running in sidecar. refs: https://github.com/cybozu-go/moco-agent</td></tr>
+<tr><td>copy-moco-init</td><td><code>100m</code> / <code>100m</code></td><td><code>512Mi</code> / <code>512Mi</code></td><td>Copies /moco-init from the agent image into a volume shared with moco-init.</td></tr>
 <tr><td>moco-init</td><td><code>100m</code> / <code>100m</code></td><td><code>512Mi</code> / <code>512Mi</code></td><td>Initializes MySQL data directory and create a configuration snippet to give instance specific configuration values such as server_id and admin_address.</td></tr>
 <tr><td>slow-log</td><td><code>100m</code> / <code>100m</code></td><td><code>20Mi</code> / <code>20Mi</code></td><td>Sidecar container for outputting slow query logs.</td></tr>
 <tr><td>mysqld-exporter</td><td><code>200m</code> / <code>200m</code></td><td><code>100Mi</code> / <code>100Mi</code></td><td>MySQL server exporter sidecar container.</td></tr>
