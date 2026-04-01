@@ -166,3 +166,10 @@ setup:
 	curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_$(MYSQLSH_VERSION)ubuntu$(OS_VERSION)_amd64.deb
 	$(SUDO) dpkg -i /tmp/mysqlsh.deb
 	rm -f /tmp/mysqlsh.deb
+
+.PHONY: lint-ci
+lint-ci:
+	zizmor --offline .github
+	ghalint run
+	ghalint act
+	actionlint
