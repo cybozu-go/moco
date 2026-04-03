@@ -11,6 +11,7 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/metrics"
+	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/go-logr/stdr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,7 +26,9 @@ import (
 )
 
 func testSetupResources(ctx context.Context, replicas int32, sourceSecret string) {
-	err := k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
+	err := k8sClient.DeleteAllOf(ctx, &mocov1beta2.CredentialRotation{}, client.InNamespace("test"))
+	Expect(err).NotTo(HaveOccurred())
+	err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
 	err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
@@ -171,7 +174,7 @@ var _ = Describe("manager", func() {
 	It("should setup one-instance cluster and clean up metrics when the cluster is deleted", func() {
 		testSetupResources(ctx, 1, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
@@ -273,7 +276,7 @@ var _ = Describe("manager", func() {
 	It("should manage an intermediate primary, switchover, and scaling out the cluster", func() {
 		testSetupResources(ctx, 1, "source")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
@@ -605,7 +608,7 @@ var _ = Describe("manager", func() {
 	It("should handle failover", func() {
 		testSetupResources(ctx, 3, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
@@ -768,7 +771,7 @@ var _ = Describe("manager", func() {
 	It("should handle errant replicas and lost", func() {
 		testSetupResources(ctx, 5, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
@@ -993,7 +996,7 @@ var _ = Describe("manager", func() {
 	It("should export backup related metrics", func() {
 		testSetupResources(ctx, 1, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		var cluster *mocov1beta2.MySQLCluster
@@ -1027,7 +1030,7 @@ var _ = Describe("manager", func() {
 	It("should detect replication delay and prevent deletion of primary", func() {
 		testSetupResources(ctx, 3, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
 		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
@@ -1090,5 +1093,211 @@ var _ = Describe("manager", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(pod.Annotations).NotTo(HaveKey(constants.AnnPreventDelete))
 		}).Should(Succeed())
+	})
+
+	It("should transition Rotating to Retained via ALTER USER RETAIN", func() {
+		testSetupResources(ctx, 3, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		// Wait for cluster to become healthy.
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// Create the controller Secret with pending passwords in the system namespace ("test").
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "test-rotation-1"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Create a CredentialRotation CR in Rotating phase.
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for the phase to transition to Retained.
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseRetained))
+		}).Should(Succeed())
+
+		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
+		for i := range 3 {
+			users := of.getRotatedUsers(cluster.PodHostname(i))
+			Expect(users).To(HaveLen(len(constants.MocoUsers)),
+				"instance %d should have rotated all users", i)
+		}
+
+		// Verify RETAIN_STARTED marker was set in the source secret.
+		secret := &corev1.Secret{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.ControllerSecretName()}, secret)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(secret.Data[password.RetainStartedKey])).To(Equal(rotationID))
+	})
+
+	It("should transition Discarding to Discarded via DISCARD OLD PASSWORD", func() {
+		testSetupResources(ctx, 3, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		// Wait for cluster to become healthy.
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// Create the controller Secret with pending passwords.
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "test-rotation-2"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Set user auth plugin to something different to trigger migration.
+		of.setUserAuthPlugin("mysql_native_password")
+
+		// Create a CredentialRotation CR in Discarding phase.
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+				DiscardOldPassword: true,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		cr.Status.Phase = mocov1beta2.RotationPhaseDiscarding
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for the phase to transition to Discarded.
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseDiscarded))
+		}).Should(Succeed())
+
+		// Verify DISCARD OLD PASSWORD was called on all 3 instances for all users.
+		for i := range 3 {
+			users := of.getDiscardedUsers(cluster.PodHostname(i))
+			Expect(users).To(HaveLen(len(constants.MocoUsers)),
+				"instance %d should have discarded all users", i)
+		}
+
+		// Verify auth plugin migration was called (users had mysql_native_password, target is caching_sha2_password).
+		for i := range 3 {
+			users := of.getMigratedUsers(cluster.PodHostname(i))
+			Expect(users).To(HaveLen(len(constants.MocoUsers)),
+				"instance %d should have migrated all users", i)
+		}
+	})
+
+	It("should skip RETAIN for users that already have dual passwords", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		// Wait for cluster to become healthy.
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// Create the controller Secret with pending passwords and RETAIN_STARTED marker.
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "test-rotation-3"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		// Set RETAIN_STARTED to skip the pre-check.
+		controllerSecret.Data[password.RetainStartedKey] = []byte(rotationID)
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Mark the admin user as already having a dual password on instance 0.
+		of.setDualPassword(cluster.PodHostname(0), constants.AdminUser, true)
+
+		// Create a CredentialRotation CR in Rotating phase.
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for the phase to transition to Retained.
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseRetained))
+		}).Should(Succeed())
+
+		// Admin user should have been skipped (has dual password), others should have been rotated.
+		users := of.getRotatedUsers(cluster.PodHostname(0))
+		Expect(users).To(HaveLen(len(constants.MocoUsers) - 1))
+		Expect(users).NotTo(ContainElement(constants.AdminUser))
 	})
 })
