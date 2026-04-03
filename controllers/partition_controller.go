@@ -207,6 +207,10 @@ func (r *StatefulSetPartitionReconciler) getSortedPodList(ctx context.Context, s
 		return nil, err
 	}
 
+	// NOTE: This sorts lexicographically by pod name, which works correctly
+	// as long as the number of replicas is less than 10. For 10+ replicas,
+	// the sort order would be incorrect (e.g. "-10" < "-2").
+	// If 10+ replicas are needed, this should be changed to sort by numeric ordinal.
 	sort.Slice(podList.Items, func(i, j int) bool {
 		return podList.Items[i].Name < podList.Items[j].Name
 	})
@@ -226,6 +230,12 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 		if i == nextRolloutTarget {
 			continue
 		}
+		if i >= int(ptr.Deref(sts.Spec.UpdateStrategy.RollingUpdate.Partition, 0)) {
+			if pod.Labels[appsv1.ControllerRevisionHashLabelKey] != sts.Status.UpdateRevision {
+				log.Info("Pod is not yet updated", "pod", pod.Name, "expected", sts.Status.UpdateRevision, "actual", pod.Labels[appsv1.ControllerRevisionHashLabelKey])
+				return false
+			}
+		}
 		if pod.DeletionTimestamp != nil {
 			log.Info("Pod is in the process of being terminated", "pod", pod.Name)
 			return false
@@ -235,14 +245,14 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 			return false
 		}
 		for _, c := range pod.Status.InitContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}
 		for _, c := range pod.Status.ContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}

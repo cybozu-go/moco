@@ -18,14 +18,43 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
+
+func newTestPod(name, namespace, revision string, ready bool) corev1.Pod {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				appsv1.ControllerRevisionHashLabelKey: revision,
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+
+	if ready {
+		pod.Status.Conditions = []corev1.PodCondition{
+			{
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionTrue,
+				LastTransitionTime: metav1.Time{
+					Time: time.Now().Add(-1 * time.Minute),
+				},
+			},
+		}
+	}
+
+	return pod
+}
 
 func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
@@ -381,4 +410,216 @@ var _ = Describe("StatefulSetPartitionReconciler predicates", func() {
 			},
 		}}, false),
 	)
+})
+
+var _ = Describe("partition_controller helpers", func() {
+	const (
+		ns   = "partition"
+		rev1 = "rev1"
+		rev2 = "rev2"
+	)
+
+	type podOpt func(*corev1.Pod)
+	withContainersReady := func(ready bool) podOpt {
+		return func(pod *corev1.Pod) {
+			pod.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: "test", Ready: ready}}
+		}
+	}
+	withInitContainersReady := func(ready bool) podOpt {
+		return func(pod *corev1.Pod) {
+			pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{Name: "init", Ready: ready}}
+		}
+	}
+	withDeletionTimestamp := func() podOpt {
+		return func(pod *corev1.Pod) {
+			now := metav1.Now()
+			pod.DeletionTimestamp = &now
+			pod.Finalizers = []string{"test"}
+		}
+	}
+	pod := func(name, revision string, ready bool, opts ...podOpt) corev1.Pod {
+		p := newTestPod(name, ns, revision, ready)
+		for _, opt := range opts {
+			opt(&p)
+		}
+		return p
+	}
+
+	DescribeTable("areAllChildPodsRolloutReady",
+		func(ctx SpecContext, partition int32, pods []corev1.Pod, expect bool) {
+			r := &StatefulSetPartitionReconciler{}
+			sts := &appsv1.StatefulSet{}
+			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To(partition)}
+			sts.Status.UpdateRevision = rev2
+			Expect(r.areAllChildPodsRolloutReady(ctx, sts, &corev1.PodList{Items: pods})).To(Equal(expect))
+		},
+		Entry("should ignore revision mismatch below partition",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, true),  // below partition
+				pod("moco-test-1", rev1, false), // rollout target (index 1)
+				pod("moco-test-2", rev2, true),  // at/above partition
+			},
+			true,
+		),
+		Entry("should require pods above target when partition is 1",
+			int32(1),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, false), // rollout target (index 0)
+				pod("moco-test-1", rev1, true),  // must be updated but isn't
+				pod("moco-test-2", rev2, true),
+			},
+			false,
+		),
+		Entry("should allow non-ready rollout target",
+			int32(1),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, false), // rollout target (index 0)
+				pod("moco-test-1", rev2, true),
+				pod("moco-test-2", rev2, true),
+			},
+			true,
+		),
+		Entry("should require containers ready for non-target pods",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, true, withContainersReady(false)),
+				pod("moco-test-1", rev1, true), // rollout target (index 1)
+				pod("moco-test-2", rev2, true, withContainersReady(true)),
+			},
+			false,
+		),
+		Entry("should ignore container readiness for rollout target pod",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, true, withContainersReady(true)),
+				pod("moco-test-1", rev1, true, withContainersReady(false)), // rollout target (index 1)
+				pod("moco-test-2", rev2, true, withContainersReady(true)),
+			},
+			true,
+		),
+		Entry("should return false when pod is being terminated",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, true, withDeletionTimestamp()),
+				pod("moco-test-1", rev1, true), // rollout target (index 1)
+				pod("moco-test-2", rev2, true),
+			},
+			false,
+		),
+		Entry("should require init containers ready for non-target pods",
+			int32(1),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, false, withInitContainersReady(true)), // rollout target (index 0)
+				pod("moco-test-1", rev2, true, withInitContainersReady(false)),
+				pod("moco-test-2", rev2, true, withInitContainersReady(true)),
+			},
+			false,
+		),
+		Entry("should require non-target pod to be available",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, false), // below partition, not ready
+				pod("moco-test-1", rev1, true),  // rollout target (index 1)
+				pod("moco-test-2", rev2, true),  // at/above partition
+			},
+			false,
+		),
+		Entry("should return true for empty pod list",
+			int32(2),
+			[]corev1.Pod{},
+			true,
+		),
+		Entry("should allow rollout target to be terminating",
+			int32(2),
+			[]corev1.Pod{
+				pod("moco-test-0", rev1, true),                          // below partition
+				pod("moco-test-1", rev1, true, withDeletionTimestamp()), // rollout target (index 1)
+				pod("moco-test-2", rev2, true),                          // at/above partition
+			},
+			true,
+		),
+	)
+
+	DescribeTable("needPartitionUpdate",
+		func(ann map[string]string, ru *appsv1.RollingUpdateStatefulSetStrategy, expect bool) {
+			sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Annotations: ann}}
+			sts.Spec.UpdateStrategy.RollingUpdate = ru
+			r := &StatefulSetPartitionReconciler{}
+			Expect(r.needPartitionUpdate(sts)).To(Equal(expect))
+		},
+		Entry("force rolling update true",
+			map[string]string{constants.AnnForceRollingUpdate: "true"},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](1)},
+			false,
+		),
+		Entry("force rolling update false",
+			map[string]string{constants.AnnForceRollingUpdate: "false"},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](1)},
+			true,
+		),
+		Entry("rollingUpdate nil", nil, nil, false),
+		Entry("partition nil",
+			nil,
+			&appsv1.RollingUpdateStatefulSetStrategy{},
+			false,
+		),
+		Entry("partition 0",
+			nil,
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](0)},
+			false,
+		),
+		Entry("partition > 0",
+			nil,
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](2)},
+			true,
+		),
+	)
+
+	It("patchNewPartition should be no-op when partition is 0", func(ctx SpecContext) {
+		sts := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
+			Spec: appsv1.StatefulSetSpec{
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](0)},
+				},
+			},
+		}
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(sts).Build()
+		fakeRecorder := record.NewFakeRecorder(10)
+		r := &StatefulSetPartitionReconciler{Client: c, Recorder: fakeRecorder}
+
+		current := &appsv1.StatefulSet{}
+		Expect(c.Get(ctx, client.ObjectKeyFromObject(sts), current)).To(Succeed())
+		Expect(r.patchNewPartition(ctx, current)).To(Succeed())
+
+		updated := &appsv1.StatefulSet{}
+		Expect(c.Get(ctx, client.ObjectKeyFromObject(sts), updated)).To(Succeed())
+		Expect(ptr.Deref(updated.Spec.UpdateStrategy.RollingUpdate.Partition, -1)).To(Equal(int32(0)))
+		Expect(fakeRecorder.Events).NotTo(Receive())
+	})
+
+	It("patchNewPartition should decrement partition and persist", func(ctx SpecContext) {
+		partition := ptr.To[int32](2)
+		sts := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
+			Spec: appsv1.StatefulSetSpec{
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: partition},
+				},
+			},
+		}
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(sts).Build()
+		fakeRecorder := record.NewFakeRecorder(10)
+		r := &StatefulSetPartitionReconciler{Client: c, Recorder: fakeRecorder}
+
+		current := &appsv1.StatefulSet{}
+		Expect(c.Get(ctx, client.ObjectKeyFromObject(sts), current)).To(Succeed())
+		Expect(r.patchNewPartition(ctx, current)).To(Succeed())
+
+		updated := &appsv1.StatefulSet{}
+		Expect(c.Get(ctx, client.ObjectKeyFromObject(sts), updated)).To(Succeed())
+		Expect(ptr.Deref(updated.Spec.UpdateStrategy.RollingUpdate.Partition, -1)).To(Equal(int32(1)))
+		Expect(fakeRecorder.Events).To(Receive(ContainSubstring("Updated partition from 2 to 1")))
+	})
 })
