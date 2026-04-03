@@ -83,13 +83,13 @@ func (p *managerProcess) handleRotatingPhase(ctx context.Context, ss *StatusSet,
 	// rotateInstanceUsers provides idempotency).
 	retainStarted := string(sourceSecret.Data[password.RetainStartedKey]) == cr.Status.RotationID
 	if !retainStarted {
-		for idx := 0; idx < replicas; idx++ {
+		for idx := range replicas {
 			op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
 			if err != nil {
 				return false, err
 			}
 			dualFound, dualUser, checkErr := checkInstanceDualPasswords(ctx, op, idx)
-			op.Close()
+			_ = op.Close()
 			if checkErr != nil {
 				return false, checkErr
 			}
@@ -118,7 +118,7 @@ func (p *managerProcess) handleRotatingPhase(ctx context.Context, ss *StatusSet,
 	}
 	primaryIndex := cluster.Status.CurrentPrimaryIndex
 
-	for idx := 0; idx < replicas; idx++ {
+	for idx := range replicas {
 		isReplica := idx != primaryIndex
 		op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
 		if err != nil {
@@ -126,10 +126,10 @@ func (p *managerProcess) handleRotatingPhase(ctx context.Context, ss *StatusSet,
 		}
 
 		if err := rotateInstanceUsers(ctx, op, pendingMap, idx, isReplica); err != nil {
-			op.Close()
+			_ = op.Close()
 			return false, err
 		}
-		op.Close()
+		_ = op.Close()
 		log.Info("completed ALTER USER RETAIN for instance", "instance", idx, "rotationID", cr.Status.RotationID)
 	}
 
@@ -206,7 +206,7 @@ func (p *managerProcess) handleDiscardingPhase(ctx context.Context, ss *StatusSe
 		if err != nil {
 			return "", err
 		}
-		defer op.Close()
+		defer func() { _ = op.Close() }()
 		return op.GetAuthPlugin(ctx)
 	}()
 	if err != nil {
@@ -215,7 +215,7 @@ func (p *managerProcess) handleDiscardingPhase(ctx context.Context, ss *StatusSe
 	log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", cr.Status.RotationID)
 
 	// Execute DISCARD OLD PASSWORD + auth plugin migration on all instances.
-	for idx := 0; idx < replicas; idx++ {
+	for idx := range replicas {
 		isReplica := idx != primaryIndex
 		op, err := p.dbf.New(ctx, cluster, pendingPasswd, idx)
 		if err != nil {
@@ -223,10 +223,10 @@ func (p *managerProcess) handleDiscardingPhase(ctx context.Context, ss *StatusSe
 		}
 
 		if err := discardInstanceUsers(ctx, op, pendingMap, idx, isReplica, authPlugin); err != nil {
-			op.Close()
+			_ = op.Close()
 			return false, err
 		}
-		op.Close()
+		_ = op.Close()
 		log.Info("applied DISCARD OLD PASSWORD and auth plugin migration for instance", "instance", idx, "rotationID", cr.Status.RotationID)
 	}
 
