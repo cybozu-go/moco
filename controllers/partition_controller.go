@@ -207,6 +207,10 @@ func (r *StatefulSetPartitionReconciler) getSortedPodList(ctx context.Context, s
 		return nil, err
 	}
 
+	// NOTE: This sorts lexicographically by pod name, which works correctly
+	// as long as the number of replicas is less than 10. For 10+ replicas,
+	// the sort order would be incorrect (e.g. "-10" < "-2").
+	// If 10+ replicas are needed, this should be changed to sort by numeric ordinal.
 	sort.Slice(podList.Items, func(i, j int) bool {
 		return podList.Items[i].Name < podList.Items[j].Name
 	})
