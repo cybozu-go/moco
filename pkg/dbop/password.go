@@ -44,11 +44,11 @@ func validateMocoUser(user string) error {
 func closeDirtyConn(ctx context.Context, conn *sql.Conn) {
 	if _, err := conn.ExecContext(ctx, "SET sql_log_bin=1"); err != nil {
 		// Mark the connection as bad so the pool discards it.
-		_ = conn.Raw(func(driverConn interface{}) error {
+		_ = conn.Raw(func(driverConn any) error {
 			return driver.ErrBadConn
 		})
 	}
-	conn.Close()
+	_ = conn.Close()
 }
 
 // GetAuthPlugin returns the default authentication plugin for the first factor
