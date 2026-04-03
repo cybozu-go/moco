@@ -150,8 +150,8 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 	}
 
 	newGen := cr.Spec.RotationGeneration + 1
-	patch, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
+	patch, err := json.Marshal(map[string]any{
+		"spec": map[string]any{
 			"rotationGeneration": newGen,
 			"discardOldPassword": false,
 		},
@@ -179,8 +179,8 @@ func credentialDiscard(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("cannot discard: phase must be Rotated, currently %q", cr.Status.Phase)
 	}
 
-	patch, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
+	patch, err := json.Marshal(map[string]any{
+		"spec": map[string]any{
 			"discardOldPassword": true,
 		},
 	})

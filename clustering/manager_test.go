@@ -1150,7 +1150,7 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			users := of.getRotatedUsers(cluster.PodHostname(i))
 			Expect(users).To(HaveLen(len(constants.MocoUsers)),
 				"instance %d should have rotated all users", i)
@@ -1222,14 +1222,14 @@ var _ = Describe("manager", func() {
 		}).Should(Succeed())
 
 		// Verify DISCARD OLD PASSWORD was called on all 3 instances for all users.
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			users := of.getDiscardedUsers(cluster.PodHostname(i))
 			Expect(users).To(HaveLen(len(constants.MocoUsers)),
 				"instance %d should have discarded all users", i)
 		}
 
 		// Verify auth plugin migration was called (users had mysql_native_password, target is caching_sha2_password).
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			users := of.getMigratedUsers(cluster.PodHostname(i))
 			Expect(users).To(HaveLen(len(constants.MocoUsers)),
 				"instance %d should have migrated all users", i)
