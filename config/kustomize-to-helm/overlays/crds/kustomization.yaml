@@ -1,14 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 resources:
-  - ../../../crd
+- ../../../crd
 
-patchesStrategicMerge:
-  - conversion-patch.yaml
+patches:
+- path: conversion-patch.yaml
 
-commonLabels:
-  app.kubernetes.io/name: moco
+labels:
+- pairs:
+    app.kubernetes.io/name: moco
+  includeSelectors: true
 
 commonAnnotations:
   helm.sh/resource-policy: keep
 
 transformers:
-  - label-transformer.yaml
+- label-transformer.yaml
