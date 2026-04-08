@@ -14,9 +14,13 @@ on:
       - ".github/workflows/build-mysql-container.yaml"
       - "!**.md"
 
+permissions: {}
+
 jobs:
   filter:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       mysql-versions: ${{ steps.filter.outputs.mysql-versions }}
     steps:
@@ -42,6 +46,8 @@ jobs:
     if: ${{ (github.event_name == 'pull_request') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
@@ -59,8 +65,10 @@ jobs:
       - name: Export TAG file
         id: tag
         working-directory: containers
+        env:
+          MYSQL_VERSION: ${{ matrix.mysql-version }}
         run: |
-          TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)
+          TAG=$(cat "./mysql/$MYSQL_VERSION/TAG")
           echo "tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -80,8 +88,10 @@ jobs:
             && chmod +x container-structure-test-linux-amd64 \
             && sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
       - name: Run Container Structure Tests
+        env:
+          MYSQL_VERSION: ${{ matrix.mysql-version }}
         run: |
-          container-structure-test test --image ghcr.io/cybozu-go/moco/mysql:${{ matrix.mysql-version }} --config ./containers/mysql/${{ matrix.mysql-version }}/container-structure-test.yaml
+          container-structure-test test --image "ghcr.io/cybozu-go/moco/mysql:$MYSQL_VERSION" --config "./containers/mysql/$MYSQL_VERSION/container-structure-test.yaml"
 
       - run: |
           swapon > swapon.txt
@@ -93,7 +103,10 @@ jobs:
         uses: ./.github/actions/setup-aqua
 
       - name: Setup test cluster with local mysql image
-        run: make start KUBERNETES_VERSION=${{ matrix.k8s-version }} MYSQL_VERSION=${{ matrix.mysql-version }} KIND_CONFIG=kind-config_actions.yaml USE_LOCAL_MYSQL_IMAGE=1
+        env:
+          KUBERNETES_VERSION: ${{ matrix.k8s-version }}
+          MYSQL_VERSION: ${{ matrix.mysql-version }}
+        run: make start KUBERNETES_VERSION="$KUBERNETES_VERSION" MYSQL_VERSION="$MYSQL_VERSION" KIND_CONFIG=kind-config_actions.yaml USE_LOCAL_MYSQL_IMAGE=1
         working-directory: e2e
 
       - run: make test
@@ -111,6 +124,9 @@ jobs:
     if: ${{ (github.ref == 'refs/heads/main') && (needs.filter.outputs.mysql-versions != '[]') }}
     needs: filter
     runs-on: ${{ vars.IMAGE_BUILD_RUNNER || 'ubuntu-22.04' }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         mysql-version: ${{ fromJson(needs.filter.outputs.mysql-versions) }}
@@ -128,8 +144,10 @@ jobs:
       - name: Export TAG file
         id: tag
         working-directory: containers
+        env:
+          MYSQL_VERSION: ${{ matrix.mysql-version }}
         run: |
-          TAG=$(cat ./mysql/${{ matrix.mysql-version }}/TAG)
+          TAG=$(cat "./mysql/$MYSQL_VERSION/TAG")
           echo "tag: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 

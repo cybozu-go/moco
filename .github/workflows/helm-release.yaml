@@ -5,9 +5,13 @@ on:
     tags:
       - 'chart-v*'
 
+permissions: {}
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -40,6 +44,8 @@ jobs:
     name: Publish charts on GitHub Pages
     runs-on: ubuntu-22.04
     needs: build
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:

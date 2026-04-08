@@ -28,10 +28,15 @@ runs:
     - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
       shell: bash
     - name: Setup test cluster
-      run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
       working-directory: e2e
+      env:
+        KUBERNETES_VERSION: ${{ inputs.k8s-version }}
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make start KUBERNETES_VERSION="$KUBERNETES_VERSION" MYSQL_VERSION="$MYSQL_VERSION" KIND_CONFIG=kind-config_actions.yaml
       shell: bash
-    - run: make test MYSQL_VERSION=${{ inputs.mysql-version }}
+    - env:
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make test MYSQL_VERSION="$MYSQL_VERSION"
       working-directory: e2e
       shell: bash
     - run: make logs

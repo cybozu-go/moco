@@ -9,7 +9,7 @@ checksum:
 #   - all
 registries:
 - type: standard
-  ref: v4.441.0 # renovate: depName=aquaproj/aqua-registry
+  ref: v4.490.0 # renovate: depName=aquaproj/aqua-registry
 packages:
 - name: kubernetes-sigs/kind@v0.30.0
 - name: kubernetes/kubectl@v1.34.2
@@ -21,3 +21,7 @@ packages:
 - name: clamoriniere/crd-to-markdown@v0.0.3
 - name: rust-lang/mdBook@v0.5.1
 - name: golangci/golangci-lint@v2.8.0
+- name: suzuki-shunsuke/ghalint@v1.5.5
+- name: rhysd/actionlint@v1.7.12
+- name: zizmorcore/zizmor@v1.23.1
+- name: koalaman/shellcheck@v0.11.0

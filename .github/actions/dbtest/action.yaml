@@ -17,7 +17,11 @@ runs:
       uses: ./.github/actions/setup-aqua
     - run: make setup
       shell: bash
-    - run: make test-bkop MYSQL_VERSION=${{ inputs.mysql-version }}
+    - env:
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make test-bkop MYSQL_VERSION="$MYSQL_VERSION"
       shell: bash
-    - run: make test-dbop MYSQL_VERSION=${{ inputs.mysql-version }}
+    - env:
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make test-dbop MYSQL_VERSION="$MYSQL_VERSION"
       shell: bash
