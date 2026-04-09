@@ -422,11 +422,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		cluster = &mocov1beta2.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.DisableSlowQueryLogContainer = true
-		err = k8sClient.Update(ctx, cluster)
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cluster.Spec.DisableSlowQueryLogContainer = true
+			return k8sClient.Update(ctx, cluster)
+		})
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() (int, error) {
@@ -442,12 +445,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 Path: {{ .Path }}
 dummyKey: dummyValue
 `
-		cluster = &mocov1beta2.MySQLCluster{}
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
-		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.DisableSlowQueryLogContainer = false
-		cluster.Spec.SlowQueryLogConfigTmpl = &customConfig
-		err = k8sClient.Update(ctx, cluster)
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cluster.Spec.DisableSlowQueryLogContainer = false
+			cluster.Spec.SlowQueryLogConfigTmpl = &customConfig
+			return k8sClient.Update(ctx, cluster)
+		})
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() (bool, error) {
