@@ -1549,6 +1549,38 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
+		By("enabling no-checksum-validation in backup policy")
+		bp = &mocov1beta2.BackupPolicy{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, bp)
+		Expect(err).NotTo(HaveOccurred())
+		bp.Spec.JobConfig.BucketConfig.NoChecksumValidation = true
+		err = k8sClient.Update(ctx, bp)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			cj = &batchv1.CronJob{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj); err != nil {
+				return err
+			}
+			for _, arg := range cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args {
+				if arg == "--no-checksum-validation" {
+					return nil
+				}
+			}
+			return errors.New("--no-checksum-validation flag not found in CronJob args")
+		}).Should(Succeed())
+
+		c = &cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
+		Expect(c.Args).To(Equal([]string{
+			"backup",
+			"--threads=1",
+			"--backend-type=s3",
+			"--no-checksum-validation",
+			"mybucket2",
+			"test",
+			"test",
+		}))
+
 		By("disabling backup")
 		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
