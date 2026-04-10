@@ -9,7 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -52,7 +51,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, sts *appsv1.StatefulSe
 
 	if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
 		sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-			Partition: ptr.To[int32](*sts.Spec.Replicas),
+			Partition: new(*sts.Spec.Replicas),
 		}
 		return nil
 	}
@@ -77,7 +76,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, sts *appsv1.StatefulSe
 	}
 
 	sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-		Partition: ptr.To[int32](*sts.Spec.Replicas),
+		Partition: new(*sts.Spec.Replicas),
 	}
 
 	return nil

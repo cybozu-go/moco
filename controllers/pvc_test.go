@@ -189,7 +189,7 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 			maps.Copy(labels, sts.Spec.Selector.MatchLabels)
 			pvc.Labels = labels
 
-			pvc.Spec.StorageClassName = ptr.To[string]("default")
+			pvc.Spec.StorageClassName = new("default")
 			pvcs = append(pvcs, &pvc)
 		}
 	}
@@ -199,7 +199,7 @@ func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv
 			Name: "default",
 		},
 		Provisioner:          "kubernetes.io/no-provisioner",
-		AllowVolumeExpansion: ptr.To[bool](true),
+		AllowVolumeExpansion: new(true),
 	}
 
 	client := fake.NewClientBuilder().
@@ -255,7 +255,7 @@ func TestNeedResizePVC(t *testing.T) {
 						Name: "new-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To[string]("default"),
+						StorageClassName: new("default"),
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
 						},
@@ -306,7 +306,7 @@ func TestNeedResizePVC(t *testing.T) {
 						Name: "new-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To[string]("default"),
+						StorageClassName: new("default"),
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
 						},
@@ -391,7 +391,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 						Name: "mysql-data",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: ptr.To[string]("default"),
+						StorageClassName: new("default"),
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceStorage: size},
 						},
