@@ -206,6 +206,7 @@ BucketConfig is a set of parameter to access an object storage bucket.
 | usePathStyle | Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY). | bool | false |
 | backendType | BackendType is an identifier for the object storage to be used. | string | false |
 | caCert | Path to SSL CA certificate file used in addition to system default. | string | false |
+| noChecksumValidation | NoChecksumValidation disables checksum calculation and validation on S3 requests and responses. Enable this when using an S3-compatible object storage that does not support AWS-style checksum headers (e.g. some on-premises or third-party S3 implementations). By default, the AWS SDK calculates and validates checksums on all supported operations, which ensures data integrity but may be rejected by non-compliant S3 servers. This option has no effect when backendType is set to gcs or azure. | bool | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -19,13 +19,14 @@ import (
 )
 
 var commonArgs struct {
-	workDir        string
-	threads        int
-	region         string
-	endpointURL    string
-	usePathStyle   bool
-	backendType    string
-	caCertFilePath string
+	workDir              string
+	threads              int
+	region               string
+	endpointURL          string
+	usePathStyle         bool
+	backendType          string
+	caCertFilePath       string
+	noChecksumValidation bool
 }
 
 func makeBucket(bucketName string) (bucket.Bucket, error) {
@@ -51,6 +52,9 @@ func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 	}
 	if commonArgs.usePathStyle {
 		opts = append(opts, bucket.WithPathStyle())
+	}
+	if commonArgs.noChecksumValidation {
+		opts = append(opts, bucket.WithNoChecksumValidation())
 	}
 	if len(commonArgs.caCertFilePath) > 0 {
 		caCertFile, err := os.ReadFile(commonArgs.caCertFilePath)
@@ -151,4 +155,5 @@ func init() {
 	pf.BoolVar(&commonArgs.usePathStyle, "use-path-style", false, "Use path-style S3 API")
 	pf.StringVar(&commonArgs.backendType, "backend-type", "s3", "The identifier for the object storage to be used.")
 	pf.StringVar(&commonArgs.caCertFilePath, "ca-cert", "", "Path to SSL CA certificate file used in addition to system default")
+	pf.BoolVar(&commonArgs.noChecksumValidation, "no-checksum-validation", false, "Disable S3 checksum calculation and validation for compatibility with non-AWS S3 implementations")
 }
