@@ -98,7 +98,7 @@ var _ = Describe("BackupPolicy Webhook", func() {
 
 	It("should delete BackupPolicy", func() {
 		cluster := makeMySQLCluster()
-		cluster.Spec.BackupPolicyName = ptr.To[string]("no-test")
+		cluster.Spec.BackupPolicyName = new("no-test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -112,7 +112,7 @@ var _ = Describe("BackupPolicy Webhook", func() {
 
 	It("should NOT delete BackupPolicy which is referenced by MySQLCluster", func() {
 		cluster := makeMySQLCluster()
-		cluster.Spec.BackupPolicyName = ptr.To[string]("test")
+		cluster.Spec.BackupPolicyName = new("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 

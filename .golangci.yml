@@ -41,6 +41,10 @@ linters:
         - errcheck
         - goconst
         - unparam
+      # controller-runtime still exposes only the old events API
+      # (kubernetes-sigs/controller-runtime#1462); ignore its deprecation.
+      - linters: [staticcheck]
+        text: 'SA1019: .*GetEventRecorderFor is deprecated'
 formatters:
   enable:
     - gofmt
