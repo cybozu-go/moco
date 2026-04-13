@@ -11,7 +11,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -152,7 +151,7 @@ var _ = Context("lifecycle", Ordered, func() {
 		out, err = runInPod("curl", "-sf", fmt.Sprintf("http://%s:8080/metrics", addr))
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 		mf := mfs["moco_cluster_replicas"]
 		Expect(mf).NotTo(BeNil())
@@ -165,7 +164,7 @@ var _ = Context("lifecycle", Ordered, func() {
 		out, err := runInPod("curl", "-sf", "http://moco-single-0.moco-single.foo.svc:8080/metrics")
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 		mf := mfs["moco_instance_clone_count"]
 		Expect(mf).NotTo(BeNil())
@@ -173,7 +172,7 @@ var _ = Context("lifecycle", Ordered, func() {
 		out, err = runInPod("curl", "-sf", "http://moco-single-0.moco-single.foo.svc:9104/metrics")
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err = (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err = newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 		mf = mfs["mysql_global_variables_read_only"]
 		Expect(mf).NotTo(BeNil())

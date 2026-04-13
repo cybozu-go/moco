@@ -12,7 +12,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/common/expfmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -173,7 +172,7 @@ var _ = Context("pvc_test", Ordered, func() {
 		out, err = runInPod("curl", "-sf", fmt.Sprintf("http://%s:8080/metrics", addr))
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 
 		volumeMf := mfs["moco_cluster_volume_resized_total"]
