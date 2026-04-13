@@ -9,7 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	_ "github.com/go-sql-driver/mysql"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -34,7 +34,7 @@ func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.Opera
 	return &clusterManager{
 		client:    m.GetClient(),
 		reader:    m.GetAPIReader(),
-		recorder:  m.GetEventRecorderFor("moco-controller"),
+		recorder:  m.GetEventRecorder("moco-controller"),
 		dbf:       opf,
 		agentf:    af,
 		interval:  interval,
@@ -48,7 +48,7 @@ func NewClusterManager(interval time.Duration, m manager.Manager, opf dbop.Opera
 type clusterManager struct {
 	client   client.Client
 	reader   client.Reader
-	recorder record.EventRecorder
+	recorder events.EventRecorder
 	dbf      dbop.OperatorFactory
 	agentf   AgentFactory
 	interval time.Duration

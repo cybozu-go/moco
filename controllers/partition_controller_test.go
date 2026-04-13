@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -72,11 +72,11 @@ func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](cluster.Spec.Replicas),
+			Replicas: new(cluster.Spec.Replicas),
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: ptr.To[int32](cluster.Spec.Replicas),
+					Partition: new(cluster.Spec.Replicas),
 				},
 			},
 			Selector: &metav1.LabelSelector{
@@ -197,14 +197,14 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 			BindAddress: "0",
 		},
 		Controller: config.Controller{
-			SkipNameValidation: ptr.To(true),
+			SkipNameValidation: new(true),
 		},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
 	r := &StatefulSetPartitionReconciler{
 		Client:         mgr.GetClient(),
-		Recorder:       mgr.GetEventRecorderFor("moco-controller"),
+		Recorder:       mgr.GetEventRecorder("moco-controller"),
 		UpdateInterval: updateInterval,
 		RateLimiter:    rate.NewLimiter(rate.Every(updateInterval), 1),
 	}
@@ -449,7 +449,7 @@ var _ = Describe("partition_controller helpers", func() {
 		func(ctx SpecContext, partition int32, pods []corev1.Pod, expect bool) {
 			r := &StatefulSetPartitionReconciler{}
 			sts := &appsv1.StatefulSet{}
-			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To(partition)}
+			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: new(partition)}
 			sts.Status.UpdateRevision = rev2
 			Expect(r.areAllChildPodsRolloutReady(ctx, sts, &corev1.PodList{Items: pods})).To(Equal(expect))
 		},
@@ -586,7 +586,7 @@ var _ = Describe("partition_controller helpers", func() {
 			},
 		}
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(sts).Build()
-		fakeRecorder := record.NewFakeRecorder(10)
+		fakeRecorder := events.NewFakeRecorder(10)
 		r := &StatefulSetPartitionReconciler{Client: c, Recorder: fakeRecorder}
 
 		current := &appsv1.StatefulSet{}
@@ -610,7 +610,7 @@ var _ = Describe("partition_controller helpers", func() {
 			},
 		}
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(sts).Build()
-		fakeRecorder := record.NewFakeRecorder(10)
+		fakeRecorder := events.NewFakeRecorder(10)
 		r := &StatefulSetPartitionReconciler{Client: c, Recorder: fakeRecorder}
 
 		current := &appsv1.StatefulSet{}

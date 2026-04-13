@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 )
 
 type MOCOEvent struct {
@@ -15,8 +15,8 @@ type MOCOEvent struct {
 	Message string
 }
 
-func (e MOCOEvent) Emit(obj runtime.Object, r record.EventRecorder, args ...any) {
-	r.Eventf(obj, e.Type, e.Reason, e.Message, args...)
+func (e MOCOEvent) Emit(obj runtime.Object, r events.EventRecorder, args ...any) {
+	r.Eventf(obj, nil, e.Type, e.Reason, e.Reason, e.Message, args...)
 }
 
 func (e MOCOEvent) ToEvent(ref *corev1.ObjectReference, args ...any) *corev1.Event {

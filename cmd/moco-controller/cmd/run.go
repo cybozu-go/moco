@@ -105,7 +105,7 @@ func subMain(ns, addr string, port int) error {
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:                     mgr.GetClient(),
 		Scheme:                     mgr.GetScheme(),
-		Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
+		Recorder:                   mgr.GetEventRecorder("moco-controller"),
 		AgentImage:                 config.agentImage,
 		BackupImage:                config.backupImage,
 		FluentBitImage:             config.fluentBitImage,
@@ -123,7 +123,7 @@ func subMain(ns, addr string, port int) error {
 
 	if err = (&controllers.StatefulSetPartitionReconciler{
 		Client:                  mgr.GetClient(),
-		Recorder:                mgr.GetEventRecorderFor("moco-controller"),
+		Recorder:                mgr.GetEventRecorder("moco-controller"),
 		MaxConcurrentReconciles: config.maxConcurrentReconciles,
 		UpdateInterval:          config.partitionUpdateInterval,
 		RateLimiter:             rate.NewLimiter(rate.Every(config.partitionUpdateInterval), 1),

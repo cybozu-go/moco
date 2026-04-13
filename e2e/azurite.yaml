@@ -31,6 +31,7 @@ spec:
         - "--skipApiVersionCheck"
         - "--loose"
         - "--disableProductStyleUrl"
+        - "--skipApiVersionCheck"
       # env:
       #   - name: AZURITE_ACCOUNTS
       #     value: "devstoreaccount1:Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
