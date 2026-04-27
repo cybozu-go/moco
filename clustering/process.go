@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,7 +45,7 @@ type metricsSet struct {
 type managerProcess struct {
 	client   client.Client
 	reader   client.Reader
-	recorder record.EventRecorder
+	recorder events.EventRecorder
 	dbf      dbop.OperatorFactory
 	agentf   AgentFactory
 	name     types.NamespacedName
@@ -58,7 +58,7 @@ type managerProcess struct {
 	pauseMetrics  func()
 }
 
-func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func()) *managerProcess {
+func newManagerProcess(c client.Client, r client.Reader, recorder events.EventRecorder, dbf dbop.OperatorFactory, agentf AgentFactory, name types.NamespacedName, cancel func()) *managerProcess {
 	return &managerProcess{
 		client:   c,
 		reader:   r,

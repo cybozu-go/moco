@@ -41,8 +41,7 @@ import (
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	policyv1ac "k8s.io/client-go/applyconfigurations/policy/v1"
 	rbacv1ac "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -125,7 +124,7 @@ func apply[S any, T clientObjectConstraint[S], U runtime.ApplyConfiguration](ctx
 type MySQLClusterReconciler struct {
 	client.Client
 	Scheme                     *runtime.Scheme
-	Recorder                   record.EventRecorder
+	Recorder                   events.EventRecorder
 	AgentImage                 string
 	BackupImage                string
 	FluentBitImage             string
@@ -1255,7 +1254,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 							WithRestartPolicy(corev1.RestartPolicyNever).
 							WithServiceAccountName(bp.Spec.JobConfig.ServiceAccountName).
 							WithVolumes(&corev1ac.VolumeApplyConfiguration{
-								Name:                           ptr.To[string]("work"),
+								Name:                           new("work"),
 								VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*jc.WorkVolume.DeepCopy()),
 							}).
 							WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {
@@ -1560,7 +1559,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 						WithRestartPolicy(corev1.RestartPolicyNever).
 						WithServiceAccountName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
 						WithVolumes(&corev1ac.VolumeApplyConfiguration{
-							Name:                           ptr.To[string]("work"),
+							Name:                           new("work"),
 							VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration(*cluster.Spec.Restore.JobConfig.WorkVolume.DeepCopy()),
 						}).
 						WithVolumes(func() []*corev1ac.VolumeApplyConfiguration {

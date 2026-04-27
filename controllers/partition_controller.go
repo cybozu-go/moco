@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/kubectl/pkg/util/podutils"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,7 +36,7 @@ var _ reconcile.Reconciler = &StatefulSetPartitionReconciler{}
 // StatefulSetPartitionReconciler reconciles a StatefulSet object
 type StatefulSetPartitionReconciler struct {
 	client.Client
-	Recorder                record.EventRecorder
+	Recorder                events.EventRecorder
 	MaxConcurrentReconciles int
 	UpdateInterval          time.Duration
 	RateLimiter             *rate.Limiter
@@ -326,7 +326,7 @@ func (r *StatefulSetPartitionReconciler) patchNewPartition(ctx context.Context, 
 	}
 
 	log.Info("Updated partition", "newPartition", newPartition, "oldPartition", oldPartition)
-	r.Recorder.Eventf(sts, corev1.EventTypeNormal, "PartitionUpdate", "Updated partition from %d to %d", oldPartition, newPartition)
+	r.Recorder.Eventf(sts, nil, corev1.EventTypeNormal, "PartitionUpdate", "PartitionUpdate", "Updated partition from %d to %d", int(oldPartition), int(newPartition))
 
 	return nil
 }
