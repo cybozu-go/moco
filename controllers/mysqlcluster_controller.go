@@ -1116,6 +1116,9 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	if bc.CaCert != "" {
 		args = append(args, "--ca-cert="+bc.CaCert)
 	}
+	if bc.NoChecksumValidation {
+		args = append(args, "--no-checksum-validation")
+	}
 
 	return append(args, bc.BucketName)
 }

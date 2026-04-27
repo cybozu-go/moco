@@ -55,6 +55,16 @@ func WithHTTPClient(c *http.Client) func(*s3.Options) {
 	}
 }
 
+// WithNoChecksumValidation disables checksum calculation and validation on S3 requests
+// and responses. Use this for S3-compatible servers that do not support AWS-style
+// checksum headers.
+func WithNoChecksumValidation() func(*s3.Options) {
+	return func(o *s3.Options) {
+		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
+	}
+}
+
 type s3Bucket struct {
 	name   string
 	client *s3.Client
@@ -82,10 +92,14 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		mt = "application/zstd"
 	}
 
+	clientOpts := b.client.Options()
 	uploader := manager.NewUploader(b.client, func(u *manager.Uploader) {
 		u.Concurrency = 1
 		u.LeavePartsOnError = false
 		u.PartSize = decidePartSize(objectSize)
+		if clientOpts.RequestChecksumCalculation == aws.RequestChecksumCalculationWhenRequired {
+			u.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		}
 	})
 	pi := &s3.PutObjectInput{
 		Bucket:      &b.name,

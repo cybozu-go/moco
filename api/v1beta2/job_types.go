@@ -205,6 +205,16 @@ type BucketConfig struct {
 	// Path to SSL CA certificate file used in addition to system default.
 	// +optional
 	CaCert string `json:"caCert,omitempty"`
+
+	// NoChecksumValidation disables checksum calculation and validation on S3 requests
+	// and responses. Enable this when using an S3-compatible object storage that does not
+	// support AWS-style checksum headers (e.g. some on-premises or third-party S3
+	// implementations). By default, the AWS SDK calculates and validates checksums on all
+	// supported operations, which ensures data integrity but may be rejected by
+	// non-compliant S3 servers.
+	// This option has no effect when backendType is set to gcs or azure.
+	// +optional
+	NoChecksumValidation bool `json:"noChecksumValidation,omitempty"`
 }
 
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.
