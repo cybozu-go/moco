@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -77,21 +76,21 @@ var _ = Describe("BackupPolicy Webhook", func() {
 
 	It("should deny BackupPolicy with invalid backoffLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.BackoffLimit = ptr.To[int32](-1)
+		r.Spec.BackoffLimit = new(int32(-1))
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny BackupPolicy with invalid successfulJobsHistoryLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](-1)
+		r.Spec.SuccessfulJobsHistoryLimit = new(int32(-1))
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny BackupPolicy with invalid failedJobsHistoryLimit", func() {
 		r := makeBackupPolicy()
-		r.Spec.FailedJobsHistoryLimit = ptr.To[int32](-1)
+		r.Spec.FailedJobsHistoryLimit = new(int32(-1))
 		err := k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})

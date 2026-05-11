@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -377,7 +376,7 @@ func newStatefulSetWithVolumeSize(size resource.Quantity) *appsv1.StatefulSet {
 			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](1),
+			Replicas: new(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					constants.LabelAppName:      constants.AppNameMySQL,

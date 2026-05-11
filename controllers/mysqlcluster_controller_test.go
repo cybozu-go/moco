@@ -26,7 +26,6 @@ import (
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
@@ -70,14 +69,14 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	bp := &mocov1beta2.BackupPolicy{}
 	bp.Namespace = "test"
 	bp.Name = "test-policy"
-	bp.Spec.ActiveDeadlineSeconds = ptr.To[int64](100)
-	bp.Spec.BackoffLimit = ptr.To[int32](1)
+	bp.Spec.ActiveDeadlineSeconds = new(int64(100))
+	bp.Spec.BackoffLimit = new(int32(1))
 	bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-	bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
+	bp.Spec.StartingDeadlineSeconds = new(int64(10))
 	bp.Spec.Schedule = "*/5 * * * *"
 	bp.Spec.TimeZone = new("America/New_York")
-	bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
-	bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
+	bp.Spec.SuccessfulJobsHistoryLimit = new(int32(1))
+	bp.Spec.FailedJobsHistoryLimit = new(int32(2))
 	jc := &bp.Spec.JobConfig
 	jc.Threads = 3
 	jc.ServiceAccountName = "foo"
@@ -1228,7 +1227,7 @@ dummyKey: dummyValue
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
 				Expect(c.LivenessProbe).NotTo(BeNil())
-				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(ptr.To[int64](200)))
+				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(new(int64(200))))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
@@ -1409,14 +1408,14 @@ dummyKey: dummyValue
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
 		Expect(cj.Spec.TimeZone).To(Equal(new("America/New_York")))
-		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(ptr.To[int64](10)))
+		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(new(int64(10))))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](2)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(new(int32(1))))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(new(int32(2))))
 		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
 		js := &cj.Spec.JobTemplate.Spec
-		Expect(js.ActiveDeadlineSeconds).To(Equal(ptr.To[int64](100)))
-		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](1)))
+		Expect(js.ActiveDeadlineSeconds).To(Equal(new(int64(100))))
+		Expect(js.BackoffLimit).To(Equal(new(int32(1))))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
@@ -1507,8 +1506,8 @@ dummyKey: dummyValue
 		Expect(cj.Spec.TimeZone).To(BeNil())
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](3)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(new(int32(3))))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(new(int32(1))))
 		js = &cj.Spec.JobTemplate.Spec
 		Expect(js.ActiveDeadlineSeconds).To(BeNil())
 		Expect(js.BackoffLimit).To(BeNil())
@@ -1650,7 +1649,7 @@ dummyKey: dummyValue
 		Expect(job.Labels).NotTo(BeEmpty())
 		Expect(job.OwnerReferences).NotTo(BeEmpty())
 		js := &job.Spec
-		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](0)))
+		Expect(js.BackoffLimit).To(Equal(new(int32(0))))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))

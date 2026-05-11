@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -30,7 +29,7 @@ func makeStatefulSet() *appsv1.StatefulSet {
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](3),
+			Replicas: new(int32(3)),
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
@@ -92,7 +91,7 @@ var _ = Describe("StatefulSet Webhook", func() {
 	It("should set partition when updating StatefulSet", func() {
 		r := makeStatefulSet()
 		r.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-			Partition: ptr.To[int32](2),
+			Partition: new(int32(2)),
 		}
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
@@ -137,10 +136,10 @@ var _ = Describe("StatefulSet Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(r.Spec.Replicas))
 
-		r.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](2)
+		r.Spec.UpdateStrategy.RollingUpdate.Partition = new(int32(2))
 		err = k8sClient.Update(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(ptr.To[int32](2)))
+		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(new(int32(2))))
 	})
 
 	It("should update partition when updating StatefulSet with partition and same field changed", func() {
@@ -152,11 +151,11 @@ var _ = Describe("StatefulSet Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(r.Spec.Replicas))
 
-		r.Spec.Replicas = ptr.To[int32](5)
-		r.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](2)
+		r.Spec.Replicas = new(int32(5))
+		r.Spec.UpdateStrategy.RollingUpdate.Partition = new(int32(2))
 		err = k8sClient.Update(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(ptr.To[int32](5)))
+		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(new(int32(5))))
 	})
 
 	It("should update partition when updating StatefulSet with partition unchanged", func() {
@@ -168,9 +167,9 @@ var _ = Describe("StatefulSet Webhook", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(r.Spec.Replicas))
 
-		r.Spec.Replicas = ptr.To[int32](5)
+		r.Spec.Replicas = new(int32(5))
 		err = k8sClient.Update(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(ptr.To[int32](5)))
+		Expect(r.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(new(int32(5))))
 	})
 })

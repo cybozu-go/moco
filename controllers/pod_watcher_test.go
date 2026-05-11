@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -21,7 +20,7 @@ func testNewSts(ns string) *appsv1.StatefulSet {
 	sts := &appsv1.StatefulSet{}
 	sts.Namespace = ns
 	sts.Name = "moco-test"
-	sts.Spec.Replicas = ptr.To[int32](3)
+	sts.Spec.Replicas = new(int32(3))
 	sts.Spec.ServiceName = "moco-test"
 	sts.Spec.Selector = &v1.LabelSelector{
 		MatchLabels: map[string]string{"foo": "bar"},
