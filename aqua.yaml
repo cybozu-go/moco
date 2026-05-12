@@ -9,18 +9,18 @@ checksum:
 #   - all
 registries:
 - type: standard
-  ref: v4.490.0 # renovate: depName=aquaproj/aqua-registry
+  ref: v4.492.0 # renovate: depName=aquaproj/aqua-registry
 packages:
-- name: kubernetes-sigs/kind@v0.30.0
-- name: kubernetes/kubectl@v1.34.2
-- name: kubernetes-sigs/kustomize@kustomize/v5.8.0
-- name: helm/helm@v4.0.1
-- name: goreleaser/goreleaser@v2.12.7
-- name: mikefarah/yq@v4.49.2
-- name: kubernetes-sigs/controller-tools/controller-gen@v0.19.0
+- name: kubernetes-sigs/kind@v0.31.0
+- name: kubernetes/kubectl@v1.35.3
+- name: kubernetes-sigs/kustomize@kustomize/v5.8.1
+- name: helm/helm@v4.1.3
+- name: goreleaser/goreleaser@v2.15.2
+- name: mikefarah/yq@v4.52.5
+- name: kubernetes-sigs/controller-tools/controller-gen@v0.20.1
 - name: clamoriniere/crd-to-markdown@v0.0.3
-- name: rust-lang/mdBook@v0.5.1
-- name: golangci/golangci-lint@v2.8.0
+- name: rust-lang/mdBook@v0.5.2
+- name: golangci/golangci-lint@v2.11.4
 - name: suzuki-shunsuke/ghalint@v1.5.5
 - name: rhysd/actionlint@v1.7.12
 - name: zizmorcore/zizmor@v1.23.1

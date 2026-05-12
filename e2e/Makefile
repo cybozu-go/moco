@@ -1,5 +1,5 @@
-KUBERNETES_VERSION = 1.34.0
-CERT_MANAGER_VERSION = 1.18.2
+KUBERNETES_VERSION = 1.35.4
+CERT_MANAGER_VERSION = 1.20.1
 MYSQL_VERSION = 8.4.8
 
 KIND := kind
@@ -30,6 +30,10 @@ help:
 
 .PHONY: start
 start: aqua-install $(KUBECTL_MOCO)
+# kindest/node:v1.35.4 is not yet published upstream, so build the node image locally.
+ifeq ($(KUBERNETES_VERSION),1.35.4)
+	$(KIND) build node-image $(KUBERNETES_VERSION) --image=kindest/node:v$(KUBERNETES_VERSION)
+endif
 	$(KIND) create cluster --name=moco --config=$(KIND_CONFIG) --image=kindest/node:v$(KUBERNETES_VERSION) --wait 1m
 	cd ..; docker buildx build --no-cache --load --target controller -t moco:dev .
 	$(KIND) load docker-image moco:dev --name=moco

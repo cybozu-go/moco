@@ -8,19 +8,16 @@ import (
 
 	"github.com/cybozu-go/moco/pkg/constants"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (r *MySQLCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+	return ctrl.NewWebhookManagedBy(mgr, r).
 		WithValidator(&mySQLClusterAdmission{client: mgr.GetAPIReader()}).
 		WithDefaulter(&mySQLClusterAdmission{client: mgr.GetAPIReader()}).
 		Complete()
@@ -34,11 +31,9 @@ type mySQLClusterAdmission struct {
 
 //+kubebuilder:webhook:path=/mutate-moco-cybozu-com-v1beta2-mysqlcluster,mutating=true,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create,versions=v1beta2,name=mmysqlcluster.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomDefaulter = &mySQLClusterAdmission{}
+var _ admission.Defaulter[*MySQLCluster] = &mySQLClusterAdmission{}
 
-func (a *mySQLClusterAdmission) Default(ctx context.Context, obj runtime.Object) error {
-	cluster := obj.(*MySQLCluster)
-
+func (a *mySQLClusterAdmission) Default(ctx context.Context, cluster *MySQLCluster) error {
 	controllerutil.AddFinalizer(cluster, constants.MySQLClusterFinalizer)
 
 	if cluster.Spec.ServerIDBase == 0 {
@@ -56,11 +51,9 @@ func (a *mySQLClusterAdmission) Default(ctx context.Context, obj runtime.Object)
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta2-mysqlcluster,mutating=false,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=mysqlclusters,verbs=create;update,versions=v1beta2,name=vmysqlcluster.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &mySQLClusterAdmission{}
+var _ admission.Validator[*MySQLCluster] = &mySQLClusterAdmission{}
 
-func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	cluster := obj.(*MySQLCluster)
-
+func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, cluster *MySQLCluster) (admission.Warnings, error) {
 	var errs field.ErrorList
 
 	// The names for StatefulSet and CronJob must be 52 characters or less.
@@ -80,10 +73,7 @@ func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, obj runtime.
 	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, cluster.Name, errs)
 }
 
-func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	oldCluster := oldObj.(*MySQLCluster)
-	newCluster := newObj.(*MySQLCluster)
-
+func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldCluster, newCluster *MySQLCluster) (admission.Warnings, error) {
 	warns, errs := newCluster.Spec.validateUpdate(ctx, a.client, oldCluster.Spec)
 	if len(errs) == 0 {
 		return warns, nil
@@ -92,6 +82,6 @@ func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldObj, newO
 	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, newCluster.Name, errs)
 }
 
-func (a *mySQLClusterAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (a *mySQLClusterAdmission) ValidateDelete(ctx context.Context, _ *MySQLCluster) (admission.Warnings, error) {
 	return nil, nil
 }

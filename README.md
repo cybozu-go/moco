@@ -27,7 +27,10 @@ Blog article: [Introducing MOCO, a modern MySQL operator on Kubernetes](https://
 ## Supported software
 
 - MySQL: 8.0.28, 8.0.43, 8.0.44, 8.0.45, 8.4.4, 8.4.8
-- Kubernetes: 1.32, 1.33, 1.34
+- Kubernetes: 1.33, 1.34, 1.35
+
+If you use Kubernetes 1.35, using v1.35.4+ or disabling the `MaxUnavailableStatefulSet` feature gate is required ([kubernetes/kubernetes#137409](https://github.com/kubernetes/kubernetes/issues/137409)).
+
 
 MOCO supports (tests) the LTS releases of MySQL 8.
 Innovation releases would probably work. But they are not tested in our CI.

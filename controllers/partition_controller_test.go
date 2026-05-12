@@ -72,11 +72,11 @@ func testNewStatefulSet(cluster *mocov1beta2.MySQLCluster) *appsv1.StatefulSet {
 			Generation: 1,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.To[int32](cluster.Spec.Replicas),
+			Replicas: new(cluster.Spec.Replicas),
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: ptr.To[int32](cluster.Spec.Replicas),
+					Partition: new(cluster.Spec.Replicas),
 				},
 			},
 			Selector: &metav1.LabelSelector{
@@ -197,7 +197,7 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 			BindAddress: "0",
 		},
 		Controller: config.Controller{
-			SkipNameValidation: ptr.To(true),
+			SkipNameValidation: new(true),
 		},
 	})
 	Expect(err).ToNot(HaveOccurred())
@@ -449,7 +449,7 @@ var _ = Describe("partition_controller helpers", func() {
 		func(ctx SpecContext, partition int32, pods []corev1.Pod, expect bool) {
 			r := &StatefulSetPartitionReconciler{}
 			sts := &appsv1.StatefulSet{}
-			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To(partition)}
+			sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{Partition: new(partition)}
 			sts.Status.UpdateRevision = rev2
 			Expect(r.areAllChildPodsRolloutReady(ctx, sts, &corev1.PodList{Items: pods})).To(Equal(expect))
 		},
@@ -550,12 +550,12 @@ var _ = Describe("partition_controller helpers", func() {
 		},
 		Entry("force rolling update true",
 			map[string]string{constants.AnnForceRollingUpdate: "true"},
-			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](1)},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(1))},
 			false,
 		),
 		Entry("force rolling update false",
 			map[string]string{constants.AnnForceRollingUpdate: "false"},
-			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](1)},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(1))},
 			true,
 		),
 		Entry("rollingUpdate nil", nil, nil, false),
@@ -566,12 +566,12 @@ var _ = Describe("partition_controller helpers", func() {
 		),
 		Entry("partition 0",
 			nil,
-			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](0)},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(0))},
 			false,
 		),
 		Entry("partition > 0",
 			nil,
-			&appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](2)},
+			&appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(2))},
 			true,
 		),
 	)
@@ -581,7 +581,7 @@ var _ = Describe("partition_controller helpers", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
 			Spec: appsv1.StatefulSetSpec{
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To[int32](0)},
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(0))},
 				},
 			},
 		}
@@ -600,7 +600,7 @@ var _ = Describe("partition_controller helpers", func() {
 	})
 
 	It("patchNewPartition should decrement partition and persist", func(ctx SpecContext) {
-		partition := ptr.To[int32](2)
+		partition := new(int32(2))
 		sts := &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{Name: "moco-test", Namespace: "partition"},
 			Spec: appsv1.StatefulSetSpec{

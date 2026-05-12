@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: backuppolicies.moco.cybozu.com
 spec:
   group: moco.cybozu.com
@@ -61,43 +61,56 @@ spec:
                     description: If specified, the pod's scheduling constraints.
                     properties:
                       nodeAffinity:
-                        description: NodeAffinityApplyConfiguration represents a...
+                        description: Describes node affinity scheduling rules for
+                          the...
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
+                            description: The scheduler will prefer to schedule pods
+                              to...
                             items:
                               description: PreferredSchedulingTermApplyConfiguration...
                               properties:
                                 preference:
-                                  description: NodeSelectorTermApplyConfiguration
-                                    represents a...
+                                  description: A node selector term, associated with
+                                    the...
                                   properties:
                                     matchExpressions:
+                                      description: A list of node selector requirements
+                                        by node's...
                                       items:
                                         description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: The label key that the selector
+                                              applies to.
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: Represents a key's relationship
+                                              to a set of...
                                             type: string
                                           values:
+                                            description: An array of string values.
                                             items:
                                               type: string
                                             type: array
                                         type: object
                                       type: array
                                     matchFields:
+                                      description: A list of node selector requirements
+                                        by node's...
                                       items:
                                         description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: The label key that the selector
+                                              applies to.
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: Represents a key's relationship
+                                              to a set of...
                                             type: string
                                           values:
+                                            description: An array of string values.
                                             items:
                                               type: string
                                             type: array
@@ -105,46 +118,59 @@ spec:
                                       type: array
                                   type: object
                                 weight:
+                                  description: Weight associated with matching the
+                                    corresponding...
                                   format: int32
                                   type: integer
                               type: object
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
-                            description: NodeSelectorApplyConfiguration represents
-                              a...
+                            description: If the affinity requirements specified by
+                              this...
                             properties:
                               nodeSelectorTerms:
+                                description: Required. A list of node selector terms.
                                 items:
                                   description: NodeSelectorTermApplyConfiguration
                                     represents a...
                                   properties:
                                     matchExpressions:
+                                      description: A list of node selector requirements
+                                        by node's...
                                       items:
                                         description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: The label key that the selector
+                                              applies to.
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: Represents a key's relationship
+                                              to a set of...
                                             type: string
                                           values:
+                                            description: An array of string values.
                                             items:
                                               type: string
                                             type: array
                                         type: object
                                       type: array
                                     matchFields:
+                                      description: A list of node selector requirements
+                                        by node's...
                                       items:
                                         description: NodeSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: The label key that the selector
+                                              applies to.
                                             type: string
                                           operator:
-                                            description: A node selector operator
-                                              is the set of operators...
+                                            description: Represents a key's relationship
+                                              to a set of...
                                             type: string
                                           values:
+                                            description: An array of string values.
                                             items:
                                               type: string
                                             type: array
@@ -155,31 +181,38 @@ spec:
                             type: object
                         type: object
                       podAffinity:
-                        description: PodAffinityApplyConfiguration represents a...
+                        description: Describes pod affinity scheduling rules (e.g.
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
+                            description: The scheduler will prefer to schedule pods
+                              to...
                             items:
                               description: WeightedPodAffinityTermApplyConfiguration...
                               properties:
                                 podAffinityTerm:
-                                  description: PodAffinityTermApplyConfiguration represents
-                                    a...
+                                  description: Required.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: A label query over a set of resources,
+                                        in this...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -188,31 +221,43 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     matchLabelKeys:
+                                      description: MatchLabelKeys is a set of pod
+                                        label keys to...
                                       items:
                                         type: string
                                       type: array
                                     mismatchLabelKeys:
+                                      description: MismatchLabelKeys is a set of pod
+                                        label keys to...
                                       items:
                                         type: string
                                       type: array
                                     namespaceSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: A label query over the set of namespaces
+                                        that the...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -221,40 +266,56 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     namespaces:
+                                      description: namespaces specifies a static list
+                                        of namespace...
                                       items:
                                         type: string
                                       type: array
                                     topologyKey:
+                                      description: This pod should be co-located (affinity)
+                                        or not...
                                       type: string
                                   type: object
                                 weight:
+                                  description: weight associated with matching the
+                                    corresponding...
                                   format: int32
                                   type: integer
                               type: object
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
+                            description: If the affinity requirements specified by
+                              this...
                             items:
                               description: PodAffinityTermApplyConfiguration represents
                                 a...
                               properties:
                                 labelSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: A label query over a set of resources,
+                                    in this...
                                   properties:
                                     matchExpressions:
+                                      description: matchExpressions is a list of label
+                                        selector...
                                       items:
                                         description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: A label selector operator
-                                              is the set of operators...
+                                            description: operator represents a key's
+                                              relationship to a set...
                                             type: string
                                           values:
+                                            description: values is an array of string
+                                              values.
                                             items:
                                               type: string
                                             type: array
@@ -263,31 +324,43 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
+                                      description: matchLabels is a map of {key,value}
+                                        pairs.
                                       type: object
                                   type: object
                                 matchLabelKeys:
+                                  description: MatchLabelKeys is a set of pod label
+                                    keys to...
                                   items:
                                     type: string
                                   type: array
                                 mismatchLabelKeys:
+                                  description: MismatchLabelKeys is a set of pod label
+                                    keys to...
                                   items:
                                     type: string
                                   type: array
                                 namespaceSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: A label query over the set of namespaces
+                                    that the...
                                   properties:
                                     matchExpressions:
+                                      description: matchExpressions is a list of label
+                                        selector...
                                       items:
                                         description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: A label selector operator
-                                              is the set of operators...
+                                            description: operator represents a key's
+                                              relationship to a set...
                                             type: string
                                           values:
+                                            description: values is an array of string
+                                              values.
                                             items:
                                               type: string
                                             type: array
@@ -296,44 +369,57 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
+                                      description: matchLabels is a map of {key,value}
+                                        pairs.
                                       type: object
                                   type: object
                                 namespaces:
+                                  description: namespaces specifies a static list
+                                    of namespace...
                                   items:
                                     type: string
                                   type: array
                                 topologyKey:
+                                  description: This pod should be co-located (affinity)
+                                    or not...
                                   type: string
                               type: object
                             type: array
                         type: object
                       podAntiAffinity:
-                        description: PodAntiAffinityApplyConfiguration represents
-                          a...
+                        description: Describes pod anti-affinity scheduling rules
+                          (e.g.
                         properties:
                           preferredDuringSchedulingIgnoredDuringExecution:
+                            description: The scheduler will prefer to schedule pods
+                              to...
                             items:
                               description: WeightedPodAffinityTermApplyConfiguration...
                               properties:
                                 podAffinityTerm:
-                                  description: PodAffinityTermApplyConfiguration represents
-                                    a...
+                                  description: Required.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: A label query over a set of resources,
+                                        in this...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -342,31 +428,43 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     matchLabelKeys:
+                                      description: MatchLabelKeys is a set of pod
+                                        label keys to...
                                       items:
                                         type: string
                                       type: array
                                     mismatchLabelKeys:
+                                      description: MismatchLabelKeys is a set of pod
+                                        label keys to...
                                       items:
                                         type: string
                                       type: array
                                     namespaceSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: A label query over the set of namespaces
+                                        that the...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -375,40 +473,56 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     namespaces:
+                                      description: namespaces specifies a static list
+                                        of namespace...
                                       items:
                                         type: string
                                       type: array
                                     topologyKey:
+                                      description: This pod should be co-located (affinity)
+                                        or not...
                                       type: string
                                   type: object
                                 weight:
+                                  description: weight associated with matching the
+                                    corresponding...
                                   format: int32
                                   type: integer
                               type: object
                             type: array
                           requiredDuringSchedulingIgnoredDuringExecution:
+                            description: If the anti-affinity requirements specified
+                              by...
                             items:
                               description: PodAffinityTermApplyConfiguration represents
                                 a...
                               properties:
                                 labelSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: A label query over a set of resources,
+                                    in this...
                                   properties:
                                     matchExpressions:
+                                      description: matchExpressions is a list of label
+                                        selector...
                                       items:
                                         description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: A label selector operator
-                                              is the set of operators...
+                                            description: operator represents a key's
+                                              relationship to a set...
                                             type: string
                                           values:
+                                            description: values is an array of string
+                                              values.
                                             items:
                                               type: string
                                             type: array
@@ -417,31 +531,43 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
+                                      description: matchLabels is a map of {key,value}
+                                        pairs.
                                       type: object
                                   type: object
                                 matchLabelKeys:
+                                  description: MatchLabelKeys is a set of pod label
+                                    keys to...
                                   items:
                                     type: string
                                   type: array
                                 mismatchLabelKeys:
+                                  description: MismatchLabelKeys is a set of pod label
+                                    keys to...
                                   items:
                                     type: string
                                   type: array
                                 namespaceSelector:
-                                  description: LabelSelectorApplyConfiguration represents
-                                    a...
+                                  description: A label query over the set of namespaces
+                                    that the...
                                   properties:
                                     matchExpressions:
+                                      description: matchExpressions is a list of label
+                                        selector...
                                       items:
                                         description: LabelSelectorRequirementApplyConfiguration...
                                         properties:
                                           key:
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: A label selector operator
-                                              is the set of operators...
+                                            description: operator represents a key's
+                                              relationship to a set...
                                             type: string
                                           values:
+                                            description: values is an array of string
+                                              values.
                                             items:
                                               type: string
                                             type: array
@@ -450,13 +576,19 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
+                                      description: matchLabels is a map of {key,value}
+                                        pairs.
                                       type: object
                                   type: object
                                 namespaces:
+                                  description: namespaces specifies a static list
+                                    of namespace...
                                   items:
                                     type: string
                                   type: array
                                 topologyKey:
+                                  description: This pod should be co-located (affinity)
+                                    or not...
                                   type: string
                               type: object
                             type: array
@@ -508,67 +640,91 @@ spec:
                       description: EnvVarApplyConfiguration is the type defined to...
                       properties:
                         name:
+                          description: Name of the environment variable.
                           type: string
                         value:
+                          description: Variable references $(VAR_NAME) are expanded...
                           type: string
                         valueFrom:
-                          description: EnvVarSourceApplyConfiguration represents a...
+                          description: Source for the environment variable's value.
                           properties:
                             configMapKeyRef:
-                              description: ConfigMapKeySelectorApplyConfiguration
-                                represents...
+                              description: Selects a key of a ConfigMap.
                               properties:
                                 key:
+                                  description: The key to select.
                                   type: string
                                 name:
+                                  description: Name of the referent.
                                   type: string
                                 optional:
+                                  description: Specify whether the ConfigMap or its
+                                    key must be...
                                   type: boolean
                               type: object
                             fieldRef:
-                              description: ObjectFieldSelectorApplyConfiguration represents...
+                              description: 'Selects a field of the pod: supports metadata.'
                               properties:
                                 apiVersion:
+                                  description: Version of the schema the FieldPath
+                                    is written in...
                                   type: string
                                 fieldPath:
+                                  description: Path of the field to select in the
+                                    specified API...
                                   type: string
                               type: object
                             fileKeyRef:
-                              description: FileKeySelectorApplyConfiguration represents
-                                a...
+                              description: FileKeyRef selects a key of the env file.
                               properties:
                                 key:
+                                  description: The key within the env file.
                                   type: string
                                 optional:
+                                  description: Specify whether the file or its key
+                                    must be...
                                   type: boolean
                                 path:
+                                  description: The path within the volume from which
+                                    to select...
                                   type: string
                                 volumeName:
+                                  description: The name of the volume mount containing
+                                    the env...
                                   type: string
                               type: object
                             resourceFieldRef:
-                              description: ResourceFieldSelectorApplyConfiguration...
+                              description: 'Selects a resource of the container: only...'
                               properties:
                                 containerName:
+                                  description: 'Container name: required for volumes,
+                                    optional...'
                                   type: string
                                 divisor:
                                   anyOf:
                                   - type: integer
                                   - type: string
+                                  description: Specifies the output format of the
+                                    exposed...
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
                                 resource:
+                                  description: 'Required: resource to select'
                                   type: string
                               type: object
                             secretKeyRef:
-                              description: SecretKeySelectorApplyConfiguration represents
-                                a...
+                              description: Selects a key of a secret in the pod's
+                                namespace
                               properties:
                                 key:
+                                  description: The key of the secret to select from.
                                   type: string
                                 name:
+                                  description: Name of the referent.
                                   type: string
                                 optional:
+                                  description: Specify whether the Secret or its key
+                                    must be...
                                   type: boolean
                               type: object
                           type: object
@@ -580,23 +736,26 @@ spec:
                       description: EnvFromSourceApplyConfiguration is the type...
                       properties:
                         configMapRef:
-                          description: ConfigMapEnvSourceApplyConfiguration represents
-                            a...
+                          description: The ConfigMap to select from
                           properties:
                             name:
+                              description: Name of the referent.
                               type: string
                             optional:
+                              description: Specify whether the ConfigMap must be defined
                               type: boolean
                           type: object
                         prefix:
+                          description: Optional text to prepend to the name of each...
                           type: string
                         secretRef:
-                          description: SecretEnvSourceApplyConfiguration represents
-                            a...
+                          description: The Secret to select from
                           properties:
                             name:
+                              description: Name of the referent.
                               type: string
                             optional:
+                              description: Specify whether the Secret must be defined
                               type: boolean
                           type: object
                       type: object
@@ -641,20 +800,26 @@ spec:
                       description: VolumeMountApplyConfiguration is the type defined...
                       properties:
                         mountPath:
+                          description: Path within the container at which the volume...
                           type: string
                         mountPropagation:
-                          description: MountPropagationMode describes mount propagation.
+                          description: mountPropagation determines how mounts are...
                           type: string
                         name:
+                          description: This must match the Name of a Volume.
                           type: string
                         readOnly:
+                          description: Mounted read-only if true, read-write otherwise...
                           type: boolean
                         recursiveReadOnly:
-                          description: RecursiveReadOnlyMode describes...
+                          description: RecursiveReadOnly specifies whether read-only...
                           type: string
                         subPath:
+                          description: Path within the volume from which the container's...
                           type: string
                         subPathExpr:
+                          description: Expanded path within the volume from which
+                            the...
                           type: string
                       type: object
                     type: array
@@ -664,288 +829,416 @@ spec:
                       description: VolumeApplyConfiguration is the type defined to...
                       properties:
                         awsElasticBlockStore:
-                          description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
+                          description: awsElasticBlockStore represents an AWS Disk...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type of the volume
+                                that...
                               type: string
                             partition:
+                              description: partition is the partition in the volume
+                                that you...
                               format: int32
                               type: integer
                             readOnly:
+                              description: readOnly value true will force the readOnly...
                               type: boolean
                             volumeID:
+                              description: volumeID is unique ID of the persistent
+                                disk...
                               type: string
                           type: object
                         azureDisk:
-                          description: AzureDiskVolumeSourceApplyConfiguration...
+                          description: azureDisk represents an Azure Data Disk mount
+                            on...
                           properties:
                             cachingMode:
+                              description: 'cachingMode is the Host Caching mode:
+                                None, Read...'
                               type: string
                             diskName:
+                              description: diskName is the Name of the data disk in
+                                the blob...
                               type: string
                             diskURI:
+                              description: diskURI is the URI of data disk in the
+                                blob...
                               type: string
                             fsType:
+                              description: fsType is Filesystem type to mount.
                               type: string
                             kind:
+                              description: 'kind expected values are Shared: multiple
+                                blob...'
                               type: string
                             readOnly:
+                              description: readOnly Defaults to false (read/write).
                               type: boolean
                           type: object
                         azureFile:
-                          description: AzureFileVolumeSourceApplyConfiguration...
+                          description: azureFile represents an Azure File Service
+                            mount...
                           properties:
                             readOnly:
+                              description: readOnly defaults to false (read/write).
                               type: boolean
                             secretName:
+                              description: secretName is the  name of secret that
+                                contains...
                               type: string
                             shareName:
+                              description: shareName is the azure share Name
                               type: string
                           type: object
                         cephfs:
-                          description: CephFSVolumeSourceApplyConfiguration represents
-                            a...
+                          description: cephFS represents a Ceph FS mount on the host...
                           properties:
                             monitors:
+                              description: 'monitors is Required: Monitors is a collection
+                                of...'
                               items:
                                 type: string
                               type: array
                             path:
+                              description: 'path is Optional: Used as the mounted
+                                root,...'
                               type: string
                             readOnly:
+                              description: 'readOnly is Optional: Defaults to false...'
                               type: boolean
                             secretFile:
+                              description: 'secretFile is Optional: SecretFile is
+                                the path to...'
                               type: string
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: 'secretRef is Optional: SecretRef is reference
+                                to...'
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             user:
+                              description: 'user is optional: User is the rados user
+                                name,...'
                               type: string
                           type: object
                         cinder:
-                          description: CinderVolumeSourceApplyConfiguration represents
-                            a...
+                          description: cinder represents a cinder volume attached
+                            and...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             readOnly:
+                              description: readOnly defaults to false (read/write).
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: 'secretRef is optional: points to a secret
+                                object...'
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             volumeID:
+                              description: volumeID used to identify the volume in
+                                cinder.
                               type: string
                           type: object
                         configMap:
-                          description: ConfigMapVolumeSourceApplyConfiguration...
+                          description: configMap represents a configMap that should...
                           properties:
                             defaultMode:
+                              description: 'defaultMode is optional: mode bits used
+                                to set...'
                               format: int32
                               type: integer
                             items:
+                              description: items if unspecified, each key-value pair
+                                in the...
                               items:
                                 description: KeyToPathApplyConfiguration represents
                                   a...
                                 properties:
                                   key:
+                                    description: key is the key to project.
                                     type: string
                                   mode:
+                                    description: 'mode is Optional: mode bits used
+                                      to set...'
                                     format: int32
                                     type: integer
                                   path:
+                                    description: path is the relative path of the
+                                      file to map the...
                                     type: string
                                 type: object
                               type: array
                             name:
+                              description: Name of the referent.
                               type: string
                             optional:
+                              description: optional specify whether the ConfigMap
+                                or its...
                               type: boolean
                           type: object
                         csi:
-                          description: CSIVolumeSourceApplyConfiguration represents
-                            a...
+                          description: csi (Container Storage Interface) represents...
                           properties:
                             driver:
+                              description: driver is the name of the CSI driver that
+                                handles...
                               type: string
                             fsType:
+                              description: fsType to mount. Ex. "ext4", "xfs", "ntfs".
                               type: string
                             nodePublishSecretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: nodePublishSecretRef is a reference to
+                                the secret...
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             readOnly:
+                              description: readOnly specifies a read-only configuration
+                                for...
                               type: boolean
                             volumeAttributes:
                               additionalProperties:
                                 type: string
+                              description: volumeAttributes stores driver-specific...
                               type: object
                           type: object
                         downwardAPI:
-                          description: DownwardAPIVolumeSourceApplyConfiguration...
+                          description: downwardAPI represents downward API about the
+                            pod...
                           properties:
                             defaultMode:
+                              description: 'Optional: mode bits to use on created
+                                files by...'
                               format: int32
                               type: integer
                             items:
+                              description: Items is a list of downward API volume
+                                file
                               items:
                                 description: DownwardAPIVolumeFileApplyConfiguration...
                                 properties:
                                   fieldRef:
-                                    description: ObjectFieldSelectorApplyConfiguration
-                                      represents...
+                                    description: 'Required: Selects a field of the
+                                      pod: only...'
                                     properties:
                                       apiVersion:
+                                        description: Version of the schema the FieldPath
+                                          is written in...
                                         type: string
                                       fieldPath:
+                                        description: Path of the field to select in
+                                          the specified API...
                                         type: string
                                     type: object
                                   mode:
+                                    description: 'Optional: mode bits used to set
+                                      permissions on...'
                                     format: int32
                                     type: integer
                                   path:
+                                    description: 'Required: Path is  the relative
+                                      path name of the...'
                                     type: string
                                   resourceFieldRef:
-                                    description: ResourceFieldSelectorApplyConfiguration...
+                                    description: 'Selects a resource of the container:
+                                      only...'
                                     properties:
                                       containerName:
+                                        description: 'Container name: required for
+                                          volumes, optional...'
                                         type: string
                                       divisor:
                                         anyOf:
                                         - type: integer
                                         - type: string
+                                        description: Specifies the output format of
+                                          the exposed...
                                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                         x-kubernetes-int-or-string: true
                                       resource:
+                                        description: 'Required: resource to select'
                                         type: string
                                     type: object
                                 type: object
                               type: array
                           type: object
                         emptyDir:
-                          description: EmptyDirVolumeSourceApplyConfiguration represents...
+                          description: emptyDir represents a temporary directory that...
                           properties:
                             medium:
-                              description: StorageMedium defines ways that storage
-                                can be...
+                              description: medium represents what type of storage
+                                medium...
                               type: string
                             sizeLimit:
                               anyOf:
                               - type: integer
                               - type: string
+                              description: sizeLimit is the total amount of local
+                                storage...
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
                           type: object
                         ephemeral:
-                          description: EphemeralVolumeSourceApplyConfiguration...
+                          description: ephemeral represents a volume that is handled
+                            by...
                           properties:
                             volumeClaimTemplate:
-                              description: PersistentVolumeClaimTemplateApplyConfiguration...
+                              description: Will be used to create a stand-alone PVC
+                                to...
                               properties:
                                 metadata:
-                                  description: ObjectMetaApplyConfiguration represents
-                                    a...
+                                  description: May contain labels and annotations
+                                    that will be...
                                   properties:
                                     annotations:
                                       additionalProperties:
                                         type: string
+                                      description: Annotations is an unstructured
+                                        key value map...
                                       type: object
                                     creationTimestamp:
+                                      description: CreationTimestamp is a timestamp
+                                        representing the...
                                       format: date-time
                                       type: string
                                     deletionGracePeriodSeconds:
+                                      description: Number of seconds allowed for this
+                                        object to...
                                       format: int64
                                       type: integer
                                     deletionTimestamp:
+                                      description: DeletionTimestamp is RFC 3339 date
+                                        and time at...
                                       format: date-time
                                       type: string
                                     finalizers:
+                                      description: Must be empty before the object
+                                        is deleted from...
                                       items:
                                         type: string
                                       type: array
                                     generateName:
+                                      description: GenerateName is an optional prefix,
+                                        used by the...
                                       type: string
                                     generation:
+                                      description: A sequence number representing
+                                        a specific...
                                       format: int64
                                       type: integer
                                     labels:
                                       additionalProperties:
                                         type: string
+                                      description: Map of string keys and values that
+                                        can be used to...
                                       type: object
                                     name:
+                                      description: Name must be unique within a namespace.
                                       type: string
                                     namespace:
+                                      description: Namespace defines the space within
+                                        which each...
                                       type: string
                                     ownerReferences:
+                                      description: List of objects depended by this
+                                        object.
                                       items:
                                         description: OwnerReferenceApplyConfiguration
                                           represents a...
                                         properties:
                                           apiVersion:
+                                            description: API version of the referent.
                                             type: string
                                           blockOwnerDeletion:
+                                            description: If true, AND if the owner
+                                              has the...
                                             type: boolean
                                           controller:
+                                            description: If true, this reference points
+                                              to the managing...
                                             type: boolean
                                           kind:
+                                            description: |-
+                                              Kind of the referent.
+                                              More info: https://git.k8s.
                                             type: string
                                           name:
+                                            description: Name of the referent.
                                             type: string
                                           uid:
-                                            description: UID is a type that holds
-                                              unique ID values,...
+                                            description: UID of the referent.
                                             type: string
                                         type: object
                                       type: array
                                     resourceVersion:
+                                      description: An opaque value that represents
+                                        the internal...
                                       type: string
                                     uid:
-                                      description: UID is a type that holds unique
-                                        ID values,...
+                                      description: UID is the unique in time and space
+                                        value for...
                                       type: string
                                   type: object
                                 spec:
-                                  description: PersistentVolumeClaimSpecApplyConfiguration...
+                                  description: The specification for the PersistentVolumeClaim.
                                   properties:
                                     accessModes:
+                                      description: accessModes contains the desired
+                                        access modes the...
                                       items:
                                         type: string
                                       type: array
                                     dataSource:
-                                      description: TypedLocalObjectReferenceApplyConfiguration...
+                                      description: |-
+                                        dataSource field can be used to specify either:
+                                        *...
                                       properties:
                                         apiGroup:
+                                          description: APIGroup is the group for the
+                                            resource being...
                                           type: string
                                         kind:
+                                          description: Kind is the type of resource
+                                            being referenced
                                           type: string
                                         name:
+                                          description: Name is the name of resource
+                                            being referenced
                                           type: string
                                       type: object
                                     dataSourceRef:
-                                      description: TypedObjectReferenceApplyConfiguration
-                                        represents...
+                                      description: dataSourceRef specifies the object
+                                        from which to...
                                       properties:
                                         apiGroup:
+                                          description: APIGroup is the group for the
+                                            resource being...
                                           type: string
                                         kind:
+                                          description: Kind is the type of resource
+                                            being referenced
                                           type: string
                                         name:
+                                          description: Name is the name of resource
+                                            being referenced
                                           type: string
                                         namespace:
+                                          description: Namespace is the namespace
+                                            of resource being...
                                           type: string
                                       type: object
                                     resources:
-                                      description: VolumeResourceRequirementsApplyConfiguration...
+                                      description: resources represents the minimum
+                                        resources the...
                                       properties:
                                         limits:
                                           additionalProperties:
@@ -954,8 +1247,8 @@ spec:
                                             - type: string
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
-                                          description: ResourceList is a set of (resource
-                                            name,...
+                                          description: Limits describes the maximum
+                                            amount of compute...
                                           type: object
                                         requests:
                                           additionalProperties:
@@ -964,25 +1257,31 @@ spec:
                                             - type: string
                                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                             x-kubernetes-int-or-string: true
-                                          description: ResourceList is a set of (resource
-                                            name,...
+                                          description: Requests describes the minimum
+                                            amount of compute...
                                           type: object
                                       type: object
                                     selector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: selector is a label query over
+                                        volumes to...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -991,226 +1290,313 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     storageClassName:
+                                      description: storageClassName is the name of
+                                        the StorageClass...
                                       type: string
                                     volumeAttributesClassName:
+                                      description: volumeAttributesClassName may be
+                                        used to set the...
                                       type: string
                                     volumeMode:
-                                      description: PersistentVolumeMode describes
-                                        how a volume is...
+                                      description: volumeMode defines what type of
+                                        volume is...
                                       type: string
                                     volumeName:
+                                      description: volumeName is the binding reference
+                                        to the...
                                       type: string
                                   type: object
                               type: object
                           type: object
                         fc:
-                          description: FCVolumeSourceApplyConfiguration represents
-                            a...
+                          description: fc represents a Fibre Channel resource that
+                            is...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             lun:
+                              description: 'lun is Optional: FC target lun number'
                               format: int32
                               type: integer
                             readOnly:
+                              description: 'readOnly is Optional: Defaults to false...'
                               type: boolean
                             targetWWNs:
+                              description: 'targetWWNs is Optional: FC target worldwide
+                                names...'
                               items:
                                 type: string
                               type: array
                             wwids:
+                              description: 'wwids Optional: FC volume world wide identifiers...'
                               items:
                                 type: string
                               type: array
                           type: object
                         flexVolume:
-                          description: FlexVolumeSourceApplyConfiguration represents
-                            a...
+                          description: flexVolume represents a generic volume resource...
                           properties:
                             driver:
+                              description: driver is the name of the driver to use
+                                for this...
                               type: string
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             options:
                               additionalProperties:
                                 type: string
+                              description: 'options is Optional: this field holds
+                                extra...'
                               type: object
                             readOnly:
+                              description: 'readOnly is Optional: defaults to false...'
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: 'secretRef is Optional: secretRef is reference
+                                to...'
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                           type: object
                         flocker:
-                          description: FlockerVolumeSourceApplyConfiguration represents...
+                          description: flocker represents a Flocker volume attached
+                            to a...
                           properties:
                             datasetName:
+                              description: datasetName is Name of the dataset stored
+                                as...
                               type: string
                             datasetUUID:
+                              description: datasetUUID is the UUID of the dataset.
                               type: string
                           type: object
                         gcePersistentDisk:
-                          description: GCEPersistentDiskVolumeSourceApplyConfiguration...
+                          description: gcePersistentDisk represents a GCE Disk resource...
                           properties:
                             fsType:
+                              description: fsType is filesystem type of the volume
+                                that you...
                               type: string
                             partition:
+                              description: partition is the partition in the volume
+                                that you...
                               format: int32
                               type: integer
                             pdName:
+                              description: pdName is unique name of the PD resource
+                                in GCE.
                               type: string
                             readOnly:
+                              description: readOnly here will force the ReadOnly setting
+                                in...
                               type: boolean
                           type: object
                         gitRepo:
-                          description: GitRepoVolumeSourceApplyConfiguration represents...
+                          description: gitRepo represents a git repository at a...
                           properties:
                             directory:
+                              description: directory is the target directory name.
                               type: string
                             repository:
+                              description: repository is the URL
                               type: string
                             revision:
+                              description: revision is the commit hash for the specified...
                               type: string
                           type: object
                         glusterfs:
-                          description: GlusterfsVolumeSourceApplyConfiguration...
+                          description: glusterfs represents a Glusterfs mount on the...
                           properties:
                             endpoints:
+                              description: endpoints is the endpoint name that details...
                               type: string
                             path:
+                              description: path is the Glusterfs volume path.
                               type: string
                             readOnly:
+                              description: readOnly here will force the Glusterfs
+                                volume to...
                               type: boolean
                           type: object
                         hostPath:
-                          description: HostPathVolumeSourceApplyConfiguration represents...
+                          description: hostPath represents a pre-existing file or...
                           properties:
                             path:
+                              description: path of the directory on the host.
                               type: string
                             type:
+                              description: |-
+                                type for HostPath Volume
+                                Defaults to ""
+                                More...
                               type: string
                           type: object
                         image:
-                          description: ImageVolumeSourceApplyConfiguration represents
-                            a...
+                          description: image represents an OCI object (a container
+                            image...
                           properties:
                             pullPolicy:
-                              description: PullPolicy describes a policy for if/when
-                                to pull...
+                              description: Policy for pulling OCI objects.
                               type: string
                             reference:
+                              description: 'Required: Image or artifact reference
+                                to be used.'
                               type: string
                           type: object
                         iscsi:
-                          description: ISCSIVolumeSourceApplyConfiguration represents
-                            a...
+                          description: iscsi represents an ISCSI Disk resource that
+                            is...
                           properties:
                             chapAuthDiscovery:
+                              description: chapAuthDiscovery defines whether support
+                                iSCSI...
                               type: boolean
                             chapAuthSession:
+                              description: chapAuthSession defines whether support
+                                iSCSI...
                               type: boolean
                             fsType:
+                              description: fsType is the filesystem type of the volume
+                                that...
                               type: string
                             initiatorName:
+                              description: initiatorName is the custom iSCSI Initiator
+                                Name.
                               type: string
                             iqn:
+                              description: iqn is the target iSCSI Qualified Name.
                               type: string
                             iscsiInterface:
+                              description: iscsiInterface is the interface Name that
+                                uses an...
                               type: string
                             lun:
+                              description: lun represents iSCSI Target Lun number.
                               format: int32
                               type: integer
                             portals:
+                              description: portals is the iSCSI Target Portal List.
                               items:
                                 type: string
                               type: array
                             readOnly:
+                              description: readOnly here will force the ReadOnly setting
+                                in...
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: secretRef is the CHAP Secret for iSCSI
+                                target and...
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             targetPortal:
+                              description: targetPortal is iSCSI Target Portal.
                               type: string
                           type: object
                         name:
+                          description: name of the volume.
                           type: string
                         nfs:
-                          description: NFSVolumeSourceApplyConfiguration represents
-                            a...
+                          description: nfs represents an NFS mount on the host that...
                           properties:
                             path:
+                              description: path that is exported by the NFS server.
                               type: string
                             readOnly:
+                              description: readOnly here will force the NFS export
+                                to be...
                               type: boolean
                             server:
+                              description: server is the hostname or IP address of
+                                the NFS...
                               type: string
                           type: object
                         persistentVolumeClaim:
-                          description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
+                          description: persistentVolumeClaimVolumeSource represents
+                            a...
                           properties:
                             claimName:
+                              description: claimName is the name of a PersistentVolumeClaim...
                               type: string
                             readOnly:
+                              description: readOnly Will force the ReadOnly setting
+                                in...
                               type: boolean
                           type: object
                         photonPersistentDisk:
-                          description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
+                          description: photonPersistentDisk represents a...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             pdID:
+                              description: pdID is the ID that identifies Photon Controller...
                               type: string
                           type: object
                         portworxVolume:
-                          description: PortworxVolumeSourceApplyConfiguration represents...
+                          description: portworxVolume represents a portworx volume...
                           properties:
                             fsType:
+                              description: fSType represents the filesystem type to
+                                mount...
                               type: string
                             readOnly:
+                              description: readOnly defaults to false (read/write).
                               type: boolean
                             volumeID:
+                              description: volumeID uniquely identifies a Portworx
+                                volume
                               type: string
                           type: object
                         projected:
-                          description: ProjectedVolumeSourceApplyConfiguration...
+                          description: projected items for all in one resources secrets,...
                           properties:
                             defaultMode:
+                              description: defaultMode are the mode bits used to set...
                               format: int32
                               type: integer
                             sources:
+                              description: sources is the list of volume projections.
                               items:
                                 description: VolumeProjectionApplyConfiguration represents
                                   a...
                                 properties:
                                   clusterTrustBundle:
-                                    description: ClusterTrustBundleProjectionApplyConfiguration...
+                                    description: ClusterTrustBundle allows a pod to
+                                      access the `.
                                     properties:
                                       labelSelector:
-                                        description: LabelSelectorApplyConfiguration
-                                          represents a...
+                                        description: Select all ClusterTrustBundles
+                                          that match this...
                                         properties:
                                           matchExpressions:
+                                            description: matchExpressions is a list
+                                              of label selector...
                                             items:
                                               description: LabelSelectorRequirementApplyConfiguration...
                                               properties:
                                                 key:
+                                                  description: key is the label key
+                                                    that the selector applies to.
                                                   type: string
                                                 operator:
-                                                  description: A label selector operator
-                                                    is the set of operators...
+                                                  description: operator represents
+                                                    a key's relationship to a set...
                                                   type: string
                                                 values:
+                                                  description: values is an array
+                                                    of string values.
                                                   items:
                                                     type: string
                                                   type: array
@@ -1219,260 +1605,398 @@ spec:
                                           matchLabels:
                                             additionalProperties:
                                               type: string
+                                            description: matchLabels is a map of {key,value}
+                                              pairs.
                                             type: object
                                         type: object
                                       name:
+                                        description: Select a single ClusterTrustBundle
+                                          by object name.
                                         type: string
                                       optional:
+                                        description: If true, don't block pod startup
+                                          if the...
                                         type: boolean
                                       path:
+                                        description: Relative path from the volume
+                                          root to write the...
                                         type: string
                                       signerName:
+                                        description: Select all ClusterTrustBundles
+                                          that match this...
                                         type: string
                                     type: object
                                   configMap:
-                                    description: ConfigMapProjectionApplyConfiguration
-                                      represents...
+                                    description: configMap information about the configMap
+                                      data to...
                                     properties:
                                       items:
+                                        description: items if unspecified, each key-value
+                                          pair in the...
                                         items:
                                           description: KeyToPathApplyConfiguration
                                             represents a...
                                           properties:
                                             key:
+                                              description: key is the key to project.
                                               type: string
                                             mode:
+                                              description: 'mode is Optional: mode
+                                                bits used to set...'
                                               format: int32
                                               type: integer
                                             path:
+                                              description: path is the relative path
+                                                of the file to map the...
                                               type: string
                                           type: object
                                         type: array
                                       name:
+                                        description: Name of the referent.
                                         type: string
                                       optional:
+                                        description: optional specify whether the
+                                          ConfigMap or its...
                                         type: boolean
                                     type: object
                                   downwardAPI:
-                                    description: DownwardAPIProjectionApplyConfiguration...
+                                    description: downwardAPI information about the
+                                      downwardAPI...
                                     properties:
                                       items:
+                                        description: Items is a list of DownwardAPIVolume
+                                          file
                                         items:
                                           description: DownwardAPIVolumeFileApplyConfiguration...
                                           properties:
                                             fieldRef:
-                                              description: ObjectFieldSelectorApplyConfiguration
-                                                represents...
+                                              description: 'Required: Selects a field
+                                                of the pod: only...'
                                               properties:
                                                 apiVersion:
+                                                  description: Version of the schema
+                                                    the FieldPath is written in...
                                                   type: string
                                                 fieldPath:
+                                                  description: Path of the field to
+                                                    select in the specified API...
                                                   type: string
                                               type: object
                                             mode:
+                                              description: 'Optional: mode bits used
+                                                to set permissions on...'
                                               format: int32
                                               type: integer
                                             path:
+                                              description: 'Required: Path is  the
+                                                relative path name of the...'
                                               type: string
                                             resourceFieldRef:
-                                              description: ResourceFieldSelectorApplyConfiguration...
+                                              description: 'Selects a resource of
+                                                the container: only...'
                                               properties:
                                                 containerName:
+                                                  description: 'Container name: required
+                                                    for volumes, optional...'
                                                   type: string
                                                 divisor:
                                                   anyOf:
                                                   - type: integer
                                                   - type: string
+                                                  description: Specifies the output
+                                                    format of the exposed...
                                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                                   x-kubernetes-int-or-string: true
                                                 resource:
+                                                  description: 'Required: resource
+                                                    to select'
                                                   type: string
                                               type: object
                                           type: object
                                         type: array
                                     type: object
                                   podCertificate:
-                                    description: PodCertificateProjectionApplyConfiguration...
+                                    description: Projects an auto-rotating credential
+                                      bundle...
                                     properties:
                                       certificateChainPath:
+                                        description: Write the certificate chain at
+                                          this path in the...
                                         type: string
                                       credentialBundlePath:
+                                        description: Write the credential bundle at
+                                          this path in the...
                                         type: string
                                       keyPath:
+                                        description: Write the key at this path in
+                                          the projected...
                                         type: string
                                       keyType:
+                                        description: The type of keypair Kubelet will
+                                          generate for the...
                                         type: string
                                       maxExpirationSeconds:
+                                        description: maxExpirationSeconds is the maximum
+                                          lifetime...
                                         format: int32
                                         type: integer
                                       signerName:
+                                        description: Kubelet's generated CSRs will
+                                          be addressed to...
                                         type: string
+                                      userAnnotations:
+                                        additionalProperties:
+                                          type: string
+                                        description: userAnnotations allow pod authors
+                                          to pass...
+                                        type: object
                                     type: object
                                   secret:
-                                    description: SecretProjectionApplyConfiguration
-                                      represents a...
+                                    description: secret information about the secret
+                                      data to...
                                     properties:
                                       items:
+                                        description: items if unspecified, each key-value
+                                          pair in the...
                                         items:
                                           description: KeyToPathApplyConfiguration
                                             represents a...
                                           properties:
                                             key:
+                                              description: key is the key to project.
                                               type: string
                                             mode:
+                                              description: 'mode is Optional: mode
+                                                bits used to set...'
                                               format: int32
                                               type: integer
                                             path:
+                                              description: path is the relative path
+                                                of the file to map the...
                                               type: string
                                           type: object
                                         type: array
                                       name:
+                                        description: Name of the referent.
                                         type: string
                                       optional:
+                                        description: optional field specify whether
+                                          the Secret or its...
                                         type: boolean
                                     type: object
                                   serviceAccountToken:
-                                    description: ServiceAccountTokenProjectionApplyConfiguration...
+                                    description: serviceAccountToken is information
+                                      about the...
                                     properties:
                                       audience:
+                                        description: audience is the intended audience
+                                          of the token.
                                         type: string
                                       expirationSeconds:
+                                        description: expirationSeconds is the requested
+                                          duration of...
                                         format: int64
                                         type: integer
                                       path:
+                                        description: path is the path relative to
+                                          the mount point of...
                                         type: string
                                     type: object
                                 type: object
                               type: array
                           type: object
                         quobyte:
-                          description: QuobyteVolumeSourceApplyConfiguration represents...
+                          description: quobyte represents a Quobyte mount on the host...
                           properties:
                             group:
+                              description: |-
+                                group to map volume access to
+                                Default is no group
                               type: string
                             readOnly:
+                              description: readOnly here will force the Quobyte volume
+                                to be...
                               type: boolean
                             registry:
+                              description: registry represents a single or multiple
+                                Quobyte...
                               type: string
                             tenant:
+                              description: tenant owning the given Quobyte volume
+                                in the...
                               type: string
                             user:
+                              description: |-
+                                user to map volume access to
+                                Defaults to...
                               type: string
                             volume:
+                              description: volume is a string that references an already...
                               type: string
                           type: object
                         rbd:
-                          description: RBDVolumeSourceApplyConfiguration represents
-                            a...
+                          description: rbd represents a Rados Block Device mount on
+                            the...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type of the volume
+                                that...
                               type: string
                             image:
+                              description: image is the rados image name.
                               type: string
                             keyring:
+                              description: keyring is the path to key ring for RBDUser.
                               type: string
                             monitors:
+                              description: monitors is a collection of Ceph monitors.
                               items:
                                 type: string
                               type: array
                             pool:
+                              description: |-
+                                pool is the rados pool name.
+                                Default is rbd.
                               type: string
                             readOnly:
+                              description: readOnly here will force the ReadOnly setting
+                                in...
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: secretRef is name of the authentication
+                                secret...
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             user:
+                              description: |-
+                                user is the rados user name.
+                                Default is admin.
                               type: string
                           type: object
                         scaleIO:
-                          description: ScaleIOVolumeSourceApplyConfiguration represents...
+                          description: scaleIO represents a ScaleIO persistent volume...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             gateway:
+                              description: gateway is the host address of the ScaleIO
+                                API...
                               type: string
                             protectionDomain:
+                              description: protectionDomain is the name of the ScaleIO...
                               type: string
                             readOnly:
+                              description: readOnly Defaults to false (read/write).
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: secretRef references to the secret for
+                                ScaleIO...
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             sslEnabled:
+                              description: sslEnabled Flag enable/disable SSL communication...
                               type: boolean
                             storageMode:
+                              description: storageMode indicates whether the storage
+                                for a...
                               type: string
                             storagePool:
+                              description: storagePool is the ScaleIO Storage Pool...
                               type: string
                             system:
+                              description: system is the name of the storage system
+                                as...
                               type: string
                             volumeName:
+                              description: volumeName is the name of a volume already...
                               type: string
                           type: object
                         secret:
-                          description: SecretVolumeSourceApplyConfiguration represents
-                            a...
+                          description: secret represents a secret that should populate...
                           properties:
                             defaultMode:
+                              description: 'defaultMode is Optional: mode bits used
+                                to set...'
                               format: int32
                               type: integer
                             items:
+                              description: items If unspecified, each key-value pair
+                                in the...
                               items:
                                 description: KeyToPathApplyConfiguration represents
                                   a...
                                 properties:
                                   key:
+                                    description: key is the key to project.
                                     type: string
                                   mode:
+                                    description: 'mode is Optional: mode bits used
+                                      to set...'
                                     format: int32
                                     type: integer
                                   path:
+                                    description: path is the relative path of the
+                                      file to map the...
                                     type: string
                                 type: object
                               type: array
                             optional:
+                              description: optional field specify whether the Secret
+                                or its...
                               type: boolean
                             secretName:
+                              description: secretName is the name of the secret in
+                                the pod's...
                               type: string
                           type: object
                         storageos:
-                          description: StorageOSVolumeSourceApplyConfiguration...
+                          description: storageOS represents a StorageOS volume attached...
                           properties:
                             fsType:
+                              description: fsType is the filesystem type to mount.
                               type: string
                             readOnly:
+                              description: readOnly defaults to false (read/write).
                               type: boolean
                             secretRef:
-                              description: LocalObjectReferenceApplyConfiguration
-                                represents...
+                              description: secretRef specifies the secret to use for...
                               properties:
                                 name:
+                                  description: Name of the referent.
                                   type: string
                               type: object
                             volumeName:
+                              description: volumeName is the human-readable name of
+                                the...
                               type: string
                             volumeNamespace:
+                              description: volumeNamespace specifies the scope of
+                                the volume...
                               type: string
                           type: object
                         vsphereVolume:
-                          description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
+                          description: vsphereVolume represents a vSphere volume...
                           properties:
                             fsType:
+                              description: fsType is filesystem type to mount.
                               type: string
                             storagePolicyID:
+                              description: storagePolicyID is the storage Policy Based...
                               type: string
                             storagePolicyName:
+                              description: storagePolicyName is the storage Policy
+                                Based...
                               type: string
                             volumePath:
+                              description: volumePath is the path that identifies
+                                vSphere...
                               type: string
                           type: object
                       type: object
@@ -1481,285 +2005,406 @@ spec:
                     description: WorkVolume is the volume source for the working...
                     properties:
                       awsElasticBlockStore:
-                        description: AWSElasticBlockStoreVolumeSourceApplyConfiguration...
+                        description: awsElasticBlockStore represents an AWS Disk...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type of the volume
+                              that...
                             type: string
                           partition:
+                            description: partition is the partition in the volume
+                              that you...
                             format: int32
                             type: integer
                           readOnly:
+                            description: readOnly value true will force the readOnly...
                             type: boolean
                           volumeID:
+                            description: volumeID is unique ID of the persistent disk...
                             type: string
                         type: object
                       azureDisk:
-                        description: AzureDiskVolumeSourceApplyConfiguration...
+                        description: azureDisk represents an Azure Data Disk mount
+                          on...
                         properties:
                           cachingMode:
+                            description: 'cachingMode is the Host Caching mode: None,
+                              Read...'
                             type: string
                           diskName:
+                            description: diskName is the Name of the data disk in
+                              the blob...
                             type: string
                           diskURI:
+                            description: diskURI is the URI of data disk in the blob...
                             type: string
                           fsType:
+                            description: fsType is Filesystem type to mount.
                             type: string
                           kind:
+                            description: 'kind expected values are Shared: multiple
+                              blob...'
                             type: string
                           readOnly:
+                            description: readOnly Defaults to false (read/write).
                             type: boolean
                         type: object
                       azureFile:
-                        description: AzureFileVolumeSourceApplyConfiguration...
+                        description: azureFile represents an Azure File Service mount...
                         properties:
                           readOnly:
+                            description: readOnly defaults to false (read/write).
                             type: boolean
                           secretName:
+                            description: secretName is the  name of secret that contains...
                             type: string
                           shareName:
+                            description: shareName is the azure share Name
                             type: string
                         type: object
                       cephfs:
-                        description: CephFSVolumeSourceApplyConfiguration represents
-                          a...
+                        description: cephFS represents a Ceph FS mount on the host...
                         properties:
                           monitors:
+                            description: 'monitors is Required: Monitors is a collection
+                              of...'
                             items:
                               type: string
                             type: array
                           path:
+                            description: 'path is Optional: Used as the mounted root,...'
                             type: string
                           readOnly:
+                            description: 'readOnly is Optional: Defaults to false...'
                             type: boolean
                           secretFile:
+                            description: 'secretFile is Optional: SecretFile is the
+                              path to...'
                             type: string
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: 'secretRef is Optional: SecretRef is reference
+                              to...'
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           user:
+                            description: 'user is optional: User is the rados user
+                              name,...'
                             type: string
                         type: object
                       cinder:
-                        description: CinderVolumeSourceApplyConfiguration represents
-                          a...
+                        description: cinder represents a cinder volume attached and...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           readOnly:
+                            description: readOnly defaults to false (read/write).
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: 'secretRef is optional: points to a secret
+                              object...'
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           volumeID:
+                            description: volumeID used to identify the volume in cinder.
                             type: string
                         type: object
                       configMap:
-                        description: ConfigMapVolumeSourceApplyConfiguration...
+                        description: configMap represents a configMap that should...
                         properties:
                           defaultMode:
+                            description: 'defaultMode is optional: mode bits used
+                              to set...'
                             format: int32
                             type: integer
                           items:
+                            description: items if unspecified, each key-value pair
+                              in the...
                             items:
                               description: KeyToPathApplyConfiguration represents
                                 a...
                               properties:
                                 key:
+                                  description: key is the key to project.
                                   type: string
                                 mode:
+                                  description: 'mode is Optional: mode bits used to
+                                    set...'
                                   format: int32
                                   type: integer
                                 path:
+                                  description: path is the relative path of the file
+                                    to map the...
                                   type: string
                               type: object
                             type: array
                           name:
+                            description: Name of the referent.
                             type: string
                           optional:
+                            description: optional specify whether the ConfigMap or
+                              its...
                             type: boolean
                         type: object
                       csi:
-                        description: CSIVolumeSourceApplyConfiguration represents
-                          a...
+                        description: csi (Container Storage Interface) represents...
                         properties:
                           driver:
+                            description: driver is the name of the CSI driver that
+                              handles...
                             type: string
                           fsType:
+                            description: fsType to mount. Ex. "ext4", "xfs", "ntfs".
                             type: string
                           nodePublishSecretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: nodePublishSecretRef is a reference to the
+                              secret...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           readOnly:
+                            description: readOnly specifies a read-only configuration
+                              for...
                             type: boolean
                           volumeAttributes:
                             additionalProperties:
                               type: string
+                            description: volumeAttributes stores driver-specific...
                             type: object
                         type: object
                       downwardAPI:
-                        description: DownwardAPIVolumeSourceApplyConfiguration...
+                        description: downwardAPI represents downward API about the
+                          pod...
                         properties:
                           defaultMode:
+                            description: 'Optional: mode bits to use on created files
+                              by...'
                             format: int32
                             type: integer
                           items:
+                            description: Items is a list of downward API volume file
                             items:
                               description: DownwardAPIVolumeFileApplyConfiguration...
                               properties:
                                 fieldRef:
-                                  description: ObjectFieldSelectorApplyConfiguration
-                                    represents...
+                                  description: 'Required: Selects a field of the pod:
+                                    only...'
                                   properties:
                                     apiVersion:
+                                      description: Version of the schema the FieldPath
+                                        is written in...
                                       type: string
                                     fieldPath:
+                                      description: Path of the field to select in
+                                        the specified API...
                                       type: string
                                   type: object
                                 mode:
+                                  description: 'Optional: mode bits used to set permissions
+                                    on...'
                                   format: int32
                                   type: integer
                                 path:
+                                  description: 'Required: Path is  the relative path
+                                    name of the...'
                                   type: string
                                 resourceFieldRef:
-                                  description: ResourceFieldSelectorApplyConfiguration...
+                                  description: 'Selects a resource of the container:
+                                    only...'
                                   properties:
                                     containerName:
+                                      description: 'Container name: required for volumes,
+                                        optional...'
                                       type: string
                                     divisor:
                                       anyOf:
                                       - type: integer
                                       - type: string
+                                      description: Specifies the output format of
+                                        the exposed...
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
                                     resource:
+                                      description: 'Required: resource to select'
                                       type: string
                                   type: object
                               type: object
                             type: array
                         type: object
                       emptyDir:
-                        description: EmptyDirVolumeSourceApplyConfiguration represents...
+                        description: emptyDir represents a temporary directory that...
                         properties:
                           medium:
-                            description: StorageMedium defines ways that storage can
-                              be...
+                            description: medium represents what type of storage medium...
                             type: string
                           sizeLimit:
                             anyOf:
                             - type: integer
                             - type: string
+                            description: sizeLimit is the total amount of local storage...
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
                       ephemeral:
-                        description: EphemeralVolumeSourceApplyConfiguration...
+                        description: ephemeral represents a volume that is handled
+                          by...
                         properties:
                           volumeClaimTemplate:
-                            description: PersistentVolumeClaimTemplateApplyConfiguration...
+                            description: Will be used to create a stand-alone PVC
+                              to...
                             properties:
                               metadata:
-                                description: ObjectMetaApplyConfiguration represents
-                                  a...
+                                description: May contain labels and annotations that
+                                  will be...
                                 properties:
                                   annotations:
                                     additionalProperties:
                                       type: string
+                                    description: Annotations is an unstructured key
+                                      value map...
                                     type: object
                                   creationTimestamp:
+                                    description: CreationTimestamp is a timestamp
+                                      representing the...
                                     format: date-time
                                     type: string
                                   deletionGracePeriodSeconds:
+                                    description: Number of seconds allowed for this
+                                      object to...
                                     format: int64
                                     type: integer
                                   deletionTimestamp:
+                                    description: DeletionTimestamp is RFC 3339 date
+                                      and time at...
                                     format: date-time
                                     type: string
                                   finalizers:
+                                    description: Must be empty before the object is
+                                      deleted from...
                                     items:
                                       type: string
                                     type: array
                                   generateName:
+                                    description: GenerateName is an optional prefix,
+                                      used by the...
                                     type: string
                                   generation:
+                                    description: A sequence number representing a
+                                      specific...
                                     format: int64
                                     type: integer
                                   labels:
                                     additionalProperties:
                                       type: string
+                                    description: Map of string keys and values that
+                                      can be used to...
                                     type: object
                                   name:
+                                    description: Name must be unique within a namespace.
                                     type: string
                                   namespace:
+                                    description: Namespace defines the space within
+                                      which each...
                                     type: string
                                   ownerReferences:
+                                    description: List of objects depended by this
+                                      object.
                                     items:
                                       description: OwnerReferenceApplyConfiguration
                                         represents a...
                                       properties:
                                         apiVersion:
+                                          description: API version of the referent.
                                           type: string
                                         blockOwnerDeletion:
+                                          description: If true, AND if the owner has
+                                            the...
                                           type: boolean
                                         controller:
+                                          description: If true, this reference points
+                                            to the managing...
                                           type: boolean
                                         kind:
+                                          description: |-
+                                            Kind of the referent.
+                                            More info: https://git.k8s.
                                           type: string
                                         name:
+                                          description: Name of the referent.
                                           type: string
                                         uid:
-                                          description: UID is a type that holds unique
-                                            ID values,...
+                                          description: UID of the referent.
                                           type: string
                                       type: object
                                     type: array
                                   resourceVersion:
+                                    description: An opaque value that represents the
+                                      internal...
                                     type: string
                                   uid:
-                                    description: UID is a type that holds unique ID
-                                      values,...
+                                    description: UID is the unique in time and space
+                                      value for...
                                     type: string
                                 type: object
                               spec:
-                                description: PersistentVolumeClaimSpecApplyConfiguration...
+                                description: The specification for the PersistentVolumeClaim.
                                 properties:
                                   accessModes:
+                                    description: accessModes contains the desired
+                                      access modes the...
                                     items:
                                       type: string
                                     type: array
                                   dataSource:
-                                    description: TypedLocalObjectReferenceApplyConfiguration...
+                                    description: |-
+                                      dataSource field can be used to specify either:
+                                      *...
                                     properties:
                                       apiGroup:
+                                        description: APIGroup is the group for the
+                                          resource being...
                                         type: string
                                       kind:
+                                        description: Kind is the type of resource
+                                          being referenced
                                         type: string
                                       name:
+                                        description: Name is the name of resource
+                                          being referenced
                                         type: string
                                     type: object
                                   dataSourceRef:
-                                    description: TypedObjectReferenceApplyConfiguration
-                                      represents...
+                                    description: dataSourceRef specifies the object
+                                      from which to...
                                     properties:
                                       apiGroup:
+                                        description: APIGroup is the group for the
+                                          resource being...
                                         type: string
                                       kind:
+                                        description: Kind is the type of resource
+                                          being referenced
                                         type: string
                                       name:
+                                        description: Name is the name of resource
+                                          being referenced
                                         type: string
                                       namespace:
+                                        description: Namespace is the namespace of
+                                          resource being...
                                         type: string
                                     type: object
                                   resources:
-                                    description: VolumeResourceRequirementsApplyConfiguration...
+                                    description: resources represents the minimum
+                                      resources the...
                                     properties:
                                       limits:
                                         additionalProperties:
@@ -1768,8 +2413,8 @@ spec:
                                           - type: string
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
-                                        description: ResourceList is a set of (resource
-                                          name,...
+                                        description: Limits describes the maximum
+                                          amount of compute...
                                         type: object
                                       requests:
                                         additionalProperties:
@@ -1778,25 +2423,31 @@ spec:
                                           - type: string
                                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                           x-kubernetes-int-or-string: true
-                                        description: ResourceList is a set of (resource
-                                          name,...
+                                        description: Requests describes the minimum
+                                          amount of compute...
                                         type: object
                                     type: object
                                   selector:
-                                    description: LabelSelectorApplyConfiguration represents
-                                      a...
+                                    description: selector is a label query over volumes
+                                      to...
                                     properties:
                                       matchExpressions:
+                                        description: matchExpressions is a list of
+                                          label selector...
                                         items:
                                           description: LabelSelectorRequirementApplyConfiguration...
                                           properties:
                                             key:
+                                              description: key is the label key that
+                                                the selector applies to.
                                               type: string
                                             operator:
-                                              description: A label selector operator
-                                                is the set of operators...
+                                              description: operator represents a key's
+                                                relationship to a set...
                                               type: string
                                             values:
+                                              description: values is an array of string
+                                                values.
                                               items:
                                                 type: string
                                               type: array
@@ -1805,221 +2456,305 @@ spec:
                                       matchLabels:
                                         additionalProperties:
                                           type: string
+                                        description: matchLabels is a map of {key,value}
+                                          pairs.
                                         type: object
                                     type: object
                                   storageClassName:
+                                    description: storageClassName is the name of the
+                                      StorageClass...
                                     type: string
                                   volumeAttributesClassName:
+                                    description: volumeAttributesClassName may be
+                                      used to set the...
                                     type: string
                                   volumeMode:
-                                    description: PersistentVolumeMode describes how
-                                      a volume is...
+                                    description: volumeMode defines what type of volume
+                                      is...
                                     type: string
                                   volumeName:
+                                    description: volumeName is the binding reference
+                                      to the...
                                     type: string
                                 type: object
                             type: object
                         type: object
                       fc:
-                        description: FCVolumeSourceApplyConfiguration represents a...
+                        description: fc represents a Fibre Channel resource that is...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           lun:
+                            description: 'lun is Optional: FC target lun number'
                             format: int32
                             type: integer
                           readOnly:
+                            description: 'readOnly is Optional: Defaults to false...'
                             type: boolean
                           targetWWNs:
+                            description: 'targetWWNs is Optional: FC target worldwide
+                              names...'
                             items:
                               type: string
                             type: array
                           wwids:
+                            description: 'wwids Optional: FC volume world wide identifiers...'
                             items:
                               type: string
                             type: array
                         type: object
                       flexVolume:
-                        description: FlexVolumeSourceApplyConfiguration represents
-                          a...
+                        description: flexVolume represents a generic volume resource...
                         properties:
                           driver:
+                            description: driver is the name of the driver to use for
+                              this...
                             type: string
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           options:
                             additionalProperties:
                               type: string
+                            description: 'options is Optional: this field holds extra...'
                             type: object
                           readOnly:
+                            description: 'readOnly is Optional: defaults to false...'
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: 'secretRef is Optional: secretRef is reference
+                              to...'
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                         type: object
                       flocker:
-                        description: FlockerVolumeSourceApplyConfiguration represents...
+                        description: flocker represents a Flocker volume attached
+                          to a...
                         properties:
                           datasetName:
+                            description: datasetName is Name of the dataset stored
+                              as...
                             type: string
                           datasetUUID:
+                            description: datasetUUID is the UUID of the dataset.
                             type: string
                         type: object
                       gcePersistentDisk:
-                        description: GCEPersistentDiskVolumeSourceApplyConfiguration...
+                        description: gcePersistentDisk represents a GCE Disk resource...
                         properties:
                           fsType:
+                            description: fsType is filesystem type of the volume that
+                              you...
                             type: string
                           partition:
+                            description: partition is the partition in the volume
+                              that you...
                             format: int32
                             type: integer
                           pdName:
+                            description: pdName is unique name of the PD resource
+                              in GCE.
                             type: string
                           readOnly:
+                            description: readOnly here will force the ReadOnly setting
+                              in...
                             type: boolean
                         type: object
                       gitRepo:
-                        description: GitRepoVolumeSourceApplyConfiguration represents...
+                        description: gitRepo represents a git repository at a...
                         properties:
                           directory:
+                            description: directory is the target directory name.
                             type: string
                           repository:
+                            description: repository is the URL
                             type: string
                           revision:
+                            description: revision is the commit hash for the specified...
                             type: string
                         type: object
                       glusterfs:
-                        description: GlusterfsVolumeSourceApplyConfiguration...
+                        description: glusterfs represents a Glusterfs mount on the...
                         properties:
                           endpoints:
+                            description: endpoints is the endpoint name that details...
                             type: string
                           path:
+                            description: path is the Glusterfs volume path.
                             type: string
                           readOnly:
+                            description: readOnly here will force the Glusterfs volume
+                              to...
                             type: boolean
                         type: object
                       hostPath:
-                        description: HostPathVolumeSourceApplyConfiguration represents...
+                        description: hostPath represents a pre-existing file or...
                         properties:
                           path:
+                            description: path of the directory on the host.
                             type: string
                           type:
+                            description: |-
+                              type for HostPath Volume
+                              Defaults to ""
+                              More...
                             type: string
                         type: object
                       image:
-                        description: ImageVolumeSourceApplyConfiguration represents
-                          a...
+                        description: image represents an OCI object (a container image...
                         properties:
                           pullPolicy:
-                            description: PullPolicy describes a policy for if/when
-                              to pull...
+                            description: Policy for pulling OCI objects.
                             type: string
                           reference:
+                            description: 'Required: Image or artifact reference to
+                              be used.'
                             type: string
                         type: object
                       iscsi:
-                        description: ISCSIVolumeSourceApplyConfiguration represents
-                          a...
+                        description: iscsi represents an ISCSI Disk resource that
+                          is...
                         properties:
                           chapAuthDiscovery:
+                            description: chapAuthDiscovery defines whether support
+                              iSCSI...
                             type: boolean
                           chapAuthSession:
+                            description: chapAuthSession defines whether support iSCSI...
                             type: boolean
                           fsType:
+                            description: fsType is the filesystem type of the volume
+                              that...
                             type: string
                           initiatorName:
+                            description: initiatorName is the custom iSCSI Initiator
+                              Name.
                             type: string
                           iqn:
+                            description: iqn is the target iSCSI Qualified Name.
                             type: string
                           iscsiInterface:
+                            description: iscsiInterface is the interface Name that
+                              uses an...
                             type: string
                           lun:
+                            description: lun represents iSCSI Target Lun number.
                             format: int32
                             type: integer
                           portals:
+                            description: portals is the iSCSI Target Portal List.
                             items:
                               type: string
                             type: array
                           readOnly:
+                            description: readOnly here will force the ReadOnly setting
+                              in...
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: secretRef is the CHAP Secret for iSCSI target
+                              and...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           targetPortal:
+                            description: targetPortal is iSCSI Target Portal.
                             type: string
                         type: object
                       nfs:
-                        description: NFSVolumeSourceApplyConfiguration represents
-                          a...
+                        description: nfs represents an NFS mount on the host that...
                         properties:
                           path:
+                            description: path that is exported by the NFS server.
                             type: string
                           readOnly:
+                            description: readOnly here will force the NFS export to
+                              be...
                             type: boolean
                           server:
+                            description: server is the hostname or IP address of the
+                              NFS...
                             type: string
                         type: object
                       persistentVolumeClaim:
-                        description: PersistentVolumeClaimVolumeSourceApplyConfiguratio...
+                        description: persistentVolumeClaimVolumeSource represents
+                          a...
                         properties:
                           claimName:
+                            description: claimName is the name of a PersistentVolumeClaim...
                             type: string
                           readOnly:
+                            description: readOnly Will force the ReadOnly setting
+                              in...
                             type: boolean
                         type: object
                       photonPersistentDisk:
-                        description: PhotonPersistentDiskVolumeSourceApplyConfiguration...
+                        description: photonPersistentDisk represents a...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           pdID:
+                            description: pdID is the ID that identifies Photon Controller...
                             type: string
                         type: object
                       portworxVolume:
-                        description: PortworxVolumeSourceApplyConfiguration represents...
+                        description: portworxVolume represents a portworx volume...
                         properties:
                           fsType:
+                            description: fSType represents the filesystem type to
+                              mount...
                             type: string
                           readOnly:
+                            description: readOnly defaults to false (read/write).
                             type: boolean
                           volumeID:
+                            description: volumeID uniquely identifies a Portworx volume
                             type: string
                         type: object
                       projected:
-                        description: ProjectedVolumeSourceApplyConfiguration...
+                        description: projected items for all in one resources secrets,...
                         properties:
                           defaultMode:
+                            description: defaultMode are the mode bits used to set...
                             format: int32
                             type: integer
                           sources:
+                            description: sources is the list of volume projections.
                             items:
                               description: VolumeProjectionApplyConfiguration represents
                                 a...
                               properties:
                                 clusterTrustBundle:
-                                  description: ClusterTrustBundleProjectionApplyConfiguration...
+                                  description: ClusterTrustBundle allows a pod to
+                                    access the `.
                                   properties:
                                     labelSelector:
-                                      description: LabelSelectorApplyConfiguration
-                                        represents a...
+                                      description: Select all ClusterTrustBundles
+                                        that match this...
                                       properties:
                                         matchExpressions:
+                                          description: matchExpressions is a list
+                                            of label selector...
                                           items:
                                             description: LabelSelectorRequirementApplyConfiguration...
                                             properties:
                                               key:
+                                                description: key is the label key
+                                                  that the selector applies to.
                                                 type: string
                                               operator:
-                                                description: A label selector operator
-                                                  is the set of operators...
+                                                description: operator represents a
+                                                  key's relationship to a set...
                                                 type: string
                                               values:
+                                                description: values is an array of
+                                                  string values.
                                                 items:
                                                   type: string
                                                 type: array
@@ -2028,257 +2763,393 @@ spec:
                                         matchLabels:
                                           additionalProperties:
                                             type: string
+                                          description: matchLabels is a map of {key,value}
+                                            pairs.
                                           type: object
                                       type: object
                                     name:
+                                      description: Select a single ClusterTrustBundle
+                                        by object name.
                                       type: string
                                     optional:
+                                      description: If true, don't block pod startup
+                                        if the...
                                       type: boolean
                                     path:
+                                      description: Relative path from the volume root
+                                        to write the...
                                       type: string
                                     signerName:
+                                      description: Select all ClusterTrustBundles
+                                        that match this...
                                       type: string
                                   type: object
                                 configMap:
-                                  description: ConfigMapProjectionApplyConfiguration
-                                    represents...
+                                  description: configMap information about the configMap
+                                    data to...
                                   properties:
                                     items:
+                                      description: items if unspecified, each key-value
+                                        pair in the...
                                       items:
                                         description: KeyToPathApplyConfiguration represents
                                           a...
                                         properties:
                                           key:
+                                            description: key is the key to project.
                                             type: string
                                           mode:
+                                            description: 'mode is Optional: mode bits
+                                              used to set...'
                                             format: int32
                                             type: integer
                                           path:
+                                            description: path is the relative path
+                                              of the file to map the...
                                             type: string
                                         type: object
                                       type: array
                                     name:
+                                      description: Name of the referent.
                                       type: string
                                     optional:
+                                      description: optional specify whether the ConfigMap
+                                        or its...
                                       type: boolean
                                   type: object
                                 downwardAPI:
-                                  description: DownwardAPIProjectionApplyConfiguration...
+                                  description: downwardAPI information about the downwardAPI...
                                   properties:
                                     items:
+                                      description: Items is a list of DownwardAPIVolume
+                                        file
                                       items:
                                         description: DownwardAPIVolumeFileApplyConfiguration...
                                         properties:
                                           fieldRef:
-                                            description: ObjectFieldSelectorApplyConfiguration
-                                              represents...
+                                            description: 'Required: Selects a field
+                                              of the pod: only...'
                                             properties:
                                               apiVersion:
+                                                description: Version of the schema
+                                                  the FieldPath is written in...
                                                 type: string
                                               fieldPath:
+                                                description: Path of the field to
+                                                  select in the specified API...
                                                 type: string
                                             type: object
                                           mode:
+                                            description: 'Optional: mode bits used
+                                              to set permissions on...'
                                             format: int32
                                             type: integer
                                           path:
+                                            description: 'Required: Path is  the relative
+                                              path name of the...'
                                             type: string
                                           resourceFieldRef:
-                                            description: ResourceFieldSelectorApplyConfiguration...
+                                            description: 'Selects a resource of the
+                                              container: only...'
                                             properties:
                                               containerName:
+                                                description: 'Container name: required
+                                                  for volumes, optional...'
                                                 type: string
                                               divisor:
                                                 anyOf:
                                                 - type: integer
                                                 - type: string
+                                                description: Specifies the output
+                                                  format of the exposed...
                                                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                                 x-kubernetes-int-or-string: true
                                               resource:
+                                                description: 'Required: resource to
+                                                  select'
                                                 type: string
                                             type: object
                                         type: object
                                       type: array
                                   type: object
                                 podCertificate:
-                                  description: PodCertificateProjectionApplyConfiguration...
+                                  description: Projects an auto-rotating credential
+                                    bundle...
                                   properties:
                                     certificateChainPath:
+                                      description: Write the certificate chain at
+                                        this path in the...
                                       type: string
                                     credentialBundlePath:
+                                      description: Write the credential bundle at
+                                        this path in the...
                                       type: string
                                     keyPath:
+                                      description: Write the key at this path in the
+                                        projected...
                                       type: string
                                     keyType:
+                                      description: The type of keypair Kubelet will
+                                        generate for the...
                                       type: string
                                     maxExpirationSeconds:
+                                      description: maxExpirationSeconds is the maximum
+                                        lifetime...
                                       format: int32
                                       type: integer
                                     signerName:
+                                      description: Kubelet's generated CSRs will be
+                                        addressed to...
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: userAnnotations allow pod authors
+                                        to pass...
+                                      type: object
                                   type: object
                                 secret:
-                                  description: SecretProjectionApplyConfiguration
-                                    represents a...
+                                  description: secret information about the secret
+                                    data to...
                                   properties:
                                     items:
+                                      description: items if unspecified, each key-value
+                                        pair in the...
                                       items:
                                         description: KeyToPathApplyConfiguration represents
                                           a...
                                         properties:
                                           key:
+                                            description: key is the key to project.
                                             type: string
                                           mode:
+                                            description: 'mode is Optional: mode bits
+                                              used to set...'
                                             format: int32
                                             type: integer
                                           path:
+                                            description: path is the relative path
+                                              of the file to map the...
                                             type: string
                                         type: object
                                       type: array
                                     name:
+                                      description: Name of the referent.
                                       type: string
                                     optional:
+                                      description: optional field specify whether
+                                        the Secret or its...
                                       type: boolean
                                   type: object
                                 serviceAccountToken:
-                                  description: ServiceAccountTokenProjectionApplyConfiguration...
+                                  description: serviceAccountToken is information
+                                    about the...
                                   properties:
                                     audience:
+                                      description: audience is the intended audience
+                                        of the token.
                                       type: string
                                     expirationSeconds:
+                                      description: expirationSeconds is the requested
+                                        duration of...
                                       format: int64
                                       type: integer
                                     path:
+                                      description: path is the path relative to the
+                                        mount point of...
                                       type: string
                                   type: object
                               type: object
                             type: array
                         type: object
                       quobyte:
-                        description: QuobyteVolumeSourceApplyConfiguration represents...
+                        description: quobyte represents a Quobyte mount on the host...
                         properties:
                           group:
+                            description: |-
+                              group to map volume access to
+                              Default is no group
                             type: string
                           readOnly:
+                            description: readOnly here will force the Quobyte volume
+                              to be...
                             type: boolean
                           registry:
+                            description: registry represents a single or multiple
+                              Quobyte...
                             type: string
                           tenant:
+                            description: tenant owning the given Quobyte volume in
+                              the...
                             type: string
                           user:
+                            description: |-
+                              user to map volume access to
+                              Defaults to...
                             type: string
                           volume:
+                            description: volume is a string that references an already...
                             type: string
                         type: object
                       rbd:
-                        description: RBDVolumeSourceApplyConfiguration represents
-                          a...
+                        description: rbd represents a Rados Block Device mount on
+                          the...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type of the volume
+                              that...
                             type: string
                           image:
+                            description: image is the rados image name.
                             type: string
                           keyring:
+                            description: keyring is the path to key ring for RBDUser.
                             type: string
                           monitors:
+                            description: monitors is a collection of Ceph monitors.
                             items:
                               type: string
                             type: array
                           pool:
+                            description: |-
+                              pool is the rados pool name.
+                              Default is rbd.
                             type: string
                           readOnly:
+                            description: readOnly here will force the ReadOnly setting
+                              in...
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: secretRef is name of the authentication secret...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           user:
+                            description: |-
+                              user is the rados user name.
+                              Default is admin.
                             type: string
                         type: object
                       scaleIO:
-                        description: ScaleIOVolumeSourceApplyConfiguration represents...
+                        description: scaleIO represents a ScaleIO persistent volume...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           gateway:
+                            description: gateway is the host address of the ScaleIO
+                              API...
                             type: string
                           protectionDomain:
+                            description: protectionDomain is the name of the ScaleIO...
                             type: string
                           readOnly:
+                            description: readOnly Defaults to false (read/write).
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: secretRef references to the secret for ScaleIO...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           sslEnabled:
+                            description: sslEnabled Flag enable/disable SSL communication...
                             type: boolean
                           storageMode:
+                            description: storageMode indicates whether the storage
+                              for a...
                             type: string
                           storagePool:
+                            description: storagePool is the ScaleIO Storage Pool...
                             type: string
                           system:
+                            description: system is the name of the storage system
+                              as...
                             type: string
                           volumeName:
+                            description: volumeName is the name of a volume already...
                             type: string
                         type: object
                       secret:
-                        description: SecretVolumeSourceApplyConfiguration represents
-                          a...
+                        description: secret represents a secret that should populate...
                         properties:
                           defaultMode:
+                            description: 'defaultMode is Optional: mode bits used
+                              to set...'
                             format: int32
                             type: integer
                           items:
+                            description: items If unspecified, each key-value pair
+                              in the...
                             items:
                               description: KeyToPathApplyConfiguration represents
                                 a...
                               properties:
                                 key:
+                                  description: key is the key to project.
                                   type: string
                                 mode:
+                                  description: 'mode is Optional: mode bits used to
+                                    set...'
                                   format: int32
                                   type: integer
                                 path:
+                                  description: path is the relative path of the file
+                                    to map the...
                                   type: string
                               type: object
                             type: array
                           optional:
+                            description: optional field specify whether the Secret
+                              or its...
                             type: boolean
                           secretName:
+                            description: secretName is the name of the secret in the
+                              pod's...
                             type: string
                         type: object
                       storageos:
-                        description: StorageOSVolumeSourceApplyConfiguration...
+                        description: storageOS represents a StorageOS volume attached...
                         properties:
                           fsType:
+                            description: fsType is the filesystem type to mount.
                             type: string
                           readOnly:
+                            description: readOnly defaults to false (read/write).
                             type: boolean
                           secretRef:
-                            description: LocalObjectReferenceApplyConfiguration represents...
+                            description: secretRef specifies the secret to use for...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           volumeName:
+                            description: volumeName is the human-readable name of
+                              the...
                             type: string
                           volumeNamespace:
+                            description: volumeNamespace specifies the scope of the
+                              volume...
                             type: string
                         type: object
                       vsphereVolume:
-                        description: VsphereVirtualDiskVolumeSourceApplyConfiguration...
+                        description: vsphereVolume represents a vSphere volume...
                         properties:
                           fsType:
+                            description: fsType is filesystem type to mount.
                             type: string
                           storagePolicyID:
+                            description: storagePolicyID is the storage Policy Based...
                             type: string
                           storagePolicyName:
+                            description: storagePolicyName is the storage Policy Based...
                             type: string
                           volumePath:
+                            description: volumePath is the path that identifies vSphere...
                             type: string
                         type: object
                     type: object

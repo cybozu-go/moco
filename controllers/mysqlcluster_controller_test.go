@@ -26,7 +26,6 @@ import (
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
@@ -70,14 +69,14 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	bp := &mocov1beta2.BackupPolicy{}
 	bp.Namespace = "test"
 	bp.Name = "test-policy"
-	bp.Spec.ActiveDeadlineSeconds = ptr.To[int64](100)
-	bp.Spec.BackoffLimit = ptr.To[int32](1)
+	bp.Spec.ActiveDeadlineSeconds = new(int64(100))
+	bp.Spec.BackoffLimit = new(int32(1))
 	bp.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-	bp.Spec.StartingDeadlineSeconds = ptr.To[int64](10)
+	bp.Spec.StartingDeadlineSeconds = new(int64(10))
 	bp.Spec.Schedule = "*/5 * * * *"
-	bp.Spec.TimeZone = ptr.To("America/New_York")
-	bp.Spec.SuccessfulJobsHistoryLimit = ptr.To[int32](1)
-	bp.Spec.FailedJobsHistoryLimit = ptr.To[int32](2)
+	bp.Spec.TimeZone = new("America/New_York")
+	bp.Spec.SuccessfulJobsHistoryLimit = new(int32(1))
+	bp.Spec.FailedJobsHistoryLimit = new(int32(2))
 	jc := &bp.Spec.JobConfig
 	jc.Threads = 3
 	jc.ServiceAccountName = "foo"
@@ -85,12 +84,12 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 	jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 	jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-	jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
+	jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: new("TEST"), Value: new("123")}}
 	jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
 		{
 			ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
 				LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
-					Name: ptr.To[string]("bucket-config"),
+					Name: new("bucket-config"),
 				},
 			},
 		},
@@ -100,7 +99,7 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	}
 	jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
 		{
-			Name: ptr.To[string]("test"),
+			Name: new("test"),
 			VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
 				EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 			},
@@ -108,8 +107,8 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	}
 	jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
 		{
-			Name:      ptr.To[string]("test"),
-			MountPath: ptr.To[string]("/path/to/dir"),
+			Name:      new("test"),
+			MountPath: new("/path/to/dir"),
 		},
 	}
 	jc.BucketConfig.BucketName = "mybucket"
@@ -170,7 +169,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 				BindAddress: "0",
 			},
 			Controller: config.Controller{
-				SkipNameValidation: ptr.To(true),
+				SkipNameValidation: new(true),
 			},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -536,7 +535,7 @@ dummyKey: dummyValue
 		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
-		cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
+		cluster.Spec.MySQLConfigMapName = new(userCM.Name)
 		cluster.Spec.PodTemplate.Spec.Containers[0].Resources.WithRequests(corev1.ResourceList{
 			corev1.ResourceMemory: resource.MustParse("500Mi"),
 		})
@@ -937,7 +936,7 @@ dummyKey: dummyValue
 	It("should reconcile statefulset", func() {
 		cluster := testNewMySQLCluster("test")
 		cluster.Annotations = map[string]string{constants.AnnForceRollingUpdate: "true"}
-		cluster.Spec.ReplicationSourceSecretName = ptr.To[string]("source-secret")
+		cluster.Spec.ReplicationSourceSecretName = new("source-secret")
 		cluster.Spec.PodTemplate.Annotations = map[string]string{"foo": "bar"}
 		cluster.Spec.PodTemplate.Labels = map[string]string{"foo": "baz"}
 
@@ -1106,7 +1105,7 @@ dummyKey: dummyValue
 		cluster.Spec.Replicas = 5
 		cluster.Spec.ReplicationSourceSecretName = nil
 		cluster.Spec.Collectors = []string{"engine_innodb_status", "info_schema.innodb_metrics"}
-		cluster.Spec.MaxDelaySeconds = ptr.To[int](20)
+		cluster.Spec.MaxDelaySeconds = new(20)
 		cluster.Spec.StartupWaitSeconds = 3
 		cluster.Spec.LogRotationSchedule = "0 * * * *"
 		cluster.Spec.LogRotationSize = 1024
@@ -1203,7 +1202,7 @@ dummyKey: dummyValue
 		err = k8sClient.Create(ctx, userCM)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster.Spec.MySQLConfigMapName = ptr.To[string](userCM.Name)
+		cluster.Spec.MySQLConfigMapName = new(userCM.Name)
 
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -1243,7 +1242,7 @@ dummyKey: dummyValue
 				Expect(c.StartupProbe).NotTo(BeNil())
 				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
 				Expect(c.LivenessProbe).NotTo(BeNil())
-				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(ptr.To[int64](200)))
+				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(new(int64(200))))
 				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
 				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
@@ -1326,7 +1325,7 @@ dummyKey: dummyValue
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		cluster.Spec.MaxDelaySeconds = ptr.To[int](0)
+		cluster.Spec.MaxDelaySeconds = new(0)
 
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -1398,7 +1397,7 @@ dummyKey: dummyValue
 
 	It("should reconcile backup related resources", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.BackupPolicyName = ptr.To[string]("test-policy")
+		cluster.Spec.BackupPolicyName = new("test-policy")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1429,15 +1428,15 @@ dummyKey: dummyValue
 		Expect(cj.Labels).NotTo(BeEmpty())
 		Expect(cj.OwnerReferences).NotTo(BeEmpty())
 		Expect(cj.Spec.Schedule).To(Equal("*/5 * * * *"))
-		Expect(cj.Spec.TimeZone).To(Equal(ptr.To("America/New_York")))
-		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(ptr.To[int64](10)))
+		Expect(cj.Spec.TimeZone).To(Equal(new("America/New_York")))
+		Expect(cj.Spec.StartingDeadlineSeconds).To(Equal(new(int64(10))))
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](2)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(new(int32(1))))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(new(int32(2))))
 		Expect(cj.Spec.JobTemplate.Labels).NotTo(BeEmpty())
 		js := &cj.Spec.JobTemplate.Spec
-		Expect(js.ActiveDeadlineSeconds).To(Equal(ptr.To[int64](100)))
-		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](1)))
+		Expect(js.ActiveDeadlineSeconds).To(Equal(new(int64(100))))
+		Expect(js.BackoffLimit).To(Equal(new(int32(1))))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
@@ -1504,7 +1503,7 @@ dummyKey: dummyValue
 		jc.EnvFrom = nil
 		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
 			HostPath: &corev1ac.HostPathVolumeSourceApplyConfiguration{
-				Path: ptr.To[string]("/host"),
+				Path: new("/host"),
 			},
 		}
 		jc.BucketConfig.BucketName = "mybucket2"
@@ -1528,8 +1527,8 @@ dummyKey: dummyValue
 		Expect(cj.Spec.TimeZone).To(BeNil())
 		Expect(cj.Spec.StartingDeadlineSeconds).To(BeNil())
 		Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
-		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(ptr.To[int32](3)))
-		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(ptr.To[int32](1)))
+		Expect(cj.Spec.SuccessfulJobsHistoryLimit).To(Equal(new(int32(3))))
+		Expect(cj.Spec.FailedJobsHistoryLimit).To(Equal(new(int32(1))))
 		js = &cj.Spec.JobTemplate.Spec
 		Expect(js.ActiveDeadlineSeconds).To(BeNil())
 		Expect(js.BackoffLimit).To(BeNil())
@@ -1615,12 +1614,12 @@ dummyKey: dummyValue
 		jc.MaxCPU = resource.NewQuantity(4, resource.DecimalSI)
 		jc.Memory = resource.NewQuantity(1<<30, resource.DecimalSI)
 		jc.MaxMemory = resource.NewQuantity(10<<30, resource.DecimalSI)
-		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: ptr.To[string]("TEST"), Value: ptr.To[string]("123")}}
+		jc.Env = []mocov1beta2.EnvVarApplyConfiguration{{Name: new("TEST"), Value: new("123")}}
 		jc.EnvFrom = []mocov1beta2.EnvFromSourceApplyConfiguration{
 			{
 				ConfigMapRef: &corev1ac.ConfigMapEnvSourceApplyConfiguration{
 					LocalObjectReferenceApplyConfiguration: corev1ac.LocalObjectReferenceApplyConfiguration{
-						Name: ptr.To[string]("bucket-config"),
+						Name: new("bucket-config"),
 					},
 				},
 			},
@@ -1630,7 +1629,7 @@ dummyKey: dummyValue
 		}
 		jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
 			{
-				Name: ptr.To[string]("test"),
+				Name: new("test"),
 				VolumeSourceApplyConfiguration: corev1ac.VolumeSourceApplyConfiguration{
 					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 				},
@@ -1638,8 +1637,8 @@ dummyKey: dummyValue
 		}
 		jc.VolumeMounts = []mocov1beta2.VolumeMountApplyConfiguration{
 			{
-				Name:      ptr.To[string]("test"),
-				MountPath: ptr.To[string]("/path/to/dir"),
+				Name:      new("test"),
+				MountPath: new("/path/to/dir"),
 			},
 		}
 		jc.BucketConfig.BucketName = "mybucket"
@@ -1671,7 +1670,7 @@ dummyKey: dummyValue
 		Expect(job.Labels).NotTo(BeEmpty())
 		Expect(job.OwnerReferences).NotTo(BeEmpty())
 		js := &job.Spec
-		Expect(js.BackoffLimit).To(Equal(ptr.To[int32](0)))
+		Expect(js.BackoffLimit).To(Equal(new(int32(0))))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
@@ -1765,7 +1764,7 @@ dummyKey: dummyValue
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {
 		cluster := testNewMySQLCluster("test")
 		// use existing backup policy
-		cluster.Spec.BackupPolicyName = ptr.To[string]("test-policy")
+		cluster.Spec.BackupPolicyName = new("test-policy")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -2123,7 +2122,7 @@ dummyKey: dummyValue
 
 	It("should sets ConditionStatefulSetReady to be false when status of StatefulSet does not found", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Spec.MySQLConfigMapName = ptr.To[string]("foobarhoge")
+		cluster.Spec.MySQLConfigMapName = new("foobarhoge")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -2303,7 +2302,7 @@ dummyKey: dummyValue
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setting configmap name to be invalid")
-		cluster.Spec.MySQLConfigMapName = ptr.To[string]("foobarhoge")
+		cluster.Spec.MySQLConfigMapName = new("foobarhoge")
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 

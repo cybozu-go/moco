@@ -9,15 +9,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func SetupStatefulSetWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&appsv1.StatefulSet{}).
+	return ctrl.NewWebhookManagedBy(mgr, &appsv1.StatefulSet{}).
 		WithDefaulter(&StatefulSetDefaulter{}).
 		Complete()
 }
@@ -26,15 +23,10 @@ func SetupStatefulSetWebhookWithManager(mgr ctrl.Manager) error {
 
 type StatefulSetDefaulter struct{}
 
-var _ admission.CustomDefaulter = &StatefulSetDefaulter{}
+var _ admission.Defaulter[*appsv1.StatefulSet] = &StatefulSetDefaulter{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (*StatefulSetDefaulter) Default(ctx context.Context, obj runtime.Object) error {
-	sts, ok := obj.(*appsv1.StatefulSet)
-	if !ok {
-		return fmt.Errorf("unknown obj type %T", obj)
-	}
-
+// Default implements admission.Defaulter so a webhook will be registered for the type
+func (*StatefulSetDefaulter) Default(ctx context.Context, sts *appsv1.StatefulSet) error {
 	req, err := admission.RequestFromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get admission request from context: %w", err)
@@ -59,7 +51,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, obj runtime.Object) er
 
 	if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
 		sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-			Partition: ptr.To[int32](*sts.Spec.Replicas),
+			Partition: new(*sts.Spec.Replicas),
 		}
 		return nil
 	}
@@ -84,7 +76,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, obj runtime.Object) er
 	}
 
 	sts.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-		Partition: ptr.To[int32](*sts.Spec.Replicas),
+		Partition: new(*sts.Spec.Replicas),
 	}
 
 	return nil
