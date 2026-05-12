@@ -30,6 +30,7 @@ help:
 
 .PHONY: start
 start: aqua-install $(KUBECTL_MOCO)
+# kindest/node:v1.35.4 is not yet published upstream, so build the node image locally.
 ifeq ($(KUBERNETES_VERSION),1.35.4)
 	$(KIND) build node-image $(KUBERNETES_VERSION) --image=kindest/node:v$(KUBERNETES_VERSION)
 endif
