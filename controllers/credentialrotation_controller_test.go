@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
@@ -53,7 +52,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 				BindAddress: "0",
 			},
 			Controller: config.Controller{
-				SkipNameValidation: ptr.To(true),
+				SkipNameValidation: new(true),
 			},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -593,6 +592,102 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 
 		// Without discardOldPassword, phase should stay at Rotated.
+		Consistently(func() mocov1beta2.RotationPhase {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return cr.Status.Phase
+		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+	})
+
+	It("should refuse discard when replicas is 0", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for controller secret and StatefulSet.
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, secret)
+		}).Should(Succeed())
+
+		Eventually(func() error {
+			sts := &appsv1.StatefulSet{}
+			return k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: "test",
+				Name:      cluster.PrefixedName(),
+			}, sts)
+		}).Should(Succeed())
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Advance to Rotated.
+		Eventually(func() mocov1beta2.RotationPhase {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return cr.Status.Phase
+		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+
+		Eventually(func() error {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return err
+			}
+			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			return k8sClient.Status().Update(ctx, cr)
+		}).Should(Succeed())
+
+		Eventually(func() mocov1beta2.RotationPhase {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return cr.Status.Phase
+		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+
+		// Scale cluster down to 0 (merge patch bypasses CRD defaulting).
+		patch := client.RawPatch(types.MergePatchType, []byte(`{"spec":{"replicas":0}}`))
+		err = k8sClient.Patch(ctx, cluster, patch)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for the apiserver/cache to observe replicas=0 before toggling
+		// discardOldPassword. Otherwise the reconciler may still see the old
+		// replica count and legitimately advance to Discarding.
+		Eventually(func() int32 {
+			c := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), c); err != nil {
+				return -1
+			}
+			return c.Spec.Replicas
+		}).Should(Equal(int32(0)))
+
+		// Set discardOldPassword=true.
+		Eventually(func() error {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return err
+			}
+			cr.Spec.DiscardOldPassword = true
+			return k8sClient.Update(ctx, cr)
+		}).Should(Succeed())
+
+		// Phase must not advance to Discarding while replicas=0.
 		Consistently(func() mocov1beta2.RotationPhase {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
