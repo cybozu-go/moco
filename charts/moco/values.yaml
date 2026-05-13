@@ -10,7 +10,7 @@ image:
 
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
-  tag:  # 0.34.0
+  tag:  # 0.35.0
 
 # imagePullSecrets -- Secrets for pulling MOCO image from private repository.
 imagePullSecrets: []
@@ -63,7 +63,7 @@ agent:
     repository: ghcr.io/cybozu-go/moco-agent
 
     # agent.image.tag -- MOCO Agent image tag to use.
-    tag: 0.15.0  # agent.image.tag
+    tag: 0.16.0  # agent.image.tag
 
 fluentbit:
   image:
@@ -71,7 +71,7 @@ fluentbit:
     repository: ghcr.io/cybozu-go/moco/fluent-bit
 
     # fluentbit.image.tag -- FluentBit image tag to use.
-    tag: 4.1.1.1  # fluentbit.image.tag
+    tag: 5.0.2.1  # fluentbit.image.tag
 
 mysqldExporter:
   image:
@@ -79,4 +79,4 @@ mysqldExporter:
     repository: ghcr.io/cybozu-go/moco/mysqld_exporter
 
     # mysqldExporter.image.tag -- mysqld_exporter image tag to use.
-    tag: 0.18.0.1  # mysqldExporter.image.tag
+    tag: 0.19.0.1  # mysqldExporter.image.tag
