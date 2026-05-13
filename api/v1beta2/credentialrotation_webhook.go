@@ -4,19 +4,16 @@ import (
 	"context"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func (r *CredentialRotation) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+	return ctrl.NewWebhookManagedBy(mgr, r).
 		WithValidator(&credentialRotationAdmission{client: mgr.GetAPIReader()}).
 		Complete()
 }
@@ -27,11 +24,9 @@ type credentialRotationAdmission struct {
 
 //+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta2-credentialrotation,mutating=false,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=credentialrotations,verbs=create;update,versions=v1beta2,name=vcredentialrotation.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &credentialRotationAdmission{}
+var _ admission.Validator[*CredentialRotation] = &credentialRotationAdmission{}
 
-func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	cr := obj.(*CredentialRotation)
-
+func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *CredentialRotation) (admission.Warnings, error) {
 	var errs field.ErrorList
 
 	// MySQLCluster with the same name must exist
@@ -73,10 +68,7 @@ func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, obj ru
 	return nil, nil
 }
 
-func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	oldCR := oldObj.(*CredentialRotation)
-	newCR := newObj.(*CredentialRotation)
-
+func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR, newCR *CredentialRotation) (admission.Warnings, error) {
 	var errs field.ErrorList
 
 	// rotationGeneration must be monotonically increasing
@@ -140,6 +132,6 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldObj
 	return nil, nil
 }
 
-func (a *credentialRotationAdmission) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (a *credentialRotationAdmission) ValidateDelete(ctx context.Context, _ *CredentialRotation) (admission.Warnings, error) {
 	return nil, nil
 }

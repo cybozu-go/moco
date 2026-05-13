@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -62,6 +63,16 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Ensure ownerReference is set
 	if !hasOwnerReference(cr, cluster) {
+		// Strip stale MySQLCluster controller ownerReferences pointing at the
+		// same name with a different UID (e.g., cluster deleted and recreated).
+		// Otherwise SetOwnerReference fails with "object already owned by another
+		// controller" and the reconciler would requeue forever.
+		if removed, err := removeStaleClusterOwnerReferences(cr, cluster, r.Scheme); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to inspect ownerReferences: %w", err)
+		} else if removed {
+			r.Recorder.Eventf(cr, corev1.EventTypeNormal, "OwnerReferenceReplaced",
+				"Replaced stale MySQLCluster ownerReference (UID changed; cluster was likely deleted and recreated)")
+		}
 		if err := controllerutil.SetOwnerReference(cluster, cr, r.Scheme); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to set ownerReference: %w", err)
 		}
@@ -258,6 +269,16 @@ func (r *CredentialRotationReconciler) handleRetainedPhase(ctx context.Context, 
 func (r *CredentialRotationReconciler) handleStartDiscard(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
+	// Refuse to advance to Discarding when the cluster is scaled to 0.
+	// ClusterManager cannot run DISCARD on 0 instances, and the webhook
+	// forbids reverting discardOldPassword=true without bumping
+	// rotationGeneration, so the CR would otherwise be stuck in Discarding.
+	if cluster.Spec.Replicas <= 0 {
+		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "DiscardRefused",
+			"Cannot start discard: MySQLCluster replicas is 0. Scale the cluster up first.")
+		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+	}
+
 	// Wait for StatefulSet rollout to complete
 	sts := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, client.ObjectKey{
@@ -385,6 +406,28 @@ func hasOwnerReference(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.
 		}
 	}
 	return false
+}
+
+// removeStaleClusterOwnerReferences removes any ownerReference whose Kind/Name
+// matches the target MySQLCluster but UID differs (e.g., the cluster was deleted
+// and recreated). Returns whether any reference was removed.
+func removeStaleClusterOwnerReferences(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster, scheme *runtime.Scheme) (bool, error) {
+	gvk, err := apiutil.GVKForObject(cluster, scheme)
+	if err != nil {
+		return false, err
+	}
+	apiVersion := gvk.GroupVersion().String()
+	filtered := cr.OwnerReferences[:0]
+	removed := false
+	for _, ref := range cr.OwnerReferences {
+		if ref.APIVersion == apiVersion && ref.Kind == gvk.Kind && ref.Name == cluster.Name && ref.UID != cluster.UID {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, ref)
+	}
+	cr.OwnerReferences = filtered
+	return removed, nil
 }
 
 func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error {

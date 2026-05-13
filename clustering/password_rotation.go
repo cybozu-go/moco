@@ -69,6 +69,8 @@ func (p *managerProcess) handleRotatingPhase(ctx context.Context, ss *StatusSet,
 	replicas := int(cluster.Spec.Replicas)
 	if replicas == 0 {
 		log.Info("waiting for replicas to be scaled up before RETAIN", "rotationID", cr.Status.RotationID)
+		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "RotationBlocked",
+			"Cannot proceed with RETAIN: cluster has 0 replicas. Scale the cluster up first.")
 		return false, nil
 	}
 
