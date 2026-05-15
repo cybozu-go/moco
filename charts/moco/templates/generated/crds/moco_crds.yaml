@@ -2761,7 +2761,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     helm.sh/resource-policy: keep
   labels:
     app.kubernetes.io/managed-by: '{{ .Release.Service }}'
@@ -2783,10 +2783,16 @@ spec:
           name: Phase
           type: string
         - jsonPath: .spec.rotationGeneration
-          name: Generation
+          name: RotationGen
           type: integer
         - jsonPath: .status.observedRotationGeneration
-          name: Observed
+          name: ObservedRotation
+          type: integer
+        - jsonPath: .spec.discardGeneration
+          name: DiscardGen
+          type: integer
+        - jsonPath: .status.observedDiscardGeneration
+          name: ObservedDiscard
           type: integer
         - jsonPath: .metadata.creationTimestamp
           name: Age
@@ -2807,9 +2813,10 @@ spec:
             spec:
               description: CredentialRotationSpec defines the desired state...
               properties:
-                discardOldPassword:
-                  description: DiscardOldPassword triggers the discard phase.
-                  type: boolean
+                discardGeneration:
+                  description: DiscardGeneration is a monotonically increasing...
+                  format: int64
+                  type: integer
                 rotationGeneration:
                   description: RotationGeneration is a monotonically increasing...
                   format: int64
@@ -2818,6 +2825,10 @@ spec:
             status:
               description: CredentialRotationStatus defines the observed...
               properties:
+                observedDiscardGeneration:
+                  description: ObservedDiscardGeneration is the last...
+                  format: int64
+                  type: integer
                 observedRotationGeneration:
                   description: ObservedRotationGeneration is the last...
                   format: int64

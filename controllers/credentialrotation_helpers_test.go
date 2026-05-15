@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestRemoveStaleClusterOwnerReferences(t *testing.T) {
+func TestHasStaleClusterOwnerRef(t *testing.T) {
 	sch := runtime.NewScheme()
 	if err := mocov1beta2.AddToScheme(sch); err != nil {
 		t.Fatalf("AddToScheme: %v", err)
@@ -24,57 +24,43 @@ func TestRemoveStaleClusterOwnerReferences(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		refs        []metav1.OwnerReference
-		wantRemoved bool
-		wantLen     int
+		name string
+		refs []metav1.OwnerReference
+		want bool
 	}{
 		{
-			name:        "no owner references",
-			refs:        nil,
-			wantRemoved: false,
-			wantLen:     0,
+			name: "no owner references",
+			refs: nil,
+			want: false,
 		},
 		{
-			name: "matching UID is preserved",
+			name: "matching UID is not stale",
 			refs: []metav1.OwnerReference{
 				{APIVersion: "moco.cybozu.com/v1beta2", Kind: "MySQLCluster", Name: "test", UID: "new-uid"},
 			},
-			wantRemoved: false,
-			wantLen:     1,
+			want: false,
 		},
 		{
-			name: "stale UID with same name is removed",
+			name: "only different UID is stale",
 			refs: []metav1.OwnerReference{
 				{APIVersion: "moco.cybozu.com/v1beta2", Kind: "MySQLCluster", Name: "test", UID: "old-uid"},
 			},
-			wantRemoved: true,
-			wantLen:     0,
+			want: true,
 		},
 		{
-			name: "different name is preserved",
-			refs: []metav1.OwnerReference{
-				{APIVersion: "moco.cybozu.com/v1beta2", Kind: "MySQLCluster", Name: "other", UID: "old-uid"},
-			},
-			wantRemoved: false,
-			wantLen:     1,
-		},
-		{
-			name: "different kind is preserved",
-			refs: []metav1.OwnerReference{
-				{APIVersion: "apps/v1", Kind: "StatefulSet", Name: "test", UID: "old-uid"},
-			},
-			wantRemoved: false,
-			wantLen:     1,
-		},
-		{
-			name: "stale removed, unrelated preserved",
+			name: "matching ref alongside stale ref is not stale",
 			refs: []metav1.OwnerReference{
 				{APIVersion: "moco.cybozu.com/v1beta2", Kind: "MySQLCluster", Name: "test", UID: "old-uid"},
+				{APIVersion: "moco.cybozu.com/v1beta2", Kind: "MySQLCluster", Name: "test", UID: "new-uid"},
+			},
+			want: false,
+		},
+		{
+			name: "non-MySQLCluster ref is ignored",
+			refs: []metav1.OwnerReference{
 				{APIVersion: "apps/v1", Kind: "StatefulSet", Name: "test", UID: "sts-uid"},
 			},
-			wantRemoved: true,
-			wantLen:     1,
+			want: false,
 		},
 	}
 
@@ -85,15 +71,9 @@ func TestRemoveStaleClusterOwnerReferences(t *testing.T) {
 					OwnerReferences: append([]metav1.OwnerReference(nil), tc.refs...),
 				},
 			}
-			removed, err := removeStaleClusterOwnerReferences(cr, cluster, sch)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if removed != tc.wantRemoved {
-				t.Errorf("removed = %v, want %v", removed, tc.wantRemoved)
-			}
-			if got := len(cr.OwnerReferences); got != tc.wantLen {
-				t.Errorf("len(OwnerReferences) = %d, want %d", got, tc.wantLen)
+			got := hasStaleClusterOwnerRef(cr, cluster, sch)
+			if got != tc.want {
+				t.Errorf("hasStaleClusterOwnerRef = %v, want %v", got, tc.want)
 			}
 		})
 	}

@@ -460,6 +460,8 @@ func (o *mockOperator) DiscardOldPassword(_ context.Context, user string) error 
 	o.factory.mu.Lock()
 	defer o.factory.mu.Unlock()
 	o.factory.discardedUsers[o.Name()] = append(o.factory.discardedUsers[o.Name()], user)
+	// Mimic MySQL: DISCARD OLD PASSWORD removes the retained password.
+	delete(o.factory.dualPasswords, o.Name()+"/"+user)
 	return nil
 }
 

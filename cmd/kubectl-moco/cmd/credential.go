@@ -71,7 +71,7 @@ var credentialRotateCmd = &cobra.Command{
 var credentialDiscardCmd = &cobra.Command{
 	Use:   "discard CLUSTER_NAME",
 	Short: "Discard old passwords after rotation",
-	Long:  "Discard old passwords after a successful credential rotation. Requires Phase=Rotated.",
+	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires Phase=Rotated.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return credentialDiscard(cmd.Context(), args[0])
@@ -129,7 +129,6 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
 				RotationGeneration: 1,
-				DiscardOldPassword: false,
 			},
 		}
 		// ownerReference is set by the controller on first reconcile.
@@ -143,6 +142,14 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("failed to get CredentialRotation: %w", err)
 	}
 
+	// CR exists - reject stale CRs (owned by a previously deleted cluster of
+	// the same name). The reconciler ignores such CRs, so bumping
+	// rotationGeneration here would silently succeed without starting a
+	// rotation. The user must delete the stale CR first.
+	if credentialRotationIsStale(cr, cluster) {
+		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before rotating", namespace, clusterName)
+	}
+
 	// CR exists - validate phase and bump generation
 	phase := cr.Status.Phase
 	if phase != "" && phase != mocov1beta2.RotationPhaseCompleted {
@@ -153,7 +160,6 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 	patch, err := json.Marshal(map[string]any{
 		"spec": map[string]any{
 			"rotationGeneration": newGen,
-			"discardOldPassword": false,
 		},
 	})
 	if err != nil {
@@ -167,6 +173,14 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 }
 
 func credentialDiscard(ctx context.Context, clusterName string) error {
+	cluster := &mocov1beta2.MySQLCluster{}
+	if err := kubeClient.Get(ctx, types.NamespacedName{
+		Namespace: namespace,
+		Name:      clusterName,
+	}, cluster); err != nil {
+		return fmt.Errorf("failed to get MySQLCluster: %w", err)
+	}
+
 	cr := &mocov1beta2.CredentialRotation{}
 	if err := kubeClient.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
@@ -175,13 +189,19 @@ func credentialDiscard(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("failed to get CredentialRotation: %w", err)
 	}
 
+	if credentialRotationIsStale(cr, cluster) {
+		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before discarding", namespace, clusterName)
+	}
+
 	if cr.Status.Phase != mocov1beta2.RotationPhaseRotated {
 		return fmt.Errorf("cannot discard: phase must be Rotated, currently %q", cr.Status.Phase)
 	}
 
+	// Bump discardGeneration to match rotationGeneration, signaling that the
+	// retained old password from the current rotation should be discarded.
 	patch, err := json.Marshal(map[string]any{
 		"spec": map[string]any{
-			"discardOldPassword": true,
+			"discardGeneration": cr.Spec.RotationGeneration,
 		},
 	})
 	if err != nil {
@@ -190,8 +210,28 @@ func credentialDiscard(ctx context.Context, clusterName string) error {
 	if err := kubeClient.Patch(ctx, cr, client.RawPatch(types.MergePatchType, patch)); err != nil {
 		return fmt.Errorf("failed to patch CredentialRotation: %w", err)
 	}
-	fmt.Printf("Set discardOldPassword=true on CredentialRotation %s/%s\n", namespace, clusterName)
+	fmt.Printf("Set discardGeneration=%d on CredentialRotation %s/%s\n", cr.Spec.RotationGeneration, namespace, clusterName)
 	return nil
+}
+
+// credentialRotationIsStale reports whether cr carries a MySQLCluster owner
+// reference whose UID does not match the live cluster, with no matching
+// reference. That signals a CR left over after a cluster was deleted and
+// another recreated under the same name; the reconciler ignores such CRs, so
+// the CLI must refuse to act on them. A CR with no MySQLCluster ownerRef yet
+// is treated as fresh (the controller has not adopted it yet).
+func credentialRotationIsStale(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) bool {
+	hasStale := false
+	for _, ref := range cr.OwnerReferences {
+		if ref.Kind != "MySQLCluster" {
+			continue
+		}
+		if ref.UID == cluster.UID {
+			return false
+		}
+		hasStale = true
+	}
+	return hasStale
 }
 
 func init() {

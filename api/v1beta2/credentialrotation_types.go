@@ -13,11 +13,13 @@ type CredentialRotationSpec struct {
 	// +optional
 	RotationGeneration int64 `json:"rotationGeneration,omitempty"`
 
-	// DiscardOldPassword triggers the discard phase.
-	// Can only be set to true when Phase is Rotated.
-	// Must be reset to false when incrementing rotationGeneration.
+	// DiscardGeneration is a monotonically increasing counter that triggers
+	// the discard phase. Must satisfy 0 <= discardGeneration <= rotationGeneration.
+	// Bumping this value (typically to match rotationGeneration) signals the
+	// controller to discard the retained old password from the previous
+	// rotation. The bump is only honored when Phase is Rotated.
 	// +optional
-	DiscardOldPassword bool `json:"discardOldPassword,omitempty"`
+	DiscardGeneration int64 `json:"discardGeneration,omitempty"`
 }
 
 // CredentialRotationStatus defines the observed state of CredentialRotation.
@@ -34,6 +36,11 @@ type CredentialRotationStatus struct {
 	// that completed successfully.
 	// +optional
 	ObservedRotationGeneration int64 `json:"observedRotationGeneration,omitempty"`
+
+	// ObservedDiscardGeneration is the last discardGeneration
+	// that completed successfully.
+	// +optional
+	ObservedDiscardGeneration int64 `json:"observedDiscardGeneration,omitempty"`
 }
 
 // RotationPhase represents the phase of a credential rotation.
@@ -52,8 +59,10 @@ const (
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
-// +kubebuilder:printcolumn:name="Generation",type="integer",JSONPath=".spec.rotationGeneration"
-// +kubebuilder:printcolumn:name="Observed",type="integer",JSONPath=".status.observedRotationGeneration"
+// +kubebuilder:printcolumn:name="RotationGen",type="integer",JSONPath=".spec.rotationGeneration"
+// +kubebuilder:printcolumn:name="ObservedRotation",type="integer",JSONPath=".status.observedRotationGeneration"
+// +kubebuilder:printcolumn:name="DiscardGen",type="integer",JSONPath=".spec.discardGeneration"
+// +kubebuilder:printcolumn:name="ObservedDiscard",type="integer",JSONPath=".status.observedDiscardGeneration"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // CredentialRotation is the Schema for the credentialrotations API

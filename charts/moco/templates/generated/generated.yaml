@@ -524,6 +524,7 @@ webhooks:
         operations:
           - CREATE
           - UPDATE
+          - DELETE
         resources:
           - credentialrotations
     sideEffects: None
