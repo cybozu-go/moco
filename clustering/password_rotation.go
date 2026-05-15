@@ -31,6 +31,13 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
 		return false, err
 	}
 
+	// Ignore a CR that belongs to a previously deleted cluster (same name,
+	// different UID). Running RETAIN/DISCARD against the new cluster based on
+	// leftover state would corrupt its credentials.
+	if !crBelongsToCluster(cr, ss.Cluster) {
+		return false, nil
+	}
+
 	switch cr.Status.Phase {
 	case mocov1beta2.RotationPhaseRotating:
 		return p.handleRotatingPhase(ctx, ss, cr)
@@ -39,6 +46,17 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
 	default:
 		return false, nil
 	}
+}
+
+// crBelongsToCluster reports whether cr carries an ownerReference whose UID
+// matches the given MySQLCluster.
+func crBelongsToCluster(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) bool {
+	for _, ref := range cr.OwnerReferences {
+		if ref.UID == cluster.UID {
+			return true
+		}
+	}
+	return false
 }
 
 // handleRotatingPhase executes ALTER USER RETAIN CURRENT PASSWORD on all
@@ -342,6 +360,18 @@ func discardInstanceUsers(
 	}
 
 	for _, user := range constants.MocoUsers {
+		// Idempotency: skip DISCARD if the user no longer has a retained old
+		// password (e.g., a partial retry after controller restart or transient
+		// DB error). MySQL rejects DISCARD OLD PASSWORD once there is no
+		// retained password, which would otherwise wedge the rotation.
+		hasDual, err := op.HasDualPassword(ctx, user)
+		if err != nil {
+			return fmt.Errorf("failed to check dual password for %s on instance %d: %w", user, instanceIndex, err)
+		}
+		if !hasDual {
+			log.Info("skipping DISCARD OLD PASSWORD (no retained password)", "user", user, "instance", instanceIndex)
+			continue
+		}
 		if err := op.DiscardOldPassword(ctx, user); err != nil {
 			return fmt.Errorf("failed to discard old password for %s on instance %d: %w", user, instanceIndex, err)
 		}

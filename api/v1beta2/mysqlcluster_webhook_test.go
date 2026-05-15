@@ -229,6 +229,15 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		}
 	})
 
+	It("should deny the reserved password-rotation-restart pod template annotation", func() {
+		r := makeMySQLCluster()
+		r.Spec.PodTemplate.Annotations = map[string]string{
+			constants.AnnPasswordRotationRestart: "user-set-value",
+		}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny agent container", func() {
 		r := makeMySQLCluster()
 		spec := (corev1ac.PodSpecApplyConfiguration)(r.Spec.PodTemplate.Spec)

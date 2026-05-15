@@ -159,11 +159,12 @@ metadata:
       uid: ...
 spec:
   rotationGeneration: 1       # Bump to trigger a new rotation
-  discardOldPassword: false   # User sets true to trigger discard phase
+  discardGeneration: 0        # Bump to match rotationGeneration to trigger discard
 status:
   phase: ""                   # Current rotation phase
   rotationID: ""              # UUID for this rotation cycle
   observedRotationGeneration: 0  # Last completed rotationGeneration
+  observedDiscardGeneration: 0   # Last completed discardGeneration
 ```
 
 ### Naming Convention
@@ -172,8 +173,10 @@ The CredentialRotation resource name **must match** the target MySQLCluster name
 This naturally enforces at most one active rotation per cluster and simplifies lookups — both the controller and ClusterManager can find the CR by the cluster name without a separate reference field.
 
 The CR is **long-lived** — it is created once and persists across multiple rotation cycles.
-To start a new rotation, the user increments `spec.rotationGeneration` and sets `spec.discardOldPassword` to false.
-The controller compares `spec.rotationGeneration` with `status.observedRotationGeneration` to detect new rotation requests.
+To start a new rotation, the user increments `spec.rotationGeneration`.
+The controller compares `spec.rotationGeneration` with `status.observedRotationGeneration` to detect new rotation requests, and similarly compares `spec.discardGeneration` with `status.observedDiscardGeneration` to detect discard requests.
+
+Both `rotationGeneration` and `discardGeneration` are monotonically increasing counters. The invariant `0 <= discardGeneration <= rotationGeneration` is enforced by the validating webhook: you cannot discard a rotation that has not been performed, and you cannot revert either counter. This makes every spec change idempotent (applying the same spec twice is a no-op) and GitOps-friendly — there are no edge-triggered booleans to flip back and forth.
 
 ### OwnerReference
 
@@ -194,11 +197,13 @@ type CredentialRotationSpec struct {
     // +optional
     RotationGeneration int64 `json:"rotationGeneration,omitempty"`
 
-    // DiscardOldPassword triggers the discard phase.
-    // Can only be set to true when Phase is Rotated.
-    // Must be reset to false when incrementing rotationGeneration.
+    // DiscardGeneration is a monotonically increasing counter that triggers
+    // the discard phase. Must satisfy 0 <= discardGeneration <= rotationGeneration.
+    // Bumping this value (typically to match rotationGeneration) signals the
+    // controller to discard the retained old password from the previous
+    // rotation. The bump is only honored when Phase is Rotated.
     // +optional
-    DiscardOldPassword bool `json:"discardOldPassword,omitempty"`
+    DiscardGeneration int64 `json:"discardGeneration,omitempty"`
 }
 
 // CredentialRotationStatus defines the observed state of CredentialRotation.
@@ -215,6 +220,11 @@ type CredentialRotationStatus struct {
     // that completed successfully.
     // +optional
     ObservedRotationGeneration int64 `json:"observedRotationGeneration,omitempty"`
+
+    // ObservedDiscardGeneration is the last discardGeneration
+    // that completed successfully.
+    // +optional
+    ObservedDiscardGeneration int64 `json:"observedDiscardGeneration,omitempty"`
 }
 
 // RotationPhase represents the phase of a credential rotation.
@@ -237,15 +247,28 @@ func (r *CredentialRotation) ValidateCreate(ctx context.Context, ...) {
     // 1. MySQLCluster with the same name must exist in the same namespace
     // 2. MySQLCluster replicas must be > 0
     // 3. rotationGeneration must be > 0
-    // 4. discardOldPassword must be false
+    // 4. 0 <= discardGeneration <= rotationGeneration
 }
 
 func (r *CredentialRotation) ValidateUpdate(ctx context.Context, ...) {
     // 1. rotationGeneration must be >= old value (monotonically increasing)
-    // 2. rotationGeneration can only increase when Phase is "" or Completed
-    // 3. When rotationGeneration increases, discardOldPassword must be false
-    // 4. When rotationGeneration is unchanged, discardOldPassword can only go false→true
-    // 5. discardOldPassword=true requires Phase==Rotated
+    // 2. discardGeneration must be >= old value (monotonically increasing)
+    // 3. discardGeneration must be <= rotationGeneration
+    // 4. rotationGeneration can only increase when Phase is "" or Completed
+    // 5. discardGeneration can only increase when Phase is Rotated
+    //    (and rotationGeneration is unchanged in the same update)
+}
+
+func (r *CredentialRotation) ValidateDelete(ctx context.Context, ...) {
+    // Allow delete in the following cases:
+    //   - Phase is "" or Completed (no rotation in flight)
+    //   - The owning MySQLCluster is NotFound (GC after owner deletion)
+    //   - The owning MySQLCluster has DeletionTimestamp set
+    //     (unblock cluster termination — blockOwnerDeletion=true would
+    //      otherwise stall the cluster in Terminating)
+    //   - The CR carries a stale MySQLCluster ownerRef whose UID does not
+    //     match the live cluster (recreated cluster; see Stale CR Handling)
+    // Otherwise: forbid (a delete mid-rotation would abandon the workflow).
 }
 ```
 
@@ -257,10 +280,10 @@ $ kubectl moco credential rotate <cluster-name>
 
 # Check status
 $ kubectl get credentialrotation <cluster-name>
-NAME         PHASE     GENERATION   OBSERVED   AGE
-my-cluster   Rotated   1            0          5m
+NAME         PHASE     ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
+my-cluster   Rotated   1             1                  0            0                 5m
 
-# Discard: set discardOldPassword=true
+# Discard: bump discardGeneration to match rotationGeneration
 $ kubectl moco credential discard <cluster-name>
 
 # Show current credentials
@@ -271,11 +294,11 @@ $ kubectl moco credential show <cluster-name>
 
 | Command | Action |
 |---------|--------|
-| `credential rotate` | If CR does not exist: create with `rotationGeneration: 1`. If CR exists: validate Phase is `""` or `Completed`, then increment `rotationGeneration` and set `discardOldPassword: false`. |
-| `credential discard` | Validate Phase=Rotated → Patch `spec.discardOldPassword=true` |
+| `credential rotate` | If CR does not exist: create with `rotationGeneration: 1`. If CR exists: refuse if the CR is stale (MySQLCluster ownerRef UID does not match the live cluster), validate Phase is `""` or `Completed`, then increment `rotationGeneration`. |
+| `credential discard` | Refuse if the CR is stale; validate Phase=Rotated → Patch `spec.discardGeneration` to match `spec.rotationGeneration` |
 | `credential show` | Read per-namespace user Secret |
 
-The CLI validates preconditions (MySQLCluster with the same name exists, replicas > 0, no in-progress rotation).
+The CLI validates preconditions (MySQLCluster with the same name exists, replicas > 0, no in-progress rotation, CR is not a leftover from a deleted-and-recreated cluster).
 
 Users can also interact with the CR directly via `kubectl`:
 
@@ -285,15 +308,15 @@ $ kubectl apply -f credential-rotation.yaml
 # credential-rotation.yaml:
 #   spec:
 #     rotationGeneration: 1
-#     discardOldPassword: false
+#     discardGeneration: 0
 
-# Trigger discard
+# Trigger discard (matches the current rotationGeneration)
 $ kubectl patch credentialrotation my-cluster --type=merge \
-    -p '{"spec":{"discardOldPassword":true}}'
+    -p '{"spec":{"discardGeneration":1}}'
 
 # Start next rotation (after previous one completed)
 $ kubectl patch credentialrotation my-cluster --type=merge \
-    -p '{"spec":{"rotationGeneration":2,"discardOldPassword":false}}'
+    -p '{"spec":{"rotationGeneration":2}}'
 ```
 
 ### GitOps / ArgoCD
@@ -304,21 +327,24 @@ The CR is long-lived and purely declarative, so it works naturally with GitOps:
 # 1. First rotation: commit this manifest
 spec:
   rotationGeneration: 1
-  discardOldPassword: false
+  discardGeneration: 0
 
 # 2. After verifying apps work: update and commit
 spec:
   rotationGeneration: 1
-  discardOldPassword: true
+  discardGeneration: 1
 
 # 3. Next rotation: update and commit
 spec:
   rotationGeneration: 2
-  discardOldPassword: false
+  discardGeneration: 1
 ```
 
 Each Git commit triggers an ArgoCD sync that advances the rotation lifecycle.
 No imperative `kubectl` commands or CR deletion is required.
+
+**Do not mix GitOps with `kubectl moco credential rotate/discard`.**
+The CLI patches the same spec fields that GitOps manages. If the CLI bumps a counter, GitOps reconcile will try to roll it back, but the validating webhook rejects any decrease — leaving the resource permanently `OutOfSync`. Worse, the CLI-triggered rotation/discard already mutates MySQL passwords irreversibly. Pick one source of truth per environment.
 
 ## Rotate
 
@@ -369,7 +395,11 @@ If any instance is unreachable, the ClusterManager returns an error and retries 
 | 4 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - | StatefulSet controller |
 
 **Scaled-down clusters (replicas=0):**
-Rotation is refused by the validation webhook (rejects CR creation or `rotationGeneration` bump when replicas=0), or the Reconciler emits a Warning Event and does not advance past the initial phase.
+Rotation is refused at multiple points:
+- The validation webhook rejects CR creation or `rotationGeneration` bump when `cluster.Spec.Replicas <= 0`.
+- `handleStartRotation` (`""`/`Completed` → `Rotating`) emits a `RotationRefused` Warning Event and keeps the CR in its current phase.
+- If the cluster is scaled down to 0 **after** rotation has reached `Rotating`, `handleRotatingPhase` emits a `RotationBlocked` Warning Event and waits for the cluster to be scaled back up before issuing RETAIN.
+
 Without running instances, ALTER USER cannot execute, and distributing new passwords would break connectivity when the cluster scales back up.
 
 ## Discard
@@ -378,9 +408,10 @@ Without running instances, ALTER USER cannot execute, and distributing new passw
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
-| 1 | Validate `spec.discardOldPassword=true` | - | Reconciler |
-| 2 | Wait for StatefulSet rollout to complete | - | Reconciler |
-| 3 | Set Phase to Discarding | Status.Update | Reconciler |
+| 1 | Validate `spec.discardGeneration > status.observedDiscardGeneration` | - | Reconciler |
+| 2 | Refuse with a `DiscardRefused` Warning Event if `cluster.Spec.Replicas <= 0` (keeps Phase=Rotated; advancing to `Discarding` would wedge because the webhook forbids reverting `discardGeneration` once bumped) | - | Reconciler |
+| 3 | Wait for StatefulSet rollout to complete | - | Reconciler |
+| 4 | Set Phase to Discarding | Status.Update | Reconciler |
 
 **Why wait for the rollout?**
 The agent sidecar reads passwords from `EnvFrom`, evaluated only at Pod startup.
@@ -410,7 +441,7 @@ The operator should scale the cluster up first.
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
 | 1 | Promote pending passwords to current in the source Secret via `password.ConfirmPendingPasswords()` | Secret.Update | Reconciler |
-| 2 | Set Phase to Completed, set `observedRotationGeneration = spec.rotationGeneration` | Status.Update | Reconciler |
+| 2 | Set Phase to Completed, set `observedRotationGeneration = spec.rotationGeneration` and `observedDiscardGeneration = spec.discardGeneration` | Status.Update | Reconciler |
 
 ## Source Secret Layout
 
@@ -479,46 +510,69 @@ The DB operation logic (`rotateInstanceUsers`, `discardInstanceUsers`, `checkIns
 
 ### MySQLClusterReconciler
 
-The only change to `MySQLClusterReconciler` is a guard in `reconcileV1Secret` that checks whether an active CredentialRotation exists:
+The only change to `MySQLClusterReconciler` is in `reconcileV1Secret`: it chooses which password set (current vs pending) to distribute based on the CredentialRotation phase, and continues to **self-heal** the per-namespace Secrets in every phase except `Retained`.
 
 ```go
-func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, ...) (ctrl.Result, error) {
+func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, ...) error {
     // ... source Secret creation (unchanged) ...
 
-    // During credential rotation, the CredentialRotationReconciler owns
-    // secret distribution in phases where pending passwords have been or
-    // are being distributed. Skip to prevent overwriting them.
-    // In the Rotating phase, pending passwords have NOT been distributed
-    // to user Secrets yet, so normal reconciliation continues — this
-    // allows self-healing and keeps the clustering loop operational.
-    // On any Get error (NotFound, CRD missing, cache not ready), assume
-    // no active rotation and proceed with distribution.
+    // During credential rotation, the CredentialRotationReconciler owns secret
+    // distribution from the Retained phase onward. Choose which password to
+    // distribute based on rotation phase:
+    //   - "" / Rotating / Completed: current passwords (pending not yet distributed).
+    //   - Retained: skip; handleRetainedPhase will distribute pending passwords.
+    //   - Rotated / Discarding / Discarded: pending passwords (already distributed
+    //     by handleRetainedPhase). Re-applying here self-heals if the per-namespace
+    //     user/my.cnf Secret was deleted during rotation; apply() is a no-op when
+    //     content matches.
+    // Transient lookup errors must NOT silently fall back to current passwords:
+    // doing so would overwrite already-distributed pending credentials and break
+    // the rolling restart / discard flow. Only NotFound and NoMatch (CRD not
+    // installed) are treated as "no active rotation".
+    usePending := false
     var cr mocov1beta2.CredentialRotation
-    if err := r.Get(ctx, client.ObjectKey{
+    switch err := r.Get(ctx, client.ObjectKey{
         Namespace: cluster.Namespace,
         Name:      cluster.Name,
-    }, &cr); err == nil {
+    }, &cr); {
+    case err == nil:
+        // Ignore a stale CR whose ownerReference UID does not match the live
+        // cluster (cluster was deleted and recreated under the same name).
+        if !crBelongsToCluster(&cr, cluster) {
+            break
+        }
         switch cr.Status.Phase {
-        case mocov1beta2.RotationPhaseRetained,
-            mocov1beta2.RotationPhaseRotated,
+        case mocov1beta2.RotationPhaseRetained:
+            return nil
+        case mocov1beta2.RotationPhaseRotated,
             mocov1beta2.RotationPhaseDiscarding,
             mocov1beta2.RotationPhaseDiscarded:
-            return nil
+            usePending = true
         }
+    case apierrors.IsNotFound(err), meta.IsNoMatchError(err):
+        // No active rotation — proceed with current passwords.
+    default:
+        return fmt.Errorf("failed to get CredentialRotation: %w", err)
     }
 
-    // ... normal secret distribution ...
+    passwd, err := passwordForDistribution(secret, usePending)
+    // ... apply user Secret and my.cnf Secret using passwd ...
 }
 ```
+
+`passwordForDistribution` returns the pending `MySQLPassword` when `preferPending` is true **and** pending keys are still present in the source Secret. Otherwise it returns the current password. This handles the brief window during `handleDiscardedPhase` where pending keys are promoted to current before the CR Phase is updated to Completed — without this fallback the lookup would error in that window.
 
 The `r.Get()` reads from the informer cache, which controller-runtime starts on demand for the CredentialRotation GVK.
 The overhead is negligible (CredentialRotation objects are few and small).
 
+**Self-healing per-namespace Secrets during rotation:**
+Re-applying the pending password in `Rotated`/`Discarding`/`Discarded` is intentional. If the per-namespace user/my.cnf Secret is accidentally deleted during rotation (manual operation, GC race, etc.), this reconciler restores it from the pending password kept in the source Secret. Pods restarted in that window can still come up with credentials MySQL accepts.
+
 **Cache lag safety:**
-If the cache briefly shows a stale Phase, the guard is still safe:
-- Phase appears as `""` or `Completed` (rotation not yet started, pending not yet distributed) → no skip → distributes old passwords → harmless
-- Phase appears as `Rotating` (pending not yet distributed) → no skip → distributes old passwords → harmless (same as above; Rotating is intentionally not skipped)
-- Any Phase from `Retained` onward → skip → correct
+If the cache briefly shows a stale Phase, the guard remains safe:
+- Phase appears as `""`/`Rotating`/`Completed` → distribute current passwords → harmless (Rotating is intentionally not skipped; pending has not yet been distributed by `handleRetainedPhase`).
+- Phase appears as `Retained` → skip → correct (`handleRetainedPhase` is the writer).
+- Phase appears as `Rotated`/`Discarding`/`Discarded` → distribute pending passwords → idempotent re-apply.
 
 The only theoretical risk is if the cache does not yet reflect Phase=Retained while the CredentialRotationReconciler has already distributed pending passwords (Retained → Rotated).
 In practice this cannot happen because RETAIN executes on all MySQL instances (takes seconds to minutes), far exceeding the cache propagation delay (~hundreds of milliseconds).
@@ -551,7 +605,10 @@ This makes MySQL the source of truth and is safe on re-execution because the que
 
 ### Idempotency of DISCARD
 
-`DISCARD OLD PASSWORD` is idempotent in MySQL (no-op when there is no secondary password), so per-user tracking is not needed.
+MySQL rejects `ALTER USER ... DISCARD OLD PASSWORD` when the user has no retained secondary password, so the statement is **not** self-idempotent.
+If a partial DISCARD retry re-ran the statement against an already-discarded user, the rotation would wedge in `Discarding`.
+
+To make retries safe, `discardInstanceUsers` queries `HasDualPassword(user)` before issuing DISCARD and skips users whose retained password is already gone. This mirrors the `HasDualPassword` gating used in `rotateInstanceUsers` for RETAIN, and keeps MySQL itself as the source of truth for per-user state.
 
 ### ConfirmPendingPasswords Idempotency
 
@@ -597,7 +654,22 @@ Since `MySQLClusterReconciler` uses server-side apply with its own field manager
 ### CR Deletion During Rotation
 
 In normal operation the CR is never deleted (it is long-lived).
-However, if a user deletes it while rotation is in progress (e.g. for emergency recovery), MySQL may be left in an inconsistent state (some instances with dual passwords, pending passwords in the source Secret).
+The validating webhook **forbids** deletion while a rotation is in progress to prevent the workflow from being abandoned mid-flight (which would leave pending/dual passwords behind with no automatic recovery path):
+
+```text
+ValidateDelete:
+  if Phase is "" or Completed      → allow
+  if MySQLCluster is NotFound      → allow (GC after owner deletion)
+  if MySQLCluster.DeletionTimestamp → allow (GC unblock; see "MySQLCluster Deletion")
+  if CR has a stale MySQLCluster   → allow (recreated cluster; see "Stale CR Handling")
+     ownerRef (UID mismatch)
+  otherwise                        → forbid
+```
+
+If emergency recovery is required (e.g. operator must roll back manually), the operator can:
+1. Scale the cluster down (causes the live cluster to be retained but the rotation to be effectively paused), or
+2. Wait for the cluster termination to release the GC delete, or
+3. Manually patch `Status.Phase` to `Completed` (cluster-admin only) and then delete.
 
 The CredentialRotation CR does **not** use a finalizer for automatic rollback, because:
 - Rollback requires connecting to every MySQL instance, which may not be possible during deletion (e.g., if the cluster is being scaled down)
@@ -607,7 +679,26 @@ See [Recovery Procedures](#recovery-procedures) for the steps to restore a consi
 
 ### MySQLCluster Deletion
 
-OwnerReference ensures the CredentialRotation CR is garbage-collected when the MySQLCluster is deleted. No special handling is needed because the MySQL instances are also being destroyed.
+The ownerReference (with `blockOwnerDeletion=true`) means Kubernetes GC must delete the CR before the MySQLCluster can finish terminating.
+The webhook explicitly allows delete when the owning cluster has a non-nil `DeletionTimestamp`, even if the CR is still in an active phase.
+Without that branch the cluster would be stuck in `Terminating` until the rotation finished, which contradicts the user's intent to tear the cluster down.
+
+No special teardown is needed because the MySQL instances are also being destroyed.
+
+### Stale CR Handling (Cluster Recreated Under the Same Name)
+
+If a `MySQLCluster` is deleted and another is recreated under the same name **before** GC reclaims the original CR (or while it is paused for some reason), the leftover CR matches the new cluster by `namespace/name` but its ownerReference points at the old cluster's UID.
+Adopting that CR onto the new cluster would let stale rotation state (Phase, pending passwords, restart annotations) poison a fresh cluster. The design treats stale CRs as **invisible** to every component:
+
+| Component | Behavior on stale CR |
+|---|---|
+| Validating webhook (`ValidateDelete`) | Allow delete (operator/GC can remove it) |
+| `CredentialRotationReconciler` | Emit `StaleCredentialRotation` Warning Event and return without adopting (no ownerRef rewrite) |
+| `ClusterManager.handlePasswordRotation` | Return early, do not run RETAIN/DISCARD |
+| `MySQLClusterReconciler.reconcileV1Secret` | Ignore the CR's Phase; distribute current passwords normally |
+| `kubectl moco credential rotate`/`discard` | Refuse with an error instructing the user to delete the stale CR |
+
+"Stale" means: the CR has a `MySQLCluster` ownerReference whose UID does not match the live cluster, and no matching reference. A CR with no `MySQLCluster` ownerReference yet (e.g. just created by `kubectl moco credential rotate` and not yet adopted) is treated as **fresh**, not stale.
 
 ## Assumptions
 
@@ -793,7 +884,7 @@ $ kubectl -n <namespace> rollout status statefulset <cluster-name>
 
 | Category | Files |
 |---|---|
-| **New** | `api/v1beta2/credentialrotation_types.go`, `controllers/credentialrotation_controller.go`, `clustering/password_rotation.go`, validation webhook |
-| **New (CLI)** | `cmd/kubectl-moco/cmd/credential.go` (rotate / discard / show subcommands) |
-| **New (DB ops)** | `pkg/password/rotation.go`, `pkg/dbop/password.go` |
-| **Modified** | `controllers/mysqlcluster_controller.go` (guard in `reconcileV1Secret`), `cmd/moco-controller/cmd/run.go` (register new reconciler) |
+| **New** | `api/v1beta2/credentialrotation_types.go`, `api/v1beta2/credentialrotation_webhook.go` (Create/Update/Delete validation, stale-CR and terminating-cluster GC handling), `controllers/credentialrotation_controller.go`, `clustering/password_rotation.go` |
+| **New (CLI)** | `cmd/kubectl-moco/cmd/credential.go` (`rotate`/`discard`/`show` subcommands, stale-CR detection) |
+| **New (DB ops)** | `pkg/password/rotation.go`, `pkg/dbop/password.go` (RETAIN/DISCARD/auth plugin migration with per-user `HasDualPassword` idempotency) |
+| **Modified** | `controllers/mysqlcluster_controller.go` (`reconcileV1Secret` chooses current vs pending password based on CR Phase and self-heals per-namespace Secrets), `cmd/moco-controller/cmd/run.go` (register new reconciler) |

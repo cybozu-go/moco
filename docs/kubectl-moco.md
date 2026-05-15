@@ -82,7 +82,7 @@ This can only be run when there is no rotation in progress (Phase is empty or `C
 ### `kubectl moco credential discard CLUSTER_NAME`
 
 Discard old passwords after a successful credential rotation.
-Sets `spec.discardOldPassword=true` on the CredentialRotation CR.
+Bumps `spec.discardGeneration` to match `spec.rotationGeneration` on the CredentialRotation CR.
 
 This can only be run when the rotation Phase is `Rotated`.
 

@@ -1129,6 +1129,12 @@ var _ = Describe("manager", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
 				RotationGeneration: 1,
@@ -1195,15 +1201,29 @@ var _ = Describe("manager", func() {
 		// Set user auth plugin to something different to trigger migration.
 		of.setUserAuthPlugin("mysql_native_password")
 
+		// Mimic post-RETAIN state: every user holds a retained (dual) password
+		// on every instance. DISCARD OLD PASSWORD is now gated on this state.
+		for i := range 3 {
+			for _, user := range constants.MocoUsers {
+				of.setDualPassword(cluster.PodHostname(i), user, true)
+			}
+		}
+
 		// Create a CredentialRotation CR in Discarding phase.
 		cr := &mocov1beta2.CredentialRotation{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
 				RotationGeneration: 1,
-				DiscardOldPassword: true,
+				DiscardGeneration:  1,
 			},
 		}
 		err = k8sClient.Create(ctx, cr)
@@ -1275,6 +1295,12 @@ var _ = Describe("manager", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
 				RotationGeneration: 1,
@@ -1297,6 +1323,79 @@ var _ = Describe("manager", func() {
 
 		// Admin user should have been skipped (has dual password), others should have been rotated.
 		users := of.getRotatedUsers(cluster.PodHostname(0))
+		Expect(users).To(HaveLen(len(constants.MocoUsers) - 1))
+		Expect(users).NotTo(ContainElement(constants.AdminUser))
+	})
+
+	It("should skip DISCARD for users without retained password (partial retry)", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "test-rotation-discard-idempotent"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Simulate a partial-progress retry: AdminUser already had DISCARD
+		// applied (no retained password remains), while the rest still hold a
+		// retained password from the prior RETAIN phase.
+		for _, user := range constants.MocoUsers {
+			if user == constants.AdminUser {
+				continue
+			}
+			of.setDualPassword(cluster.PodHostname(0), user, true)
+		}
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+				DiscardGeneration:  1,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		cr.Status.Phase = mocov1beta2.RotationPhaseDiscarding
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseDiscarded))
+		}).Should(Succeed())
+
+		// AdminUser should have been skipped; others should have been discarded.
+		users := of.getDiscardedUsers(cluster.PodHostname(0))
 		Expect(users).To(HaveLen(len(constants.MocoUsers) - 1))
 		Expect(users).NotTo(ContainElement(constants.AdminUser))
 	})

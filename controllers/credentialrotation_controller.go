@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,6 +27,14 @@ import (
 
 const (
 	credRotationRequeueInterval = 15 * time.Second
+
+	// credRotationFieldManager is the field manager used for Server-Side Apply
+	// writes by the CredentialRotation reconciler. It is intentionally distinct
+	// from MySQLClusterReconciler's "moco-controller" so that fields written
+	// here (notably the rolling-restart annotation on the StatefulSet pod
+	// template) are not removed when MySQLClusterReconciler re-applies its own
+	// view of the StatefulSet, which does not declare the rotation annotation.
+	credRotationFieldManager = "moco-credential-rotation"
 )
 
 // CredentialRotationReconciler reconciles a CredentialRotation object
@@ -61,18 +70,21 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// Refuse to adopt a stale CR (one whose MySQLCluster ownerReference points
+	// at a different UID than the live cluster — i.e., the original cluster
+	// was deleted and another was recreated under the same name). Reparenting
+	// it would let leftover rotation state poison the new cluster. Such a CR
+	// must be deleted (the validating webhook permits this) before a fresh
+	// rotation is started on the new cluster.
+	if hasStaleClusterOwnerRef(cr, cluster, r.Scheme) {
+		log.Info("ignoring stale CredentialRotation (ownerReference UID differs from live cluster)")
+		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "StaleCredentialRotation",
+			"CredentialRotation is owned by a different MySQLCluster UID than the live cluster; delete this CR before starting a new rotation")
+		return ctrl.Result{}, nil
+	}
+
 	// Ensure ownerReference is set
 	if !hasOwnerReference(cr, cluster) {
-		// Strip stale MySQLCluster controller ownerReferences pointing at the
-		// same name with a different UID (e.g., cluster deleted and recreated).
-		// Otherwise SetOwnerReference fails with "object already owned by another
-		// controller" and the reconciler would requeue forever.
-		if removed, err := removeStaleClusterOwnerReferences(cr, cluster, r.Scheme); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to inspect ownerReferences: %w", err)
-		} else if removed {
-			r.Recorder.Eventf(cr, corev1.EventTypeNormal, "OwnerReferenceReplaced",
-				"Replaced stale MySQLCluster ownerReference (UID changed; cluster was likely deleted and recreated)")
-		}
 		if err := controllerutil.SetOwnerReference(cluster, cr, r.Scheme); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to set ownerReference: %w", err)
 		}
@@ -82,8 +94,9 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Check if a new rotation is needed
+	// Check if a new rotation or discard is needed
 	newRotation := cr.Spec.RotationGeneration > cr.Status.ObservedRotationGeneration
+	newDiscard := cr.Spec.DiscardGeneration > cr.Status.ObservedDiscardGeneration
 
 	switch {
 	case newRotation && (cr.Status.Phase == "" || cr.Status.Phase == mocov1beta2.RotationPhaseCompleted):
@@ -97,10 +110,10 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return r.handleRetainedPhase(ctx, cr, cluster)
 
 	case cr.Status.Phase == mocov1beta2.RotationPhaseRotated:
-		if cr.Spec.DiscardOldPassword {
+		if newDiscard {
 			return r.handleStartDiscard(ctx, cr, cluster)
 		}
-		// Waiting for user to set discardOldPassword=true
+		// Waiting for user to bump discardGeneration
 		return ctrl.Result{}, nil
 
 	case cr.Status.Phase == mocov1beta2.RotationPhaseDiscarding:
@@ -236,20 +249,29 @@ func (r *CredentialRotationReconciler) handleRetainedPhase(ctx context.Context, 
 		}
 	}
 
-	// Add restart annotation to StatefulSet Pod template
-	sts := &appsv1.StatefulSet{}
+	// Add restart annotation to StatefulSet Pod template via Server-Side Apply
+	// under a dedicated field manager. MySQLClusterReconciler reconstructs the
+	// pod template annotations from cluster.Spec.PodTemplate.Annotations only
+	// and applies under "moco-controller" with ForceOwnership; using a separate
+	// field manager here keeps ownership of the rotation annotation key
+	// isolated, so the restart trigger is not silently removed by the next
+	// MySQLCluster reconcile.
 	stsName := cluster.PrefixedName()
-	if err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: stsName}, sts); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get StatefulSet: %w", err)
-	}
-
-	patch := client.MergeFrom(sts.DeepCopy())
-	if sts.Spec.Template.Annotations == nil {
-		sts.Spec.Template.Annotations = make(map[string]string)
-	}
-	sts.Spec.Template.Annotations[constants.AnnPasswordRotationRestart] = cr.Status.RotationID
-	if err := r.Patch(ctx, sts, patch); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to patch StatefulSet with restart annotation: %w", err)
+	stsAC := appsv1ac.StatefulSet(stsName, cluster.Namespace).
+		WithSpec(appsv1ac.StatefulSetSpec().
+			WithTemplate(corev1ac.PodTemplateSpec().
+				WithAnnotations(map[string]string{
+					constants.AnnPasswordRotationRestart: cr.Status.RotationID,
+				})))
+	// The MySQLCluster validating webhook rejects this annotation key in
+	// spec.podTemplate.metadata.annotations on create/update, so no current
+	// reconcile of MySQLClusterReconciler claims the key under
+	// "moco-controller". ForceOwnership is still kept as a defense in depth
+	// for upgrade scenarios where a StatefulSet already carries the
+	// annotation owned by a previous field manager (e.g. the merge-patch
+	// path used before this change).
+	if err := r.Apply(ctx, stsAC, client.FieldOwner(credRotationFieldManager), client.ForceOwnership); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to apply rotation annotation to StatefulSet: %w", err)
 	}
 
 	// Update status to Rotated
@@ -369,13 +391,18 @@ func (r *CredentialRotationReconciler) handleDiscardedPhase(ctx context.Context,
 	// Update status to Completed
 	cr.Status.Phase = mocov1beta2.RotationPhaseCompleted
 	cr.Status.ObservedRotationGeneration = cr.Spec.RotationGeneration
+	cr.Status.ObservedDiscardGeneration = cr.Spec.DiscardGeneration
 	if err := r.Status().Update(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to Completed: %w", err)
 	}
 
-	log.Info("rotation completed", "rotationID", cr.Status.RotationID, "observedGeneration", cr.Status.ObservedRotationGeneration)
+	log.Info("rotation completed",
+		"rotationID", cr.Status.RotationID,
+		"observedRotationGeneration", cr.Status.ObservedRotationGeneration,
+		"observedDiscardGeneration", cr.Status.ObservedDiscardGeneration)
 	r.Recorder.Eventf(cr, corev1.EventTypeNormal, "RotationCompleted",
-		"Rotation completed (rotationID: %s, generation: %d)", cr.Status.RotationID, cr.Spec.RotationGeneration)
+		"Rotation completed (rotationID: %s, rotationGeneration: %d, discardGeneration: %d)",
+		cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
 
 	return ctrl.Result{}, nil
 }
@@ -408,26 +435,26 @@ func hasOwnerReference(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.
 	return false
 }
 
-// removeStaleClusterOwnerReferences removes any ownerReference whose Kind/Name
-// matches the target MySQLCluster but UID differs (e.g., the cluster was deleted
-// and recreated). Returns whether any reference was removed.
-func removeStaleClusterOwnerReferences(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster, scheme *runtime.Scheme) (bool, error) {
+// hasStaleClusterOwnerRef reports whether cr carries a MySQLCluster owner
+// reference that points at a different UID than the live cluster, with no
+// matching reference. That signals a CR left over after a cluster was deleted
+// and another recreated under the same name; such CRs must NOT be adopted.
+func hasStaleClusterOwnerRef(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster, scheme *runtime.Scheme) bool {
 	gvk, err := apiutil.GVKForObject(cluster, scheme)
 	if err != nil {
-		return false, err
+		return false
 	}
-	apiVersion := gvk.GroupVersion().String()
-	filtered := cr.OwnerReferences[:0]
-	removed := false
+	hasStale := false
 	for _, ref := range cr.OwnerReferences {
-		if ref.APIVersion == apiVersion && ref.Kind == gvk.Kind && ref.Name == cluster.Name && ref.UID != cluster.UID {
-			removed = true
+		if ref.Kind != gvk.Kind {
 			continue
 		}
-		filtered = append(filtered, ref)
+		if ref.UID == cluster.UID {
+			return false
+		}
+		hasStale = true
 	}
-	cr.OwnerReferences = filtered
-	return removed, nil
+	return hasStale
 }
 
 func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error {

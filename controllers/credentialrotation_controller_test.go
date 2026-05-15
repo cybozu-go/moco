@@ -307,13 +307,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return cr.Status.Phase
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 
-		// Set discardOldPassword=true.
+		// Bump discardGeneration to request discard.
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Spec.DiscardOldPassword = true
+			cr.Spec.DiscardGeneration = cr.Spec.RotationGeneration
 			return k8sClient.Update(ctx, cr)
 		}).Should(Succeed())
 
@@ -418,13 +418,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return cr.Status.Phase
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 
-		// Phase 4: Set discardOldPassword + simulate rollout → Discarding
+		// Phase 4: Bump discardGeneration + simulate rollout → Discarding
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Spec.DiscardOldPassword = true
+			cr.Spec.DiscardGeneration = cr.Spec.RotationGeneration
 			return k8sClient.Update(ctx, cr)
 		}).Should(Succeed())
 
@@ -472,11 +472,12 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return cr.Status.Phase
 		}).Should(Equal(mocov1beta2.RotationPhaseCompleted))
 
-		// Verify observedRotationGeneration is updated.
+		// Verify observed generations are updated.
 		cr = &mocov1beta2.CredentialRotation{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
+		Expect(cr.Status.ObservedDiscardGeneration).To(Equal(int64(1)))
 
 		// Verify pending passwords have been promoted in the source secret.
 		sourceSecret = &corev1.Secret{}
@@ -531,7 +532,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Equal(mocov1beta2.RotationPhase("")))
 	})
 
-	It("should not advance past Rotated without discardOldPassword", func() {
+	It("should not advance past Rotated without bumping discardGeneration", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -591,7 +592,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return cr.Status.Phase
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 
-		// Without discardOldPassword, phase should stay at Rotated.
+		// Without bumping discardGeneration, phase should stay at Rotated.
 		Consistently(func() mocov1beta2.RotationPhase {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
@@ -666,8 +667,8 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		err = k8sClient.Patch(ctx, cluster, patch)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the apiserver/cache to observe replicas=0 before toggling
-		// discardOldPassword. Otherwise the reconciler may still see the old
+		// Wait for the apiserver/cache to observe replicas=0 before bumping
+		// discardGeneration. Otherwise the reconciler may still see the old
 		// replica count and legitimately advance to Discarding.
 		Eventually(func() int32 {
 			c := &mocov1beta2.MySQLCluster{}
@@ -677,13 +678,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return c.Spec.Replicas
 		}).Should(Equal(int32(0)))
 
-		// Set discardOldPassword=true.
+		// Bump discardGeneration to request discard.
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Spec.DiscardOldPassword = true
+			cr.Spec.DiscardGeneration = cr.Spec.RotationGeneration
 			return k8sClient.Update(ctx, cr)
 		}).Should(Succeed())
 
@@ -697,12 +698,12 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 	})
 
-	It("should skip secret distribution when rotation is past Retained", func() {
+	It("should self-heal user secret with pending passwords after Retained", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for user secret with old passwords.
+		// Wait for the initial user secret created with current passwords.
 		var oldAdminPwd string
 		Eventually(func() error {
 			secret := &corev1.Secret{}
@@ -759,8 +760,27 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return cr.Status.Phase
 		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
 
-		// Tamper user secret to verify MySQLClusterReconciler does NOT overwrite
-		// it with old passwords during Rotated phase.
+		// Capture the pending (new) password from the source Secret — this is what
+		// the user Secret should hold after Retained phase distributes it.
+		var pendingAdminPwd string
+		Eventually(func() error {
+			source := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, source); err != nil {
+				return err
+			}
+			if v := source.Data[password.AdminPasswordPendingKey]; len(v) > 0 {
+				pendingAdminPwd = string(v)
+				return nil
+			}
+			return fmt.Errorf("pending admin password not set")
+		}).Should(Succeed())
+		Expect(pendingAdminPwd).NotTo(Equal(oldAdminPwd))
+
+		// Tamper the user Secret. The MySQLClusterReconciler must self-heal it
+		// back to the pending (new) password — NOT the old current password.
 		Eventually(func() error {
 			secret := &corev1.Secret{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{
@@ -773,8 +793,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return k8sClient.Update(ctx, secret)
 		}).Should(Succeed())
 
-		// MySQLClusterReconciler should NOT overwrite the secret in Rotated phase.
-		Consistently(func() string {
+		Eventually(func() string {
 			secret := &corev1.Secret{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{
 				Namespace: "test",
@@ -783,6 +802,6 @@ var _ = Describe("CredentialRotation reconciler", func() {
 				return ""
 			}
 			return string(secret.Data["ADMIN_PASSWORD"])
-		}).ShouldNot(Equal(oldAdminPwd))
+		}).Should(Equal(pendingAdminPwd))
 	})
 })

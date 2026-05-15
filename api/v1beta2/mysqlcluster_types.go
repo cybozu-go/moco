@@ -275,6 +275,20 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 		}
 	}
 
+	// Reject the reserved credential-rotation restart annotation in the pod
+	// template. The CredentialRotation reconciler owns this key via
+	// server-side apply under a separate field manager to trigger rolling
+	// restarts; letting the user set the same key in spec would create a
+	// field-manager tug-of-war with MySQLClusterReconciler that could cancel
+	// an in-flight rotation. Build the field path from the root because `p`
+	// has been narrowed to spec.podTemplate.spec above.
+	if _, ok := s.PodTemplate.Annotations[constants.AnnPasswordRotationRestart]; ok {
+		annPath := field.NewPath("spec", "podTemplate", "metadata", "annotations").Key(constants.AnnPasswordRotationRestart)
+		allErrs = append(allErrs, field.Forbidden(annPath,
+			fmt.Sprintf("annotation %q is reserved for credential rotation and must not be set in spec.podTemplate.metadata.annotations",
+				constants.AnnPasswordRotationRestart)))
+	}
+
 	return nil, allErrs
 }
 
