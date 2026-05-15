@@ -390,7 +390,7 @@ If any instance is unreachable, the ClusterManager returns an error and retries 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
 | 1 | Distribute pending passwords to per-namespace Secrets (user Secret + my.cnf Secret) | Secret.Apply | Reconciler |
-| 2 | Add restart annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) to StatefulSet Pod template. The value is the rotationID (UUID) to ensure each rotation triggers a new rollout. | StatefulSet.Patch | Reconciler |
+| 2 | Add restart annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) to StatefulSet Pod template. The value is the rotationID (UUID) to ensure each rotation triggers a new rollout. | StatefulSet.Apply (SSA, dedicated field manager + ForceOwnership) | Reconciler |
 | 3 | Set Phase to Rotated | Status.Update | Reconciler |
 | 4 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - | StatefulSet controller |
 
@@ -560,7 +560,7 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, ...) err
 }
 ```
 
-`passwordForDistribution` returns the pending `MySQLPassword` when `preferPending` is true **and** pending keys are still present in the source Secret. Otherwise it returns the current password. This handles the brief window during `handleDiscardedPhase` where pending keys are promoted to current before the CR Phase is updated to Completed — without this fallback the lookup would error in that window.
+`passwordForDistribution` returns the pending `MySQLPassword` when `preferPending` is true **and** the source Secret's pending state is fully present (validated via `HasPendingPasswords`). When pending keys and `ROTATION_ID` are all absent, it falls back to the current password — this handles the brief window during `handleDiscardedPhase` where pending keys are promoted to current before the CR Phase is updated to Completed. If the pending state is *partially* present (some `*_PENDING` keys missing, or `ROTATION_ID` without keys, etc.), it returns an error instead of silently falling back, so the inconsistency surfaces for manual cleanup rather than letting reconciliation overwrite the per-namespace Secrets that `handleRetainedPhase` already populated with the new passwords.
 
 The `r.Get()` reads from the informer cache, which controller-runtime starts on demand for the CredentialRotation GVK.
 The overhead is negligible (CredentialRotation objects are few and small).
@@ -646,8 +646,9 @@ The rotation handler reads passwords directly from the source (controller) Secre
 
 ### StatefulSet Rolling Restart
 
-The CredentialRotationReconciler patches the StatefulSet Pod template annotation (`moco.cybozu.com/password-rotation-restart`) to trigger rolling restart.
-Since `MySQLClusterReconciler` uses server-side apply with its own field manager, the annotation set by a different field manager is preserved.
+The CredentialRotationReconciler applies (Server-Side Apply) the StatefulSet Pod template annotation (`moco.cybozu.com/password-rotation-restart`) under a dedicated field manager (`moco-credential-rotation`) with `ForceOwnership` to trigger rolling restart.
+The dedicated field manager keeps ownership of the rotation annotation key isolated from `MySQLClusterReconciler`'s `moco-controller`, so the restart trigger is not silently removed by the next MySQLCluster reconcile (which does not declare the rotation annotation in its apply config).
+`ForceOwnership` additionally covers the edge case where a user pre-sets the same annotation key in `cluster.Spec.PodTemplate.Annotations` — the field would otherwise be owned by `moco-controller` and the apply would conflict.
 
 ## Deletion Handling
 
