@@ -10,14 +10,16 @@ import (
 type CredentialRotationSpec struct {
 	// RotationGeneration is a monotonically increasing counter.
 	// Incrementing this value triggers a new rotation cycle.
-	// +optional
-	RotationGeneration int64 `json:"rotationGeneration,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	RotationGeneration int64 `json:"rotationGeneration"`
 
 	// DiscardGeneration is a monotonically increasing counter that triggers
 	// the discard phase. Must satisfy 0 <= discardGeneration <= rotationGeneration.
 	// Bumping this value (typically to match rotationGeneration) signals the
 	// controller to discard the retained old password from the previous
 	// rotation. The bump is only honored when Phase is Rotated.
+	// +kubebuilder:default=0
+	// +kubebuilder:validation:Minimum=0
 	// +optional
 	DiscardGeneration int64 `json:"discardGeneration,omitempty"`
 }
@@ -34,16 +36,19 @@ type CredentialRotationStatus struct {
 
 	// ObservedRotationGeneration is the last rotationGeneration
 	// that completed successfully.
+	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedRotationGeneration int64 `json:"observedRotationGeneration,omitempty"`
 
 	// ObservedDiscardGeneration is the last discardGeneration
 	// that completed successfully.
+	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedDiscardGeneration int64 `json:"observedDiscardGeneration,omitempty"`
 }
 
 // RotationPhase represents the phase of a credential rotation.
+// +kubebuilder:validation:Enum=Rotating;Retained;Rotated;Discarding;Discarded;Completed
 type RotationPhase string
 
 const (
@@ -67,10 +72,12 @@ const (
 
 // CredentialRotation is the Schema for the credentialrotations API
 type CredentialRotation struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CredentialRotationSpec   `json:"spec,omitempty"`
+	Spec CredentialRotationSpec `json:"spec"`
+	// +optional
 	Status CredentialRotationStatus `json:"status,omitempty"`
 }
 
