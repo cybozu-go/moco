@@ -2,7 +2,6 @@ package dbop
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
+	"github.com/go-logr/logr"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
@@ -81,16 +81,19 @@ type defaultFactory struct {
 var _ OperatorFactory = defaultFactory{}
 
 // NewFactory returns a new OperatorFactory that resolves instance IP address using `r`.
-// If `r.Resolve` returns an error, the `New` method will return a NopOperator.
+// If `r.Resolve` or semi-sync plugin detection fails, the `New` method will return
+// a NopOperator so that a single unreachable instance does not abort the whole
+// reconcile cycle.
 func NewFactory(r Resolver) OperatorFactory {
 	return defaultFactory{r: r}
 }
 
 func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassword, index int) (Operator, error) {
+	nopName := fmt.Sprintf("%s/%s", cluster.Namespace, cluster.PodName(index))
 	addr, err := f.r.Resolve(ctx, cluster, index)
 	//nolint:nilerr
 	if err != nil {
-		return NopOperator{name: fmt.Sprintf("%s/%s", cluster.Namespace, cluster.PodName(index))}, nil
+		return NopOperator{name: nopName}, nil
 	}
 
 	cfg := mysql.NewConfig()
@@ -109,17 +112,22 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)
 
-	// Detect which semi-sync plugin variant is installed. A failure here means
-	// the DB is reachable but information_schema returned an error; propagate
-	// so the reconciler retries on the next iteration instead of silently
-	// falling back to the new names (which would target nonexistent variables
-	// on a legacy-plugin cluster).
+	// Detect which semi-sync plugin variant is installed. On error (mysqld
+	// unreachable, information_schema query failure, etc.) fall back to a
+	// NopOperator instead of propagating the error: GatherStatus treats a
+	// New() error as fatal for the whole cluster, while per-instance
+	// GetStatus errors are tolerated. Mapping detection failures to a Nop
+	// matches the Resolver-failure behavior above and preserves reconciler
+	// availability when a single replica is temporarily unhealthy.
 	ss, err := DetectSemiSyncNames(ctx, db)
 	if err != nil {
+		logr.FromContextOrDiscard(ctx).Error(err, "failed to detect semi-sync plugin; falling back to NopOperator",
+			"instance", nopName)
 		if cerr := db.Close(); cerr != nil {
-			err = errors.Join(err, cerr)
+			logr.FromContextOrDiscard(ctx).Error(cerr, "failed to close db after semi-sync detection error",
+				"instance", nopName)
 		}
-		return nil, fmt.Errorf("failed to detect semi-sync plugin for %s: %w", cluster.PodName(index), err)
+		return NopOperator{name: nopName}, nil
 	}
 
 	return &operator{
