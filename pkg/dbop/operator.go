@@ -2,6 +2,7 @@ package dbop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -108,11 +109,17 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxIdleTime(30 * time.Second)
 
-	// Detect semi-sync plugin type. If the instance is unreachable (e.g. during failover),
-	// default to new names. Subsequent queries will also fail and be handled gracefully.
-	ss, _ := DetectSemiSyncNames(ctx, db)
-	if ss == nil {
-		ss = &NewSemiSyncNames
+	// Detect which semi-sync plugin variant is installed. A failure here means
+	// the DB is reachable but information_schema returned an error; propagate
+	// so the reconciler retries on the next iteration instead of silently
+	// falling back to the new names (which would target nonexistent variables
+	// on a legacy-plugin cluster).
+	ss, err := DetectSemiSyncNames(ctx, db)
+	if err != nil {
+		if cerr := db.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+		return nil, fmt.Errorf("failed to detect semi-sync plugin for %s: %w", cluster.PodName(index), err)
 	}
 
 	return &operator{
@@ -133,7 +140,7 @@ type operator struct {
 	passwd    *password.MySQLPassword
 	index     int
 	db        *sqlx.DB
-	semisync  *SemiSyncNames
+	semisync  SemiSyncNames
 }
 
 var _ Operator = &operator{}
