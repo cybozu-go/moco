@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -15,15 +16,21 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -171,7 +178,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 			"MySQLCluster replicas is 0; nothing has been mutated.")
 		cr.SetReady(metav1.ConditionFalse, mocov1beta2.ReasonInProgress,
 			"Rotation requested but refused; cluster has 0 replicas.")
-		if err := r.Status().Update(ctx, cr); err != nil {
+		if err := r.updateStatus(ctx, cr); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to RotationRefused: %w", err)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -202,7 +209,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 				"See MOCO documentation for recovery procedures", err)
 		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending,
 			fmt.Sprintf("Failed to set pending passwords: %v", err))
-		if statusErr := r.Status().Update(ctx, cr); statusErr != nil {
+		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to StalePending: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -221,7 +228,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 		"No RETAIN has been issued in the current cycle yet.")
 	cr.SetReady(metav1.ConditionFalse, mocov1beta2.ReasonInProgress,
 		"Rotation cycle in progress.")
-	if err := r.Status().Update(ctx, cr); err != nil {
+	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to ApplyingRetain: %w", err)
 	}
 
@@ -252,7 +259,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 				"See MOCO documentation for recovery procedures", err)
 		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending,
 			fmt.Sprintf("Pending password state inconsistency: %v", err))
-		if statusErr := r.Status().Update(ctx, cr); statusErr != nil {
+		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to StalePending: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -262,7 +269,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 				"See MOCO documentation for recovery procedures", cr.Status.RotationID)
 		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending,
 			fmt.Sprintf("Pending passwords not found for rotationID %s", cr.Status.RotationID))
-		if statusErr := r.Status().Update(ctx, cr); statusErr != nil {
+		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to StalePending: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -329,7 +336,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 	// Transition to AwaitingDiscard.
 	cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonAwaitingDiscard,
 		"Pending passwords distributed; awaiting discardGeneration bump.")
-	if err := r.Status().Update(ctx, cr); err != nil {
+	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to AwaitingDiscard: %w", err)
 	}
 
@@ -355,7 +362,7 @@ func (r *CredentialRotationReconciler) handleStartDiscard(ctx context.Context, c
 
 	cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonWaitingForRollout,
 		"Discard requested; waiting for StatefulSet rollout to complete.")
-	if err := r.Status().Update(ctx, cr); err != nil {
+	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to WaitingForRollout: %w", err)
 	}
 
@@ -391,7 +398,7 @@ func (r *CredentialRotationReconciler) handleWaitingForRollout(ctx context.Conte
 
 	cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingDiscard,
 		"Awaiting ClusterManager to execute DISCARD OLD PASSWORD on all instances.")
-	if err := r.Status().Update(ctx, cr); err != nil {
+	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to ApplyingDiscard: %w", err)
 	}
 
@@ -421,7 +428,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 				"See MOCO documentation for recovery procedures", pendingErr)
 		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending,
 			fmt.Sprintf("Pending password state inconsistency during confirm: %v", pendingErr))
-		if statusErr := r.Status().Update(ctx, cr); statusErr != nil {
+		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to StalePending: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -452,7 +459,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 				cr.Status.RotationID)
 			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending,
 				fmt.Sprintf("Pending keys lost without promotion for rotationID %s", cr.Status.RotationID))
-			if statusErr := r.Status().Update(ctx, cr); statusErr != nil {
+			if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to update status to StalePending: %w", statusErr)
 			}
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
@@ -472,7 +479,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		"Rotation cycle completed successfully.")
 	cr.SetReady(metav1.ConditionTrue, mocov1beta2.ReasonCompleted,
 		"observedRotationGeneration and observedDiscardGeneration match spec.")
-	if err := r.Status().Update(ctx, cr); err != nil {
+	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status to Completed: %w", err)
 	}
 
@@ -485,6 +492,15 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
 
 	return ctrl.Result{}, nil
+}
+
+// updateStatus stamps the current metadata.generation into
+// status.observedGeneration before sending the Status().Update so that
+// external tooling (kstatus, ArgoCD, Flux) can detect that the controller
+// has caught up with the latest spec change.
+func (r *CredentialRotationReconciler) updateStatus(ctx context.Context, cr *mocov1beta2.CredentialRotation) error {
+	cr.StampObservedGeneration()
+	return r.Status().Update(ctx, cr)
 }
 
 func isStatefulSetRolloutComplete(sts *appsv1.StatefulSet) bool {
@@ -540,8 +556,100 @@ func hasStaleClusterOwnerRef(cr *mocov1beta2.CredentialRotation, cluster *mocov1
 func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta2.CredentialRotation{}).
+		// Wake the reconciler when the target MySQLCluster changes — most
+		// importantly when Spec.Replicas transitions to or from 0, so a
+		// RotationRefused/RotationBlocked state resumes immediately on
+		// scale-up instead of waiting for the periodic requeue.
+		Watches(
+			&mocov1beta2.MySQLCluster{},
+			handler.EnqueueRequestsFromMapFunc(mapClusterToCR),
+			builder.WithPredicates(clusterReplicasChangedPredicate{}),
+		).
+		// Wake the reconciler when the controller-namespace source Secret
+		// changes — this lets the operator clean up a StalePending source
+		// Secret (or restore one) without waiting for the periodic
+		// requeue.
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSourceSecretToCR),
+			builder.WithPredicates(sourceSecretPredicate(r.SystemNamespace)),
+		).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
 		Complete(r)
+}
+
+// mapClusterToCR maps a MySQLCluster event to a CredentialRotation
+// reconcile request. A CredentialRotation always shares its
+// namespace/name with the cluster it manages.
+func mapClusterToCR(_ context.Context, obj client.Object) []reconcile.Request {
+	return []reconcile.Request{{
+		NamespacedName: types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      obj.GetName(),
+		},
+	}}
+}
+
+// mapSourceSecretToCR reverse-parses a controller-namespace Secret name
+// ("mysql-<ns>.<name>") back to the CredentialRotation that may be
+// interested in it. The reverse parse is best-effort: if the name does
+// not match the expected pattern, no request is enqueued.
+func (r *CredentialRotationReconciler) mapSourceSecretToCR(_ context.Context, obj client.Object) []reconcile.Request {
+	if obj.GetNamespace() != r.SystemNamespace {
+		return nil
+	}
+	const prefix = "mysql-"
+	name := obj.GetName()
+	if !strings.HasPrefix(name, prefix) {
+		return nil
+	}
+	rest := name[len(prefix):]
+	// `ControllerSecretName` is `mysql-<ns>.<name>`; split on the first '.'.
+	idx := strings.Index(rest, ".")
+	if idx <= 0 || idx == len(rest)-1 {
+		return nil
+	}
+	return []reconcile.Request{{
+		NamespacedName: types.NamespacedName{
+			Namespace: rest[:idx],
+			Name:      rest[idx+1:],
+		},
+	}}
+}
+
+// clusterReplicasChangedPredicate filters MySQLCluster events down to
+// those that may unblock or refresh a rotation: creation, deletion, or
+// Spec.Replicas changes.
+type clusterReplicasChangedPredicate struct {
+	predicate.Funcs
+}
+
+func (clusterReplicasChangedPredicate) Update(e event.UpdateEvent) bool {
+	oldCluster, ok := e.ObjectOld.(*mocov1beta2.MySQLCluster)
+	if !ok {
+		return false
+	}
+	newCluster, ok := e.ObjectNew.(*mocov1beta2.MySQLCluster)
+	if !ok {
+		return false
+	}
+	if oldCluster.Spec.Replicas != newCluster.Spec.Replicas {
+		return true
+	}
+	// DeletionTimestamp changes also matter for the ValidateDelete
+	// path even though we cannot block delete from the reconciler.
+	return (oldCluster.DeletionTimestamp == nil) != (newCluster.DeletionTimestamp == nil)
+}
+
+func (clusterReplicasChangedPredicate) Generic(_ event.GenericEvent) bool { return false }
+
+// sourceSecretPredicate filters Secret events to only those that live in
+// the controller's system namespace. This avoids reconciling for every
+// secret change cluster-wide.
+func sourceSecretPredicate(systemNamespace string) predicate.Predicate {
+	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		return obj.GetNamespace() == systemNamespace
+	})
 }

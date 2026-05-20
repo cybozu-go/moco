@@ -100,3 +100,11 @@ func (cr *CredentialRotation) SetReady(status metav1.ConditionStatus, reason, me
 		ObservedGeneration: cr.Generation,
 	})
 }
+
+// StampObservedGeneration sets status.observedGeneration to the current
+// metadata.generation. Call this immediately before any Status().Update()
+// so that clients (kstatus, ArgoCD, Flux) see that the controller has
+// caught up with the latest spec change.
+func (cr *CredentialRotation) StampObservedGeneration() {
+	cr.Status.ObservedGeneration = cr.Generation
+}
