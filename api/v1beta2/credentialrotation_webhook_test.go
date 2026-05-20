@@ -25,10 +25,11 @@ func deleteCredentialRotation(name string) error {
 	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, cr); err != nil {
 		return client.IgnoreNotFound(err)
 	}
-	// Reset phase to Completed so the validating webhook allows deletion
-	// regardless of the test's intermediate phase state.
-	if cr.Status.Phase != "" && cr.Status.Phase != mocov1beta2.RotationPhaseCompleted {
-		cr.Status.Phase = mocov1beta2.RotationPhaseCompleted
+	// Reset the Rotating condition to a terminal idle state so the
+	// validating webhook allows deletion regardless of the test's
+	// intermediate condition state.
+	if !cr.IsIdle() {
+		cr.SetRotating(metav1.ConditionFalse, mocov1beta2.ReasonCompleted, "test cleanup")
 		if err := k8sClient.Status().Update(ctx, cr); err != nil {
 			return client.IgnoreNotFound(err)
 		}
@@ -128,7 +129,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should reject increasing generation when phase is not empty or Completed", func() {
+		It("should reject increasing generation when a rotation cycle is in flight", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -137,12 +138,10 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Simulate Rotating phase
-			cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "in flight")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Re-fetch to get updated resource version
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -180,7 +179,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should reject bumping discardGeneration when phase is not Rotated", func() {
+		It("should reject bumping discardGeneration when Rotating.Reason is not AwaitingDiscard", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -194,7 +193,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should accept bumping discardGeneration when phase is Rotated", func() {
+		It("should accept bumping discardGeneration when Rotating.Reason is AwaitingDiscard", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -203,12 +202,10 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Simulate Rotated phase
-			cr.Status.Phase = mocov1beta2.RotationPhaseRotated
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonAwaitingDiscard, "ready for discard")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Re-fetch to get updated resource version
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -217,7 +214,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should accept increasing generation when phase is Completed", func() {
+		It("should accept increasing rotationGeneration when the CR is idle (Completed)", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -226,13 +223,11 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Simulate Completed phase
-			cr.Status.Phase = mocov1beta2.RotationPhaseCompleted
+			cr.SetRotating(metav1.ConditionFalse, mocov1beta2.ReasonCompleted, "previous cycle complete")
 			cr.Status.ObservedRotationGeneration = 1
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Re-fetch to get updated resource version
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -243,7 +238,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 	})
 
 	Context("ValidateDelete", func() {
-		It("should allow deletion when phase is empty", func() {
+		It("should allow deletion when Rotating condition is absent", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -256,7 +251,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should allow deletion when phase is Completed", func() {
+		It("should allow deletion when Rotating.Reason is Completed", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -265,7 +260,41 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			cr.Status.Phase = mocov1beta2.RotationPhaseCompleted
+			cr.SetRotating(metav1.ConditionFalse, mocov1beta2.ReasonCompleted, "cycle complete")
+			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should allow deletion when Rotating.Reason is RotationBlocked (recovery escape hatch)", func() {
+			cluster := makeMySQLCluster()
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test", 1)
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonRotationBlocked, "scaled to 0")
+			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should allow deletion when Rotating.Reason is StalePending (recovery escape hatch)", func() {
+			cluster := makeMySQLCluster()
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test", 1)
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonStalePending, "inconsistent secret")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -282,7 +311,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "in flight")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -320,7 +349,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "in flight")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -367,7 +396,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
-			cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+			cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "in flight")
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -375,13 +404,14 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should reject deletion when phase is active", func() {
-			for _, phase := range []mocov1beta2.RotationPhase{
-				mocov1beta2.RotationPhaseRotating,
-				mocov1beta2.RotationPhaseRetained,
-				mocov1beta2.RotationPhaseRotated,
-				mocov1beta2.RotationPhaseDiscarding,
-				mocov1beta2.RotationPhaseDiscarded,
+		It("should reject deletion while an actively progressing cycle is in flight", func() {
+			for _, reason := range []string{
+				mocov1beta2.ReasonApplyingRetain,
+				mocov1beta2.ReasonDistributingPassword,
+				mocov1beta2.ReasonAwaitingDiscard,
+				mocov1beta2.ReasonWaitingForRollout,
+				mocov1beta2.ReasonApplyingDiscard,
+				mocov1beta2.ReasonFinalizing,
 			} {
 				cluster := makeMySQLCluster()
 				err := k8sClient.Create(ctx, cluster)
@@ -391,17 +421,17 @@ var _ = Describe("CredentialRotation Webhook", func() {
 				err = k8sClient.Create(ctx, cr)
 				Expect(err).NotTo(HaveOccurred())
 
-				cr.Status.Phase = phase
+				cr.SetRotating(metav1.ConditionTrue, reason, "test")
 				err = k8sClient.Status().Update(ctx, cr)
 				Expect(err).NotTo(HaveOccurred())
 
 				err = k8sClient.Delete(ctx, cr)
-				Expect(err).To(HaveOccurred(), "phase=%s should reject delete", phase)
+				Expect(err).To(HaveOccurred(), "reason=%s should reject delete", reason)
 
-				// Force-cleanup via status reset for next iteration.
+				// Force-cleanup for next iteration.
 				err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
 				Expect(err).NotTo(HaveOccurred())
-				cr.Status.Phase = mocov1beta2.RotationPhaseCompleted
+				cr.SetRotating(metav1.ConditionFalse, mocov1beta2.ReasonCompleted, "test cleanup")
 				err = k8sClient.Status().Update(ctx, cr)
 				Expect(err).NotTo(HaveOccurred())
 				err = k8sClient.Delete(ctx, cr)

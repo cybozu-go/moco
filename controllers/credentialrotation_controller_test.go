@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -19,6 +20,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
+
+// crRotatingReason returns the Reason of the Rotating condition regardless of
+// its Status, or empty string when the condition is absent. Used by tests to
+// assert workflow progression — finer-grained than CurrentStep() because it
+// surfaces terminal Status=False reasons (e.g. Completed) as well.
+func crRotatingReason(cr *mocov1beta2.CredentialRotation) string {
+	cond := apimeta.FindStatusCondition(cr.Status.Conditions, mocov1beta2.ConditionRotating)
+	if cond == nil {
+		return ""
+	}
+	return cond.Reason
+}
+
+// simulateClusterManagerAdvance mutates the CR's Rotating/OldPasswordRetained
+// conditions to mimic the side effects of ClusterManager finishing its
+// sub-step. Tests use this to drive the reconciler forward without running a
+// real clustering loop.
+func simulateClusterManagerAdvance(cr *mocov1beta2.CredentialRotation, target string) {
+	switch target {
+	case mocov1beta2.ReasonDistributingPassword: // ClusterManager finished RETAIN
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonDistributingPassword, "test simulate")
+		cr.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test simulate")
+	case mocov1beta2.ReasonFinalizing: // ClusterManager finished DISCARD
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonFinalizing, "test simulate")
+		cr.SetOldPasswordRetained(metav1.ConditionFalse, mocov1beta2.ReasonDiscarded, "test simulate")
+	default:
+		panic("unsupported simulateClusterManagerAdvance target: " + target)
+	}
+}
 
 var _ = Describe("CredentialRotation reconciler", func() {
 	ctx := context.Background()
@@ -127,13 +157,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// The reconciler should generate pending passwords and set phase to Rotating.
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		// Verify rotationID is set.
 		cr = &mocov1beta2.CredentialRotation{}
@@ -193,13 +223,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		// Simulate ClusterManager advancing phase to Retained.
 		Eventually(func() error {
@@ -207,18 +237,18 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
 		// The reconciler should distribute secrets and set phase to Rotated.
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Verify user secret has pending passwords.
 		userSecret := &corev1.Secret{}
@@ -282,30 +312,30 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Bump discardGeneration to request discard.
 		Eventually(func() error {
@@ -336,13 +366,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Succeed())
 
 		// The reconciler should advance to Discarding.
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseDiscarding))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingDiscard))
 	})
 
 	It("should complete the full rotation cycle", func() {
@@ -381,13 +411,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Phase 1: → Rotating
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		// Capture the pending passwords for later comparison.
 		sourceSecret := &corev1.Secret{}
@@ -405,18 +435,18 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
 		// Phase 3: → Rotated (reconciler distributes secrets)
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Phase 4: Bump discardGeneration + simulate rollout → Discarding
 		Eventually(func() error {
@@ -445,13 +475,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return k8sClient.Status().Update(ctx, sts)
 		}).Should(Succeed())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseDiscarding))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingDiscard))
 
 		// Phase 5: Simulate ClusterManager → Discarded
 		Eventually(func() error {
@@ -459,18 +489,18 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseDiscarded
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonFinalizing)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
 		// Phase 6: → Completed (reconciler confirms passwords)
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseCompleted))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonCompleted))
 
 		// Verify observed generations are updated.
 		cr = &mocov1beta2.CredentialRotation{}
@@ -522,14 +552,23 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Phase should remain empty (reconciler refuses and requeues without advancing).
-		Consistently(func() mocov1beta2.RotationPhase {
+		// The reconciler should set Rotating=False/RotationRefused and stop
+		// advancing. The CR must NOT enter any in-flight sub-step.
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhase("")))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonRotationRefused))
+
+		Consistently(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonRotationRefused))
 	})
 
 	It("should not advance past Rotated without bumping discardGeneration", func() {
@@ -567,39 +606,39 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Advance to Rotated.
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Without bumping discardGeneration, phase should stay at Rotated.
-		Consistently(func() mocov1beta2.RotationPhase {
+		Consistently(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 	})
 
 	It("should refuse discard when replicas is 0", func() {
@@ -637,30 +676,30 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Advance to Rotated.
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Scale cluster down to 0 (merge patch bypasses CRD defaulting).
 		patch := client.RawPatch(types.MergePatchType, []byte(`{"spec":{"replicas":0}}`))
@@ -689,13 +728,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Succeed())
 
 		// Phase must not advance to Discarding while replicas=0.
-		Consistently(func() mocov1beta2.RotationPhase {
+		Consistently(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 	})
 
 	It("should self-heal user secret with pending passwords after Retained", func() {
@@ -734,13 +773,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotating))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonApplyingRetain))
 
 		// Simulate ClusterManager → Retained, then let reconciler advance to Rotated.
 		Eventually(func() error {
@@ -748,17 +787,17 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return err
 			}
-			cr.Status.Phase = mocov1beta2.RotationPhaseRetained
+			simulateClusterManagerAdvance(cr, mocov1beta2.ReasonDistributingPassword)
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		Eventually(func() mocov1beta2.RotationPhase {
+		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
 			}
-			return cr.Status.Phase
-		}).Should(Equal(mocov1beta2.RotationPhaseRotated))
+			return crRotatingReason(cr)
+		}).Should(Equal(mocov1beta2.ReasonAwaitingDiscard))
 
 		// Capture the pending (new) password from the source Secret — this is what
 		// the user Secret should hold after Retained phase distributes it.

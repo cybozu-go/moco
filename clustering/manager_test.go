@@ -1141,7 +1141,7 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "test setup")
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1151,7 +1151,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseRetained))
+			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonDistributingPassword))
 		}).Should(Succeed())
 
 		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
@@ -1227,7 +1227,8 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.Status.Phase = mocov1beta2.RotationPhaseDiscarding
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingDiscard, "test setup")
+		cr.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup")
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1237,7 +1238,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseDiscarded))
+			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonFinalizing))
 		}).Should(Succeed())
 
 		// Verify DISCARD OLD PASSWORD was called on all 3 instances for all users.
@@ -1307,7 +1308,7 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.Status.Phase = mocov1beta2.RotationPhaseRotating
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "test setup")
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1317,7 +1318,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseRetained))
+			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonDistributingPassword))
 		}).Should(Succeed())
 
 		// Admin user should have been skipped (has dual password), others should have been rotated.
@@ -1381,7 +1382,8 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.Status.Phase = mocov1beta2.RotationPhaseDiscarding
+		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingDiscard, "test setup")
+		cr.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup")
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1390,7 +1392,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.RotationPhaseDiscarded))
+			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonFinalizing))
 		}).Should(Succeed())
 
 		// AdminUser should have been skipped; others should have been discarded.

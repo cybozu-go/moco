@@ -96,11 +96,12 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 	discardIncreased := newCR.Spec.DiscardGeneration > oldCR.Spec.DiscardGeneration
 
 	if rotationIncreased {
-		// rotationGeneration can only increase when Phase is "" or Completed
-		phase := oldCR.Status.Phase
-		if phase != "" && phase != RotationPhaseCompleted {
+		// rotationGeneration can only increase when the CR is idle.
+		// Stuck states (RotationBlocked / StalePending) must be cleared
+		// via the documented recovery procedure (delete + recreate) first.
+		if !oldCR.IsIdle() {
 			errs = append(errs, field.Forbidden(field.NewPath("spec", "rotationGeneration"),
-				"can only increment rotationGeneration when phase is empty or Completed"))
+				"can only increment rotationGeneration when the CR is idle (Rotating condition absent or Status=False with Reason in {NotStarted, Completed, RotationRefused})"))
 		}
 
 		// Check MySQLCluster replicas > 0
@@ -122,11 +123,11 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 	}
 
 	if discardIncreased && !rotationIncreased {
-		// discardGeneration can only increase when Phase is Rotated
-		// (during the same rotation cycle in which discard is being requested).
-		if oldCR.Status.Phase != RotationPhaseRotated {
+		// discardGeneration can only increase when the Rotating condition is
+		// True with Reason=AwaitingDiscard.
+		if oldCR.CurrentStep() != ReasonAwaitingDiscard {
 			errs = append(errs, field.Forbidden(field.NewPath("spec", "discardGeneration"),
-				"can only increment discardGeneration when phase is Rotated"))
+				"can only increment discardGeneration when Rotating.Reason is AwaitingDiscard"))
 		}
 	}
 
@@ -156,9 +157,10 @@ func hasStaleClusterOwnerRef(cr *CredentialRotation, cluster *MySQLCluster) bool
 }
 
 func (a *credentialRotationAdmission) ValidateDelete(ctx context.Context, cr *CredentialRotation) (admission.Warnings, error) {
-	// Always allow deletion when the rotation is idle/completed.
-	switch cr.Status.Phase {
-	case "", RotationPhaseCompleted:
+	// Allow deletion when the CR is idle, or when stuck in a state that
+	// the documented recovery procedure resolves by deleting the CR
+	// (RotationBlocked / StalePending).
+	if cr.IsDeletable() {
 		return nil, nil
 	}
 
@@ -188,11 +190,12 @@ func (a *credentialRotationAdmission) ValidateDelete(ctx context.Context, cr *Cr
 		return nil, nil
 	}
 
-	// Otherwise forbid: a deletion mid-rotation abandons the workflow,
-	// leaving pending/dual passwords on instances with no automatic recovery.
+	// Otherwise forbid: a deletion while the cycle is actively progressing
+	// abandons the workflow, leaving pending/dual passwords on instances
+	// with no automatic recovery.
 	errs := field.ErrorList{
-		field.Forbidden(field.NewPath("status", "phase"),
-			fmt.Sprintf("cannot delete CredentialRotation while phase is %q; wait for the rotation to reach Completed", cr.Status.Phase)),
+		field.Forbidden(field.NewPath("status", "conditions"),
+			fmt.Sprintf("cannot delete CredentialRotation while the Rotating condition is True with Reason=%q; either wait for the cycle to complete, scale the cluster to 0 (which transitions Rotating to RotationBlocked), or follow the documented recovery procedure", cr.CurrentStep())),
 	}
 	return nil, apierrors.NewInvalid(
 		schema.GroupKind{Group: GroupVersion.Group, Kind: "CredentialRotation"}, cr.Name, errs)
