@@ -43,12 +43,16 @@ type CredentialRotationStatus struct {
 	// for canonical Type/Reason definitions.
 	// +listType=map
 	// +listMapKey=type
+	// +patchStrategy=merge
+	// +patchMergeKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
 	// RotationID is the UUID for the in-flight rotation cycle.
-	// Empty when no cycle is active.
+	// Empty when no cycle is active. The value, if non-empty, is a
+	// canonical 36-character UUID.
 	// +kubebuilder:validation:Pattern=`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?$`
+	// +kubebuilder:validation:MaxLength=36
 	// +optional
 	RotationID string `json:"rotationID,omitempty"`
 
