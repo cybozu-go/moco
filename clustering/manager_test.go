@@ -1118,7 +1118,7 @@ var _ = Describe("manager", func() {
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
-		rotationID := "test-rotation-1"
+		rotationID := "00000000-0000-4000-8000-000000000001"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Create(ctx, controllerSecret)
@@ -1192,7 +1192,7 @@ var _ = Describe("manager", func() {
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
-		rotationID := "test-rotation-2"
+		rotationID := "00000000-0000-4000-8000-000000000002"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Create(ctx, controllerSecret)
@@ -1279,7 +1279,7 @@ var _ = Describe("manager", func() {
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
-		rotationID := "test-rotation-3"
+		rotationID := "00000000-0000-4000-8000-000000000003"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		// Set RETAIN_STARTED to skip the pre-check.
@@ -1348,7 +1348,7 @@ var _ = Describe("manager", func() {
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
-		rotationID := "test-rotation-discard-idempotent"
+		rotationID := "00000000-0000-4000-8000-000000000004"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Create(ctx, controllerSecret)
