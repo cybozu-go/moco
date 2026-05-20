@@ -176,6 +176,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 			"RETAIN applied on all instances; awaiting Reconciler to distribute pending passwords.")
 		fresh.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained,
 			"All instances now hold a dual-password set.")
+		fresh.StampObservedGeneration()
 		return p.client.Status().Update(ctx, fresh)
 	}); err != nil {
 		return false, fmt.Errorf("failed to persist DistributingPassword status: %w", err)
@@ -279,6 +280,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 			"DISCARD applied on all instances; awaiting Reconciler to promote pending passwords.")
 		fresh.SetOldPasswordRetained(metav1.ConditionFalse, mocov1beta2.ReasonDiscarded,
 			"DISCARD OLD PASSWORD succeeded on all instances.")
+		fresh.StampObservedGeneration()
 		return p.client.Status().Update(ctx, fresh)
 	}); err != nil {
 		return false, fmt.Errorf("failed to persist Finalizing status: %w", err)
@@ -301,6 +303,7 @@ func (p *managerProcess) setRotatingCondition(ctx context.Context, status metav1
 			return err
 		}
 		fresh.SetRotating(status, reason, message)
+		fresh.StampObservedGeneration()
 		return p.client.Status().Update(ctx, fresh)
 	})
 }

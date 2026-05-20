@@ -29,6 +29,15 @@ type CredentialRotationSpec struct {
 
 // CredentialRotationStatus defines the observed state of CredentialRotation.
 type CredentialRotationStatus struct {
+	// ObservedGeneration reflects the .metadata.generation that the
+	// controller has most recently reconciled. Clients (kstatus, ArgoCD,
+	// Flux) use this together with the Ready condition to determine
+	// whether the controller has caught up with the latest spec change.
+	// +kubebuilder:default=0
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration"`
+
 	// Conditions represent the latest available observations of the
 	// rotation state. See docs/designdoc/credential_rotation_crd.md
 	// for canonical Type/Reason definitions.

@@ -2892,6 +2892,12 @@ spec:
                   format: int64
                   minimum: 0
                   type: integer
+                observedGeneration:
+                  default: 0
+                  description: ObservedGeneration reflects the .metadata.
+                  format: int64
+                  minimum: 0
+                  type: integer
                 observedRotationGeneration:
                   default: 0
                   description: ObservedRotationGeneration is the last...
