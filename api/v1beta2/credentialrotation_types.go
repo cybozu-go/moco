@@ -11,6 +11,7 @@ type CredentialRotationSpec struct {
 	// RotationGeneration is a monotonically increasing counter.
 	// Incrementing this value triggers a new rotation cycle.
 	// +kubebuilder:validation:Minimum=1
+	// +required
 	RotationGeneration int64 `json:"rotationGeneration"`
 
 	// DiscardGeneration is a monotonically increasing counter that triggers
@@ -21,7 +22,7 @@ type CredentialRotationSpec struct {
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
-	DiscardGeneration int64 `json:"discardGeneration,omitempty"`
+	DiscardGeneration int64 `json:"discardGeneration"`
 }
 
 // CredentialRotationStatus defines the observed state of CredentialRotation.
@@ -31,20 +32,24 @@ type CredentialRotationStatus struct {
 	Phase RotationPhase `json:"phase,omitempty"`
 
 	// RotationID is the UUID for this rotation cycle.
+	// An empty value means no rotation has been started yet.
+	// +kubebuilder:validation:Pattern=`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?$`
 	// +optional
 	RotationID string `json:"rotationID,omitempty"`
 
 	// ObservedRotationGeneration is the last rotationGeneration
 	// that completed successfully.
+	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
-	ObservedRotationGeneration int64 `json:"observedRotationGeneration,omitempty"`
+	ObservedRotationGeneration int64 `json:"observedRotationGeneration"`
 
 	// ObservedDiscardGeneration is the last discardGeneration
 	// that completed successfully.
+	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
-	ObservedDiscardGeneration int64 `json:"observedDiscardGeneration,omitempty"`
+	ObservedDiscardGeneration int64 `json:"observedDiscardGeneration"`
 }
 
 // RotationPhase represents the phase of a credential rotation.
@@ -76,6 +81,7 @@ type CredentialRotation struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// +required
 	Spec CredentialRotationSpec `json:"spec"`
 	// +optional
 	Status CredentialRotationStatus `json:"status,omitempty"`
