@@ -71,7 +71,7 @@ var credentialRotateCmd = &cobra.Command{
 var credentialDiscardCmd = &cobra.Command{
 	Use:   "discard CLUSTER_NAME",
 	Short: "Discard old passwords after rotation",
-	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires Phase=Rotated.",
+	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires the Rotating condition to be True with Reason=AwaitingDiscard.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return credentialDiscard(cmd.Context(), args[0])
@@ -150,10 +150,9 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before rotating", namespace, clusterName)
 	}
 
-	// CR exists - validate phase and bump generation
-	phase := cr.Status.Phase
-	if phase != "" && phase != mocov1beta2.RotationPhaseCompleted {
-		return fmt.Errorf("cannot rotate: rotation is in progress (phase=%s)", phase)
+	// CR exists - require it to be idle before bumping rotationGeneration.
+	if !cr.IsIdle() {
+		return fmt.Errorf("cannot rotate: a rotation cycle is in flight (current step: %q). Wait for it to complete or follow the recovery procedure", cr.CurrentStep())
 	}
 
 	newGen := cr.Spec.RotationGeneration + 1
@@ -193,8 +192,8 @@ func credentialDiscard(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before discarding", namespace, clusterName)
 	}
 
-	if cr.Status.Phase != mocov1beta2.RotationPhaseRotated {
-		return fmt.Errorf("cannot discard: phase must be Rotated, currently %q", cr.Status.Phase)
+	if cr.CurrentStep() != mocov1beta2.ReasonAwaitingDiscard {
+		return fmt.Errorf("cannot discard: Rotating condition must be True with Reason=AwaitingDiscard (current step: %q)", cr.CurrentStep())
 	}
 
 	// Bump discardGeneration to match rotationGeneration, signaling that the

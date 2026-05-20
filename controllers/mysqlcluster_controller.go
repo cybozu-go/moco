@@ -367,12 +367,13 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		if !crBelongsToCluster(&cr, cluster) {
 			break
 		}
-		switch cr.Status.Phase {
-		case mocov1beta2.RotationPhaseRetained:
+		switch cr.CurrentStep() {
+		case mocov1beta2.ReasonDistributingPassword:
 			return nil
-		case mocov1beta2.RotationPhaseRotated,
-			mocov1beta2.RotationPhaseDiscarding,
-			mocov1beta2.RotationPhaseDiscarded:
+		case mocov1beta2.ReasonAwaitingDiscard,
+			mocov1beta2.ReasonWaitingForRollout,
+			mocov1beta2.ReasonApplyingDiscard,
+			mocov1beta2.ReasonFinalizing:
 			usePending = true
 			activeRotationID = cr.Status.RotationID
 		}
