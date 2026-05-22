@@ -1930,7 +1930,6 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
 		WithUID(cluster.GetUID()).
-		WithBlockOwnerDeletion(true).
 		WithController(true))
 
 	return nil
