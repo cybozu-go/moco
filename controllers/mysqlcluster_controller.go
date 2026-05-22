@@ -910,9 +910,6 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, clu
 	if podSpec.SecurityContext == nil {
 		podSpec.WithSecurityContext(corev1ac.PodSecurityContext())
 	}
-	if podSpec.SecurityContext.FSGroup == nil {
-		podSpec.SecurityContext.WithFSGroup(constants.ContainerGID)
-	}
 	if podSpec.SecurityContext.FSGroupChangePolicy == nil {
 		podSpec.SecurityContext.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
 	}
@@ -1266,7 +1263,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 							}()...).
 							WithContainers(container).
 							WithSecurityContext(corev1ac.PodSecurityContext().
-								WithFSGroup(constants.ContainerGID).
 								WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
 							),
 						),
@@ -1571,7 +1567,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 						}()...).
 						WithContainers(container).
 						WithSecurityContext(corev1ac.PodSecurityContext().
-							WithFSGroup(constants.ContainerGID).
 							WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
 						),
 					),
