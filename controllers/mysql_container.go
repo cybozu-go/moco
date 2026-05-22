@@ -435,13 +435,6 @@ func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfig
 	if container.SecurityContext == nil {
 		container.WithSecurityContext(corev1ac.SecurityContext())
 	}
-
-	if container.SecurityContext.RunAsUser == nil {
-		container.SecurityContext.WithRunAsUser(constants.ContainerUID)
-	}
-	if container.SecurityContext.RunAsGroup == nil {
-		container.SecurityContext.WithRunAsGroup(constants.ContainerGID)
-	}
 }
 
 func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, container *corev1ac.ContainerApplyConfiguration) {
