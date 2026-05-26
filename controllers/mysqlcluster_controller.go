@@ -340,14 +340,15 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 	}
 
 	// During credential rotation, the CredentialRotationReconciler owns secret
-	// distribution from the Retained phase onward. Choose which password to
-	// distribute based on rotation phase:
-	//   - "" / Rotating / Completed: current passwords (pending not yet distributed).
-	//   - Retained: skip; handleRetainedPhase will distribute pending passwords.
-	//   - Rotated / Discarding / Discarded: pending passwords (already distributed
-	//     by handleRetainedPhase). Re-applying here self-heals if the per-namespace
-	//     user/my.cnf Secret was deleted during rotation; apply() is a no-op when
-	//     content matches.
+	// distribution from the DistributingPassword step onward. Choose which
+	// password to distribute based on the derived rotation step:
+	//   - Idle / ApplyingRetain / RotationRefused / RotationBlocked / StalePending:
+	//     current passwords (pending not yet distributed).
+	//   - DistributingPassword: skip; the rotation reconciler is the writer.
+	//   - AwaitingDiscard / WaitingForRollout / ApplyingDiscard / Finalizing:
+	//     pending passwords (already distributed by the rotation reconciler).
+	//     Re-applying here self-heals if the per-namespace user/my.cnf Secret
+	//     was deleted during rotation; apply() is a no-op when content matches.
 	// Transient lookup errors must NOT silently fall back to current passwords:
 	// doing so would overwrite already-distributed pending credentials and break
 	// the rolling restart / discard flow. Only NotFound and NoMatch (CRD not
@@ -367,13 +368,13 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		if !crBelongsToCluster(&cr, cluster) {
 			break
 		}
-		switch cr.CurrentStep() {
-		case mocov1beta2.ReasonDistributingPassword:
+		switch cr.Step() {
+		case mocov1beta2.StepDistributingPassword:
 			return nil
-		case mocov1beta2.ReasonAwaitingDiscard,
-			mocov1beta2.ReasonWaitingForRollout,
-			mocov1beta2.ReasonApplyingDiscard,
-			mocov1beta2.ReasonFinalizing:
+		case mocov1beta2.StepAwaitingRollout,
+			mocov1beta2.StepAwaitingDiscard,
+			mocov1beta2.StepApplyingDiscard,
+			mocov1beta2.StepFinalizing:
 			usePending = true
 			activeRotationID = cr.Status.RotationID
 		}

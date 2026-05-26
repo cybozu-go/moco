@@ -19,8 +19,8 @@ type CredentialRotationSpec struct {
 	// the discard step. Must satisfy 0 <= discardGeneration <= rotationGeneration.
 	// Bumping this value (typically to match rotationGeneration) signals the
 	// controller to discard the retained old password from the previous
-	// rotation. The bump is only honored when the Rotating condition's
-	// Reason is AwaitingDiscard.
+	// rotation. The bump is only honored while the CR is in the
+	// awaiting-discard steady state (DiscardReady=True, DualPassword=True).
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
@@ -31,16 +31,21 @@ type CredentialRotationSpec struct {
 type CredentialRotationStatus struct {
 	// ObservedGeneration reflects the .metadata.generation that the
 	// controller has most recently reconciled. Clients (kstatus, ArgoCD,
-	// Flux) use this together with the Ready condition to determine
-	// whether the controller has caught up with the latest spec change.
+	// Flux) use this together with the RotationReady/DiscardReady
+	// conditions to determine whether the controller has caught up with
+	// the latest spec change.
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration"`
 
 	// Conditions represent the latest available observations of the
-	// rotation state. See docs/designdoc/credential_rotation_crd.md
-	// for canonical Type/Reason definitions.
+	// rotation state. Three orthogonal observations are exposed:
+	// RotationReady, DiscardReady, and DualPassword. The internal
+	// workflow step is derived from their combination together with the
+	// spec/observed generation comparison; it is not stored on the CR.
+	// See docs/designdoc/credential_rotation_crd.md for the canonical
+	// Type/Reason definitions and the step matrix.
 	// +listType=map
 	// +listMapKey=type
 	// +patchStrategy=merge
@@ -56,152 +61,115 @@ type CredentialRotationStatus struct {
 	// +optional
 	RotationID string `json:"rotationID,omitempty"`
 
-	// ObservedRotationGeneration is the last rotationGeneration
-	// that completed successfully.
+	// ObservedRotationGeneration is the last rotationGeneration whose
+	// rotation phase (RETAIN + pending-password distribution) completed
+	// successfully. RotationReady becomes True when this equals
+	// spec.rotationGeneration; this happens at the end of the rotation
+	// phase, before the discard phase begins.
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedRotationGeneration int64 `json:"observedRotationGeneration"`
 
-	// ObservedDiscardGeneration is the last discardGeneration
-	// that completed successfully.
+	// ObservedDiscardGeneration is the last discardGeneration that
+	// completed successfully. DiscardReady becomes True when this equals
+	// spec.discardGeneration (which is the default state until the
+	// operator bumps discardGeneration).
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedDiscardGeneration int64 `json:"observedDiscardGeneration"`
 }
 
-// Condition type constants for CredentialRotation.Status.Conditions.
+// Condition types for CredentialRotation.Status.Conditions.
 //
-// The three condition types are orthogonal:
-//   - Rotating describes whether a workflow is in flight and which sub-step
-//     it has reached (via Reason).
-//   - OldPasswordRetained describes MySQL's dual-password state.
-//   - Ready describes whether spec.*Generation has been fully reconciled.
+// Each condition is an action-availability guard: True signals that the
+// operator may now perform the corresponding action. RotationReady and
+// DiscardReady are mutually exclusive (both cannot be True at the same
+// time) because the cycle state itself is mutually exclusive: a CR is
+// either idle (rotate allowed, no dual password held) or awaiting-discard
+// (discard allowed, dual password held). DualPassword reports MySQL's
+// physical state independently of action availability.
 //
-// See docs/designdoc/credential_rotation_crd.md for the full mapping
-// between sub-steps and condition values, including the step matrix.
+// The internal workflow step is derived from the combination of these
+// conditions plus spec/status generation comparisons; it is not stored
+// as a separate Phase field.
 const (
-	// ConditionRotating is True while a rotation/discard cycle is in
-	// flight (including stuck states). The current sub-step is exposed
-	// as the Reason field.
-	//
-	// In-flight Reason values (Status=True) form the workflow sequence:
-	//   ApplyingRetain → DistributingPassword → AwaitingDiscard →
-	//   WaitingForRollout → ApplyingDiscard → Finalizing.
-	// Stuck-in-flight Reasons (Status=True) require manual recovery:
-	//   RotationBlocked (cluster scaled to 0 mid-cycle, pending state
-	//   already written) and StalePending (source Secret inconsistent).
-	// Terminal Reasons (Status=False) mean no cycle is in flight:
-	//   NotStarted (initial), Completed (last cycle finished),
-	//   RotationRefused (rotation could not start; nothing mutated).
-	ConditionRotating = "Rotating"
+	// ConditionRotationReady is True iff the CR is in the idle steady
+	// state — no rotation or discard is in flight, no dual password is
+	// held, and the operator may bump spec.rotationGeneration to start
+	// a new cycle. Aligned with IsIdle().
+	ConditionRotationReady = "RotationReady"
 
-	// ConditionOldPasswordRetained is True while MySQL holds a
-	// dual-password set for the MOCO system users (between successful
-	// RETAIN and successful DISCARD on all instances).
-	//
-	// Reasons: NotRetained (initial), Retained (RETAIN succeeded),
-	// Discarded (DISCARD succeeded).
-	ConditionOldPasswordRetained = "OldPasswordRetained"
+	// ConditionDiscardReady is True iff the CR is in the awaiting-discard
+	// steady state — the rotation phase has finished, MySQL is holding a
+	// dual-password set, and the operator may bump spec.discardGeneration
+	// to start the discard phase. Aligned with IsAwaitingDiscard().
+	ConditionDiscardReady = "DiscardReady"
 
-	// ConditionReady is True when the latest user request has been
-	// fully reconciled into MySQL and Secrets:
-	// observedRotationGeneration == spec.rotationGeneration AND
-	// observedDiscardGeneration == spec.discardGeneration.
-	//
-	// Reasons: NotStarted (no cycle yet), InProgress (a cycle is in
-	// flight, blocked, or refused), Completed (latest cycle finished).
-	//
-	// Use `kubectl wait --for=condition=Ready` to block on a full
-	// rotate-and-discard cycle.
-	ConditionReady = "Ready"
+	// ConditionDualPassword is True while MySQL is holding a dual-password
+	// set for the MOCO system users (between successful RETAIN and
+	// successful DISCARD). The condition reports an in-progress physical
+	// state in MySQL — True is the affirmative observation, not a "good"
+	// state. The cycle's terminal state has DualPassword=False, mirroring
+	// how Kubernetes uses conditions such as MemoryPressure where True
+	// describes the situation, not health.
+	ConditionDualPassword = "DualPassword"
 )
 
-// Reason constants for the Rotating condition.
-
-// In-flight sub-step Reasons (used with Status=True, workflow progressing):
+// Reason constants for CredentialRotation.Status.Conditions.
+//
+// Each Reason has a single meaning across every condition that uses it
+// (per Kubernetes API conventions). The same identifier never means
+// different things in different conditions.
 const (
-	// ReasonApplyingRetain — ClusterManager is executing
-	// ALTER USER ... RETAIN CURRENT PASSWORD on all instances.
-	ReasonApplyingRetain = "ApplyingRetain"
-	// ReasonDistributingPassword — RETAIN finished; Reconciler is
-	// applying pending passwords to per-namespace Secrets and triggering
-	// a rolling restart.
-	ReasonDistributingPassword = "DistributingPassword"
-	// ReasonAwaitingDiscard — pending passwords distributed and the
-	// rolling restart is complete; waiting for the operator to bump
-	// spec.discardGeneration.
-	ReasonAwaitingDiscard = "AwaitingDiscard"
-	// ReasonWaitingForRollout — discardGeneration has been bumped;
-	// Reconciler is waiting for any in-flight StatefulSet rollout to
-	// finish before issuing DISCARD.
-	ReasonWaitingForRollout = "WaitingForRollout"
-	// ReasonApplyingDiscard — ClusterManager is executing
-	// DISCARD OLD PASSWORD and auth plugin migration on all instances.
-	ReasonApplyingDiscard = "ApplyingDiscard"
-	// ReasonFinalizing — DISCARD finished; Reconciler is promoting the
-	// pending passwords to current in the source Secret.
-	ReasonFinalizing = "Finalizing"
-)
+	// ReasonReconciled — the condition's Status is True via normal
+	// reconciliation: RotationReady=True means idle, DiscardReady=True
+	// means awaiting-discard. Used by RotationReady and DiscardReady.
+	ReasonReconciled = "Reconciled"
 
-// Stuck-in-flight Reasons (used with Status=True; manual recovery required):
-const (
-	// ReasonRotationBlocked — the cycle started (pending passwords are
-	// already in the source Secret, possibly RETAIN was partially
-	// applied) but cannot progress, typically because the MySQLCluster
-	// has been scaled to 0 replicas mid-cycle.
-	ReasonRotationBlocked = "RotationBlocked"
-	// ReasonStalePending — the source Secret contains inconsistent
-	// pending state (rotation ID mismatch, partial *_PENDING keys).
-	// Recovery: delete this CR, clean the source Secret, restart Pods,
-	// and recreate the CR. See the design doc's Recovery Procedures.
-	ReasonStalePending = "StalePending"
-)
+	// ReasonPending — the condition's Status is False because the cycle
+	// is not in the state that would make it True. For RotationReady
+	// this covers everything that is not idle (an in-flight cycle, or
+	// the awaiting-discard steady state where DiscardReady is the True
+	// condition instead). For DiscardReady this covers everything that
+	// is not the awaiting-discard window (idle, in-flight rotation,
+	// in-flight discard). Used by RotationReady and DiscardReady.
+	ReasonPending = "Pending"
 
-// Idle Reasons for the Rotating condition (used with Status=False):
-const (
-	// ReasonNotStarted — the CR has not yet started any cycle
-	// (initial state).
-	ReasonNotStarted = "NotStarted"
-	// ReasonCompleted — the latest cycle finished successfully.
-	// rotationGeneration and discardGeneration have both been observed.
-	ReasonCompleted = "Completed"
-	// ReasonRotationRefused — a rotation request could not start
-	// (e.g. cluster has 0 replicas at start). Nothing has been mutated
-	// in MySQL or the source Secret.
-	ReasonRotationRefused = "RotationRefused"
-)
+	// ReasonRefused — the requested operation could not start (e.g.
+	// MySQLCluster has 0 replicas). Nothing has been mutated in MySQL
+	// or the source Secret. Used by RotationReady and DiscardReady.
+	ReasonRefused = "Refused"
 
-// Reason constants for the OldPasswordRetained condition.
-const (
-	// ReasonNotRetained — RETAIN has not been issued in the current
-	// cycle (initial state for a new cycle).
-	ReasonNotRetained = "NotRetained"
-	// ReasonRetained — RETAIN succeeded on all instances.
-	// MySQL is holding a dual-password set.
+	// ReasonBlocked — a cycle that previously started cannot progress
+	// (e.g. MySQLCluster scaled to 0 after pending passwords were
+	// written). Manual scale-up or the documented recovery procedure is
+	// required. Used by RotationReady and DiscardReady.
+	ReasonBlocked = "Blocked"
+
+	// ReasonStale — persisted state (typically the source Secret) is
+	// inconsistent (rotation ID mismatch, partial pending keys, etc.).
+	// Manual recovery is required. Used by RotationReady and
+	// DiscardReady.
+	ReasonStale = "Stale"
+
+	// ReasonRetained — DualPassword is True because MySQL is holding a
+	// dual-password set on all system users (RETAIN has been applied).
 	ReasonRetained = "Retained"
-	// ReasonDiscarded — DISCARD OLD PASSWORD succeeded on all
-	// instances. MySQL has cleared the secondary password.
-	ReasonDiscarded = "Discarded"
-)
 
-// Reason constants for the Ready condition.
-// The True case reuses ReasonCompleted; the False cases reuse
-// ReasonNotStarted (no cycle yet) or use ReasonInProgress (any cycle in
-// flight, blocked, or refused).
-const (
-	// ReasonInProgress — a rotation/discard request is in flight from
-	// the user's perspective (observed*Generation < spec.*Generation).
-	ReasonInProgress = "InProgress"
+	// ReasonNotRetained — DualPassword is False; MySQL is not currently
+	// holding a dual-password set (initial state for a cycle, or already
+	// discarded).
+	ReasonNotRetained = "NotRetained"
 )
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
-// +kubebuilder:printcolumn:name="Step",type="string",JSONPath=`.status.conditions[?(@.type=="Rotating")].reason`
-// +kubebuilder:printcolumn:name="Retained",type="string",JSONPath=`.status.conditions[?(@.type=="OldPasswordRetained")].status`
-// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="RotReady",type="string",JSONPath=`.status.conditions[?(@.type=="RotationReady")].status`
+// +kubebuilder:printcolumn:name="DiscReady",type="string",JSONPath=`.status.conditions[?(@.type=="DiscardReady")].status`
+// +kubebuilder:printcolumn:name="DualPassword",type="string",JSONPath=`.status.conditions[?(@.type=="DualPassword")].status`
 // +kubebuilder:printcolumn:name="RotationGen",type="integer",JSONPath=".spec.rotationGeneration"
 // +kubebuilder:printcolumn:name="ObservedRotation",type="integer",JSONPath=".status.observedRotationGeneration"
 // +kubebuilder:printcolumn:name="DiscardGen",type="integer",JSONPath=".spec.discardGeneration"

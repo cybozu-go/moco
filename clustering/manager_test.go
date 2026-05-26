@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
@@ -29,6 +30,8 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 	err := k8sClient.DeleteAllOf(ctx, &mocov1beta2.CredentialRotation{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
 	err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
+	Expect(err).NotTo(HaveOccurred())
+	err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
 	err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("test"))
 	Expect(err).NotTo(HaveOccurred())
@@ -68,6 +71,35 @@ func testSetupResources(ctx context.Context, replicas int32, sourceSecret string
 		Expect(err).NotTo(HaveOccurred())
 	}
 
+	// Create a minimal StatefulSet whose Status already reports a
+	// settled rollout. handleApplyingDiscard polls the StatefulSet to
+	// decide whether DISCARD is safe to run; without one, the lookup
+	// would fail. The MySQLClusterReconciler is not running in these
+	// unit tests, so we materialise it here.
+	sts := &appsv1.StatefulSet{}
+	sts.Namespace = "test"
+	sts.Name = cluster.PrefixedName()
+	sts.Spec.Replicas = &replicas
+	sts.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{
+		constants.LabelAppName:     constants.AppNameMySQL,
+		constants.LabelAppInstance: cluster.Name,
+	}}
+	sts.Spec.Template.Labels = map[string]string{
+		constants.LabelAppName:     constants.AppNameMySQL,
+		constants.LabelAppInstance: cluster.Name,
+	}
+	sts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "mysql"}}
+	err = k8sClient.Create(ctx, sts)
+	Expect(err).NotTo(HaveOccurred())
+	sts.Status.ObservedGeneration = sts.Generation
+	sts.Status.Replicas = replicas
+	sts.Status.ReadyReplicas = replicas
+	sts.Status.UpdatedReplicas = replicas
+	sts.Status.CurrentRevision = "rev-1"
+	sts.Status.UpdateRevision = "rev-1"
+	err = k8sClient.Status().Update(ctx, sts)
+	Expect(err).NotTo(HaveOccurred())
+
 	passwd := mysqlPassword.ToSecret()
 	passwd.Namespace = "test"
 	passwd.Name = cluster.UserSecretName()
@@ -92,6 +124,25 @@ func testGetCondition(cluster *mocov1beta2.MySQLCluster, condType string) (metav
 		return cond, nil
 	}
 	return metav1.Condition{}, fmt.Errorf("no %s condition", condType)
+}
+
+// setApplyingRetainState drives cr's status to a state where Step() returns
+// StepApplyingRetain, so that the ClusterManager loop picks up the RETAIN
+// sub-step under test.
+func setApplyingRetainState(cr *mocov1beta2.CredentialRotation) {
+	cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingRetain")
+	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingRetain")
+	cr.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained, "test setup ApplyingRetain")
+}
+
+// setApplyingDiscardState drives cr's status to a state where Step() returns
+// StepApplyingDiscard. Mirrors the state right after the operator bumps
+// discardGeneration and the Reconciler flipped DiscardReady to Pending.
+func setApplyingDiscardState(cr *mocov1beta2.CredentialRotation) {
+	cr.Status.ObservedRotationGeneration = cr.Spec.RotationGeneration
+	cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingDiscard")
+	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingDiscard")
+	cr.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup ApplyingDiscard")
 }
 
 var _ = Describe("manager", func() {
@@ -1142,17 +1193,17 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "test setup")
+		setApplyingRetainState(cr)
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the phase to transition to Retained.
+		// Wait for the phase to transition to DistributingPassword.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonDistributingPassword))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepDistributingPassword))
 		}).Should(Succeed())
 
 		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
@@ -1228,18 +1279,17 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingDiscard, "test setup")
-		cr.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup")
+		setApplyingDiscardState(cr)
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the phase to transition to Discarded.
+		// Wait for the phase to transition to Finalizing.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonFinalizing))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepFinalizing))
 		}).Should(Succeed())
 
 		// Verify DISCARD OLD PASSWORD was called on all 3 instances for all users.
@@ -1309,17 +1359,17 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingRetain, "test setup")
+		setApplyingRetainState(cr)
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the phase to transition to Retained.
+		// Wait for the phase to transition to DistributingPassword.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonDistributingPassword))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepDistributingPassword))
 		}).Should(Succeed())
 
 		// Admin user should have been skipped (has dual password), others should have been rotated.
@@ -1383,8 +1433,7 @@ var _ = Describe("manager", func() {
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
-		cr.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonApplyingDiscard, "test setup")
-		cr.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup")
+		setApplyingDiscardState(cr)
 		cr.Status.RotationID = rotationID
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1393,7 +1442,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.CurrentStep()).To(Equal(mocov1beta2.ReasonFinalizing))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepFinalizing))
 		}).Should(Succeed())
 
 		// AdminUser should have been skipped; others should have been discarded.
