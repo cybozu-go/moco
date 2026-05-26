@@ -45,11 +45,11 @@ KubeDB takes a similar approach with `MySQLOpsRequest` (type: RotateAuth) as a s
 Password rotation is a **two-step process** — **rotate** then **discard** — using MySQL's dual password feature (8.0.14+).
 The operator explicitly triggers each step, with a verification window in between.
 
-Rotation state is exposed via three orthogonal status conditions (see [Conditions](#conditions) for the canonical definitions):
+Rotation state is exposed as three Conditions. `RotationReady` and `DiscardReady` are action-availability guards — at most one is True at a time, signalling which operator action is currently allowed. `DualPassword` is the orthogonal physical-state observation.
 
-- **`Rotating`** — `True` while a cycle is being driven through its sub-steps. The current sub-step is exposed via `Reason`.
-- **`OldPasswordRetained`** — `True` while MySQL holds a dual-password set (between successful RETAIN and successful DISCARD).
-- **`Ready`** — `True` when the latest spec generations have been fully reconciled.
+- **`RotationReady`** — `True` iff the CR is in the idle steady state (`Step()==StepIdle`): no cycle is in flight, no dual password is held, and the operator may bump `spec.rotationGeneration`.
+- **`DiscardReady`** — `True` iff the CR is in the awaiting-discard steady state (`Step()==StepAwaitingDiscard`): the rotation phase has finished, **the post-distribute StatefulSet rollout has settled**, MySQL holds a dual-password set, and the operator may bump `spec.discardGeneration`. The rollout gate ensures that every Pod is already using the new password before `DiscardReady=True` is exposed — running `discard` while old Pods still hold the old password could otherwise strip the secondary password out from under them.
+- **`DualPassword`** — `True` while MySQL holds a dual-password set (between successful RETAIN and successful DISCARD).
 
 ```
   User bumps spec.rotationGeneration
@@ -57,21 +57,30 @@ Rotation state is exposed via three orthogonal status conditions (see [Condition
                v
   +--- Rotate operation -------------------------------------------+
   |                                                                |
-  |  Ready=True  /  no conditions yet                              |
+  |  RotationReady=True, DiscardReady=False,                       |
+  |  DualPassword=False  /  conditions absent (fresh CR)           |
   |    | CredentialRotationReconciler:                             |
-  |    | generate pending passwords                                |
+  |    | generate pending passwords, flip RotationReady→False      |
   |    v                                                           |
-  |  Rotating=True (Reason=ApplyingRetain)                         |
+  |  RotationReady=False (Pending), DiscardReady=False (Pending),  |
+  |  DualPassword=False (NotRetained)                              |
   |    | ClusterManager:                                           |
   |    | ALTER USER RETAIN on all instances                        |
   |    v                                                           |
-  |  Rotating=True (Reason=DistributingPassword)                   |
-  |  OldPasswordRetained=True                                      |
+  |  RotationReady=False, DiscardReady=False,                      |
+  |  DualPassword=True (Retained)                                  |
   |    | CredentialRotationReconciler:                             |
   |    | distribute Secrets + rolling restart                      |
+  |    | promote observedRotationGeneration                        |
   |    v                                                           |
-  |  Rotating=True (Reason=AwaitingDiscard)                        |
-  |  OldPasswordRetained=True                                      |
+  |  RotationReady=False (Pending), DiscardReady=False (Pending),  |
+  |  DualPassword=True (Retained) ← StepAwaitingRollout            |
+  |    | CredentialRotationReconciler:                             |
+  |    | watch StatefulSet rollout; when settled,                  |
+  |    | flip DiscardReady→True (verification window opens)        |
+  |    v                                                           |
+  |  RotationReady=False (Pending), DiscardReady=True (Reconciled),|
+  |  DualPassword=True (Retained)                                  |
   +----+-----------------------------------------------------------+
        |
        v
@@ -82,23 +91,25 @@ Rotation state is exposed via three orthogonal status conditions (see [Condition
        v
   +--- Discard operation ------------------------------------------+
   |                                                                |
-  |  Rotating=True (Reason=WaitingForRollout)                      |
-  |  OldPasswordRetained=True                                      |
+  |  spec.discardGeneration bumped; DiscardReady still             |
+  |  True (stale), DualPassword=True                               |
   |    | CredentialRotationReconciler:                             |
-  |    | wait for StatefulSet rollout                              |
+  |    | flip DiscardReady → False (Pending); emit DiscardStarted  |
   |    v                                                           |
-  |  Rotating=True (Reason=ApplyingDiscard)                        |
-  |  OldPasswordRetained=True                                      |
-  |    | ClusterManager:                                           |
+  |  RotationReady=False, DiscardReady=False (Pending),            |
+  |  DualPassword=True                                             |
+  |    | ClusterManager (blocked on DiscardReady=False/Pending):   |
   |    | DISCARD OLD PASSWORD + auth plugin migration              |
+  |    | (rollout already settled in AwaitingRollout, no re-wait)  |
   |    v                                                           |
-  |  Rotating=True (Reason=Finalizing)                             |
-  |  OldPasswordRetained=False (Reason=Discarded)                  |
+  |  RotationReady=False, DiscardReady=False,                      |
+  |  DualPassword=False (NotRetained)                              |
   |    | CredentialRotationReconciler:                             |
-  |    | confirm Secret                                            |
+  |    | confirm Secret; promote observedDiscardGeneration         |
+  |    | flip RotationReady→True (back to idle)                    |
   |    v                                                           |
-  |  Ready=True (Reason=Completed)                                 |
-  |  Rotating=False (Reason=Completed)                             |
+  |  RotationReady=True (Reconciled), DiscardReady=False (Pending),|
+  |  DualPassword=False                                            |
   |                                                                |
   +----------------------------------------------------------------+
 ```
@@ -145,23 +156,28 @@ This enables transparent migration from legacy plugins like `mysql_native_passwo
 
 ### Responsibility Split: CredentialRotationReconciler vs ClusterManager
 
-The CredentialRotationReconciler handles **K8s resource operations** (condition transitions, Secret management, rollout checks).
-The ClusterManager handles **DB operations** (ALTER USER RETAIN, DISCARD OLD PASSWORD, auth plugin migration, dual password pre-checks).
+The CredentialRotationReconciler handles **K8s resource operations** (condition transitions, Secret management, StatefulSet rolling-restart annotation).
+The ClusterManager handles **DB operations** (ALTER USER RETAIN, DISCARD OLD PASSWORD, auth plugin migration, dual password pre-checks). The post-distribute StatefulSet rollout wait sits in the Reconciler (`AwaitingRollout` step), not ClusterManager — `DiscardReady=True` is gated on rollout completion so by the time the operator can bump `discardGeneration` and ClusterManager picks up DISCARD, every Pod is already running with the new password.
 
 This follows the existing separation in MOCO where controllers manage K8s objects and the ClusterManager manages MySQL state.
-Each sub-step has a clear *driver* — the component that performs work during that sub-step and transitions out of it:
+Each sub-step has a clear *driver* — the component that performs work during that sub-step and transitions out of it by flipping the relevant Conditions:
 
 ```
-ApplyingRetain → DistributingPassword → AwaitingDiscard → WaitingForRollout → ApplyingDiscard → Finalizing → Completed
-   ClusterMgr        Reconciler            Reconciler         Reconciler         ClusterMgr      Reconciler   Reconciler
-   (RETAIN)          (Secret.Apply)        (wait for user)    (wait rollout)     (DISCARD)       (promote)    (idle)
+ApplyingRetain → DistributingPassword → AwaitingRollout → AwaitingDiscard → ApplyingDiscard → Finalizing → Idle
+   ClusterMgr      Reconciler             Reconciler        (steady state:    Reconciler      Reconciler  (cycle complete)
+   (RETAIN)        (Secret.Apply +        (wait for STS     waiting for       (flips           (promote pending
+                    promote observedRot)   rollout → flip   operator's        DiscardReady     in source Secret +
+                                           DiscardReady)    discard bump)     to Pending,      flips RotationReady
+                                                                              hands off to     to True)
+                                                                              ClusterMgr →
+                                                                              CM runs DISCARD)
 ```
 
-The component that **enters** a sub-step (writes its Reason into `Rotating`) is the one finishing the previous sub-step:
-ClusterManager writes `DistributingPassword` and `Finalizing`;
-Reconciler writes `ApplyingRetain`, `AwaitingDiscard`, `WaitingForRollout`, `ApplyingDiscard`, and `Completed`.
+The "sub-step" is not stored as a single field. It is derived from the combination of three Conditions (`RotationReady`, `DiscardReady`, `DualPassword`) plus the `spec.{rotation,discard}Generation` vs `status.observed{Rotation,Discard}Generation` comparison (see [Step matrix](#step-matrix)). The component that completes a sub-step writes the corresponding Condition transitions:
+- ClusterManager flips `DualPassword=True` (after RETAIN) and `DualPassword=False` (after DISCARD).
+- Reconciler flips `DiscardReady=True` (after the post-distribute StatefulSet rollout settles, opening the verification window), `DiscardReady=False/Pending` (acknowledging an operator-initiated discard before ClusterManager runs DISCARD), and `RotationReady=True` (promoting `observedDiscardGeneration` after finalising the source Secret).
 
-Sub-step names are the `Reason` values of the `Rotating` condition.
+Inside the `ApplyingDiscard` step both components are eligible to run. To avoid a race that would skip the `DiscardStarted` Event and the `DiscardReady=False/Pending` observation, ClusterManager blocks on `DiscardReady=False/Pending` before touching MySQL — the Reconciler always wins the initial state-set, and ClusterManager only takes over once the handshake condition is observable. ClusterManager does **not** repeat the rollout wait inside DISCARD: the post-distribute rollout is already gated by `DiscardReady=True` (set in `AwaitingRollout`), so by the time the operator can bump `discardGeneration` every Pod is already running with the new password.
 
 ## CRD Definition
 
@@ -180,24 +196,26 @@ spec:
   rotationGeneration: 1       # Bump to trigger a new rotation
   discardGeneration: 0        # Bump to match rotationGeneration to trigger discard
 status:
+  observedGeneration: 1          # The metadata.generation the controller has reconciled
   observedRotationGeneration: 0  # Last completed rotationGeneration
   observedDiscardGeneration: 0   # Last completed discardGeneration
   rotationID: ""                 # UUID for the in-flight rotation cycle
   conditions:                    # See "Conditions" below
-    - type: Rotating
-      status: "True"
-      reason: ApplyingRetain
-      message: "ClusterManager is applying RETAIN on instance 1/3."
-      lastTransitionTime: "2026-05-20T05:30:00Z"
-      observedGeneration: 1
-    - type: OldPasswordRetained
+    - type: RotationReady
       status: "False"
-      reason: NotRetained
+      reason: Pending
+      message: "Rotation cycle in flight; idle (rotate) is not currently allowed."
       lastTransitionTime: "2026-05-20T05:29:50Z"
       observedGeneration: 1
-    - type: Ready
+    - type: DiscardReady
       status: "False"
-      reason: InProgress
+      reason: Pending
+      message: "Rotation cycle in flight; awaiting-discard (discard) is not currently allowed."
+      lastTransitionTime: "2026-05-20T05:29:50Z"
+      observedGeneration: 1
+    - type: DualPassword
+      status: "False"
+      reason: NotRetained
       lastTransitionTime: "2026-05-20T05:29:50Z"
       observedGeneration: 1
 ```
@@ -220,103 +238,68 @@ This ensures garbage collection when the MySQLCluster is deleted.
 
 ### Conditions
 
-The Kubernetes API convention discourages `phase`-style state-machine enums on new APIs ([rationale](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties)) because adding new enum values is a breaking change and a single field conflates orthogonal observations.
-`CredentialRotation` exposes its state as three orthogonal `metav1.Condition` entries instead.
+The Kubernetes API convention discourages `phase`-style enums and recommends Conditions in their place ([rationale](https://github.com/kubernetes/community/blob/main/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties)). Each Condition is a positive-sense observation; True means the observed predicate currently holds, with `Reason` carrying the category of cause.
+
+`CredentialRotation` exposes its state as three `metav1.Condition` entries. `RotationReady` and `DiscardReady` are **action-availability guards**: `True` means the corresponding operator action (`kubectl moco credential rotate` / `kubectl moco credential discard`) is currently allowed. They are mutually exclusive — at most one of them is True at a time — because the steady states they describe (Idle vs AwaitingDiscard) are themselves mutually exclusive. `DualPassword` is the orthogonal physical-state observation. The workflow "current step" is **derived** on the fly from these three Conditions plus the spec/observed generation comparison (see [Step matrix](#step-matrix)).
 
 | Type | When `True` | When `False` |
 |---|---|---|
-| `Rotating` | A cycle is in flight (progressing normally, blocked by `replicas=0`, or stuck on an inconsistent source Secret). The current sub-step is exposed via `Reason`. | No in-flight cycle — initial state, the previous cycle has completed, or the latest rotation request was refused before any MySQL/Secret side effects. |
-| `OldPasswordRetained` | MySQL holds a dual-password set for the MOCO system users (between successful RETAIN and successful DISCARD). | No dual-password state in MySQL. |
-| `Ready` | `observedRotationGeneration == spec.rotationGeneration` AND `observedDiscardGeneration == spec.discardGeneration`. The latest user request has been fully reconciled into MySQL and Secrets. | A rotation/discard request is still in flight, or has not been issued. |
+| `RotationReady` | The CR is in the **Idle** steady state: no cycle is in flight, no dual password is held, and the operator may bump `spec.rotationGeneration`. Equivalent to `IsIdle()`. | A cycle is in flight (including `AwaitingRollout`), the CR is in `AwaitingDiscard`, or the cycle is stuck (Refused/Blocked/Stale). |
+| `DiscardReady` | The CR is in the **AwaitingDiscard** steady state: the rotation phase finished, the post-distribute StatefulSet rollout has settled (every Pod is running with the new password), MySQL holds a dual-password set, and the operator may bump `spec.discardGeneration`. Equivalent to `IsAwaitingDiscard()`. | A cycle is in flight that is not yet awaiting-discard (including `AwaitingRollout`, where the rolling restart is still in progress), the CR is in Idle, the discard phase is in flight, or it is stuck (Refused/Blocked/Stale). |
+| `DualPassword` | MySQL is holding a dual-password set for the MOCO system users (between successful RETAIN and successful DISCARD). | No dual-password state in MySQL (either never retained, or already discarded). |
 
-> **`Ready=True` requires both rotate AND discard to complete.** `observedRotationGeneration` and `observedDiscardGeneration` are updated together at the end of the cycle, when the reconciler transitions `Rotating` from `Finalizing` to `Completed`. While the CR is stable at `Rotating=True (AwaitingDiscard)` waiting for the operator to bump `discardGeneration`, `Ready` is `False`: the cycle is intentionally half-done (MySQL still holds dual passwords) and the CR is not in a stable terminal state.
-
-The "current step" of the workflow is exposed as the `Reason` field of the `Rotating` condition.
-`Reason` is an open-ended string by K8s convention — adding new reasons is **not** a breaking change.
+> **kubectl wait ergonomics.** `kubectl wait --for=condition=RotationReady` waits until the CR returns to Idle (= the previous cycle has fully completed and a new rotate is allowed). `kubectl wait --for=condition=DiscardReady` waits until the CR enters AwaitingDiscard (= the rotation phase finished **and** the post-distribute rollout settled, so the verification window is genuinely open and a discard may now be bumped). The two waits are not used together — pick the one that matches what the script does next.
 
 #### Reason values
 
-**`Rotating`** (when `Status=True` — a cycle is in flight, either progressing normally or stuck):
+Each `Reason` has a single meaning across every condition that uses it. The full set:
 
-The **Driver** column indicates which component performs work *during* that sub-step (and is therefore responsible for transitioning out of it). The component that *sets the Reason on entry* may differ — see [Responsibility Split](#responsibility-split-credentialrotationreconciler-vs-clustermanager) for the handoffs.
-
-| Reason | Driver | Meaning |
+| Reason | Used on | Meaning |
 |---|---|---|
-| `ApplyingRetain` | ClusterManager | `ALTER USER ... RETAIN CURRENT PASSWORD` is being executed on all instances. |
-| `DistributingPassword` | Reconciler | RETAIN finished; pending passwords are being distributed to per-namespace Secrets and a rolling restart is being triggered. |
-| `AwaitingDiscard` | Reconciler | Pending passwords distributed and rollout complete. Waiting for the operator to bump `discardGeneration`. |
-| `WaitingForRollout` | Reconciler | `discardGeneration` bumped; waiting for any in-flight StatefulSet rollout to finish before DISCARD. |
-| `ApplyingDiscard` | ClusterManager | `DISCARD OLD PASSWORD` and auth plugin migration are being executed. |
-| `Finalizing` | Reconciler | DISCARD finished; pending passwords are being promoted to current in the source Secret. |
-| `RotationBlocked` | ClusterManager / Reconciler | Cycle started but cannot progress (e.g. cluster scaled to 0 mid-cycle). Pending passwords exist in the source Secret; manual recovery may be needed. |
-| `StalePending` | Reconciler | Source Secret has inconsistent pending state (rotation ID mismatch, partial keys). Manual cleanup required. |
+| `Reconciled` | `RotationReady`, `DiscardReady` (True) | The condition's predicate currently holds: the CR is in the matching steady state. |
+| `Pending` | `RotationReady`, `DiscardReady` (False) | The CR is not in the matching steady state, but no error has been recorded (the cycle is in flight, or the CR is in the other Ready's steady state). |
+| `Refused` | `RotationReady`, `DiscardReady` (False) | The requested operation could not start (e.g. `cluster.Spec.Replicas == 0`). Nothing has been mutated. |
+| `Blocked` | `RotationReady`, `DiscardReady` (False) | A cycle that previously started cannot progress (e.g. cluster scaled to 0 after pending passwords were written). Manual scale-up or the documented recovery procedure is required. |
+| `Stale` | `RotationReady`, `DiscardReady` (False) | The source Secret (or other persisted state) is inconsistent. Manual recovery is required. |
+| `Retained` | `DualPassword` (True) | MySQL is holding a dual-password set on all system users. |
+| `NotRetained` | `DualPassword` (False) | MySQL is not currently holding a dual-password set (initial state for a cycle, or already discarded). |
 
-**`Rotating`** (when `Status=False` — no in-flight cycle):
+> **Event-only reasons** (not condition `Reason` values): `DiscardRefused`, `DualPasswordExists`, `InconsistentState`, `MissingRotationPending`. These are emitted as Kubernetes Events for visibility in addition to the condition transition (e.g. `RotationReady=False/Refused` carries the same information as the `RotationRefused` Event, but the Event surfaces the transition to `kubectl describe`).
 
-| Reason | Meaning |
-|---|---|
-| `NotStarted` | The CR has not yet started any cycle (initial state). |
-| `Completed` | The latest cycle finished successfully. |
-| `RotationRefused` | A rotation could not start (e.g. `cluster.Spec.Replicas == 0`). Nothing has been mutated in MySQL or the source Secret. |
+#### Step matrix
 
-> **Event-only reasons** (not condition `Reason` values): `DiscardRefused`, `DualPasswordExists`, `InconsistentState`, `MissingRotationPending`. These are emitted as Kubernetes Events for visibility while the condition itself stays at the appropriate in-flight Reason (e.g. `AwaitingDiscard` for `DiscardRefused`).
+The internal workflow step is derived from the combination of the three Conditions plus the generation comparisons:
 
-**`OldPasswordRetained`**:
+| Sub-step | `RotationReady` | `DiscardReady` | `DualPassword` | `newRotation` | `newDiscard` | Notes |
+|---|---|---|---|---|---|---|
+| Initial (no `RotationReady` condition yet) | absent | absent | absent | — | — | Treated as Idle so the first reconcile initialises the cycle. |
+| Idle | **True** | False | False | False | False | Terminal / steady state. Operator may bump `spec.rotationGeneration`. |
+| Applying RETAIN | False | False | False | True | False | RETAIN has not yet succeeded; ClusterManager runs it. |
+| Distributing password | False | False | **True** | True | False | RETAIN succeeded; Reconciler distributes Secrets and promotes `observedRotationGeneration`. |
+| Awaiting rollout | False | False | True | False | False | Reconciler waits for the post-distribute StatefulSet rollout to settle; flips `DiscardReady=True` once it does. |
+| Awaiting discard | False | **True** | True | False | False | Steady state. Rollout already settled. Operator may bump `spec.discardGeneration`. |
+| Applying DISCARD | False | False | True | False | True | Discard requested; ClusterManager runs DISCARD (no rollout re-wait needed). |
+| Finalizing | False | False | False | False | True | DISCARD succeeded (`DualPassword` flipped back); Reconciler promotes pending passwords and flips `RotationReady=True`. |
 
-| Status | Reason | Meaning |
-|---|---|---|
-| `False` | `NotRetained` | No RETAIN has been issued in the current cycle (initial state). |
-| `True` | `Retained` | RETAIN succeeded on all instances. |
-| `False` | `Discarded` | DISCARD succeeded on all instances. |
-
-**`Ready`**:
-
-| Status | Reason | Meaning |
-|---|---|---|
-| `False` | `NotStarted` | No cycle has been started. |
-| `False` | `InProgress` | A cycle is in flight. |
-| `True` | `Completed` | The latest cycle finished successfully. |
-
-#### Step matrix (cross-reference)
-
-The combination of conditions uniquely identifies the workflow state:
-
-| Sub-step | `Rotating` | `OldPasswordRetained` | `Ready` |
-|---|---|---|---|
-| Initial | False / NotStarted | False / NotRetained | False / NotStarted |
-| Applying RETAIN | True / ApplyingRetain | False / NotRetained | False / InProgress |
-| Distributing password | True / DistributingPassword | True / Retained | False / InProgress |
-| Awaiting discard trigger | True / AwaitingDiscard | True / Retained | False / InProgress |
-| Waiting for rollout | True / WaitingForRollout | True / Retained | False / InProgress |
-| Applying DISCARD | True / ApplyingDiscard | True / Retained | False / InProgress |
-| Finalizing | True / Finalizing | False / Discarded | False / InProgress |
-| Completed | False / Completed | False / Discarded | True / Completed |
-
-Out-of-band states (cycle either never started, was refused, or got stuck):
-
-| State | `Rotating` | `OldPasswordRetained` | `Ready` |
-|---|---|---|---|
-| Rotation refused at fresh CR (replicas=0, first attempt) | False / RotationRefused | False / NotRetained | False / NotStarted |
-| Rotation refused after a previous completed cycle | False / RotationRefused | False / Discarded | False / InProgress |
-| Rotation blocked (replicas=0 mid-cycle) | True / RotationBlocked | False/NotRetained or True/Retained (depending on whether RETAIN had completed) | False / InProgress |
-| Stale pending state (Secret inconsistent) | True / StalePending | True / Retained (typical — RETAIN has run) | False / InProgress |
+`newRotation` is shorthand for `spec.rotationGeneration > status.observedRotationGeneration`; `newDiscard` likewise. A True Ready condition that lingers across a fresh `spec.{rotation,discard}Generation` bump is treated as Idle / AwaitingDiscard (whichever it is) so the Reconciler dispatch fires the corresponding seed handler — this is what avoids the "stale True from previous cycle" deadlock when the operator runs back-to-back rotations. Status=False with a non-`Pending` Reason takes priority over Idle/AwaitingDiscard: `RotationReady=False/Stale` or `DiscardReady=False/Stale` short-circuits to `StalePending`; `RotationReady=False/Refused|Blocked` short-circuits to `RotationRefused`/`RotationBlocked`; `DiscardReady=False/Refused|Blocked` short-circuits to `DiscardRefused`/`DiscardBlocked`. The post-distribute StatefulSet rollout wait is its own step (`AwaitingRollout`) owned by the Reconciler — `DiscardReady=True` is flipped only after the rollout settles, so by the time `discardGeneration` can be bumped no Pod is still running with the old password.
 
 #### Cycle re-entry
 
-When a new cycle begins (the Reconciler picks up `spec.rotationGeneration > status.observedRotationGeneration` while idle), all three conditions are updated together in the same `Status().Update()`:
+When a new cycle begins (the Reconciler picks up `spec.rotationGeneration > status.observedRotationGeneration` while idle), the Reconciler writes the following Conditions in the same `Status().Update()`:
 
-- `Rotating`: `False/Completed` (or `False/RotationRefused`, or absent) → `True/ApplyingRetain`
-- `OldPasswordRetained`: `False/Discarded` (or `False/NotRetained`, or absent) → `False/NotRetained` (`Reason` reset; `Status` unchanged so `LastTransitionTime` is preserved by `apimeta.SetStatusCondition`)
-- `Ready`: `True/Completed` (or `False/NotStarted`, or absent) → `False/InProgress`
+- `RotationReady`: `True/Reconciled` (or `False/Refused`, or absent) → `False/Pending`
+- `DiscardReady`: stays `False/Pending` (it was already False in the previous Idle state)
+- `DualPassword`: `False/NotRetained` (`Status` unchanged so `LastTransitionTime` is preserved by `apimeta.SetStatusCondition`)
 
-`observedRotationGeneration` and `observedDiscardGeneration` are **not** reset — they continue to reflect the last completed cycle until `Finalizing` → `Completed` updates them to match the new spec.
-The CR's `metadata.generation` (and therefore `metav1.Condition.observedGeneration`) bumps automatically on every spec change; controllers stamp the current `metadata.generation` into each condition they write.
+`observedRotationGeneration` and `observedDiscardGeneration` are **not** reset — they continue to reflect the last completed cycle until the Reconciler promotes them at the end of each phase. The CR's `metadata.generation` (and therefore `metav1.Condition.observedGeneration`) bumps automatically on every spec change; controllers stamp the current `metadata.generation` into each condition they write.
 
-#### Why three conditions, not six?
+#### Why three conditions?
 
-A more fine-grained decomposition (one condition per sub-step) was considered but rejected.
-The sub-steps within a cycle are sequential, not independently observable — splitting them into multiple boolean conditions would require explicit resets whenever a new cycle begins, and the resulting status would be harder to read at a glance.
-Three conditions with sub-steps surfaced via `Reason` keeps the orthogonal facts orthogonal (cycle active? dual-password retained? request reconciled?) while keeping workflow detail discoverable via `kubectl describe` / `kubectl get -o yaml`.
+The Kubernetes API conventions require Conditions to be programmatic observations that clients can monitor, with `Reason` reserved for the *category of cause* and not for state-machine encoding. The original design (`Rotating`, `OldPasswordRetained`, `Ready`) violated this in three ways: `Rotating` was a present-tense verb; its `Reason` encoded a workflow state machine; and identifiers like `NotStarted` / `Completed` carried different meanings across `Rotating` and `Ready`. The current design uses `RotationReady` and `DiscardReady` as **action-availability guards** (True iff the corresponding operator action is currently allowed — analogous to Pod's `Ready=True` meaning "you may route traffic to me now"), plus `DualPassword` as the orthogonal observation of MySQL's physical state. The two Ready conditions are structurally mutually exclusive (the Idle and AwaitingDiscard steady states cannot both hold), which removes the read-time ambiguity the earlier "generation tracking" semantics had — where `RotationReady=True && DiscardReady=True` appeared simultaneously and a human reader could not tell which phase the CR was in without consulting the generation fields.
+
+`DualPassword` is intentionally named as a noun, parallel to Kubernetes conditions such as `MemoryPressure`, where `True` describes the situation rather than health. This avoids the past-tense surface-form mismatch that made the earlier `OldPasswordRetained=True` read as "retain completed" instead of "retain currently in effect."
+
+Three conditions match the typical Kubernetes CRD shape (Deployment has 3, Pod has 4–5) and keep `kubectl get` output compact while remaining convention-compliant. The workflow step is derived from the same three Conditions rather than stored separately. The Reconciler reads additional context (source Secret pending state, StatefulSet rollout status) and ClusterManager reads MySQL `HasDualPassword` directly on the path where each matters, so the lack of dedicated sub-step Conditions does not require extra Kubernetes API I/O beyond what each handler already needs.
 
 ### Go Type Definitions
 
@@ -326,6 +309,7 @@ Three conditions with sub-steps surfaced via `Reason` keeps the orthogonal facts
 // CredentialRotationSpec defines the desired state of CredentialRotation.
 // The target MySQLCluster is identified by the CR's own name and namespace
 // (CredentialRotation name must equal MySQLCluster name).
+// +kubebuilder:validation:XValidation:rule="self.discardGeneration <= self.rotationGeneration",message="discardGeneration must be <= rotationGeneration"
 type CredentialRotationSpec struct {
     // RotationGeneration is a monotonically increasing counter.
     // Incrementing this value triggers a new rotation cycle.
@@ -337,8 +321,8 @@ type CredentialRotationSpec struct {
     // the discard step. Must satisfy 0 <= discardGeneration <= rotationGeneration.
     // Bumping this value (typically to match rotationGeneration) signals the
     // controller to discard the retained old password from the previous
-    // rotation. The bump is only honored when the Rotating condition's
-    // Reason is AwaitingDiscard.
+    // rotation. The bump is only honored while the CR is in the
+    // awaiting-discard steady state (DiscardReady=True, DualPassword=True).
     // +kubebuilder:default=0
     // +kubebuilder:validation:Minimum=0
     // +optional
@@ -347,88 +331,88 @@ type CredentialRotationSpec struct {
 
 // CredentialRotationStatus defines the observed state of CredentialRotation.
 type CredentialRotationStatus struct {
+    // ObservedGeneration reflects the .metadata.generation that the
+    // controller has most recently reconciled. Clients (kstatus, ArgoCD,
+    // Flux) use this together with the RotationReady/DiscardReady
+    // conditions to determine whether the controller has caught up with
+    // the latest spec change.
+    // +kubebuilder:default=0
+    // +kubebuilder:validation:Minimum=0
+    // +optional
+    ObservedGeneration int64 `json:"observedGeneration"`
+
     // Conditions represent the latest available observations of the
     // rotation state. See the "Conditions" section of the design doc for
     // canonical Type/Reason definitions.
     // +listType=map
     // +listMapKey=type
+    // +patchStrategy=merge
+    // +patchMergeKey=type
     // +optional
     Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
     // RotationID is the UUID for the in-flight rotation cycle.
-    // Empty when no cycle is active.
+    // Empty when no cycle is active. The value, if non-empty, is a
+    // canonical 36-character UUID.
     // +kubebuilder:validation:Pattern=`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?$`
+    // +kubebuilder:validation:MaxLength=36
     // +optional
     RotationID string `json:"rotationID,omitempty"`
 
-    // ObservedRotationGeneration is the last rotationGeneration
-    // that completed successfully.
+    // ObservedRotationGeneration is the last rotationGeneration whose
+    // rotation phase (RETAIN + pending-password distribution) completed
+    // successfully. RotationReady becomes True when this equals
+    // spec.rotationGeneration.
     // +kubebuilder:default=0
     // +kubebuilder:validation:Minimum=0
     // +optional
     ObservedRotationGeneration int64 `json:"observedRotationGeneration"`
 
-    // ObservedDiscardGeneration is the last discardGeneration
-    // that completed successfully.
+    // ObservedDiscardGeneration is the last discardGeneration that
+    // completed successfully. DiscardReady becomes True when this equals
+    // spec.discardGeneration.
     // +kubebuilder:default=0
     // +kubebuilder:validation:Minimum=0
     // +optional
     ObservedDiscardGeneration int64 `json:"observedDiscardGeneration"`
 }
 
-// Condition type constants.
+// Condition type constants. Each Condition is an orthogonal past-tense
+// or adjective observation (per Kubernetes API conventions).
 const (
-    ConditionRotating            = "Rotating"
-    ConditionOldPasswordRetained = "OldPasswordRetained"
-    ConditionReady               = "Ready"
+    ConditionRotationReady = "RotationReady"
+    ConditionDiscardReady  = "DiscardReady"
+    ConditionDualPassword  = "DualPassword"
 )
 
-// Reason constants for the Rotating condition.
-// In-flight sub-step reasons (used with Status=True):
+// Reason constants. Each Reason has a single meaning across every
+// condition that uses it.
 const (
-    ReasonApplyingRetain       = "ApplyingRetain"
-    ReasonDistributingPassword = "DistributingPassword"
-    ReasonAwaitingDiscard      = "AwaitingDiscard"
-    ReasonWaitingForRollout    = "WaitingForRollout"
-    ReasonApplyingDiscard      = "ApplyingDiscard"
-    ReasonFinalizing           = "Finalizing"
-    ReasonRotationBlocked      = "RotationBlocked"
-    ReasonStalePending         = "StalePending"
-)
-
-// Idle reasons (used with Status=False):
-const (
-    ReasonNotStarted      = "NotStarted"
-    ReasonCompleted       = "Completed"
-    ReasonRotationRefused = "RotationRefused"
-)
-
-// Reason constants for the OldPasswordRetained condition.
-const (
-    ReasonNotRetained = "NotRetained"
+    ReasonReconciled  = "Reconciled"
+    ReasonPending     = "Pending"
+    ReasonRefused     = "Refused"
+    ReasonBlocked     = "Blocked"
+    ReasonStale       = "Stale"
     ReasonRetained    = "Retained"
-    ReasonDiscarded   = "Discarded"
-)
-
-// Reason constants for the Ready condition reuse ReasonNotStarted /
-// ReasonCompleted, plus ReasonInProgress for the in-flight state.
-const (
-    ReasonInProgress = "InProgress"
+    ReasonNotRetained = "NotRetained"
 )
 ```
 
-Controller code reads the current sub-step via a small helper:
+Controller code derives the current workflow step via a single helper. The
+step is **not** stored on the CR — only its constituent Conditions are
+serialised.
 
 ```go
-// currentStep returns the Reason of the Rotating condition if it is True,
-// otherwise the empty string.
-func currentStep(cr *mocov1beta2.CredentialRotation) string {
-    cond := apimeta.FindStatusCondition(cr.Status.Conditions, mocov1beta2.ConditionRotating)
-    if cond == nil || cond.Status != metav1.ConditionTrue {
-        return ""
-    }
-    return cond.Reason
-}
+// Step derives the current internal workflow step from spec, status, and
+// conditions. The result is purely a function of the CR's persisted state.
+func (cr *CredentialRotation) Step() RotationStep { ... }
+
+// RotationStep enumerates the internal dispatch states. Possible values:
+//   StepIdle, StepApplyingRetain, StepDistributingPassword,
+//   StepAwaitingRollout, StepAwaitingDiscard, StepApplyingDiscard,
+//   StepFinalizing, StepRotationRefused, StepRotationBlocked,
+//   StepDiscardRefused, StepDiscardBlocked, StepStalePending
+type RotationStep string
 ```
 
 ### Validation Webhook
@@ -445,32 +429,41 @@ func (r *CredentialRotation) ValidateUpdate(ctx context.Context, ...) {
     // 1. rotationGeneration must be >= old value (monotonically increasing)
     // 2. discardGeneration must be >= old value (monotonically increasing)
     // 3. discardGeneration must be <= rotationGeneration
-    // 4. rotationGeneration can only increase when the CR is idle:
-    //      isIdle(cr) := (no Rotating condition) ||
-    //                    (Rotating.Status=False AND
-    //                     Rotating.Reason ∈ {NotStarted, Completed, RotationRefused})
-    //    A previously-stuck cycle (Status=True with Reason=RotationBlocked /
-    //    StalePending) must be cleared via the recovery procedure (delete +
-    //    recreate) before a new rotationGeneration can be requested.
-    // 5. discardGeneration can only increase when Rotating.Status=True and
-    //    Rotating.Reason=AwaitingDiscard (and rotationGeneration is unchanged
-    //    in the same update).
+    // 4. rotationGeneration can only increase when the CR is idle, i.e.
+    //    Step() ∈ {StepIdle, StepRotationRefused}:
+    //      - StepIdle: RotationReady=True AND DiscardReady=False AND
+    //        DualPassword=False (the previous cycle completed).
+    //      - StepRotationRefused: RotationReady=False/Refused (nothing
+    //        was mutated, so a retry is safe).
+    //    A previously-stuck cycle (Blocked / Stale, either phase) must be
+    //    cleared via the recovery procedure (delete + recreate) before
+    //    a new rotationGeneration can be requested.
+    // 5. discardGeneration can only increase while the CR is in the
+    //    awaiting-discard steady state, i.e. Step() == StepAwaitingDiscard
+    //    (RotationReady=False, DiscardReady=True, DualPassword=True;
+    //    the post-distribute rollout has already settled).
 }
 
 func (r *CredentialRotation) ValidateDelete(ctx context.Context, ...) {
     // Allow delete in the following cases:
-    //   - The CR is idle (see isIdle() above) — no cycle in flight
-    //   - The CR is stuck in a state that requires the recovery procedure:
-    //     Rotating.Status=True AND Rotating.Reason ∈ {RotationBlocked, StalePending}.
-    //     These reasons indicate the cycle cannot progress on its own; the
-    //     documented Recovery Procedures begin with "delete CR", so the
-    //     webhook must allow it.
+    //   - Step() ∈ {StepIdle, StepRotationRefused,
+    //               StepRotationBlocked, StepDiscardBlocked,
+    //               StepStalePending}.
+    //     The Blocked / Stale cases are the documented recovery escape
+    //     hatch (each begins with "kubectl delete credentialrotation").
     //   - The owning MySQLCluster is NotFound (GC after owner deletion)
     //   - The owning MySQLCluster has DeletionTimestamp set
     //     (unblock cluster termination — blockOwnerDeletion=true would
     //      otherwise stall the cluster in Terminating)
     //   - The CR carries a stale MySQLCluster ownerRef whose UID does not
     //     match the live cluster (recreated cluster; see Stale CR Handling)
+    //
+    // StepAwaitingRollout, StepAwaitingDiscard, and StepDiscardRefused
+    // are NOT deletable: MySQL still holds dual passwords, and a naive
+    // deletion would leave behind state that no controller can recover
+    // from. Operators must scale the cluster down (transitioning into
+    // StepRotationBlocked / StepDiscardBlocked) first.
+    //
     // Otherwise: forbid (a delete while the cycle is actively progressing
     // would abandon the workflow).
 }
@@ -482,17 +475,31 @@ func (r *CredentialRotation) ValidateDelete(ctx context.Context, ...) {
 # Rotate: create CR (first time) or bump rotationGeneration
 $ kubectl moco credential rotate <cluster-name>
 
-# Check status. STEP is the Rotating condition's Reason (e.g. ApplyingRetain,
-# AwaitingDiscard, Completed, RotationRefused, RotationBlocked, StalePending);
-# RETAINED is the OldPasswordRetained condition status; READY is the Ready
-# condition status.
+# Check status. ROTREADY/DISCREADY are action-availability guards (True =
+# the corresponding operator action is currently allowed). DUALPASSWORD is
+# the physical-state observation (True while MySQL is holding a
+# dual-password set between RETAIN and DISCARD).
 $ kubectl get credentialrotation <cluster-name>
-NAME         STEP              RETAINED   READY   ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
-my-cluster   AwaitingDiscard   True       False   1             0                  0            0                 5m
+NAME         ROTREADY   DISCREADY   DUALPASSWORD   ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
+my-cluster   False      False       True           1             1                  0            0                 90s
+# ↑ AwaitingRollout: rotate distributed, waiting for the rolling restart
+#   to settle before DISCREADY flips to True.
+my-cluster   False      True        True           1             1                  0            0                 5m
+# ↑ AwaitingDiscard steady state: RotReady False (cycle not idle yet),
+#   DiscReady True (rollout settled, discard now allowed),
+#   DualPassword True (dual pw held).
 
-# Wait for a rotation cycle to finish (status conditions integrate with
-# kubectl's standard --for=condition syntax).
-$ kubectl wait --for=condition=Ready credentialrotation/<cluster-name>
+# After running `kubectl moco credential discard <cluster-name>`:
+$ kubectl get credentialrotation <cluster-name>
+NAME         ROTREADY   DISCREADY   DUALPASSWORD   ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
+my-cluster   True       False       False          1             1                  1            1                 6m
+# ↑ Idle steady state (cycle complete): RotReady True (rotate allowed
+#   again), DiscReady False (no dual pw to discard), DualPassword False.
+
+# Wait for the cycle to reach a steady state. Use exactly one Ready
+# condition — pick the one that matches what the script does next:
+$ kubectl wait --for=condition=DiscardReady credentialrotation/<cluster-name>   # wait for AwaitingDiscard (e.g. before `discard`)
+$ kubectl wait --for=condition=RotationReady credentialrotation/<cluster-name>  # wait for Idle (e.g. before next rotate)
 
 # Inspect detailed sub-step messages.
 $ kubectl describe credentialrotation <cluster-name>
@@ -508,8 +515,8 @@ $ kubectl moco credential show <cluster-name>
 
 | Command | Action |
 |---------|--------|
-| `credential rotate` | If CR does not exist: create with `rotationGeneration: 1`. If CR exists: refuse if the CR is stale (MySQLCluster ownerRef UID does not match the live cluster), require the CR to be idle (no `Rotating` condition, or `Rotating.Status=False`), then increment `rotationGeneration`. |
-| `credential discard` | Refuse if the CR is stale; require `Rotating.Status=True` with `Reason=AwaitingDiscard` → patch `spec.discardGeneration` to match `spec.rotationGeneration` |
+| `credential rotate` | If CR does not exist: create with `rotationGeneration: 1`. If CR exists: refuse if the CR is stale (MySQLCluster ownerRef UID does not match the live cluster), require `cr.IsIdle()` (Step is Idle or RotationRefused), then increment `rotationGeneration`. |
+| `credential discard` | Refuse if the CR is stale; require `cr.IsAwaitingDiscard()` (Step is AwaitingDiscard) → patch `spec.discardGeneration` to match `spec.rotationGeneration` |
 | `credential show` | Read per-namespace user Secret |
 
 The CLI validates preconditions (MySQLCluster with the same name exists, replicas > 0, no in-progress rotation, CR is not a leftover from a deleted-and-recreated cluster).
@@ -564,13 +571,13 @@ The CLI patches the same spec fields that GitOps manages. If the CLI bumps a cou
 
 ### CredentialRotationReconciler: idle → ApplyingRetain
 
-Triggered when `spec.rotationGeneration > status.observedRotationGeneration` and the CR is idle (no `Rotating` condition, or `Rotating.Status=False`).
+Triggered when `spec.rotationGeneration > status.observedRotationGeneration` and the CR is idle (`Step() ∈ {StepIdle, StepRotationRefused, StepRotationBlocked}`).
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
-| 1 | Generate UUID as rotationID | - | Reconciler |
+| 1 | Generate UUID as rotationID (reuse existing rotationID from the source Secret on crash recovery) | - | Reconciler |
 | 2 | Generate pending passwords (e.g. `ADMIN_PASSWORD_PENDING`) in the source Secret | Secret.Update | Reconciler |
-| 3 | Set conditions: `Rotating=True (ApplyingRetain)`, `OldPasswordRetained=False (NotRetained)`, `Ready=False (InProgress)`, and the rotationID | Status.Update | Reconciler |
+| 3 | Set conditions: `RotationReady=False/Pending`, `DiscardReady=False/Pending`, `DualPassword=False/NotRetained`. Set the rotationID. | Status.Update | Reconciler |
 
 ### ClusterManager: ApplyingRetain → DistributingPassword
 
@@ -579,7 +586,7 @@ Triggered when `spec.rotationGeneration > status.observedRotationGeneration` and
 | 1 | Pre-check: scan all instances for pre-existing dual passwords. Wait if found. Skip if `RETAIN_STARTED` marker is set (crash recovery). | - | ClusterManager |
 | 1b | Set `RETAIN_STARTED` marker (rotationID) in source Secret | Secret.Update | ClusterManager |
 | 2 | For each instance: execute `ALTER USER ... RETAIN CURRENT PASSWORD` with `sql_log_bin=0` | MySQL | ClusterManager |
-| 3 | Set conditions: `Rotating=True (DistributingPassword)`, `OldPasswordRetained=True (Retained)` | Status.Update | ClusterManager |
+| 3 | Set conditions: `DualPassword=True/Retained` (and clear any prior `RotationReady=False/Blocked` back to `False/Pending`) | Status.Update | ClusterManager |
 
 **Pre-check and RETAIN_STARTED marker (Step 1):**
 The pre-check scans all instances for pre-existing dual passwords (from outside this rotation cycle).
@@ -599,48 +606,58 @@ For each instance:
 
 If any instance is unreachable, the ClusterManager returns an error and retries on the next cycle.
 
-### CredentialRotationReconciler: DistributingPassword → AwaitingDiscard
+### CredentialRotationReconciler: DistributingPassword → AwaitingRollout
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
 | 1 | Distribute pending passwords to per-namespace Secrets (user Secret + my.cnf Secret) | Secret.Apply | Reconciler |
 | 2 | Add restart annotation (`moco.cybozu.com/password-rotation-restart: <rotationID>`) to StatefulSet Pod template. The value is the rotationID (UUID) to ensure each rotation triggers a new rollout. | StatefulSet.Apply (SSA, dedicated field manager + ForceOwnership) | Reconciler |
-| 3 | Set conditions: `Rotating=True (AwaitingDiscard)` | Status.Update | Reconciler |
+| 3 | Promote `observedRotationGeneration = spec.rotationGeneration`. `DiscardReady` stays `False/Pending` — the next step (AwaitingRollout) flips it to `True`. | Status.Update | Reconciler |
 | 4 | Rolling restart (Pods pick up new passwords via `EnvFrom`) | - | StatefulSet controller |
+
+### CredentialRotationReconciler: AwaitingRollout → AwaitingDiscard
+
+| Step | Action | Persistence | Component |
+|------|--------|-------------|-----------|
+| 1 | Get the StatefulSet for the target MySQLCluster. If `NotFound` (rollout not yet started), requeue. | StatefulSet.Get | Reconciler |
+| 2 | Check rollout completion (`ObservedGeneration`, `CurrentRevision == UpdateRevision`, `UpdatedReplicas == Replicas`, `ReadyReplicas == Replicas`). If still in flight, requeue. | - | Reconciler |
+| 3 | Once settled: set `DiscardReady=True/Reconciled` and emit `AwaitingDiscard` Event. The verification window is now genuinely open — every Pod is running with the new password. | Status.Update | Reconciler |
+
+**Why wait for the rollout here, not inside DISCARD?**
+The verification window only makes sense once every Pod is using the new password. Surfacing `DiscardReady=True` earlier would let `kubectl wait --for=condition=DiscardReady` return while the rollout is still in flight, and would let the operator (or an automation script) initiate `discard` against a cluster whose old Pods still rely on the old password — a `DISCARD OLD PASSWORD` against MySQL at that point strips the secondary password those Pods depend on. Holding the rollout wait at the condition-flip boundary makes the guard match its semantics. The rollout state is also a K8s concern, so it logically sits in the Reconciler rather than ClusterManager.
 
 **Scaled-down clusters (replicas=0):**
 Rotation is refused at multiple points:
 - The validation webhook rejects CR creation or `rotationGeneration` bump when `cluster.Spec.Replicas <= 0`.
-- `handleStartRotation` (idle → `ApplyingRetain`) emits a `RotationRefused` Warning Event and sets `Rotating=False (RotationRefused)`. Nothing has been mutated yet, so the CR remains idle.
-- If the cluster is scaled down to 0 **after** rotation has reached `ApplyingRetain` (i.e. pending passwords were already written to the source Secret), the ClusterManager step handler emits a `RotationBlocked` Warning Event and transitions `Rotating` to `True (RotationBlocked)`. The `True` status reflects that the cycle is in flight and has visible side effects; recovery requires either scaling the cluster back up (the reconciler resumes automatically when it sees a healthy cluster again) or running the recovery procedure to clean up the pending state.
+- `handleStartRotation` (idle → `ApplyingRetain`) emits a `RotationRefused` Warning Event and sets `RotationReady=False/Refused`. Nothing has been mutated yet, so the CR remains idle (`Step() == StepRotationRefused`).
+- If the cluster is scaled down to 0 **after** rotation has reached `ApplyingRetain` (i.e. pending passwords were already written to the source Secret), the ClusterManager step handler emits a `RotationBlocked` Warning Event and sets `RotationReady=False/Blocked` (`Step() == StepRotationBlocked`). Recovery requires either scaling the cluster back up (the reconciler resumes automatically when it sees a healthy cluster again) or running the recovery procedure to clean up the pending state.
 
 Without running instances, ALTER USER cannot execute, and distributing new passwords would break connectivity when the cluster scales back up.
 
 ## Discard
 
-### CredentialRotationReconciler: AwaitingDiscard → WaitingForRollout → ApplyingDiscard
+### CredentialRotationReconciler: AwaitingDiscard → ApplyingDiscard (initial transition)
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
 | 1 | Validate `spec.discardGeneration > status.observedDiscardGeneration` | - | Reconciler |
-| 2 | Refuse with a `DiscardRefused` Warning Event if `cluster.Spec.Replicas <= 0` (keeps `Rotating.Reason=AwaitingDiscard`; advancing to `ApplyingDiscard` would wedge because the webhook forbids reverting `discardGeneration` once bumped) | - | Reconciler |
-| 3 | Set conditions: `Rotating=True (WaitingForRollout)` | Status.Update | Reconciler |
-| 4 | Wait for StatefulSet rollout to complete | - | Reconciler |
-| 5 | Set conditions: `Rotating=True (ApplyingDiscard)` | Status.Update | Reconciler |
-
-**Why wait for the rollout?**
-The agent sidecar reads passwords from `EnvFrom`, evaluated only at Pod startup.
-If old Pods are still running when DISCARD executes, they lose connectivity.
-The gate checks: ObservedGeneration, CurrentRevision == UpdateRevision, UpdatedReplicas == Replicas, ReadyReplicas == Replicas.
-While waiting, the handler returns `RequeueAfter: 15s` to avoid log spam.
+| 2 | Refuse with a `DiscardRefused` Warning Event and `DiscardReady=False/Refused` if `cluster.Spec.Replicas <= 0` (advancing to DISCARD would wedge because the webhook forbids reverting `discardGeneration` once bumped) | Status.Update | Reconciler |
+| 3 | Whenever `DiscardReady` is not already `False/Pending` (initial bump, or recovery from `False/Refused` or `False/Blocked`): set `DiscardReady=False/Pending`, emit `DiscardStarted` Event, requeue. Once it is `False/Pending`, subsequent reconciles simply requeue while ClusterManager drives DISCARD. | Status.Update | Reconciler |
 
 ### ClusterManager: ApplyingDiscard → Finalizing
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
-| 1 | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) | ClusterManager |
-| 2 | For each instance: execute `DISCARD OLD PASSWORD` and auth plugin migration with `sql_log_bin=0` | MySQL | ClusterManager |
-| 3 | Set conditions: `Rotating=True (Finalizing)`, `OldPasswordRetained=False (Discarded)` | Status.Update | ClusterManager |
+| 1 | Handshake: wait until the Reconciler has flipped `DiscardReady` to `False/Pending`. While the condition is `True`, `False/Refused`, or `False/Blocked`, return early without touching MySQL — the Reconciler owns the next transition. | - | ClusterManager |
+| 2 | Determine target auth plugin via `GetAuthPlugin` on the primary | MySQL (read-only) | ClusterManager |
+| 3 | For each instance: execute `DISCARD OLD PASSWORD` and auth plugin migration with `sql_log_bin=0` | MySQL | ClusterManager |
+| 4 | Set conditions: `DualPassword=False/NotRetained` | Status.Update | ClusterManager |
+
+**Why the DiscardReady handshake (Step 1)?**
+Both Reconciler and ClusterManager observe `Step()=StepApplyingDiscard` once the operator bumps `discardGeneration`. Without the handshake, ClusterManager could race ahead and run DISCARD before the Reconciler has flipped `DiscardReady` from `True/Reconciled` to `False/Pending`, skipping the `DiscardStarted` Event and leaving the condition stale during the in-flight phase. Blocking ClusterManager on `DiscardReady=False/Pending` makes the Reconciler-side transition observable.
+
+**No rollout wait here.**
+The post-distribute StatefulSet rollout wait is owned by the Reconciler (AwaitingRollout step) and is what gates `DiscardReady=True` in the first place. By the time the operator can bump `discardGeneration` and reach this handler, rollout has settled and every Pod is running with the new password.
 
 **Why connect with the pending password?**
 DISCARD removes the old password.
@@ -651,12 +668,12 @@ Using the pending password also implicitly verifies that distribution was succes
 Discard is rejected with a Warning Event (`DiscardRefused`) and `RequeueAfter: 15s`.
 The operator should scale the cluster up first.
 
-### CredentialRotationReconciler: Finalizing → Completed
+### CredentialRotationReconciler: Finalizing → Idle
 
 | Step | Action | Persistence | Component |
 |------|--------|-------------|-----------|
 | 1 | Promote pending passwords to current in the source Secret via `password.ConfirmPendingPasswords()` | Secret.Update | Reconciler |
-| 2 | Set conditions: `Rotating=False (Completed)`, `Ready=True (Completed)`. Set `observedRotationGeneration = spec.rotationGeneration` and `observedDiscardGeneration = spec.discardGeneration` | Status.Update | Reconciler |
+| 2 | Promote `observedDiscardGeneration = spec.discardGeneration`. Set conditions: `RotationReady=True/Reconciled` (back to Idle steady state), `DiscardReady=False/Pending` (no dual-password set to discard). | Status.Update | Reconciler |
 
 ## Source Secret Layout
 
@@ -710,10 +727,10 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
         return false, err
     }
 
-    switch currentStep(&cr) {
-    case mocov1beta2.ReasonApplyingRetain:
+    switch cr.Step() {
+    case mocov1beta2.StepApplyingRetain:
         return p.handleApplyingRetain(ctx, ss, &cr)
-    case mocov1beta2.ReasonApplyingDiscard:
+    case mocov1beta2.StepApplyingDiscard:
         return p.handleApplyingDiscard(ctx, ss, &cr)
     default:
         return false, nil
@@ -725,19 +742,19 @@ The DB operation logic (`rotateInstanceUsers`, `discardInstanceUsers`, `checkIns
 
 ### MySQLClusterReconciler
 
-The only change to `MySQLClusterReconciler` is in `reconcileV1Secret`: it chooses which password set (current vs pending) to distribute based on the CredentialRotation sub-step, and continues to **self-heal** the per-namespace Secrets in every sub-step except `DistributingPassword`.
+The only change to `MySQLClusterReconciler` is in `reconcileV1Secret`: it chooses which password set (current vs pending) to distribute based on the CredentialRotation step, and continues to **self-heal** the per-namespace Secrets in every step except `DistributingPassword`.
 
 ```go
 func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, ...) error {
     // ... source Secret creation (unchanged) ...
 
     // During credential rotation, the CredentialRotationReconciler owns secret
-    // distribution from the DistributingPassword sub-step onward. Choose which
-    // password to distribute based on the Rotating condition's Reason:
-    //   - no Rotating condition / ApplyingRetain / Completed-or-similar terminal:
+    // distribution from the DistributingPassword step onward. Choose which
+    // password to distribute based on cr.Step():
+    //   - Idle / ApplyingRetain / RotationRefused / RotationBlocked / StalePending:
     //     current passwords (pending not yet distributed).
     //   - DistributingPassword: skip; the rotation reconciler is the writer.
-    //   - AwaitingDiscard / WaitingForRollout / ApplyingDiscard / Finalizing:
+    //   - AwaitingDiscard / ApplyingDiscard / Finalizing:
     //     pending passwords (already distributed by the rotation reconciler).
     //     Re-applying here self-heals if the per-namespace user/my.cnf Secret
     //     was deleted during rotation; apply() is a no-op when content matches.
@@ -757,13 +774,13 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, ...) err
         if !crBelongsToCluster(&cr, cluster) {
             break
         }
-        switch currentStep(&cr) {
-        case mocov1beta2.ReasonDistributingPassword:
+        switch cr.Step() {
+        case mocov1beta2.StepDistributingPassword:
             return nil
-        case mocov1beta2.ReasonAwaitingDiscard,
-            mocov1beta2.ReasonWaitingForRollout,
-            mocov1beta2.ReasonApplyingDiscard,
-            mocov1beta2.ReasonFinalizing:
+        case mocov1beta2.StepAwaitingRollout,
+            mocov1beta2.StepAwaitingDiscard,
+            mocov1beta2.StepApplyingDiscard,
+            mocov1beta2.StepFinalizing:
             usePending = true
         }
     case apierrors.IsNotFound(err), meta.IsNoMatchError(err):
@@ -783,15 +800,15 @@ The `r.Get()` reads from the informer cache, which controller-runtime starts on 
 The overhead is negligible (CredentialRotation objects are few and small).
 
 **Self-healing per-namespace Secrets during rotation:**
-Re-applying the pending password during the `AwaitingDiscard`/`WaitingForRollout`/`ApplyingDiscard`/`Finalizing` sub-steps is intentional. If the per-namespace user/my.cnf Secret is accidentally deleted during rotation (manual operation, GC race, etc.), this reconciler restores it from the pending password kept in the source Secret. Pods restarted in that window can still come up with credentials MySQL accepts.
+Re-applying the pending password during the `AwaitingRollout`/`AwaitingDiscard`/`ApplyingDiscard`/`Finalizing` steps is intentional. If the per-namespace user/my.cnf Secret is accidentally deleted during rotation (manual operation, GC race, etc.), this reconciler restores it from the pending password kept in the source Secret. Pods restarted in that window can still come up with credentials MySQL accepts.
 
 **Cache lag safety:**
-If the cache briefly shows a stale `Rotating.Reason`, the guard remains safe:
-- `Reason` appears as the empty step / `ApplyingRetain` / a terminal Reason (`Completed`/`NotStarted`/…) → distribute current passwords → harmless (`ApplyingRetain` is intentionally not skipped; pending has not yet been distributed by the rotation reconciler).
-- `Reason` appears as `DistributingPassword` → skip → correct (the rotation reconciler is the writer).
-- `Reason` appears as `AwaitingDiscard`/`WaitingForRollout`/`ApplyingDiscard`/`Finalizing` → distribute pending passwords → idempotent re-apply.
+If the cache briefly shows a stale Condition combination, the guard remains safe:
+- `cr.Step()` resolves to `Idle` / `ApplyingRetain` / a terminal-non-progressing step → distribute current passwords → harmless (`ApplyingRetain` is intentionally not skipped; pending has not yet been distributed by the rotation reconciler).
+- `cr.Step()` resolves to `DistributingPassword` → skip → correct (the rotation reconciler is the writer).
+- `cr.Step()` resolves to `AwaitingRollout` / `AwaitingDiscard` / `Finalizing` → distribute pending passwords → idempotent re-apply.
 
-The only theoretical risk is if the cache does not yet reflect `Reason=DistributingPassword` while the CredentialRotationReconciler has already distributed pending passwords (i.e. the cache is still showing `ApplyingRetain`).
+The only theoretical risk is if the cache does not yet reflect `DualPassword=True` (which moves Step from `ApplyingRetain` to `DistributingPassword`) while the CredentialRotationReconciler has already distributed pending passwords.
 In practice this cannot happen because RETAIN executes on all MySQL instances (takes seconds to minutes), far exceeding the cache propagation delay (~hundreds of milliseconds).
 
 ## Crash Safety
@@ -801,15 +818,17 @@ In practice this cannot happen because RETAIN executes on all MySQL instances (t
 | Crash Point | Recovery |
 |---|---|
 | rotationGeneration bumped, pending passwords not yet generated | Reconciler re-generates on next reconcile |
-| Pending passwords generated, RETAIN not started | ClusterManager picks up `Rotating.Reason=ApplyingRetain` |
+| Pending passwords generated, RETAIN not started | ClusterManager picks up `Step=ApplyingRetain` |
 | Pre-check passed, `RETAIN_STARTED` marker set, RETAIN not yet executed | Marker skips pre-check on retry; `HasDualPassword` makes RETAIN idempotent |
 | RETAIN partially applied (some instances) | `RETAIN_STARTED` marker skips pre-check; `HasDualPassword` makes re-execution idempotent |
-| RETAIN complete, `Reason=DistributingPassword` not yet set | ClusterManager re-runs → all skip → transitions condition |
-| `Reason=DistributingPassword`, Secrets not yet distributed | Reconciler distributes on next reconcile |
-| `Reason=ApplyingDiscard`, DISCARD not yet executed | ClusterManager picks up the step |
-| DISCARD complete, `Reason=Finalizing` not yet set | DISCARD is idempotent → re-run → transitions condition |
-| `Reason=Finalizing`, Secret promoted but status not updated | `HasPendingPasswords` returns false; `CurrentPasswordsMatch` verifies promotion succeeded → sets `Ready=True (Completed)` |
-| `Reason=Finalizing`, Secret not yet promoted | `ConfirmPendingPasswords` is idempotent |
+| RETAIN complete, `DualPassword=True` not yet written | ClusterManager re-runs → all skip → writes the condition transition |
+| `Step=DistributingPassword`, Secrets not yet distributed | Reconciler distributes on next reconcile |
+| `Step=AwaitingRollout`, rollout still in flight | Reconciler re-checks StatefulSet status on next reconcile; flips `DiscardReady=True` once it settles |
+| `Step=ApplyingDiscard`, `DiscardReady` not yet flipped to `False/Pending` | Reconciler flips it on next reconcile; ClusterManager stays blocked on the handshake in the meantime |
+| `Step=ApplyingDiscard`, `DiscardReady=False/Pending`, DISCARD not yet executed | ClusterManager picks up the step (rollout already settled in `AwaitingRollout`) |
+| DISCARD complete, `DualPassword=False` not yet written | DISCARD is idempotent → re-run → writes the condition transition |
+| `Step=Finalizing`, Secret promoted but status not updated | `HasPendingPasswords` returns false; `CurrentPasswordsMatch` verifies promotion succeeded → sets `RotationReady=True/Reconciled` (back to Idle) |
+| `Step=Finalizing`, Secret not yet promoted | `ConfirmPendingPasswords` is idempotent |
 
 ### HasDualPassword Instead of Per-User Status Tracking
 
@@ -829,11 +848,11 @@ To make retries safe, `discardInstanceUsers` queries `HasDualPassword(user)` bef
 
 ### ConfirmPendingPasswords Idempotency
 
-If the controller crashes after updating the Secret but before patching the status, the Secret has already been promoted (pending passwords are now current) but the conditions still show `Rotating.Reason=Finalizing`.
+If the controller crashes after updating the Secret but before patching the status, the Secret has already been promoted (pending passwords are now current) but `cr.Step()` still resolves to `Finalizing`.
 On re-reconcile, `HasPendingPasswords` returns `(false, nil)`.
 The Reconciler then verifies crash recovery by comparing the controller Secret's current passwords with the per-namespace user Secret via `CurrentPasswordsMatch`.
-If they match, promotion already succeeded — the Reconciler proceeds to set `Rotating=False (Completed)` and `Ready=True (Completed)`.
-If they differ (indicating pending keys were lost without promotion), the Reconciler emits an `InconsistentState` Warning Event and requeues instead of completing.
+If they match, promotion already succeeded — the Reconciler promotes `observedDiscardGeneration`, sets `DiscardReady=True/Reconciled`, and resets the sub-step conditions (Step transitions to `Idle`).
+If they differ (indicating pending keys were lost without promotion), the Reconciler emits an `InconsistentState` Warning Event and sets `DiscardReady=False/Stale` instead of completing.
 
 ### Stale Rotation Detection
 
@@ -857,7 +876,7 @@ After rotation completes (`Ready=True`), the source Secret already contains prom
 Unchanged. GatherStatus reads passwords from the per-namespace user Secret.
 During rotation, the user Secret always contains passwords that MySQL accepts:
 - Step `ApplyingRetain` / `DistributingPassword`: user Secret has old passwords, MySQL accepts old via dual password
-- Step `AwaitingDiscard` onwards: new passwords have been distributed to user Secret
+- Step `AwaitingRollout` onwards: new passwords have been distributed to user Secret
 
 The rotation handler reads passwords directly from the source (controller) Secret and creates its own DB connections, independent of GatherStatus.
 
@@ -876,23 +895,26 @@ The validating webhook **forbids** deletion while a rotation is in progress to p
 
 ```text
 ValidateDelete:
-  if CR is idle (no Rotating condition, OR
-                 Rotating.Status=False AND
-                 Reason ∈ {NotStarted, Completed,
-                           RotationRefused})           → allow
-  if Rotating.Status=True AND
-     Reason ∈ {RotationBlocked, StalePending}          → allow (recovery)
-  if MySQLCluster is NotFound                          → allow (GC after owner deletion)
-  if MySQLCluster.DeletionTimestamp                    → allow (GC unblock; see "MySQLCluster Deletion")
-  if CR has a stale MySQLCluster                       → allow (recreated cluster; see "Stale CR Handling")
+  if cr.Step() ∈ {StepIdle, StepRotationRefused}        → allow (no mutations)
+  if cr.Step() ∈ {StepRotationBlocked,
+                  StepDiscardBlocked,
+                  StepStalePending}                     → allow (recovery)
+  if MySQLCluster is NotFound                           → allow (GC after owner deletion)
+  if MySQLCluster.DeletionTimestamp                     → allow (GC unblock; see "MySQLCluster Deletion")
+  if CR has a stale MySQLCluster                        → allow (recreated cluster; see "Stale CR Handling")
      ownerRef (UID mismatch)
-  otherwise (actively progressing cycle)               → forbid
+  otherwise (actively progressing cycle,
+             or AwaitingRollout / AwaitingDiscard /
+             DiscardRefused where dual passwords are
+             still held)                                → forbid
 ```
 
-The `RotationBlocked` / `StalePending` escape hatch is what makes the documented [Recovery Procedures](#recovery-procedures) work — they all begin with `kubectl delete credentialrotation ...`.
+The `RotationBlocked` / `DiscardBlocked` / `StalePending` escape hatch is what makes the documented [Recovery Procedures](#recovery-procedures) work — they all begin with `kubectl delete credentialrotation ...`.
 
-If a cycle is *actively progressing* (any other in-flight `Reason`) and the operator must roll back manually, the operator can:
-1. Scale the cluster down to 0 (the cycle will transition to `Rotating.Reason=RotationBlocked`, after which delete is allowed), or
+`AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are NOT deletable: MySQL still holds dual passwords, and deletion would leave behind state that no controller can recover from. Operators must scale the cluster down first (which transitions Step to `RotationBlocked` or `DiscardBlocked`).
+
+If a cycle is *actively progressing* (any other in-flight step) and the operator must roll back manually, the operator can:
+1. Scale the cluster down to 0 (the cycle will transition to `Step=RotationBlocked` / `DiscardBlocked`, after which delete is allowed), or
 2. Wait for the cluster termination to release the GC delete.
 
 The CredentialRotation CR does **not** use a finalizer for automatic rollback, because:
@@ -904,7 +926,7 @@ See [Recovery Procedures](#recovery-procedures) for the steps to restore a consi
 ### MySQLCluster Deletion
 
 The ownerReference (with `blockOwnerDeletion=true`) means Kubernetes GC must delete the CR before the MySQLCluster can finish terminating.
-The webhook explicitly allows delete when the owning cluster has a non-nil `DeletionTimestamp`, even if the CR's `Rotating` condition is still `True`.
+The webhook explicitly allows delete when the owning cluster has a non-nil `DeletionTimestamp`, even when the CR is in an in-flight step (such as `ApplyingRetain` or `ApplyingDiscard`).
 Without that branch the cluster would be stuck in `Terminating` until the rotation finished, which contradicts the user's intent to tear the cluster down.
 
 No special teardown is needed because the MySQL instances are also being destroyed.
@@ -1049,7 +1071,7 @@ $ kubectl moco credential rotate <cluster-name>
 
 **Symptom:** Warning Event `MissingRotationPending`
 
-**Cause:** The source Secret lost its pending keys (manual edit, restore from backup, etc.) while the CredentialRotation CR still shows `Rotating.Reason=AwaitingDiscard`.
+**Cause:** The source Secret lost its pending keys (manual edit, restore from backup, etc.) while the CredentialRotation CR is in the `AwaitingDiscard` steady state.
 
 **Why this is dangerous:**
 At `AwaitingDiscard`, all instances hold dual passwords and Pods may be using the pending passwords.
@@ -1083,7 +1105,7 @@ $ kubectl moco credential rotate <cluster-name>
 
 **Symptom:** Warning Event `DualPasswordExists`
 
-**Cause:** A MOCO system user has `additional_password` set while no rotation is in progress (the CR is idle: no `Rotating` condition, or `Rotating.Status=False`).
+**Cause:** A MOCO system user has `additional_password` set while no rotation is in progress (the CR is idle: `DualPassword=False`).
 This happens when a previous recovery didn't fully clear MySQL's dual-password state, or someone ran `ALTER USER ... RETAIN CURRENT PASSWORD` manually.
 
 **Why DISCARD OLD PASSWORD must not be used:**
@@ -1111,4 +1133,4 @@ $ kubectl -n <namespace> rollout status statefulset <cluster-name>
 | **New** | `api/v1beta2/credentialrotation_types.go`, `api/v1beta2/credentialrotation_webhook.go` (Create/Update/Delete validation, stale-CR and terminating-cluster GC handling), `controllers/credentialrotation_controller.go`, `clustering/password_rotation.go` |
 | **New (CLI)** | `cmd/kubectl-moco/cmd/credential.go` (`rotate`/`discard`/`show` subcommands, stale-CR detection) |
 | **New (DB ops)** | `pkg/password/rotation.go`, `pkg/dbop/password.go` (RETAIN/DISCARD/auth plugin migration with per-user `HasDualPassword` idempotency) |
-| **Modified** | `controllers/mysqlcluster_controller.go` (`reconcileV1Secret` chooses current vs pending password based on the CR's `Rotating.Reason` and self-heals per-namespace Secrets), `cmd/moco-controller/cmd/run.go` (register new reconciler) |
+| **Modified** | `controllers/mysqlcluster_controller.go` (`reconcileV1Secret` chooses current vs pending password based on `cr.Step()` and self-heals per-namespace Secrets), `cmd/moco-controller/cmd/run.go` (register new reconciler) |

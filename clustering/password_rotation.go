@@ -17,8 +17,8 @@ import (
 )
 
 // handlePasswordRotation dispatches to the appropriate handler based on the
-// CredentialRotation CR's Rotating condition Reason. It returns (true, nil)
-// when progress was made and the caller should redo the loop, or (false, nil)
+// CredentialRotation CR's derived workflow step. It returns (true, nil) when
+// progress was made and the caller should redo the loop, or (false, nil)
 // when no rotation work is needed.
 func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusSet) (bool, error) {
 	cr := &mocov1beta2.CredentialRotation{}
@@ -40,10 +40,10 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
 		return false, nil
 	}
 
-	switch cr.CurrentStep() {
-	case mocov1beta2.ReasonApplyingRetain:
+	switch cr.Step() {
+	case mocov1beta2.StepApplyingRetain:
 		return p.handleApplyingRetain(ctx, ss, cr)
-	case mocov1beta2.ReasonApplyingDiscard:
+	case mocov1beta2.StepApplyingDiscard:
 		return p.handleApplyingDiscard(ctx, ss, cr)
 	default:
 		return false, nil
@@ -62,13 +62,12 @@ func crBelongsToCluster(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2
 }
 
 // handleApplyingRetain executes ALTER USER RETAIN CURRENT PASSWORD on all
-// instances, then transitions Rotating from ApplyingRetain to
-// DistributingPassword (and sets OldPasswordRetained=True).
+// instances, then flips DualPassword to True so the derived step
+// transitions from ApplyingRetain to DistributingPassword.
 func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet, cr *mocov1beta2.CredentialRotation) (bool, error) {
 	log := logFromContext(ctx)
 	cluster := ss.Cluster
 
-	// Read the source Secret from the system namespace.
 	sourceSecret := &corev1.Secret{}
 	if err := p.reader.Get(ctx, client.ObjectKey{
 		Namespace: p.systemNamespace,
@@ -92,7 +91,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		log.Info("waiting for replicas to be scaled up before RETAIN", "rotationID", cr.Status.RotationID)
 		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "RotationBlocked",
 			"Cannot proceed with RETAIN: cluster has 0 replicas. Scale the cluster up first.")
-		if err := p.setRotatingCondition(ctx, metav1.ConditionTrue, mocov1beta2.ReasonRotationBlocked,
+		if err := p.setRotationReady(ctx, metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
 			"Cluster scaled to 0 replicas mid-cycle; cannot proceed with RETAIN."); err != nil {
 			return false, err
 		}
@@ -162,24 +161,18 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 
 	log.Info("applied ALTER USER RETAIN for all instances", "rotationID", cr.Status.RotationID)
 
-	// Transition Rotating: ApplyingRetain → DistributingPassword (hand off to
-	// CredentialRotationReconciler), and flip OldPasswordRetained to True.
-	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		fresh := &mocov1beta2.CredentialRotation{}
-		if err := p.reader.Get(ctx, client.ObjectKey{
-			Namespace: p.name.Namespace,
-			Name:      p.name.Name,
-		}, fresh); err != nil {
-			return err
-		}
-		fresh.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonDistributingPassword,
-			"RETAIN applied on all instances; awaiting Reconciler to distribute pending passwords.")
-		fresh.SetOldPasswordRetained(metav1.ConditionTrue, mocov1beta2.ReasonRetained,
+	// Flip DualPassword to True. The derived step transitions
+	// from ApplyingRetain to DistributingPassword and the Reconciler
+	// picks up from there.
+	if err := p.updateCRCondition(ctx, func(fresh *mocov1beta2.CredentialRotation) {
+		fresh.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained,
 			"All instances now hold a dual-password set.")
-		fresh.StampObservedGeneration()
-		return p.client.Status().Update(ctx, fresh)
+		// Clear any prior Blocked reason if we're resuming after a
+		// scale-up.
+		fresh.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending,
+			"Rotation phase in progress.")
 	}); err != nil {
-		return false, fmt.Errorf("failed to persist DistributingPassword status: %w", err)
+		return false, fmt.Errorf("failed to persist RETAIN status: %w", err)
 	}
 
 	p.recorder.Eventf(ss.Cluster, corev1.EventTypeNormal, "RetainApplied",
@@ -188,14 +181,18 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	return true, nil
 }
 
-// handleApplyingDiscard executes DISCARD OLD PASSWORD and auth plugin migration
-// on all instances, then transitions Rotating from ApplyingDiscard to
-// Finalizing (and flips OldPasswordRetained to False/Discarded).
+// handleApplyingDiscard executes DISCARD OLD PASSWORD and auth plugin
+// migration on all instances, then flips DualPassword back to False so
+// the derived step transitions from ApplyingDiscard to Finalizing.
+//
+// The post-distribute rollout wait is owned by the Reconciler
+// (handleAwaitingRollout) and is what gates DiscardReady=True; by the
+// time we reach this handler every Pod is already running with the new
+// password.
 func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSet, cr *mocov1beta2.CredentialRotation) (bool, error) {
 	log := logFromContext(ctx)
 	cluster := ss.Cluster
 
-	// Read the source Secret from the system namespace.
 	sourceSecret := &corev1.Secret{}
 	if err := p.reader.Get(ctx, client.ObjectKey{
 		Namespace: p.systemNamespace,
@@ -218,8 +215,33 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 		log.Info("waiting for replicas to be scaled up before DISCARD", "rotationID", cr.Status.RotationID)
 		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardRefused",
 			"Cannot proceed with DISCARD: cluster has 0 replicas. Scale the cluster up first.")
+		if err := p.setDiscardReady(ctx, metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
+			"Cluster scaled to 0 replicas mid-discard; cannot proceed with DISCARD."); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
+
+	// Defer DISCARD until the Reconciler has flipped DiscardReady to
+	// False/Pending. The Reconciler owns the initial state-set after the
+	// operator bumps discardGeneration (it emits the DiscardStarted Event
+	// and records Refused/Blocked transitions); blocking here keeps that
+	// transition observable and prevents a race where ClusterManager
+	// would DISCARD before DiscardReady reflects the in-flight state.
+	discardReadyCond := meta.FindStatusCondition(cr.Status.Conditions, mocov1beta2.ConditionDiscardReady)
+	if discardReadyCond == nil ||
+		discardReadyCond.Status != metav1.ConditionFalse ||
+		discardReadyCond.Reason != mocov1beta2.ReasonPending {
+		log.Info("waiting for Reconciler to initialise the discard phase",
+			"rotationID", cr.Status.RotationID)
+		return false, nil
+	}
+
+	// The post-distribute rollout wait is owned by the Reconciler
+	// (handleAwaitingRollout) and is what gates DiscardReady=True in
+	// the first place. By the time the operator can bump
+	// discardGeneration and reach this handler, rollout has settled
+	// and every Pod is running with the new password.
 
 	// Connect with the pending (new) password.
 	pendingPasswd, err := password.NewMySQLPasswordFromPending(sourceSecret)
@@ -232,7 +254,6 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 		return false, err
 	}
 
-	// Determine the target auth plugin from the primary.
 	primaryIndex := cluster.Status.CurrentPrimaryIndex
 	authPlugin, err := func() (string, error) {
 		op, err := p.dbf.New(ctx, cluster, pendingPasswd, primaryIndex)
@@ -247,7 +268,6 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	}
 	log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", cr.Status.RotationID)
 
-	// Execute DISCARD OLD PASSWORD + auth plugin migration on all instances.
 	for idx := range replicas {
 		isReplica := idx != primaryIndex
 		op, err := p.dbf.New(ctx, cluster, pendingPasswd, idx)
@@ -265,25 +285,11 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 
 	log.Info("applied DISCARD OLD PASSWORD for all instances", "rotationID", cr.Status.RotationID)
 
-	// Transition Rotating: ApplyingDiscard → Finalizing (hand off to
-	// CredentialRotationReconciler for source-Secret promotion), and flip
-	// OldPasswordRetained to False/Discarded.
-	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		fresh := &mocov1beta2.CredentialRotation{}
-		if err := p.reader.Get(ctx, client.ObjectKey{
-			Namespace: p.name.Namespace,
-			Name:      p.name.Name,
-		}, fresh); err != nil {
-			return err
-		}
-		fresh.SetRotating(metav1.ConditionTrue, mocov1beta2.ReasonFinalizing,
-			"DISCARD applied on all instances; awaiting Reconciler to promote pending passwords.")
-		fresh.SetOldPasswordRetained(metav1.ConditionFalse, mocov1beta2.ReasonDiscarded,
+	if err := p.updateCRCondition(ctx, func(fresh *mocov1beta2.CredentialRotation) {
+		fresh.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained,
 			"DISCARD OLD PASSWORD succeeded on all instances.")
-		fresh.StampObservedGeneration()
-		return p.client.Status().Update(ctx, fresh)
 	}); err != nil {
-		return false, fmt.Errorf("failed to persist Finalizing status: %w", err)
+		return false, fmt.Errorf("failed to persist DISCARD status: %w", err)
 	}
 
 	p.recorder.Eventf(ss.Cluster, corev1.EventTypeNormal, "DiscardApplied",
@@ -292,8 +298,25 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	return true, nil
 }
 
-// setRotatingCondition updates the Rotating condition with retry-on-conflict.
-func (p *managerProcess) setRotatingCondition(ctx context.Context, status metav1.ConditionStatus, reason, message string) error {
+// setRotationReady updates the RotationReady condition with retry-on-conflict.
+func (p *managerProcess) setRotationReady(ctx context.Context, status metav1.ConditionStatus, reason, message string) error {
+	return p.updateCRCondition(ctx, func(cr *mocov1beta2.CredentialRotation) {
+		cr.SetRotationReady(status, reason, message)
+	})
+}
+
+// setDiscardReady updates the DiscardReady condition with retry-on-conflict.
+func (p *managerProcess) setDiscardReady(ctx context.Context, status metav1.ConditionStatus, reason, message string) error {
+	return p.updateCRCondition(ctx, func(cr *mocov1beta2.CredentialRotation) {
+		cr.SetDiscardReady(status, reason, message)
+	})
+}
+
+// updateCRCondition fetches the CR fresh, applies the mutator, stamps
+// ObservedGeneration, and writes the status with retry-on-conflict.
+// The mutator must be idempotent because RetryOnConflict may call it
+// repeatedly on a freshly-fetched copy.
+func (p *managerProcess) updateCRCondition(ctx context.Context, mutate func(*mocov1beta2.CredentialRotation)) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		fresh := &mocov1beta2.CredentialRotation{}
 		if err := p.reader.Get(ctx, client.ObjectKey{
@@ -302,7 +325,7 @@ func (p *managerProcess) setRotatingCondition(ctx context.Context, status metav1
 		}, fresh); err != nil {
 			return err
 		}
-		fresh.SetRotating(status, reason, message)
+		mutate(fresh)
 		fresh.StampObservedGeneration()
 		return p.client.Status().Update(ctx, fresh)
 	})

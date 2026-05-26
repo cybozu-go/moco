@@ -71,7 +71,7 @@ var credentialRotateCmd = &cobra.Command{
 var credentialDiscardCmd = &cobra.Command{
 	Use:   "discard CLUSTER_NAME",
 	Short: "Discard old passwords after rotation",
-	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires the Rotating condition to be True with Reason=AwaitingDiscard.",
+	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires the CR to be awaiting discard (DiscardReady=True, DualPassword=True; post-distribute rollout has settled).",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return credentialDiscard(cmd.Context(), args[0])
@@ -152,7 +152,7 @@ func credentialRotate(ctx context.Context, clusterName string) error {
 
 	// CR exists - require it to be idle before bumping rotationGeneration.
 	if !cr.IsIdle() {
-		return fmt.Errorf("cannot rotate: a rotation cycle is in flight (current step: %q). Wait for it to complete or follow the recovery procedure", cr.CurrentStep())
+		return fmt.Errorf("cannot rotate: a rotation cycle is in flight (current step: %q). Wait for it to complete or follow the recovery procedure", cr.Step())
 	}
 
 	newGen := cr.Spec.RotationGeneration + 1
@@ -192,8 +192,8 @@ func credentialDiscard(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before discarding", namespace, clusterName)
 	}
 
-	if cr.CurrentStep() != mocov1beta2.ReasonAwaitingDiscard {
-		return fmt.Errorf("cannot discard: Rotating condition must be True with Reason=AwaitingDiscard (current step: %q)", cr.CurrentStep())
+	if !cr.IsAwaitingDiscard() {
+		return fmt.Errorf("cannot discard: the CR must be awaiting discard (DiscardReady=True, DualPassword=True; post-distribute rollout has settled); current step: %q", cr.Step())
 	}
 
 	// Bump discardGeneration to match rotationGeneration, signaling that the
