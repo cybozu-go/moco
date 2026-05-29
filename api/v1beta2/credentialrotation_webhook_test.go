@@ -99,13 +99,23 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should reject when discardGeneration > rotationGeneration", func() {
+		It("should reject when rotationGeneration is greater than 1", func() {
+			cluster := makeMySQLCluster()
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test", 2)
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should reject when discardGeneration is non-zero", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
 			cr := makeCredentialRotation("test", 1)
-			cr.Spec.DiscardGeneration = 2
+			cr.Spec.DiscardGeneration = 1
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).To(HaveOccurred())
 		})
@@ -130,17 +140,6 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err = k8sClient.Create(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 		})
-
-		It("should accept create with discardGeneration == rotationGeneration", func() {
-			cluster := makeMySQLCluster()
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			cr.Spec.DiscardGeneration = 1
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-		})
 	})
 
 	Context("ValidateUpdate", func() {
@@ -149,8 +148,20 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
-			cr := makeCredentialRotation("test", 2)
+			cr := makeCredentialRotation("test", 1)
 			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Drive to idle and bump to 2 so we can attempt a decrease back to 1.
+			setCRIdle(cr)
+			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr.Spec.RotationGeneration = 2
+			err = k8sClient.Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
 			cr.Spec.RotationGeneration = 1
@@ -199,8 +210,20 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			cr := makeCredentialRotation("test", 1)
-			cr.Spec.DiscardGeneration = 1
 			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Drive to awaiting-discard and bump discardGeneration so we can
+			// attempt to decrease it.
+			setCRAwaitingDiscard(cr)
+			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr.Spec.DiscardGeneration = 1
+			err = k8sClient.Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
 			cr.Spec.DiscardGeneration = 0

@@ -50,20 +50,23 @@ func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *Cr
 		}
 	}
 
-	// rotationGeneration must be > 0
-	if cr.Spec.RotationGeneration <= 0 {
+	// rotationGeneration must be exactly 1 at create time. The counter is
+	// a CR-lifetime measure of completed cycles and must start at 1 so
+	// rotationGeneration == observedRotationGeneration reliably reports
+	// the number of rotations performed against this CR.
+	if cr.Spec.RotationGeneration != 1 {
 		errs = append(errs, field.Invalid(field.NewPath("spec", "rotationGeneration"),
-			cr.Spec.RotationGeneration, "must be > 0"))
+			cr.Spec.RotationGeneration, "must be 1 at create time"))
 	}
 
-	// discardGeneration must be in [0, rotationGeneration]
-	if cr.Spec.DiscardGeneration < 0 {
+	// discardGeneration must be 0 at create time. A non-zero value would
+	// short-circuit the cycle straight into ApplyingDiscard, skipping the
+	// AwaitingRollout wait that gates DiscardReady=True. Discard must
+	// always be requested via update once the CR reaches the
+	// awaiting-discard steady state (see ValidateUpdate).
+	if cr.Spec.DiscardGeneration != 0 {
 		errs = append(errs, field.Invalid(field.NewPath("spec", "discardGeneration"),
-			cr.Spec.DiscardGeneration, "must be >= 0"))
-	}
-	if cr.Spec.DiscardGeneration > cr.Spec.RotationGeneration {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "discardGeneration"),
-			cr.Spec.DiscardGeneration, "must be <= rotationGeneration"))
+			cr.Spec.DiscardGeneration, "must be 0 at create time"))
 	}
 
 	if len(errs) > 0 {

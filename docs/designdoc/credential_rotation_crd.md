@@ -164,8 +164,8 @@ CredentialRotation sets an ownerReference to the target MySQLCluster so that Kub
 
 | Field | Type | Notes |
 |---|---|---|
-| `spec.rotationGeneration` | int64 | Required, `>= 1`, monotonically increasing. Each bump triggers a new rotation cycle. |
-| `spec.discardGeneration` | int64 | Optional, default `0`, `<= rotationGeneration`, monotonically increasing. Bump (typically to match `rotationGeneration`) to start discard. |
+| `spec.rotationGeneration` | int64 | Required, `>= 1`, monotonically increasing. The webhook rejects any value other than `1` at create time so the counter aligns 1:1 with the number of rotation cycles performed. Bump via update to start the next cycle. |
+| `spec.discardGeneration` | int64 | Required, `>= 0`, `<= rotationGeneration`, monotonically increasing. The webhook rejects any value other than `0` at create time. Bump via update (typically to match `rotationGeneration`) to start discard. |
 | `status.observedGeneration` | int64 | Standard `metadata.generation` echo for kstatus / ArgoCD / Flux. |
 | `status.observedRotationGeneration` | int64 | Last rotationGeneration whose rotation phase (RETAIN + distribute) completed. |
 | `status.observedDiscardGeneration` | int64 | Last discardGeneration whose discard phase completed. |
@@ -232,8 +232,8 @@ The current step is derived from these three conditions plus the generation comp
 **ValidateCreate:**
 - The target MySQLCluster (same name, same namespace) must exist.
 - `cluster.Spec.Replicas` must be `> 0`.
-- `rotationGeneration` must be `> 0`.
-- `0 <= discardGeneration <= rotationGeneration`.
+- `rotationGeneration` must equal `1` (counter starts at 1 by convention).
+- `discardGeneration` must equal `0` (discard must be requested via update once the CR reaches the awaiting-discard steady state — a non-zero value at create time would skip `AwaitingRollout` and the verification window).
 
 **ValidateUpdate:**
 - Both `rotationGeneration` and `discardGeneration` must be monotonically non-decreasing.
@@ -254,7 +254,7 @@ The current step is derived from these three conditions plus the generation comp
 
 | Command | Behaviour |
 |---|---|
-| `kubectl moco credential rotate <cluster>` | If CR does not exist: create with `rotationGeneration: 1`. If CR exists: refuse if stale; require `cr.IsIdle()`; increment `rotationGeneration`. |
+| `kubectl moco credential rotate <cluster>` | If CR does not exist: create with `(rotationGeneration: 1, discardGeneration: 0)`. If CR exists: refuse if stale; require `cr.IsIdle()`; increment `rotationGeneration`. |
 | `kubectl moco credential discard <cluster>` | Refuse if stale; require `cr.IsAwaitingDiscard()`; patch `spec.discardGeneration` to match `spec.rotationGeneration`. |
 | `kubectl moco credential show <cluster>` | Read the per-namespace user Secret. |
 

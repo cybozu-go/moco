@@ -10,20 +10,24 @@ import (
 // +kubebuilder:validation:XValidation:rule="self.discardGeneration <= self.rotationGeneration",message="discardGeneration must be <= rotationGeneration"
 type CredentialRotationSpec struct {
 	// RotationGeneration is a monotonically increasing counter.
-	// Incrementing this value triggers a new rotation cycle.
+	// A fresh CR must be created with the value 1; the validating webhook
+	// rejects any other value at create time so the counter aligns 1:1
+	// with the number of rotation cycles performed against this CR.
+	// Subsequent rotations are triggered by bumping this value via update.
 	// +kubebuilder:validation:Minimum=1
 	// +required
 	RotationGeneration int64 `json:"rotationGeneration"`
 
 	// DiscardGeneration is a monotonically increasing counter that triggers
 	// the discard step. Must satisfy 0 <= discardGeneration <= rotationGeneration.
-	// Bumping this value (typically to match rotationGeneration) signals the
+	// A fresh CR must be created with the value 0; the validating webhook
+	// rejects any other value at create time. Bumping this value via
+	// update (typically to match rotationGeneration) signals the
 	// controller to discard the retained old password from the previous
 	// rotation. The bump is only honored while the CR is in the
 	// awaiting-discard steady state (DiscardReady=True, DualPassword=True).
-	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
-	// +optional
+	// +required
 	DiscardGeneration int64 `json:"discardGeneration"`
 }
 
