@@ -188,17 +188,20 @@ The Kubernetes API conventions discourage `phase`-style enums and prescribe Cond
 
 #### Reason values
 
-Each `Reason` has a single meaning across every condition that uses it.
+Each `Reason` has a single meaning across every condition that uses it. A
+Reason is always paired with a fixed `Status` value — for example, `Reconciled`
+only appears with `Status=True`, and `Pending` / `Refused` / `Blocked` /
+`Stale` only appear with `Status=False`.
 
-| Reason | Used on | Meaning |
-|---|---|---|
-| `Reconciled` | `RotationReady`, `DiscardReady` (True) | The matching steady state. |
-| `Pending` | `RotationReady`, `DiscardReady` (False) | Not in the matching steady state, no error recorded (cycle in flight, or the other Ready is True). |
-| `Refused` | `RotationReady`, `DiscardReady` (False) | The requested operation could not start (e.g. `replicas == 0`). Nothing has been mutated. |
-| `Blocked` | `RotationReady`, `DiscardReady` (False) | A started cycle cannot progress (e.g. cluster scaled to 0 after pending passwords were written). Manual recovery required. |
-| `Stale` | `RotationReady`, `DiscardReady` (False) | The source Secret (or other persisted state) is inconsistent. Manual recovery required. |
-| `Retained` | `DualPassword` (True) | MySQL holds a dual-password set on all system users. |
-| `NotRetained` | `DualPassword` (False) | MySQL is not currently holding a dual-password set. |
+| Reason | Appears on condition | With status | Meaning |
+|---|---|---|---|
+| `Reconciled` | `RotationReady` or `DiscardReady` | `True` | The matching steady state (Idle / AwaitingDiscard). |
+| `Pending` | `RotationReady` or `DiscardReady` | `False` | Not in the matching steady state, no error recorded — the cycle is in flight, or the other Ready is True. |
+| `Refused` | `RotationReady` or `DiscardReady` | `False` | The requested operation could not start (e.g. `replicas == 0`). Nothing has been mutated. |
+| `Blocked` | `RotationReady` or `DiscardReady` | `False` | A started cycle cannot progress (e.g. cluster scaled to 0 after pending passwords were written). Manual recovery required. |
+| `Stale` | `RotationReady` or `DiscardReady` | `False` | The source Secret (or other persisted state) is inconsistent. Manual recovery required. |
+| `Retained` | `DualPassword` | `True` | MySQL holds a dual-password set on all system users. |
+| `NotRetained` | `DualPassword` | `False` | MySQL is not currently holding a dual-password set. |
 
 > **Event-only reasons** (not condition `Reason` values): `DiscardRefused`, `DualPasswordExists`, `InconsistentState`, `MissingRotationPending`. These are emitted as Kubernetes Events for `kubectl describe` visibility in addition to the condition transition.
 
@@ -206,18 +209,24 @@ Each `Reason` has a single meaning across every condition that uses it.
 
 The internal workflow step is derived from the three Conditions plus the generation comparisons; it is **not** stored on the CR.
 
-| Step | `RotationReady` | `DiscardReady` | `DualPassword` | `newRotation` | `newDiscard` |
-|---|---|---|---|---|---|
-| Initial (conditions absent) | — | — | — | — | — |
-| `Idle` | **True** | False | False | False | False |
-| `ApplyingRetain` | False | False | False | True | False |
-| `DistributingPassword` | False | False | **True** | True | False |
-| `AwaitingRollout` | False | False | True | False | False |
-| `AwaitingDiscard` | False | **True** | True | False | False |
-| `ApplyingDiscard` | False | False | True | False | True |
-| `Finalizing` | False | False | False | False | True |
+| Step | `RotationReady` | `DiscardReady` | `DualPassword` | Outstanding phase |
+|---|---|---|---|---|
+| Initial (conditions absent) | — | — | — | — |
+| `Idle` | **True** | False | False | — |
+| `ApplyingRetain` | False | False | False | `rotation` |
+| `DistributingPassword` | False | False | **True** | `rotation` |
+| `AwaitingRollout` | False | False | True | — |
+| `AwaitingDiscard` | False | **True** | True | — |
+| `ApplyingDiscard` | False | False | True | `discard` |
+| `Finalizing` | False | False | False | `discard` |
 
-`newRotation` ≡ `spec.rotationGeneration > status.observedRotationGeneration`; `newDiscard` likewise.
+"Outstanding phase" is a derived value indicating which phase the operator has requested but the controller has not yet promoted to `observed*Generation`. Unlike the three Conditions, it is **not** persisted on the CR — it is computed on the fly from spec/status:
+
+- `rotation` when `spec.rotationGeneration > status.observedRotationGeneration`
+- `discard` when `spec.discardGeneration > status.observedDiscardGeneration`
+- `—` when both are in sync
+
+The two values are mutually exclusive (the rotation phase always completes — promoting `observedRotationGeneration` — before the operator can request discard), which is what lets the matrix disambiguate the three `(False, False, True)` rows: `DistributingPassword` has `rotation` outstanding, `AwaitingRollout` has neither outstanding, and `ApplyingDiscard` has `discard` outstanding.
 
 A `Status=False` Reason of `Refused`/`Blocked`/`Stale` takes priority: it short-circuits to `RotationRefused` / `RotationBlocked` / `DiscardRefused` / `DiscardBlocked` / `StalePending` regardless of the table above. A stale `RotationReady=True` lingering across a fresh `rotationGeneration` bump is treated as Idle (and similarly for `DiscardReady=True` and AwaitingDiscard) so the seed handler fires — this avoids the "stale True from previous cycle" deadlock for back-to-back rotations.
 
@@ -270,7 +279,7 @@ The CR is long-lived and purely declarative, so it works naturally with GitOps. 
 
 ### Reconciler: Idle → ApplyingRetain
 
-Triggered when `newRotation` and the CR is in `Step ∈ {Idle, RotationRefused, RotationBlocked}` with `cluster.Spec.Replicas > 0`.
+Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneration > status.observedRotationGeneration`) and the CR is in `Step ∈ {Idle, RotationRefused, RotationBlocked}` with `cluster.Spec.Replicas > 0`.
 
 | # | Action | Persistence |
 |---|---|---|
