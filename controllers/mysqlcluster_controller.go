@@ -345,7 +345,8 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 	//   - Idle / ApplyingRetain / RotationRefused / RotationBlocked / StalePending:
 	//     current passwords (pending not yet distributed).
 	//   - DistributingPassword: skip; the rotation reconciler is the writer.
-	//   - AwaitingDiscard / WaitingForRollout / ApplyingDiscard / Finalizing:
+	//   - AwaitingRollout / AwaitingDiscard / ApplyingDiscard / Finalizing /
+	//     DiscardRefused / DiscardBlocked:
 	//     pending passwords (already distributed by the rotation reconciler).
 	//     Re-applying here self-heals if the per-namespace user/my.cnf Secret
 	//     was deleted during rotation; apply() is a no-op when content matches.
@@ -374,7 +375,17 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		case mocov1beta2.StepAwaitingRollout,
 			mocov1beta2.StepAwaitingDiscard,
 			mocov1beta2.StepApplyingDiscard,
-			mocov1beta2.StepFinalizing:
+			mocov1beta2.StepFinalizing,
+			mocov1beta2.StepDiscardRefused,
+			mocov1beta2.StepDiscardBlocked:
+			// Pending was already distributed during DistributingPassword,
+			// so per-namespace Secrets must keep pending values through
+			// every post-distribution step — including the Refused/Blocked
+			// branches that can be entered if the cluster scales to 0
+			// during/after the discard bump. Reverting to current here
+			// would leave Pods that restart in the Refused/Blocked window
+			// with stale credentials, which become invalid once DISCARD
+			// eventually completes.
 			usePending = true
 			activeRotationID = cr.Status.RotationID
 		}

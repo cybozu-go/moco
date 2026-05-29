@@ -63,18 +63,21 @@ type CredentialRotationStatus struct {
 
 	// ObservedRotationGeneration is the last rotationGeneration whose
 	// rotation phase (RETAIN + pending-password distribution) completed
-	// successfully. RotationReady becomes True when this equals
-	// spec.rotationGeneration; this happens at the end of the rotation
-	// phase, before the discard phase begins.
+	// successfully. Equality with spec.rotationGeneration is a necessary
+	// condition for the cycle to leave the rotation phase, but not
+	// sufficient on its own: RotationReady=True is only set at the very
+	// end of the full cycle (after the discard phase finalises).
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	ObservedRotationGeneration int64 `json:"observedRotationGeneration"`
 
 	// ObservedDiscardGeneration is the last discardGeneration that
-	// completed successfully. DiscardReady becomes True when this equals
-	// spec.discardGeneration (which is the default state until the
-	// operator bumps discardGeneration).
+	// completed successfully. Equality with spec.discardGeneration is a
+	// necessary condition for the cycle to leave the discard phase, but
+	// not sufficient on its own: DiscardReady=True is only set in the
+	// awaiting-discard steady state, which additionally requires
+	// DualPassword=True and the post-distribute rollout to have settled.
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
