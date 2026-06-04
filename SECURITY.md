@@ -22,7 +22,7 @@ discussions, or pull requests.**
 
 Instead, please report them privately through GitHub's
 [private vulnerability reporting][gh-advisory] feature, which is the only channel
-we accept vulnerability reports through:
+through which we accept vulnerability reports:
 
 1. Go to the [Security tab][security-tab] of this repository.
 2. Click **Report a vulnerability**.
