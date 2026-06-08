@@ -123,18 +123,19 @@ func apply[S any, T clientObjectConstraint[S], U runtime.ApplyConfiguration](ctx
 // MySQLClusterReconciler reconciles a MySQLCluster object
 type MySQLClusterReconciler struct {
 	client.Client
-	Scheme                     *runtime.Scheme
-	Recorder                   record.EventRecorder
-	AgentImage                 string
-	BackupImage                string
-	FluentBitImage             string
-	ExporterImage              string
-	SystemNamespace            string
-	PVCSyncAnnotationKeys      []string
-	PVCSyncLabelKeys           []string
-	ClusterManager             clustering.ClusterManager
-	MaxConcurrentReconciles    int
-	MySQLConfigMapHistoryLimit int
+	Scheme                        *runtime.Scheme
+	Recorder                      record.EventRecorder
+	AgentImage                    string
+	BackupImage                   string
+	FluentBitImage                string
+	ExporterImage                 string
+	SystemNamespace               string
+	PVCSyncAnnotationKeys         []string
+	PVCSyncLabelKeys              []string
+	ClusterManager                clustering.ClusterManager
+	MaxConcurrentReconciles       int
+	MySQLConfigMapHistoryLimit    int
+	DisableDefaultSecurityContext bool
 }
 
 //+kubebuilder:rbac:groups=moco.cybozu.com,resources=mysqlclusters,verbs=get;list;watch;update;patch
@@ -910,6 +911,9 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, clu
 	if podSpec.SecurityContext == nil {
 		podSpec.WithSecurityContext(corev1ac.PodSecurityContext())
 	}
+	if !r.DisableDefaultSecurityContext && podSpec.SecurityContext.FSGroup == nil {
+		podSpec.SecurityContext.WithFSGroup(constants.ContainerGID)
+	}
 	if podSpec.SecurityContext.FSGroupChangePolicy == nil {
 		podSpec.SecurityContext.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
 	}
@@ -1233,7 +1237,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 		WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
 		WithResources(resources)
 
-	updateContainerWithSecurityContext(container)
+	r.updateContainerWithSecurityContext(container)
 
 	cronJobName := cluster.BackupCronJobName()
 	cronJob := batchv1ac.CronJob(cronJobName, cluster.Namespace).
@@ -1262,9 +1266,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 								return volumes
 							}()...).
 							WithContainers(container).
-							WithSecurityContext(corev1ac.PodSecurityContext().
-								WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
-							),
+							WithSecurityContext(r.defaultPodSecurityContext()),
 						),
 					),
 				),
@@ -1566,9 +1568,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 							return volumes
 						}()...).
 						WithContainers(container).
-						WithSecurityContext(corev1ac.PodSecurityContext().
-							WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch),
-						),
+						WithSecurityContext(r.defaultPodSecurityContext()),
 					),
 				),
 			)
@@ -1930,6 +1930,7 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 		WithKind(gvk.Kind).
 		WithName(cluster.Name).
 		WithUID(cluster.GetUID()).
+		WithBlockOwnerDeletion(true).
 		WithController(true))
 
 	return nil

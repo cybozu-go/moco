@@ -115,7 +115,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithMountPath(constants.MySQLDataPath),
 	)
 
-	updateContainerWithSecurityContext(source)
+	r.updateContainerWithSecurityContext(source)
 
 	return source, nil
 }
@@ -186,7 +186,7 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 			}),
 	)
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -227,7 +227,7 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta
 				}),
 		)
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -268,7 +268,7 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(cluster *mocov1beta2.My
 		c.WithArgs("--collect." + cl)
 	}
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -284,7 +284,7 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 			continue
 		}
 
-		updateContainerWithSecurityContext(&c)
+		r.updateContainerWithSecurityContext(&c)
 
 		switch *c.Name {
 		case constants.MysqldContainerName:
@@ -317,7 +317,7 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(ctx context.Context, cluste
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, given := range spec.InitContainers {
 		ic := given
-		updateContainerWithSecurityContext(&ic)
+		r.updateContainerWithSecurityContext(&ic)
 		initContainers = append(initContainers, &ic)
 	}
 	return initContainers, nil
@@ -383,7 +383,7 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 		c.WithArgs(fmt.Sprintf("%s=%s", constants.MocoInitLowerCaseTableNamesFlag, v))
 	}
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c, nil
@@ -411,7 +411,7 @@ func (r *MySQLClusterReconciler) makeInitContainerWithCopyMocoInitBin(cluster *m
 			WithName(constants.SharedVolumeName).
 			WithMountPath(constants.SharedPath))
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -431,10 +431,34 @@ func (r *MySQLClusterReconciler) getEnableLowerCaseTableNamesFromConf(ctx contex
 	return v, ok, nil
 }
 
-func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
+func (r *MySQLClusterReconciler) updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
 	if container.SecurityContext == nil {
 		container.WithSecurityContext(corev1ac.SecurityContext())
 	}
+
+	if r.DisableDefaultSecurityContext {
+		return
+	}
+
+	if container.SecurityContext.RunAsUser == nil {
+		container.SecurityContext.WithRunAsUser(constants.ContainerUID)
+	}
+	if container.SecurityContext.RunAsGroup == nil {
+		container.SecurityContext.WithRunAsGroup(constants.ContainerGID)
+	}
+}
+
+// defaultPodSecurityContext returns the PodSecurityContext applied to MOCO-managed
+// pods. FSGroupChangePolicy is always set to OnRootMismatch. FSGroup is defaulted to
+// constants.ContainerGID unless DisableDefaultSecurityContext is enabled, in which case
+// the platform (e.g. OpenShift SCC) assigns the fsGroup.
+func (r *MySQLClusterReconciler) defaultPodSecurityContext() *corev1ac.PodSecurityContextApplyConfiguration {
+	psc := corev1ac.PodSecurityContext().
+		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
+	if !r.DisableDefaultSecurityContext {
+		psc.WithFSGroup(constants.ContainerGID)
+	}
+	return psc
 }
 
 func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, container *corev1ac.ContainerApplyConfiguration) {
