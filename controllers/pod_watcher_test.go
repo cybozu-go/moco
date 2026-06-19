@@ -83,10 +83,9 @@ var _ = Describe("PodWatcher", func() {
 		ctx, cancel := context.WithCancel(ctx)
 		stopFunc = cancel
 		go func() {
+			defer GinkgoRecover()
 			err := mgr.Start(ctx)
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(100 * time.Millisecond)
 	})

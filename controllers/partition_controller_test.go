@@ -213,10 +213,9 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
+		defer GinkgoRecover()
 		err := mgr.Start(ctx)
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).NotTo(HaveOccurred())
 	}()
 	return cancel
 }
