@@ -1942,7 +1942,7 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	certHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		// the certificate name is formatted as "moco-agent-<cluster.Namespace>.<cluster.Name>"
 		if a.GetNamespace() != r.SystemNamespace {

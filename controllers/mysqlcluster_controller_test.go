@@ -189,7 +189,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			ExporterImage:              testExporterImage,
 			MySQLConfigMapHistoryLimit: 2,
 		}
-		err = mysqlr.SetupWithManager(mgr)
+		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx, cancel := context.WithCancel(ctx)

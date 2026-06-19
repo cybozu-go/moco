@@ -1,7 +1,7 @@
 ---
 name: Focused Test Execution
 description: "Use when running, debugging, or suggesting focused tests in MOCO. Covers Makefile targets, FOCUS, envtest, CI workflow/action patterns, and avoiding raw go test detours."
-applyTo: "**/*_test.go"
+applyTo: "**/*.go"
 ---
 
 # Focused test execution
