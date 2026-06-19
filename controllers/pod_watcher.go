@@ -12,9 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // PodWatcher watches MySQL pods and informs the cluster manager of the event.
@@ -81,10 +83,23 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
+func podWatcherPredicate() predicate.Funcs {
+	return predicate.NewPredicateFuncs(func(o client.Object) bool {
+		labels := o.GetLabels()
+		if labels[constants.LabelAppName] != constants.AppNameMySQL {
+			return false
+		}
+		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
+			return false
+		}
+		return true
+	})
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodWatcher) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.Pod{}).
+		For(&corev1.Pod{}, builder.WithPredicates(podWatcherPredicate())).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).

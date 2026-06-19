@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -121,8 +120,7 @@ func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) erro
 
 // partitionControllerPredicate filters StatefulSets and Pods managed by MOCO.
 func partitionControllerPredicate() predicate.Funcs {
-	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
-	prctFunc := func(o client.Object) bool {
+	return predicate.NewPredicateFuncs(func(o client.Object) bool {
 		if !strings.HasPrefix(o.GetName(), "moco-") {
 			return false
 		}
@@ -135,14 +133,7 @@ func partitionControllerPredicate() predicate.Funcs {
 			return false
 		}
 		return true
-	}
-
-	return predicate.Funcs{
-		UpdateFunc:  func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
-		CreateFunc:  func(e event.CreateEvent) bool { return prctFunc(e.Object) },
-		DeleteFunc:  func(e event.DeleteEvent) bool { return prctFunc(e.Object) },
-		GenericFunc: func(e event.GenericEvent) bool { return prctFunc(e.Object) },
-	}
+	})
 }
 
 // isRolloutReady returns true if the StatefulSet is ready for rolling update.
