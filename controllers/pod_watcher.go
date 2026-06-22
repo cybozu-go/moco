@@ -83,23 +83,20 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
-func podWatcherPredicate() predicate.Funcs {
-	return predicate.NewPredicateFuncs(func(o client.Object) bool {
-		labels := o.GetLabels()
-		if labels[constants.LabelAppName] != constants.AppNameMySQL {
-			return false
-		}
-		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
-			return false
-		}
-		return true
-	})
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodWatcher) SetupWithManager(mgr ctrl.Manager) error {
+	podWatcherPredicate, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			constants.LabelAppName:      constants.AppNameMySQL,
+			constants.LabelAppCreatedBy: constants.AppCreator,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.Pod{}, builder.WithPredicates(podWatcherPredicate())).
+		For(&corev1.Pod{}, builder.WithPredicates(podWatcherPredicate)).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
