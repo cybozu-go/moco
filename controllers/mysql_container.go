@@ -448,19 +448,6 @@ func (r *MySQLClusterReconciler) updateContainerWithSecurityContext(container *c
 	}
 }
 
-// defaultPodSecurityContext returns the PodSecurityContext applied to MOCO-managed
-// pods. FSGroupChangePolicy is always set to OnRootMismatch. FSGroup is defaulted to
-// constants.ContainerGID unless DisableDefaultSecurityContext is enabled, in which case
-// the platform (e.g. OpenShift SCC) assigns the fsGroup.
-func (r *MySQLClusterReconciler) defaultPodSecurityContext() *corev1ac.PodSecurityContextApplyConfiguration {
-	psc := corev1ac.PodSecurityContext().
-		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
-	if !r.DisableDefaultSecurityContext {
-		psc.WithFSGroup(constants.ContainerGID)
-	}
-	return psc
-}
-
 func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, container *corev1ac.ContainerApplyConfiguration) {
 	if len(cluster.Spec.PodTemplate.OverwriteContainers) == 0 {
 		return
