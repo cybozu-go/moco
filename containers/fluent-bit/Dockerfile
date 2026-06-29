@@ -72,5 +72,7 @@ COPY --from=builder /fluent-bit /fluent-bit
 
 EXPOSE 2020
 
+USER 10000:10000
+
 ENTRYPOINT ["/fluent-bit/bin/fluent-bit"]
 CMD ["-q", "-c", "/fluent-bit/etc/fluent-bit.conf"]
