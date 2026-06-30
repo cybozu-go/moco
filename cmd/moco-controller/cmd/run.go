@@ -105,19 +105,20 @@ func subMain(ns, addr string, port int) error {
 	ctx := ctrl.SetupSignalHandler()
 
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:                     mgr.GetClient(),
-		Scheme:                     mgr.GetScheme(),
-		Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
-		AgentImage:                 config.agentImage,
-		BackupImage:                config.backupImage,
-		FluentBitImage:             config.fluentBitImage,
-		ExporterImage:              config.exporterImage,
-		SystemNamespace:            ns,
-		PVCSyncAnnotationKeys:      config.pvcSyncAnnotationKeys,
-		PVCSyncLabelKeys:           config.pvcSyncLabelKeys,
-		ClusterManager:             clusterMgr,
-		MaxConcurrentReconciles:    config.maxConcurrentReconciles,
-		MySQLConfigMapHistoryLimit: config.mySQLConfigMapHistoryLimit,
+		Client:                        mgr.GetClient(),
+		Scheme:                        mgr.GetScheme(),
+		Recorder:                      mgr.GetEventRecorderFor("moco-controller"),
+		AgentImage:                    config.agentImage,
+		BackupImage:                   config.backupImage,
+		FluentBitImage:                config.fluentBitImage,
+		ExporterImage:                 config.exporterImage,
+		SystemNamespace:               ns,
+		PVCSyncAnnotationKeys:         config.pvcSyncAnnotationKeys,
+		PVCSyncLabelKeys:              config.pvcSyncLabelKeys,
+		ClusterManager:                clusterMgr,
+		MaxConcurrentReconciles:       config.maxConcurrentReconciles,
+		MySQLConfigMapHistoryLimit:    config.mySQLConfigMapHistoryLimit,
+		DisableDefaultSecurityContext: config.disableDefaultSecurityContext,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err

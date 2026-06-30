@@ -19,6 +19,7 @@ Flags:
       --backup-image string                 The image of moco-backup container (default "ghcr.io/cybozu-go/moco-backup:0.23.2")
       --cert-dir string                     webhook certificate directory
       --check-interval duration             Interval of cluster maintenance (default 1m0s)
+      --disable-default-security-context    Disable injecting default runAsUser/runAsGroup on managed containers and fsGroup on managed pods. Enable this on platforms such as OpenShift that assign project-scoped UID/GID/fsGroup ranges.
       --fluent-bit-image string             The image of fluent-bit sidecar container (default "ghcr.io/cybozu-go/moco/fluent-bit:3.0.2.1")
       --grpc-cert-dir string                gRPC certificate directory (default "/grpc-cert")
       --health-probe-addr string            Listen address for health probes (default ":8081")
