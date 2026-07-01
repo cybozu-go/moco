@@ -5,6 +5,7 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,6 +33,10 @@ func testNewSts(ns string) *appsv1.StatefulSet {
 
 func testNewPod(ns string, name string) *corev1.Pod {
 	pod := &corev1.Pod{}
+	pod.SetLabels(map[string]string{
+		constants.LabelAppName:      constants.AppNameMySQL,
+		constants.LabelAppCreatedBy: constants.AppCreator,
+	})
 	pod.Namespace = ns
 	pod.Name = name
 	pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "moco-mysql:latest"}}

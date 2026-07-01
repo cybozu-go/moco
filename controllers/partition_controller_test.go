@@ -383,13 +383,6 @@ var _ = Describe("StatefulSetPartitionReconciler predicates", func() {
 				constants.LabelAppCreatedBy: constants.AppCreator,
 			},
 		}}, true),
-		Entry("statefulset without prefix", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
-			Name: "test",
-			Labels: map[string]string{
-				constants.LabelAppName:      constants.AppNameMySQL,
-				constants.LabelAppCreatedBy: constants.AppCreator,
-			},
-		}}, false),
 		Entry("statefulset without app label", &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{
 			Name: "moco-test",
 			Labels: map[string]string{

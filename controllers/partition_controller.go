@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -21,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -107,42 +105,28 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 }
 
 func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	stsPrct := partitionControllerPredicate()
-	podPrct := partitionControllerPredicate()
+	pred := partitionControllerPredicate()
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
-		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
+		For(&appsv1.StatefulSet{}, builder.WithPredicates(pred)).
+		Owns(&corev1.Pod{}, builder.WithPredicates(pred)).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
 		Complete(r)
 }
 
-// partitionControllerPredicate filters StatefulSets and Pods managed by MOCO.
-func partitionControllerPredicate() predicate.Funcs {
-	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
-	prctFunc := func(o client.Object) bool {
-		if !strings.HasPrefix(o.GetName(), "moco-") {
-			return false
-		}
-
-		labels := o.GetLabels()
-		if labels[constants.LabelAppName] != constants.AppNameMySQL {
-			return false
-		}
-		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
-			return false
-		}
-		return true
+func partitionControllerPredicate() predicate.Predicate {
+	pred, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			constants.LabelAppName:      constants.AppNameMySQL,
+			constants.LabelAppCreatedBy: constants.AppCreator,
+		},
+	})
+	if err != nil {
+		panic(err)
 	}
-
-	return predicate.Funcs{
-		UpdateFunc:  func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
-		CreateFunc:  func(e event.CreateEvent) bool { return prctFunc(e.Object) },
-		DeleteFunc:  func(e event.DeleteEvent) bool { return prctFunc(e.Object) },
-		GenericFunc: func(e event.GenericEvent) bool { return prctFunc(e.Object) },
-	}
+	return pred
 }
 
 // isRolloutReady returns true if the StatefulSet is ready for rolling update.
