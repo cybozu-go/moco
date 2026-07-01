@@ -189,16 +189,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			ExporterImage:              testExporterImage,
 			MySQLConfigMapHistoryLimit: 2,
 		}
-		err = mysqlr.SetupWithManager(mgr)
+		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx, cancel := context.WithCancel(ctx)
 		stopFunc = cancel
 		go func() {
+			defer GinkgoRecover()
 			err := mgr.Start(ctx)
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(100 * time.Millisecond)
 	})

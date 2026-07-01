@@ -1950,7 +1950,7 @@ func setControllerReferenceWithPVC(cluster *mocov1beta2.MySQLCluster, pvc *corev
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	certHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 		// the certificate name is formatted as "moco-agent-<cluster.Namespace>.<cluster.Name>"
 		if a.GetNamespace() != r.SystemNamespace {
@@ -1970,38 +1970,45 @@ func (r *MySQLClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	})
 
-	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+	requestsForIndexedClusters := func(ctx context.Context, namespace, field, value string) []reconcile.Request {
 		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
+		if err := r.List(ctx, clusters, client.InNamespace(namespace), client.MatchingFields{field: value}); err != nil {
 			return nil
 		}
-		var req []reconcile.Request
+
+		req := make([]reconcile.Request, 0, len(clusters.Items))
 		for _, c := range clusters.Items {
-			if c.Spec.MySQLConfigMapName == nil {
-				continue
-			}
-			if *c.Spec.MySQLConfigMapName == a.GetName() {
-				req = append(req, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&c)})
-			}
+			req = append(req, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&c)})
 		}
 		return req
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &mocov1beta2.MySQLCluster{}, "spec.mysqlConfigMapName", func(rawObj client.Object) []string {
+		c := rawObj.(*mocov1beta2.MySQLCluster)
+		if c.Spec.MySQLConfigMapName == nil {
+			return nil
+		}
+		return []string{*c.Spec.MySQLConfigMapName}
+	}); err != nil {
+		return fmt.Errorf("failed to index MySQLCluster by spec.mysqlConfigMapName: %w", err)
+	}
+
+	configMapHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+		return requestsForIndexedClusters(ctx, a.GetNamespace(), "spec.mysqlConfigMapName", a.GetName())
 	})
 
-	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
-		clusters := &mocov1beta2.MySQLClusterList{}
-		if err := r.List(ctx, clusters, client.InNamespace(a.GetNamespace())); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &mocov1beta2.MySQLCluster{}, "spec.backupPolicyName", func(rawObj client.Object) []string {
+		c := rawObj.(*mocov1beta2.MySQLCluster)
+		if c.Spec.BackupPolicyName == nil {
 			return nil
 		}
-		var req []reconcile.Request
-		for _, c := range clusters.Items {
-			if c.Spec.BackupPolicyName == nil {
-				continue
-			}
-			if *c.Spec.BackupPolicyName == a.GetName() {
-				req = append(req, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&c)})
-			}
-		}
-		return req
+		return []string{*c.Spec.BackupPolicyName}
+	}); err != nil {
+		return fmt.Errorf("failed to index MySQLCluster by spec.backupPolicyName: %w", err)
+	}
+
+	backupPolicyHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+		return requestsForIndexedClusters(ctx, a.GetNamespace(), "spec.backupPolicyName", a.GetName())
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).

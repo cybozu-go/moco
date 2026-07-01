@@ -102,6 +102,8 @@ func subMain(ns, addr string, port int) error {
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
 	defer clusterMgr.StopAll()
 
+	ctx := ctrl.SetupSignalHandler()
+
 	if err = (&controllers.MySQLClusterReconciler{
 		Client:                        mgr.GetClient(),
 		Scheme:                        mgr.GetScheme(),
@@ -117,7 +119,7 @@ func subMain(ns, addr string, port int) error {
 		MaxConcurrentReconciles:       config.maxConcurrentReconciles,
 		MySQLConfigMapHistoryLimit:    config.mySQLConfigMapHistoryLimit,
 		DisableDefaultSecurityContext: config.disableDefaultSecurityContext,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}
@@ -169,7 +171,6 @@ func subMain(ns, addr string, port int) error {
 	metrics.Register(k8smetrics.Registry)
 
 	setupLog.Info("starting manager")
-	ctx := ctrl.SetupSignalHandler()
 	go reloader.Run(ctx, 1*time.Hour)
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
