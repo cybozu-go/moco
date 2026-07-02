@@ -7,11 +7,13 @@ kind: Kustomization
 resources:
 - bases/moco.cybozu.com_mysqlclusters.yaml
 - bases/moco.cybozu.com_backuppolicies.yaml
+- bases/moco.cybozu.com_credentialrotations.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
 - path: patches/mysqlcluster.yaml
 - path: patches/backuppolicy.yaml
+- path: patches/credentialrotation.yaml
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
 # - path: patches/webhook_in_mysqlclusters.yaml
