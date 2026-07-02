@@ -5,6 +5,21 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-07-01
+
+### Added
+
+- Add a `--disable-default-security-context` flag to moco-controller that, when enabled, disables default injection of `runAsUser`/`runAsGroup`/`fsGroup` (default: `false`, existing behavior unchanged). [#872](https://github.com/cybozu-go/moco/pull/872)
+- Add SECURITY.md [#919](https://github.com/cybozu-go/moco/pull/919)
+
+### Fixed
+
+- Add predicates to PodWatcher for better event filtering [#925](https://github.com/cybozu-go/moco/pull/925)
+- Prevent MySQLCluster controller startup slowdown in large clusters [#924](https://github.com/cybozu-go/moco/pull/924)
+
+### Contributors
+- @wnevis-cmyk
+
 ## [0.35.0] - 2026-05-12
 
 ### Added
@@ -821,7 +836,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.36.0...HEAD
+[0.36.0]: https://github.com/cybozu-go/moco/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/cybozu-go/moco/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/cybozu-go/moco/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/cybozu-go/moco/compare/v0.32.0...v0.33.0
