@@ -98,8 +98,8 @@ func (cr *CredentialRotation) Step() RotationStep {
 	// Stale states are stuck and take priority — neither generation
 	// comparison nor sub-step conditions are meaningful while the
 	// source Secret is inconsistent.
-	if ConditionFalseWithReason(cr, ConditionRotationReady, ReasonStale) ||
-		ConditionFalseWithReason(cr, ConditionDiscardReady, ReasonStale) {
+	if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonStale) ||
+		IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonStale) {
 		return StepStalePending
 	}
 
@@ -121,10 +121,10 @@ func (cr *CredentialRotation) Step() RotationStep {
 		if rotationReady {
 			return StepIdle
 		}
-		if ConditionFalseWithReason(cr, ConditionRotationReady, ReasonRefused) {
+		if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonRefused) {
 			return StepRotationRefused
 		}
-		if ConditionFalseWithReason(cr, ConditionRotationReady, ReasonBlocked) {
+		if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonBlocked) {
 			return StepRotationBlocked
 		}
 		if !dualPassword {
@@ -136,10 +136,10 @@ func (cr *CredentialRotation) Step() RotationStep {
 	}
 
 	if newDiscard {
-		if ConditionFalseWithReason(cr, ConditionDiscardReady, ReasonRefused) {
+		if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonRefused) {
 			return StepDiscardRefused
 		}
-		if ConditionFalseWithReason(cr, ConditionDiscardReady, ReasonBlocked) {
+		if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonBlocked) {
 			return StepDiscardBlocked
 		}
 		// Stale DiscardReady=True is fine here — dualPassword still
@@ -253,11 +253,12 @@ func (cr *CredentialRotation) setCondition(condType string, status metav1.Condit
 	})
 }
 
-// ConditionFalseWithReason reports whether the named condition is present
+// IsConditionFalseWithReason reports whether the named condition is present
 // with Status=False and the given Reason. The Stale / Refused / Blocked
 // reasons that Step() checks all live on Status=False, so this helper
-// captures that pattern.
-func ConditionFalseWithReason(cr *CredentialRotation, condType, reason string) bool {
+// captures that pattern. Named to match apimeta.IsStatusConditionTrue /
+// IsStatusConditionFalse / IsStatusConditionPresentAndEqual.
+func IsConditionFalseWithReason(cr *CredentialRotation, condType, reason string) bool {
 	cond := apimeta.FindStatusCondition(cr.Status.Conditions, condType)
 	if cond == nil {
 		return false

@@ -183,7 +183,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 		// the cluster stays scaled to 0 would re-issue an API write
 		// (apimeta.SetStatusCondition preserves LastTransitionTime,
 		// but Status().Update itself still hits the apiserver).
-		if mocov1beta2.ConditionFalseWithReason(cr, mocov1beta2.ConditionRotationReady, mocov1beta2.ReasonRefused) {
+		if mocov1beta2.IsConditionFalseWithReason(cr, mocov1beta2.ConditionRotationReady, mocov1beta2.ReasonRefused) {
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 		}
 		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "RotationRefused",
