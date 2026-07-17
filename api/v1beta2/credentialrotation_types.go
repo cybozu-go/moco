@@ -174,8 +174,8 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
-// +kubebuilder:printcolumn:name="RotReady",type="string",JSONPath=`.status.conditions[?(@.type=="RotationReady")].status`
-// +kubebuilder:printcolumn:name="DiscReady",type="string",JSONPath=`.status.conditions[?(@.type=="DiscardReady")].status`
+// +kubebuilder:printcolumn:name="RotationReady",type="string",JSONPath=`.status.conditions[?(@.type=="RotationReady")].status`
+// +kubebuilder:printcolumn:name="DiscardReady",type="string",JSONPath=`.status.conditions[?(@.type=="DiscardReady")].status`
 // +kubebuilder:printcolumn:name="DualPassword",type="string",JSONPath=`.status.conditions[?(@.type=="DualPassword")].status`
 // +kubebuilder:printcolumn:name="RotationGen",type="integer",JSONPath=".spec.rotationGeneration"
 // +kubebuilder:printcolumn:name="ObservedRotation",type="integer",JSONPath=".status.observedRotationGeneration"

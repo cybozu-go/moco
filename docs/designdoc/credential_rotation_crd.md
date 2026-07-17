@@ -48,42 +48,42 @@ State is exposed as three Conditions:
   User bumps spec.rotationGeneration
        │
        ▼
-  ┌── Rotate ───────────────────────────────────────────────────────┐
-  │  Idle (RotReady=True, DiscReady=False, DualPw=False)            │
-  │    │ Reconciler: seed pending passwords, RotReady→False/Pending │
-  │    ▼                                                            │
-  │  ApplyingRetain (RotReady=False, DiscReady=False, DualPw=False) │
-  │    │ ClusterManager: ALTER USER ... RETAIN on every instance    │
-  │    ▼                                                            │
-  │  DistributingPassword (DualPw=True)                             │
-  │    │ Reconciler: per-namespace Secret apply, restart annotation │
-  │    │            promote observedRotationGeneration              │
-  │    ▼                                                            │
-  │  AwaitingRollout (DiscReady=False, DualPw=True)                 │
-  │    │ Reconciler: watch StatefulSet rollout; once settled,       │
-  │    │            DiscReady→True (verification window opens)      │
-  │    ▼                                                            │
-  │  AwaitingDiscard (DiscReady=True, DualPw=True)                  │
-  └────────────────────────────────────────────────────────────────-┘
+  ┌── Rotate ────────────────────────────────────────────────────────────────┐
+  │  Idle (RotationReady=True, DiscardReady=False, DualPw=False)             │
+  │    │ Reconciler: seed pending passwords, RotationReady→False/Pending     │
+  │    ▼                                                                     │
+  │  ApplyingRetain (RotationReady=False, DiscardReady=False, DualPw=False)  │
+  │    │ ClusterManager: ALTER USER ... RETAIN on every instance             │
+  │    ▼                                                                     │
+  │  DistributingPassword (DualPw=True)                                      │
+  │    │ Reconciler: per-namespace Secret apply, restart annotation          │
+  │    │            promote observedRotationGeneration                       │
+  │    ▼                                                                     │
+  │  AwaitingRollout (DiscardReady=False, DualPw=True)                       │
+  │    │ Reconciler: watch StatefulSet rollout; once settled,                │
+  │    │            DiscardReady→True (verification window opens)            │
+  │    ▼                                                                     │
+  │  AwaitingDiscard (DiscardReady=True, DualPw=True)                        │
+  └──────────────────────────────────────────────────────────────────────────┘
        │
        │  Operator verifies apps work with new passwords
        │  kubectl moco credential discard
        ▼
-  ┌── Discard ──────────────────────────────────────────────────────┐
-  │  spec.discardGeneration bumped (DiscReady=True stale, DualPw=T) │
-  │    │ Reconciler: DiscReady→False/Pending; emit DiscardStarted   │
-  │    ▼                                                            │
-  │  ApplyingDiscard (DiscReady=False/Pending, DualPw=True)         │
-  │    │ ClusterManager (blocked until DiscReady=False/Pending):    │
-  │    │            DISCARD OLD PASSWORD + auth plugin migration    │
-  │    │            (rollout already settled — no re-wait)          │
-  │    ▼                                                            │
-  │  Finalizing (DualPw=False)                                      │
-  │    │ Reconciler: confirm Secret; promote observedDiscardGen     │
-  │    │            RotReady→True (back to Idle)                    │
-  │    ▼                                                            │
-  │  Idle                                                           │
-  └────────────────────────────────────────────────────────────────-┘
+  ┌── Discard ───────────────────────────────────────────────────────────────┐
+  │  spec.discardGeneration bumped (DiscardReady=True stale, DualPw=T)       │
+  │    │ Reconciler: DiscardReady→False/Pending; emit DiscardStarted         │
+  │    ▼                                                                     │
+  │  ApplyingDiscard (DiscardReady=False/Pending, DualPw=True)               │
+  │    │ ClusterManager (blocked until DiscardReady=False/Pending):          │
+  │    │            DISCARD OLD PASSWORD + auth plugin migration             │
+  │    │            (rollout already settled — no re-wait)                   │
+  │    ▼                                                                     │
+  │  Finalizing (DualPw=False)                                               │
+  │    │ Reconciler: confirm Secret; promote observedDiscardGen              │
+  │    │            RotationReady→True (back to Idle)                        │
+  │    ▼                                                                     │
+  │  Idle                                                                    │
+  └──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Design Decisions
@@ -267,7 +267,7 @@ The current step is derived from these three conditions plus the generation comp
 | `kubectl moco credential discard <cluster>` | Refuse if stale; require `cr.IsAwaitingDiscard()`; patch `spec.discardGeneration` to match `spec.rotationGeneration`. |
 | `kubectl moco credential show <cluster>` | Read the per-namespace user Secret. |
 
-`kubectl get credentialrotation` prints `ROTREADY` / `DISCREADY` / `DUALPASSWORD` (the three condition statuses) plus the four generation columns and `AGE`.
+`kubectl get credentialrotation` prints `ROTATIONREADY` / `DISCARDREADY` / `DUALPASSWORD` (the three condition statuses) plus the four generation columns and `AGE`.
 
 ### GitOps / ArgoCD
 
