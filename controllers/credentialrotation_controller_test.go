@@ -93,7 +93,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			ExporterImage:              testExporterImage,
 			MySQLConfigMapHistoryLimit: 2,
 		}
-		err = mysqlr.SetupWithManager(mgr)
+		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
 
 		credRotr := &CredentialRotationReconciler{
