@@ -16,14 +16,16 @@ import (
 // and reported as an error. The controller never attempts automatic repair of
 // partial state; explicit manual cleanup is required (documented in Event messages).
 const (
-	AdminPasswordPendingKey       = "ADMIN_PASSWORD_PENDING"
-	AgentPasswordPendingKey       = "AGENT_PASSWORD_PENDING"
-	ReplicationPasswordPendingKey = "REPLICATION_PASSWORD_PENDING"
-	CloneDonorPasswordPendingKey  = "CLONE_DONOR_PASSWORD_PENDING"
-	ExporterPasswordPendingKey    = "EXPORTER_PASSWORD_PENDING"
-	BackupPasswordPendingKey      = "BACKUP_PASSWORD_PENDING"
-	ReadOnlyPasswordPendingKey    = "READONLY_PASSWORD_PENDING"
-	WritablePasswordPendingKey    = "WRITABLE_PASSWORD_PENDING"
+	pendingKeySuffix = "_PENDING"
+
+	AdminPasswordPendingKey       = AdminPasswordKey + pendingKeySuffix
+	AgentPasswordPendingKey       = agentPasswordKey + pendingKeySuffix
+	ReplicationPasswordPendingKey = replicationPasswordKey + pendingKeySuffix
+	CloneDonorPasswordPendingKey  = cloneDonorPasswordKey + pendingKeySuffix
+	ExporterPasswordPendingKey    = exporterPasswordKey + pendingKeySuffix
+	BackupPasswordPendingKey      = BackupPasswordKey + pendingKeySuffix
+	ReadOnlyPasswordPendingKey    = readOnlyPasswordKey + pendingKeySuffix
+	WritablePasswordPendingKey    = writablePasswordKey + pendingKeySuffix
 
 	RotationIDKey    = "ROTATION_ID"
 	RetainStartedKey = "RETAIN_STARTED"
