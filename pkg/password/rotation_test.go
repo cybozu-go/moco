@@ -143,14 +143,14 @@ func TestMySQLPasswordFromPending(t *testing.T) {
 	}
 }
 
-func TestConfirmPendingPasswords(t *testing.T) {
+func TestPromotePendingPasswords(t *testing.T) {
 	t.Run("copies pending to current and removes pending", func(t *testing.T) {
 		secret := makeSecretWithPending("test-id")
 		secret.Data[AdminPasswordKey] = []byte("old-admin")
 
 		pendingAdmin := string(secret.Data[AdminPasswordPendingKey])
 
-		err := ConfirmPendingPasswords(secret)
+		err := PromotePendingPasswords(secret)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -171,7 +171,7 @@ func TestConfirmPendingPasswords(t *testing.T) {
 				AdminPasswordKey: []byte("current"),
 			},
 		}
-		err := ConfirmPendingPasswords(secret)
+		err := PromotePendingPasswords(secret)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -182,7 +182,7 @@ func TestConfirmPendingPasswords(t *testing.T) {
 
 	t.Run("nil data is no-op", func(t *testing.T) {
 		secret := &corev1.Secret{}
-		err := ConfirmPendingPasswords(secret)
+		err := PromotePendingPasswords(secret)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,7 +194,7 @@ func TestConfirmPendingPasswords(t *testing.T) {
 				AdminPasswordPendingKey: []byte("pwd"),
 			},
 		}
-		err := ConfirmPendingPasswords(secret)
+		err := PromotePendingPasswords(secret)
 		if err == nil {
 			t.Fatal("expected error for partial pending")
 		}

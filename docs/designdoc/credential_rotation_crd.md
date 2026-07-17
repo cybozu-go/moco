@@ -353,7 +353,7 @@ Rotation is refused at three points:
 
 | # | Action | Persistence |
 |---|---|---|
-| 1 | Promote pending passwords to current in the source Secret (`ConfirmPendingPasswords`). | Secret.Update |
+| 1 | Promote pending passwords to current in the source Secret (`PromotePendingPasswords`). | Secret.Update |
 | 2 | Promote `observedDiscardGeneration = spec.discardGeneration`. Set `RotationReady=True/Reconciled`, `DiscardReady=False/Pending`. | Status.Update |
 
 ## Source Secret Layout
@@ -377,9 +377,9 @@ RETAIN_STARTED:         <uuid>     # only during the ApplyingRetain step (crash-
 
 An alternative is a separate Secret owned by the CR. Pending passwords are embedded in the source Secret instead because:
 
-1. **Crash safety of the confirm step.** `ConfirmPendingPasswords` promotes pending passwords to current by renaming keys within a single object — atomic at the Secret level. A separate Secret would require copying data between two objects; a crash between the read and the write could lose the new passwords irrecoverably.
+1. **Crash safety of the promote step.** `PromotePendingPasswords` promotes pending passwords to current by renaming keys within a single object — atomic at the Secret level. A separate Secret would require copying data between two objects; a crash between the read and the write could lose the new passwords irrecoverably.
 2. **Simpler failure modes.** With a single Secret, the only question on crash recovery is "did the update succeed?". With two Secrets, every sub-step has to reason about cross-object consistency.
-3. **Idempotency.** `SetPendingPasswords` checks if matching pending keys already exist; `ConfirmPendingPasswords` is a no-op when no pending keys remain. Both work on a single object.
+3. **Idempotency.** `SetPendingPasswords` checks if matching pending keys already exist; `PromotePendingPasswords` is a no-op when no pending keys remain. Both work on a single object.
 
 ## Component Details
 
@@ -432,7 +432,7 @@ Transient lookup errors must **not** silently fall back to current passwords —
 | `ApplyingDiscard`, `DiscardReady=False/Pending`, DISCARD not yet executed | ClusterManager picks up the step |
 | DISCARD complete, `DualPassword=False` not yet written | `HasDualPassword` gates DISCARD → re-run skips all users → writes the condition transition |
 | `Finalizing`, Secret promoted but status not updated | `HasPendingPasswords` returns false; `CurrentPasswordsMatch` verifies promotion succeeded → sets `RotationReady=True` |
-| `Finalizing`, Secret not yet promoted | `ConfirmPendingPasswords` is idempotent |
+| `Finalizing`, Secret not yet promoted | `PromotePendingPasswords` is idempotent |
 
 ### Why `HasDualPassword` instead of per-user status tracking?
 
@@ -442,7 +442,7 @@ MySQL holds only one secondary password slot per user. A second RETAIN with the 
 
 `ALTER USER ... DISCARD OLD PASSWORD` fails when there is no secondary password to discard. The DISCARD handler queries `HasDualPassword` per user and skips users whose secondary password is already gone — mirroring the RETAIN gate.
 
-### `ConfirmPendingPasswords` crash recovery
+### `PromotePendingPasswords` crash recovery
 
 If the controller crashes after the Secret update but before the status update, the Secret has already been promoted but `cr.Step()` still resolves to `Finalizing`. On re-reconcile, `HasPendingPasswords` returns `(false, nil)`. The reconciler then verifies via `CurrentPasswordsMatch` that the controller Secret's current passwords match the per-namespace user Secret. If they match, promotion already succeeded; if they differ, the reconciler emits an `InconsistentState` Warning Event and sets `DiscardReady=False/Stale`.
 

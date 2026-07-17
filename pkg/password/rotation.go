@@ -42,7 +42,7 @@ var allPendingKeys = []string{
 	WritablePasswordPendingKey,
 }
 
-// pendingToCurrentKey maps pending key → current key for ConfirmPendingPasswords.
+// pendingToCurrentKey maps pending key → current key for PromotePendingPasswords.
 var pendingToCurrentKey = map[string]string{
 	AdminPasswordPendingKey:       AdminPasswordKey,
 	AgentPasswordPendingKey:       agentPasswordKey,
@@ -178,11 +178,12 @@ func MySQLPasswordFromPending(secret *corev1.Secret) (*MySQLPassword, error) {
 	}, nil
 }
 
-// ConfirmPendingPasswords copies pending passwords to current keys and removes
-// pending keys and ROTATION_ID from the secret.
+// PromotePendingPasswords copies pending passwords to current keys and
+// then removes the pending keys along with ROTATION_ID and RETAIN_STARTED
+// from the secret — i.e. it makes the pending set the new canonical set.
 // Idempotent: if no pending keys and no ROTATION_ID exist, returns nil (no-op).
 // Returns error only on inconsistent state (partial pending keys).
-func ConfirmPendingPasswords(secret *corev1.Secret) error {
+func PromotePendingPasswords(secret *corev1.Secret) error {
 	if secret.Data == nil {
 		return nil
 	}
@@ -205,11 +206,11 @@ func ConfirmPendingPasswords(secret *corev1.Secret) error {
 	// not be auto-repaired. Return an error so the caller can surface it for
 	// manual investigation.
 	if pendingCount != len(allPendingKeys) {
-		return fmt.Errorf("inconsistent pending state during confirm: %d/%d pending keys present",
+		return fmt.Errorf("inconsistent pending state during promote: %d/%d pending keys present",
 			pendingCount, len(allPendingKeys))
 	}
 	if !hasRotationID {
-		return fmt.Errorf("inconsistent pending state during confirm: all pending keys present but ROTATION_ID is missing")
+		return fmt.Errorf("inconsistent pending state during promote: all pending keys present but ROTATION_ID is missing")
 	}
 
 	// Copy pending → current

@@ -498,11 +498,11 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 	}
 
 	if hasPending {
-		if err := password.ConfirmPendingPasswords(sourceSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to confirm pending passwords: %w", err)
+		if err := password.PromotePendingPasswords(sourceSecret); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to promote pending passwords: %w", err)
 		}
 		if err := r.Update(ctx, sourceSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update source secret after confirm: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to update source secret after promote: %w", err)
 		}
 	} else {
 		userSecret := &corev1.Secret{}
