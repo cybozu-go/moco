@@ -213,7 +213,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	replicas := int(cluster.Spec.Replicas)
 	if replicas == 0 {
 		log.Info("waiting for replicas to be scaled up before DISCARD", "rotationID", cr.Status.RotationID)
-		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardRefused",
+		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardBlocked",
 			"Cannot proceed with DISCARD: cluster has 0 replicas. Scale the cluster up first.")
 		if err := p.setDiscardReady(ctx, metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
 			"Cluster scaled to 0 replicas mid-discard; cannot proceed with DISCARD."); err != nil {
