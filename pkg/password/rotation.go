@@ -129,7 +129,7 @@ func SetPendingPasswords(secret *corev1.Secret, rotationID string) (*MySQLPasswo
 		return nil, fmt.Errorf("cannot set pending passwords: %w", err)
 	}
 	if has {
-		return NewMySQLPasswordFromPending(secret)
+		return MySQLPasswordFromPending(secret)
 	}
 
 	pwd, err := NewMySQLPassword()
@@ -153,8 +153,10 @@ func SetPendingPasswords(secret *corev1.Secret, rotationID string) (*MySQLPasswo
 	return pwd, nil
 }
 
-// NewMySQLPasswordFromPending constructs MySQLPassword from *_PENDING keys in the secret.
-func NewMySQLPasswordFromPending(secret *corev1.Secret) (*MySQLPassword, error) {
+// MySQLPasswordFromPending constructs MySQLPassword from the *_PENDING
+// keys of a Secret. Not a constructor of fresh passwords — use
+// NewMySQLPassword or SetPendingPasswords for that.
+func MySQLPasswordFromPending(secret *corev1.Secret) (*MySQLPassword, error) {
 	if secret.Data == nil {
 		return nil, fmt.Errorf("secret %s/%s has no data", secret.Namespace, secret.Name)
 	}

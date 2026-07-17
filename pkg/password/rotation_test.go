@@ -129,9 +129,9 @@ func TestSetPendingPasswords(t *testing.T) {
 	})
 }
 
-func TestNewMySQLPasswordFromPending(t *testing.T) {
+func TestMySQLPasswordFromPending(t *testing.T) {
 	secret := makeSecretWithPending("test-id")
-	pwd, err := NewMySQLPasswordFromPending(secret)
+	pwd, err := MySQLPasswordFromPending(secret)
 	if err != nil {
 		t.Fatal(err)
 	}

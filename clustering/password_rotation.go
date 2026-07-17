@@ -244,7 +244,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	// and every Pod is running with the new password.
 
 	// Connect with the pending (new) password.
-	pendingPasswd, err := password.NewMySQLPasswordFromPending(sourceSecret)
+	pendingPasswd, err := password.MySQLPasswordFromPending(sourceSecret)
 	if err != nil {
 		return false, err
 	}

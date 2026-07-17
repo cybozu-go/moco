@@ -286,7 +286,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	pendingPasswd, err := password.NewMySQLPasswordFromPending(sourceSecret)
+	pendingPasswd, err := password.MySQLPasswordFromPending(sourceSecret)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to read pending passwords: %w", err)
 	}

@@ -446,7 +446,7 @@ func passwordForDistribution(controllerSecret *corev1.Secret, preferPending bool
 		return nil, fmt.Errorf("inconsistent pending password state in source Secret: %w", err)
 	}
 	if hasPending {
-		return password.NewMySQLPasswordFromPending(controllerSecret)
+		return password.MySQLPasswordFromPending(controllerSecret)
 	}
 	return password.NewMySQLPasswordFromSecret(controllerSecret)
 }
