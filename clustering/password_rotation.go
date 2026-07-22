@@ -145,13 +145,12 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	primaryIndex := cluster.Status.CurrentPrimaryIndex
 
 	for idx := range replicas {
-		isReplica := idx != primaryIndex
 		op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
 		if err != nil {
 			return false, err
 		}
 
-		if err := rotateInstanceUsers(ctx, op, pendingMap, idx, isReplica); err != nil {
+		if err := rotateInstanceUsers(ctx, op, pendingMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster)); err != nil {
 			_ = op.Close()
 			return false, err
 		}
@@ -269,13 +268,12 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", cr.Status.RotationID)
 
 	for idx := range replicas {
-		isReplica := idx != primaryIndex
 		op, err := p.dbf.New(ctx, cluster, pendingPasswd, idx)
 		if err != nil {
 			return false, err
 		}
 
-		if err := discardInstanceUsers(ctx, op, pendingMap, idx, isReplica, authPlugin); err != nil {
+		if err := discardInstanceUsers(ctx, op, pendingMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster), authPlugin); err != nil {
 			_ = op.Close()
 			return false, err
 		}
@@ -350,17 +348,32 @@ func checkInstanceDualPasswords(
 	return false, "", nil
 }
 
+// needsSuperReadOnlyOff reports whether the given instance runs with
+// super_read_only=1 during steady-state operation and therefore needs the
+// flag temporarily lowered before RETAIN / DISCARD DDL. The primary of a
+// normal cluster is writable, but the primary of an intermediate-primary
+// cluster (spec.replicationSourceSecretName != nil) is itself a replica of
+// an external cluster and runs with super_read_only=1. Without the toggle
+// the DDL fails with ER_OPTION_PREVENTS_STATEMENT (1290).
+func needsSuperReadOnlyOff(idx, primaryIndex int, cluster *mocov1beta2.MySQLCluster) bool {
+	if idx != primaryIndex {
+		return true
+	}
+	return cluster.Spec.ReplicationSourceSecretName != nil
+}
+
 // rotateInstanceUsers executes ALTER USER RETAIN for users on a single instance.
+// See needsSuperReadOnlyOff for the semantics of the last argument.
 func rotateInstanceUsers(
 	ctx context.Context,
 	op dbop.Operator,
 	pendingMap map[string]string,
 	instanceIndex int,
-	isReplica bool,
+	needsSuperReadOnlyOff bool,
 ) error {
 	log := logFromContext(ctx)
 
-	if isReplica {
+	if needsSuperReadOnlyOff {
 		if err := op.SetSuperReadOnly(ctx, false); err != nil {
 			return fmt.Errorf("failed to disable super_read_only on instance %d: %w", instanceIndex, err)
 		}
@@ -395,17 +408,18 @@ func rotateInstanceUsers(
 }
 
 // discardInstanceUsers executes DISCARD OLD PASSWORD and auth plugin migration for all users on a single instance.
+// See needsSuperReadOnlyOff for the semantics of the fifth argument.
 func discardInstanceUsers(
 	ctx context.Context,
 	op dbop.Operator,
 	pendingMap map[string]string,
 	instanceIndex int,
-	isReplica bool,
+	needsSuperReadOnlyOff bool,
 	authPlugin string,
 ) error {
 	log := logFromContext(ctx)
 
-	if isReplica {
+	if needsSuperReadOnlyOff {
 		if err := op.SetSuperReadOnly(ctx, false); err != nil {
 			return fmt.Errorf("failed to disable super_read_only on instance %d for discard: %w", instanceIndex, err)
 		}

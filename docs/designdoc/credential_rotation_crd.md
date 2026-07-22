@@ -293,7 +293,7 @@ Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneratio
 |---|---|---|
 | 1 | Pre-check: every instance is scanned for pre-existing dual passwords. Skipped if the `RETAIN_STARTED` marker is set (crash recovery). | — |
 | 2 | Set `RETAIN_STARTED` marker (rotationID) in the source Secret. | Secret.Update |
-| 3 | For each instance: connect with the current password, disable `super_read_only` on replicas, execute `ALTER USER ... RETAIN CURRENT PASSWORD` per user (skipping users where `HasDualPassword` is already true), restore `super_read_only`. | MySQL |
+| 3 | For each instance: connect with the current password, disable `super_read_only` on every instance that runs with it on (replicas, and the intermediate primary when `spec.replicationSourceSecretName` is set), execute `ALTER USER ... RETAIN CURRENT PASSWORD` per user (skipping users where `HasDualPassword` is already true), restore `super_read_only`. | MySQL |
 | 4 | Set `DualPassword=True/Retained` (and clear any prior `RotationReady=False/Blocked` back to `False/Pending`). | Status.Update |
 
 **Pre-check + `RETAIN_STARTED` marker.** If any instance already has a dual-password set from outside this cycle, a `DualPasswordExists` Warning Event is emitted and the step waits. Once the pre-check passes, the marker is persisted so a crashed-and-restarted reconcile skips the pre-check and resumes RETAIN — idempotency from there is provided by per-user `HasDualPassword`.
@@ -340,7 +340,7 @@ Rotation is refused at three points:
 |---|---|---|
 | 1 | Handshake: wait until `DiscardReady=False/Pending`. While the condition is `True`, `False/Refused`, or `False/Blocked`, return early. | — |
 | 2 | Determine the target auth plugin via `GetAuthPlugin` on the primary. | MySQL (read-only) |
-| 3 | For each instance: connect with the **pending** password, disable `super_read_only` on replicas, execute `DISCARD OLD PASSWORD` per user (skipped where `HasDualPassword` is already false), then auth plugin migration. Restore `super_read_only`. | MySQL |
+| 3 | For each instance: connect with the **pending** password, disable `super_read_only` on every instance that runs with it on (replicas, and the intermediate primary when `spec.replicationSourceSecretName` is set), execute `DISCARD OLD PASSWORD` per user (skipped where `HasDualPassword` is already false), then auth plugin migration. Restore `super_read_only`. | MySQL |
 | 4 | Set `DualPassword=False/NotRetained`. | Status.Update |
 
 **Why the handshake?** Both Reconciler and ClusterManager observe `Step=ApplyingDiscard` once the operator bumps `discardGeneration`. Without the handshake, ClusterManager could race ahead and run DISCARD before the Reconciler flips `DiscardReady` from `True/Reconciled` to `False/Pending`, skipping the `DiscardStarted` Event.
