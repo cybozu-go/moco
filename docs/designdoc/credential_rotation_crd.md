@@ -67,7 +67,7 @@ State is exposed as three Conditions:
   └──────────────────────────────────────────────────────────────────────────┘
        │
        │  Operator verifies apps work with new passwords
-       │  kubectl moco credential discard
+       │  kubectl moco discard-old-credential
        ▼
   ┌── Discard ───────────────────────────────────────────────────────────────┐
   │  spec.discardGeneration bumped (DiscardReady=True stale, DualPw=T)       │
@@ -287,9 +287,9 @@ Any one of the following conditions allows deletion (OR).
 
 | Command | Behaviour |
 |---|---|
-| `kubectl moco credential rotate <cluster>` | If CR does not exist: create with `(rotationGeneration: 1, discardGeneration: 0)`. If CR exists: refuse if stale; require `cr.IsIdle()`; increment `rotationGeneration`. |
-| `kubectl moco credential discard <cluster>` | Refuse if stale; require `cr.IsAwaitingDiscard()`; patch `spec.discardGeneration` to match `spec.rotationGeneration`. |
-| `kubectl moco credential show <cluster>` | Read the per-namespace user Secret. |
+| `kubectl moco rotate-credential <cluster>` | If CR does not exist: create with `(rotationGeneration: 1, discardGeneration: 0)`. If CR exists: refuse if stale; require `cr.IsIdle()`; increment `rotationGeneration`. |
+| `kubectl moco discard-old-credential <cluster>` | Refuse if stale; require `cr.IsAwaitingDiscard()`; patch `spec.discardGeneration` to match `spec.rotationGeneration`. |
+| `kubectl moco credential <cluster>` | Read the per-namespace user Secret (unchanged from previous releases). |
 
 `kubectl get credentialrotation` prints `ROTATIONREADY` / `DISCARDREADY` / `DUALPASSWORD` (the three condition statuses) plus the four generation columns and `AGE`.
 
@@ -297,7 +297,7 @@ Any one of the following conditions allows deletion (OR).
 
 The CR is long-lived and purely declarative, so it works naturally with GitOps. The lifecycle is driven by committing `rotationGeneration` / `discardGeneration` bumps; each commit triggers an ArgoCD sync that advances the cycle. No imperative CLI calls or CR deletions are required for normal operation.
 
-**Do not mix GitOps with `kubectl moco credential rotate/discard`.** The CLI patches the same spec fields GitOps manages. If the CLI bumps a counter, GitOps reconcile will try to roll it back, but the webhook rejects any decrease — leaving the resource permanently `OutOfSync`. Worse, the CLI-triggered phase already mutates MySQL passwords irreversibly. Pick one source of truth per environment.
+**Do not mix GitOps with `kubectl moco rotate-credential` / `discard-old-credential`.** The CLI patches the same spec fields GitOps manages. If the CLI bumps a counter, GitOps reconcile will try to roll it back, but the webhook rejects any decrease — leaving the resource permanently `OutOfSync`. Worse, the CLI-triggered phase already mutates MySQL passwords irreversibly. Pick one source of truth per environment.
 
 ## Rotate
 
@@ -506,7 +506,7 @@ If a `MySQLCluster` is deleted and another is recreated under the same name befo
 | `CredentialRotationReconciler` | Emit `StaleCredentialRotation` Warning Event and return without adopting |
 | `ClusterManager.handlePasswordRotation` | Return early; do not run RETAIN / DISCARD |
 | `MySQLClusterReconciler.reconcileV1Secret` | Ignore the CR; distribute current passwords normally |
-| `kubectl moco credential rotate` / `discard` | Refuse with an error instructing the user to delete the stale CR |
+| `kubectl moco rotate-credential` / `discard-old-credential` | Refuse with an error instructing the user to delete the stale CR |
 
 "Stale" means the CR has a MySQLCluster ownerReference whose UID does **not** match the live cluster, with no matching reference. A CR with no MySQLCluster ownerReference yet (just-created, not yet adopted) is treated as **fresh**.
 
@@ -609,7 +609,7 @@ $ kubectl -n <namespace> rollout status  statefulset <cluster-name>
 # 4. Reset MySQL passwords on all instances (see "How to Reset MySQL Passwords").
 
 # 5. Recreate the CR (GitOps will do this from Git; or:)
-$ kubectl moco credential rotate <cluster-name>
+$ kubectl moco rotate-credential <cluster-name>
 ```
 
 ### Missing Pending Passwords During Discard
@@ -640,5 +640,5 @@ $ kubectl -n <namespace> rollout status statefulset <cluster-name>
 # 3. Reset MySQL passwords on all instances (see "How to Reset MySQL Passwords").
 
 # After recovery, retry rotation:
-$ kubectl moco credential rotate <cluster-name>
+$ kubectl moco rotate-credential <cluster-name>
 ```
