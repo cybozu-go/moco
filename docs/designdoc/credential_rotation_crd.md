@@ -261,7 +261,7 @@ The controller calculates the current step from these three conditions and the g
 - `rotationGeneration` increase additionally requires `cluster.Spec.Replicas > 0` (rechecked at apply time; the controller still re-checks at reconcile time to handle scale-downs after admission).
 - `discardGeneration` may only increase while `oldCR.IsAwaitingDiscard()` (Step is `AwaitingDiscard`; the post-distribute rollout has settled).
 
-**ValidateDelete** — allow:
+**ValidateDelete:** deletion is allowed in any of the following cases:
 - `cr.IsDeletable()` is true (Step is one of `Idle`, `RotationRefused`, `RotationBlocked`, `DiscardBlocked`, `StalePending`). The `Blocked` / `Stale` cases are the documented recovery escape hatch.
 - The owning MySQLCluster is `NotFound` (GC after owner deletion).
 - The owning MySQLCluster has `DeletionTimestamp` set (`blockOwnerDeletion=true` would otherwise stall cluster termination).
