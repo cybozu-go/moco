@@ -249,23 +249,37 @@ The controller calculates the current step from these three conditions and the g
 ### Validation Webhook
 
 **ValidateCreate:**
+
+All of the following conditions are required (AND).
+
 - The target MySQLCluster (same name, same namespace) must exist.
 - `cluster.Spec.Replicas` must be `> 0`.
 - `rotationGeneration` must equal `1` (counter starts at 1 by convention).
-- `discardGeneration` must equal `0` (discard must be requested via update once the CR reaches the awaiting-discard steady state — a non-zero value at create time would skip `AwaitingRollout` and the verification window).
+- `discardGeneration` must equal `0`. Discard must be requested via update after the CR reaches the awaiting-discard steady state. A non-zero value at create time would skip `AwaitingRollout` and the verification window.
 
 **ValidateUpdate:**
-- Both `rotationGeneration` and `discardGeneration` must be monotonically non-decreasing.
-- `discardGeneration <= rotationGeneration`.
-- `rotationGeneration` may only increase while `oldCR.IsIdle()` (Step is `Idle` or `RotationRefused` — i.e. nothing was mutated, so a retry is safe). A previously-stuck cycle (`Blocked` / `Stale`) must be cleared via the recovery procedure (delete + recreate) before a new request.
-- `rotationGeneration` increase additionally requires `cluster.Spec.Replicas > 0` (rechecked at apply time; the controller still re-checks at reconcile time to handle scale-downs after admission).
-- `discardGeneration` may only increase while `oldCR.IsAwaitingDiscard()` (Step is `AwaitingDiscard`; the post-distribute rollout has settled).
 
-**ValidateDelete:** deletion is allowed in any of the following cases:
-- `cr.IsDeletable()` is true (Step is one of `Idle`, `RotationRefused`, `RotationBlocked`, `DiscardBlocked`, `StalePending`). The `Blocked` / `Stale` cases are the documented recovery escape hatch.
-- The owning MySQLCluster is `NotFound` (GC after owner deletion).
-- The owning MySQLCluster has `DeletionTimestamp` set (`blockOwnerDeletion=true` would otherwise stall cluster termination).
-- The CR carries a stale MySQLCluster ownerRef whose UID does not match the live cluster (recreated cluster; see [Stale CR Handling](#stale-cr-handling-cluster-recreated-under-the-same-name)).
+The following invariant checks apply to every update, regardless of which fields changed (AND):
+
+- `rotationGeneration` must be greater than or equal to its old value.
+- `discardGeneration` must be greater than or equal to its old value.
+- `discardGeneration <= rotationGeneration`.
+
+In addition, the following condition applies when the corresponding generation is increased:
+
+- If `rotationGeneration` increases, both of these conditions are required (AND):
+  - `oldCR.IsIdle()` is true. This means the old Step is `Idle` or `RotationRefused`; nothing was mutated, so a retry is safe. A previously stuck cycle (`Blocked` / `Stale`) must be cleared through the recovery procedure (delete + recreate) before a new request.
+  - The live target MySQLCluster has `cluster.Spec.Replicas > 0`. This is rechecked when the request is applied; the controller also re-checks it at reconcile time to handle scale-downs after admission.
+- If `discardGeneration` increases, `oldCR.IsAwaitingDiscard()` must be true. The old Step must be `AwaitingDiscard`, which means the post-distribute rollout has settled and the verification window is open.
+
+**ValidateDelete:**
+
+Any one of the following conditions allows deletion (OR).
+
+- `cr.IsDeletable()` is true. This means the Step is one of `Idle`, `RotationRefused`, `RotationBlocked`, `DiscardBlocked`, or `StalePending`. `RotationBlocked`, `DiscardBlocked`, and `StalePending` are the documented recovery escape hatches.
+- The owning MySQLCluster is `NotFound` (garbage collection after owner deletion).
+- The owning MySQLCluster has `DeletionTimestamp` set. `blockOwnerDeletion=true` would otherwise stall cluster termination.
+- The CR carries a stale MySQLCluster ownerRef whose UID does not match the live cluster (the cluster was recreated under the same name; see [Stale CR Handling](#stale-cr-handling-cluster-recreated-under-the-same-name)).
 
 `AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are **not** deletable: MySQL still holds dual passwords. Operators must scale the cluster down first (which transitions the CR to `RotationBlocked` or `DiscardBlocked`).
 
