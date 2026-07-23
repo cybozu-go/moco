@@ -339,13 +339,13 @@ Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneratio
 | 2 | Check rollout completion (`ObservedGeneration` caught up, `CurrentRevision == UpdateRevision`, `UpdatedReplicas == Replicas`, `ReadyReplicas == Replicas`). If in flight, requeue. | — |
 | 3 | Once settled: `DiscardReady=True/Reconciled` and emit `AwaitingDiscard` Event. | Status.Update |
 
-**Why wait for the rollout here, not inside DISCARD?** The verification window only makes sense once every Pod is using the new password. Surfacing `DiscardReady=True` earlier would let `kubectl wait --for=condition=DiscardReady` return while the rollout is still in flight, and would let an automation script start `discard` while some Pods still depend on the old password — DISCARD at that point would remove the secondary password those Pods still use. The rollout is also a K8s concern, so it belongs in the Reconciler.
+**Why wait for the rollout here, not inside DISCARD?** The verification window only makes sense once every Pod is using the new password. Setting `DiscardReady=True` earlier would let `kubectl wait --for=condition=DiscardReady` return while the rollout is still in flight, and would let an automation script start `discard` while some Pods still depend on the old password — DISCARD at that point would remove the secondary password those Pods still use. The rollout is also a K8s concern, so it belongs in the Reconciler.
 
 ### Scaled-down clusters (replicas=0)
 
-Rotation is refused at three points:
-- The webhook rejects CR creation or `rotationGeneration` bump when `cluster.Spec.Replicas <= 0`.
-- `handleStartRotation` emits a `RotationRefused` Warning Event and sets `RotationReady=False/Refused`. Nothing has been mutated; the CR stays in `Step=RotationRefused` and remains eligible for retry.
+A cluster with 0 replicas stops rotation at three points:
+- At admission: the webhook rejects CR creation or a `rotationGeneration` bump when `cluster.Spec.Replicas <= 0`.
+- At reconcile time, before any mutation: if the cluster was scaled down to 0 after admission, `handleStartRotation` emits a `RotationRefused` Warning Event and sets `RotationReady=False/Refused`. Nothing has been mutated; the CR stays in `Step=RotationRefused` and remains eligible for retry.
 - If the cluster is scaled down to 0 *after* pending passwords were written, the ClusterManager handler emits a `RotationBlocked` Warning Event and sets `RotationReady=False/Blocked`. Recovery requires either scaling the cluster back up (the reconciler resumes automatically when it sees a healthy cluster again) or following the recovery procedure.
 
 ## Discard
