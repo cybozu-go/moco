@@ -38,11 +38,11 @@ Rotation is a **two-step process** — **rotate** then **discard** — using MyS
 
 State is exposed as three Conditions:
 
-- **`RotationReady`** — `True` iff the CR is in the **idle steady state** (`Step()==StepIdle`): no cycle in flight, no dual password held, and the operator may bump `spec.rotationGeneration`.
-- **`DiscardReady`** — `True` iff the CR is in the **awaiting-discard steady state** (`Step()==StepAwaitingDiscard`): the rotation phase has finished, the post-distribute StatefulSet rollout has settled, MySQL holds a dual-password set, and the operator may bump `spec.discardGeneration`. The rollout gate ensures every Pod is already using the new password before the verification window opens.
+- **`RotationReady`** — `True` if and only if the CR is in the **idle steady state** (`Step()==StepIdle`): no cycle in flight, no dual password held, and the operator may bump `spec.rotationGeneration`.
+- **`DiscardReady`** — `True` if and only if the CR is in the **awaiting-discard steady state** (`Step()==StepAwaitingDiscard`): the rotation phase has finished, the post-distribute StatefulSet rollout has settled, MySQL holds a dual-password set, and the operator may bump `spec.discardGeneration`. The rollout gate ensures every Pod is already using the new password before the verification window opens.
 - **`DualPassword`** — `True` while MySQL holds a dual-password set on the system users (between successful RETAIN and successful DISCARD).
 
-`RotationReady` and `DiscardReady` are **action-availability guards** and are structurally mutually exclusive. `DualPassword` is the orthogonal physical-state observation.
+`RotationReady` and `DiscardReady` show whether the operator may start the next action, and are never `True` at the same time. `DualPassword` shows whether MySQL currently holds a secondary password.
 
 ```
   User bumps spec.rotationGeneration
@@ -174,7 +174,7 @@ CredentialRotation sets an ownerReference to the target MySQLCluster so that Kub
 
 ### Conditions
 
-The Kubernetes API conventions discourage `phase`-style enums and prescribe Conditions. Each Condition is a positive-sense observation; `True` means the predicate currently holds, with `Reason` describing the category of cause.
+The Kubernetes API conventions discourage `phase`-style enums and prescribe Conditions. Each Condition describes an observed state in the positive sense: `True` means the state currently holds, and `Reason` describes why.
 
 | Type | When `True` | When `False` |
 |---|---|---|
@@ -228,13 +228,23 @@ The internal workflow step is derived from the three Conditions plus the generat
 
 The two values are mutually exclusive (the rotation phase always completes — promoting `observedRotationGeneration` — before the operator can request discard), which is what lets the matrix disambiguate the three `(False, False, True)` rows: `DistributingPassword` has `rotation` outstanding, `AwaitingRollout` has neither outstanding, and `ApplyingDiscard` has `discard` outstanding.
 
-A `Status=False` Reason of `Refused`/`Blocked`/`Stale` takes priority: it short-circuits to `RotationRefused` / `RotationBlocked` / `DiscardRefused` / `DiscardBlocked` / `StalePending` regardless of the table above. A stale `RotationReady=True` lingering across a fresh `rotationGeneration` bump is treated as Idle (and similarly for `DiscardReady=True` and AwaitingDiscard) so the seed handler fires — this avoids the "stale True from previous cycle" deadlock for back-to-back rotations.
+A `Status=False` condition with the `Refused`, `Blocked`, or `Stale`
+reason takes precedence over the normal Step matrix. The corresponding
+refused, blocked, or stale Step is selected immediately.
+
+When a new `rotationGeneration` is requested, an old
+`RotationReady=True` condition may remain until the next status update.
+This old condition is treated as the previous cycle's state, so the CR is
+still handled as Idle and the rotation seed handler can start the new cycle.
+The same rule applies to an old `DiscardReady=True` condition and
+`AwaitingDiscard`. This prevents a stale condition from the previous cycle
+from stopping a subsequent rotation or discard.
 
 #### Why three conditions?
 
-`RotationReady` and `DiscardReady` are action-availability guards — analogous to Pod `Ready=True` meaning "you may route traffic to me now". The two Ready conditions are structurally mutually exclusive (the Idle and AwaitingDiscard steady states cannot both hold), which removes the read-time ambiguity earlier "generation tracking" semantics had. `DualPassword` is the orthogonal physical-state observation, named as a noun in parallel with `MemoryPressure`-style conditions where `True` describes the situation rather than health.
+`RotationReady` and `DiscardReady` show whether the operator may start the next action. They are similar to a Pod's `Ready=True` condition, which means that the Pod can receive traffic. These two Ready conditions cannot be `True` at the same time: the Idle and AwaitingDiscard steady states are different states. This makes the current state clear when the controller reads the CR. `DualPassword` has a different role: it shows whether MySQL currently has a secondary password. It is named after the state it describes, like the `MemoryPressure` condition, rather than describing whether the system is healthy.
 
-The current step is derived from these three conditions plus the generation comparisons, so the lack of a stored Phase keeps the CR convention-compliant without requiring extra API I/O at runtime.
+The controller calculates the current step from these three conditions and the generation values. It therefore does not need to store a separate `Phase` field in the CR or make an additional API request at runtime. This follows the Kubernetes convention of using Conditions to describe resource state.
 
 ### Validation Webhook
 
@@ -257,7 +267,7 @@ The current step is derived from these three conditions plus the generation comp
 - The owning MySQLCluster has `DeletionTimestamp` set (`blockOwnerDeletion=true` would otherwise stall cluster termination).
 - The CR carries a stale MySQLCluster ownerRef whose UID does not match the live cluster (recreated cluster; see [Stale CR Handling](#stale-cr-handling-cluster-recreated-under-the-same-name)).
 
-`AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are **not** deletable: MySQL still holds dual passwords. Operators must scale the cluster down first (which transitions to `RotationBlocked` or `DiscardBlocked`).
+`AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are **not** deletable: MySQL still holds dual passwords. Operators must scale the cluster down first (which transitions the CR to `RotationBlocked` or `DiscardBlocked`).
 
 ## User Interface
 
@@ -315,7 +325,7 @@ Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneratio
 | 2 | Check rollout completion (`ObservedGeneration` caught up, `CurrentRevision == UpdateRevision`, `UpdatedReplicas == Replicas`, `ReadyReplicas == Replicas`). If in flight, requeue. | — |
 | 3 | Once settled: `DiscardReady=True/Reconciled` and emit `AwaitingDiscard` Event. | Status.Update |
 
-**Why wait for the rollout here, not inside DISCARD?** The verification window only makes sense once every Pod is using the new password. Surfacing `DiscardReady=True` earlier would let `kubectl wait --for=condition=DiscardReady` return while the rollout is still in flight, and would let an automation script kick off `discard` against a cluster whose old Pods still depend on the old password — DISCARD at that point would strip the secondary password out from under them. The rollout is also a K8s concern, so it belongs in the Reconciler.
+**Why wait for the rollout here, not inside DISCARD?** The verification window only makes sense once every Pod is using the new password. Surfacing `DiscardReady=True` earlier would let `kubectl wait --for=condition=DiscardReady` return while the rollout is still in flight, and would let an automation script start `discard` while some Pods still depend on the old password — DISCARD at that point would remove the secondary password those Pods still use. The rollout is also a K8s concern, so it belongs in the Reconciler.
 
 ### Scaled-down clusters (replicas=0)
 
@@ -331,7 +341,7 @@ Rotation is refused at three points:
 | # | Action | Persistence |
 |---|---|---|
 | 1 | Validate `spec.discardGeneration > status.observedDiscardGeneration`. | — |
-| 2 | If `cluster.Spec.Replicas <= 0`: emit `DiscardRefused` Warning Event and set `DiscardReady=False/Refused`. The webhook forbids reverting `discardGeneration` once bumped, so a Refused state at this point is a stable wait-for-scale-up. | Status.Update |
+| 2 | If `cluster.Spec.Replicas <= 0`: emit `DiscardRefused` Warning Event and set `DiscardReady=False/Refused`. The webhook forbids reverting `discardGeneration` once bumped, so a Refused state at this point simply waits for the cluster to be scaled up. | Status.Update |
 | 3 | Whenever `DiscardReady` is not already `False/Pending` (initial bump, or recovery from `False/Refused` or `False/Blocked`): set `DiscardReady=False/Pending`, emit `DiscardStarted` Event, requeue. Once it is `False/Pending`, subsequent reconciles just requeue while ClusterManager drives DISCARD. | Status.Update |
 
 ### ClusterManager: ApplyingDiscard → Finalizing
@@ -436,7 +446,7 @@ Transient lookup errors must **not** silently fall back to current passwords —
 
 ### Why `HasDualPassword` instead of per-user status tracking?
 
-MySQL holds only one secondary password slot per user. A second RETAIN with the same pending password would overwrite the secondary slot — evicting the original old password and breaking the controller's ability to connect. Tracking per-user progress in Kubernetes status would be racy with MySQL state; ClusterManager queries MySQL directly (`mysql.user.User_attributes` for `additional_password`) so MySQL is the source of truth, and the check is read-only and safe to re-run.
+MySQL holds only one secondary password slot per user. A second RETAIN with the same pending password would overwrite the secondary slot — evicting the original old password and breaking the controller's ability to connect. Tracking per-user progress in Kubernetes status could get out of sync with the actual MySQL state; ClusterManager queries MySQL directly (`mysql.user.User_attributes` for `additional_password`) so MySQL is the source of truth, and the check is read-only and safe to re-run.
 
 ### Idempotency of DISCARD
 
@@ -464,7 +474,7 @@ ValidateDelete:
   otherwise                                         → forbid
 ```
 
-`AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are **not** deletable: MySQL still holds dual passwords. Operators must scale the cluster down first (which transitions to `RotationBlocked` / `DiscardBlocked`).
+`AwaitingRollout`, `AwaitingDiscard`, and `DiscardRefused` are **not** deletable: MySQL still holds dual passwords. Operators must scale the cluster down first (which transitions the CR to `RotationBlocked` / `DiscardBlocked`).
 
 The CR does **not** use a finalizer for automatic rollback: rollback requires connecting to every MySQL instance (which may not be possible during deletion), and a partial rollback is worse than no rollback.
 
@@ -618,12 +628,3 @@ $ kubectl -n <namespace> rollout status statefulset <cluster-name>
 # After recovery, retry rotation:
 $ kubectl moco credential rotate <cluster-name>
 ```
-
-## Impact Summary
-
-| Category | Files |
-|---|---|
-| **New** | `api/v1beta2/credentialrotation_types.go`, `api/v1beta2/credentialrotation_helpers.go`, `api/v1beta2/credentialrotation_webhook.go`, `controllers/credentialrotation_controller.go`, `clustering/password_rotation.go` |
-| **New (CLI)** | `cmd/kubectl-moco/cmd/credential.go` (`rotate` / `discard` / `show` subcommands, stale-CR detection) |
-| **New (DB ops)** | `pkg/password/rotation.go`, `pkg/dbop/password.go` |
-| **Modified** | `controllers/mysqlcluster_controller.go` (`reconcileV1Secret` chooses current vs pending password by `cr.Step()` and self-heals per-namespace Secrets), `cmd/moco-controller/cmd/run.go` (register the new reconciler) |
