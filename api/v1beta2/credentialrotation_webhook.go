@@ -126,10 +126,16 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 		}
 	}
 
-	if discardIncreased && !rotationIncreased {
+	if discardIncreased {
 		// discardGeneration can only increase while the CR is in the
 		// awaiting-discard steady state (rotation phase done, MySQL
-		// still holding dual passwords, no discard in flight).
+		// still holding dual passwords, no discard in flight). This also
+		// rejects increasing both generations in one update: the old CR
+		// is idle then, and allowing it would derive Step=ApplyingDiscard
+		// right after the rotation phase promotes
+		// observedRotationGeneration, skipping the AwaitingRollout gate —
+		// DISCARD could run while Pods still authenticate with the old
+		// password.
 		if !oldCR.IsAwaitingDiscard() {
 			errs = append(errs, field.Forbidden(field.NewPath("spec", "discardGeneration"),
 				"can only increment discardGeneration when the CR is awaiting discard (RotationReady=False, DiscardReady=True, DualPassword=True; post-distribute rollout has settled)"))

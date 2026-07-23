@@ -245,6 +245,31 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("should reject bumping rotationGeneration and discardGeneration in the same update", func() {
+			cluster := makeMySQLCluster()
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test", 1)
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			setCRIdle(cr)
+			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			// A combined bump would skip the AwaitingRollout gate and the
+			// verification window; discardGeneration may only increase
+			// from the awaiting-discard steady state.
+			cr.Spec.RotationGeneration = 2
+			cr.Spec.DiscardGeneration = 2
+			err = k8sClient.Update(ctx, cr)
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should accept bumping discardGeneration when the CR is awaiting discard", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)

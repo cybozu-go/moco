@@ -270,7 +270,7 @@ In addition, the following condition applies when the corresponding generation i
 - If `rotationGeneration` increases, both of these conditions are required (AND):
   - `oldCR.IsIdle()` is true. This means the old Step is `Idle` or `RotationRefused`; nothing was mutated, so a retry is safe. A previously stuck cycle (`Blocked` / `Stale`) must be cleared through the recovery procedure (delete + recreate) before a new request.
   - The live target MySQLCluster has `cluster.Spec.Replicas > 0`. This is rechecked when the request is applied; the controller also re-checks it at reconcile time to handle scale-downs after admission.
-- If `discardGeneration` increases, `oldCR.IsAwaitingDiscard()` must be true. The old Step must be `AwaitingDiscard`, which means the post-distribute rollout has settled and the verification window is open.
+- If `discardGeneration` increases, `oldCR.IsAwaitingDiscard()` must be true. The old Step must be `AwaitingDiscard`, which means the post-distribute rollout has settled and the verification window is open. As a consequence, `rotationGeneration` and `discardGeneration` cannot be increased in the same update — that would skip the `AwaitingRollout` gate and the verification window.
 
 **ValidateDelete:**
 
