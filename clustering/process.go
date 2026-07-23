@@ -12,7 +12,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -206,8 +205,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 	if redo, err := p.handlePasswordRotation(ctx, ss); err != nil {
 		log := logFromContext(ctx)
 		log.Error(err, "password rotation error (will retry next cycle)")
-		p.recorder.Eventf(ss.Cluster, corev1.EventTypeWarning, "PasswordRotationError",
-			"Password rotation encountered an error: %v", err)
+		event.PasswordRotationError.Emit(ss.Cluster, p.recorder, err)
 	} else if redo {
 		return true, nil
 	}

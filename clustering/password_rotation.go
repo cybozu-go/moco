@@ -7,6 +7,7 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
+	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/password"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,8 +90,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	replicas := int(cluster.Spec.Replicas)
 	if replicas == 0 {
 		log.Info("waiting for replicas to be scaled up before RETAIN", "rotationID", cr.Status.RotationID)
-		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "RotationBlocked",
-			"Cannot proceed with RETAIN: cluster has 0 replicas. Scale the cluster up first.")
+		event.RotationBlocked.Emit(cluster, p.recorder)
 		if err := p.setRotationReady(ctx, metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
 			"Cluster scaled to 0 replicas mid-cycle; cannot proceed with RETAIN."); err != nil {
 			return false, err
@@ -122,10 +122,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 			if dualFound {
 				log.Info("waiting: instance has pre-existing dual password",
 					"instance", idx, "user", dualUser)
-				p.recorder.Eventf(cluster, corev1.EventTypeWarning, "DualPasswordExists",
-					"Cannot proceed with RETAIN: instance %d user %s already has a dual password. "+
-						"See MOCO documentation for recovery procedures.",
-					idx, dualUser)
+				event.DualPasswordExists.Emit(cluster, p.recorder, idx, dualUser)
 				return false, nil
 			}
 		}
@@ -174,8 +171,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		return false, fmt.Errorf("failed to persist RETAIN status: %w", err)
 	}
 
-	p.recorder.Eventf(ss.Cluster, corev1.EventTypeNormal, "RetainApplied",
-		"Applied ALTER USER RETAIN for all %d instances (rotationID: %s)", replicas, cr.Status.RotationID)
+	event.RetainApplied.Emit(ss.Cluster, p.recorder, replicas, cr.Status.RotationID)
 
 	return true, nil
 }
@@ -212,8 +208,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	replicas := int(cluster.Spec.Replicas)
 	if replicas == 0 {
 		log.Info("waiting for replicas to be scaled up before DISCARD", "rotationID", cr.Status.RotationID)
-		p.recorder.Eventf(cluster, corev1.EventTypeWarning, "DiscardBlocked",
-			"Cannot proceed with DISCARD: cluster has 0 replicas. Scale the cluster up first.")
+		event.DiscardBlocked.Emit(cluster, p.recorder)
 		if err := p.setDiscardReady(ctx, metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
 			"Cluster scaled to 0 replicas mid-discard; cannot proceed with DISCARD."); err != nil {
 			return false, err
@@ -290,8 +285,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 		return false, fmt.Errorf("failed to persist DISCARD status: %w", err)
 	}
 
-	p.recorder.Eventf(ss.Cluster, corev1.EventTypeNormal, "DiscardApplied",
-		"Applied DISCARD OLD PASSWORD and migrated auth plugin to %s for all %d instances (rotationID: %s)", authPlugin, replicas, cr.Status.RotationID)
+	event.DiscardApplied.Emit(ss.Cluster, p.recorder, authPlugin, replicas, cr.Status.RotationID)
 
 	return true, nil
 }

@@ -9,6 +9,7 @@ import (
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
+	mocoevent "github.com/cybozu-go/moco/pkg/event"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,8 +81,7 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	if hasStaleClusterOwnerRef(cr, cluster, r.Scheme) {
 		log.Info("ignoring stale CredentialRotation (ownerReference UID differs from live cluster)")
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "StaleCredentialRotation",
-			"CredentialRotation is owned by a different MySQLCluster UID than the live cluster; delete this CR before starting a new rotation")
+		mocoevent.StaleCredentialRotation.Emit(cr, r.Recorder)
 		return ctrl.Result{}, nil
 	}
 
@@ -186,8 +186,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 		if mocov1beta2.IsConditionFalseWithReason(cr, mocov1beta2.ConditionRotationReady, mocov1beta2.ReasonRefused) {
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 		}
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "RotationRefused",
-			"Cannot start rotation: MySQLCluster replicas is 0")
+		mocoevent.RotationRefused.Emit(cr, r.Recorder)
 		initCycleConditionsIfAbsent(cr)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonRefused,
 			"MySQLCluster replicas is 0; nothing has been mutated.")
@@ -212,9 +211,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 	}
 
 	if _, err := password.SetPendingPasswords(sourceSecret, rotationID); err != nil {
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "RotationPendingError",
-			"Failed to set pending passwords: %v. Manual cleanup required: "+
-				"See MOCO documentation for recovery procedures", err)
+		mocoevent.RotationPendingSetFailed.Emit(cr, r.Recorder, err)
 		initCycleConditionsIfAbsent(cr)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 			fmt.Sprintf("Failed to set pending passwords: %v", err))
@@ -240,8 +237,7 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 	}
 
 	log.Info("started rotation", "rotationID", rotationID, "rotationGeneration", cr.Spec.RotationGeneration)
-	r.Recorder.Eventf(cr, corev1.EventTypeNormal, "RotationStarted",
-		"Started rotation cycle (rotationID: %s, generation: %d)", rotationID, cr.Spec.RotationGeneration)
+	mocoevent.RotationStarted.Emit(cr, r.Recorder, rotationID, cr.Spec.RotationGeneration)
 
 	return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 }
@@ -264,9 +260,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 
 	hasPending, err := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
 	if err != nil {
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "RotationPendingError",
-			"Pending password state inconsistency: %v. Manual cleanup required: "+
-				"See MOCO documentation for recovery procedures", err)
+		mocoevent.RotationPendingInconsistent.Emit(cr, r.Recorder, err)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 			fmt.Sprintf("Pending password state inconsistency: %v", err))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
@@ -275,9 +269,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 	if !hasPending {
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "MissingRotationPending",
-			"Pending passwords not found in source secret for rotationID %s. Manual cleanup required: "+
-				"See MOCO documentation for recovery procedures", cr.Status.RotationID)
+		mocoevent.MissingRotationPending.Emit(cr, r.Recorder, cr.Status.RotationID)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 			fmt.Sprintf("Pending passwords not found for rotationID %s", cr.Status.RotationID))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
@@ -346,8 +338,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 	}
 
 	log.Info("distributed pending passwords and triggered rolling restart", "rotationID", cr.Status.RotationID)
-	r.Recorder.Eventf(cr, corev1.EventTypeNormal, "SecretsDistributed",
-		"Distributed new passwords and triggered rolling restart (rotationID: %s)", cr.Status.RotationID)
+	mocoevent.SecretsDistributed.Emit(cr, r.Recorder, cr.Status.RotationID)
 
 	return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 }
@@ -386,9 +377,7 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 
 	log.Info("post-distribute rollout settled; awaiting-discard window open",
 		"rotationID", cr.Status.RotationID)
-	r.Recorder.Eventf(cr, corev1.EventTypeNormal, "AwaitingDiscard",
-		"Post-distribute StatefulSet rollout settled; verification window open (rotationID: %s)",
-		cr.Status.RotationID)
+	mocoevent.AwaitingDiscard.Emit(cr, r.Recorder, cr.Status.RotationID)
 	return ctrl.Result{}, nil
 }
 
@@ -439,8 +428,7 @@ func (r *CredentialRotationReconciler) handleApplyingDiscard(ctx context.Context
 		if wasRefused {
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 		}
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "DiscardRefused",
-			"Cannot start discard: MySQLCluster replicas is 0. Scale the cluster up first.")
+		mocoevent.DiscardRefused.Emit(cr, r.Recorder)
 		cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonRefused,
 			"Cannot start discard: MySQLCluster replicas is 0.")
 		if err := r.updateStatus(ctx, cr); err != nil {
@@ -460,9 +448,7 @@ func (r *CredentialRotationReconciler) handleApplyingDiscard(ctx context.Context
 		}
 		log.Info("discard requested; ClusterManager will wait for rollout and run DISCARD",
 			"rotationID", cr.Status.RotationID)
-		r.Recorder.Eventf(cr, corev1.EventTypeNormal, "DiscardStarted",
-			"Discard requested; ClusterManager will wait for StatefulSet rollout before DISCARD (rotationID: %s)",
-			cr.Status.RotationID)
+		mocoevent.DiscardStarted.Emit(cr, r.Recorder, cr.Status.RotationID)
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
@@ -486,9 +472,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 
 	hasPending, pendingErr := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
 	if pendingErr != nil {
-		r.Recorder.Eventf(cr, corev1.EventTypeWarning, "RotationPendingError",
-			"Pending password state inconsistency during confirm: %v. Manual cleanup required: "+
-				"See MOCO documentation for recovery procedures", pendingErr)
+		mocoevent.RotationPendingConfirmInconsistent.Emit(cr, r.Recorder, pendingErr)
 		cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 			fmt.Sprintf("Pending password state inconsistency during confirm: %v", pendingErr))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
@@ -513,10 +497,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 			return ctrl.Result{}, fmt.Errorf("failed to get user secret for crash recovery verification: %w", err)
 		}
 		if !password.CurrentPasswordsMatch(sourceSecret, userSecret) {
-			r.Recorder.Eventf(cr, corev1.EventTypeWarning, "InconsistentState",
-				"No pending passwords found for rotationID %s and controller Secret does not match user Secret. "+
-					"Manual cleanup required: See MOCO documentation for recovery procedures",
-				cr.Status.RotationID)
+			mocoevent.InconsistentRotationState.Emit(cr, r.Recorder, cr.Status.RotationID)
 			cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 				fmt.Sprintf("Pending keys lost without promotion for rotationID %s", cr.Status.RotationID))
 			if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
@@ -527,9 +508,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 
 		log.Info("no pending passwords found, verified crash recovery (already promoted)",
 			"rotationID", cr.Status.RotationID)
-		r.Recorder.Eventf(cr, corev1.EventTypeNormal, "CrashRecovery",
-			"No pending passwords found for rotationID %s; confirmed prior promotion via user Secret match. Proceeding to Completed.",
-			cr.Status.RotationID)
+		mocoevent.RotationCrashRecovery.Emit(cr, r.Recorder, cr.Status.RotationID)
 	}
 
 	// Return to Idle steady state.
@@ -546,9 +525,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		"rotationID", cr.Status.RotationID,
 		"observedRotationGeneration", cr.Status.ObservedRotationGeneration,
 		"observedDiscardGeneration", cr.Status.ObservedDiscardGeneration)
-	r.Recorder.Eventf(cr, corev1.EventTypeNormal, "RotationCompleted",
-		"Rotation completed (rotationID: %s, rotationGeneration: %d, discardGeneration: %d)",
-		cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
+	mocoevent.RotationCompleted.Emit(cr, r.Recorder, cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
 
 	return ctrl.Result{}, nil
 }
