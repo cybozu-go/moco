@@ -162,16 +162,16 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cr.Status.RotationID).NotTo(BeEmpty())
 
-		// Verify pending passwords are in the source secret.
-		sourceSecret := &corev1.Secret{}
+		// Verify pending passwords are in the controller secret.
+		controllerSecret := &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: testMocoSystemNamespace,
 			Name:      cluster.ControllerSecretName(),
-		}, sourceSecret)
+		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(sourceSecret.Data).To(HaveKey(password.AdminPasswordPendingKey))
-		Expect(sourceSecret.Data).To(HaveKey(password.RotationIDKey))
-		Expect(string(sourceSecret.Data[password.RotationIDKey])).To(Equal(cr.Status.RotationID))
+		Expect(controllerSecret.Data).To(HaveKey(password.AdminPasswordPendingKey))
+		Expect(controllerSecret.Data).To(HaveKey(password.RotationIDKey))
+		Expect(string(controllerSecret.Data[password.RotationIDKey])).To(Equal(cr.Status.RotationID))
 
 		// Verify ownerReference is set.
 		Expect(cr.OwnerReferences).NotTo(BeEmpty())
@@ -422,13 +422,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Equal(string(mocov1beta2.StepApplyingRetain)))
 
 		// Capture the pending passwords for later comparison.
-		sourceSecret := &corev1.Secret{}
+		controllerSecret := &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: testMocoSystemNamespace,
 			Name:      cluster.ControllerSecretName(),
-		}, sourceSecret)
+		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
-		pendingAdmin := string(sourceSecret.Data[password.AdminPasswordPendingKey])
+		pendingAdmin := string(controllerSecret.Data[password.AdminPasswordPendingKey])
 		Expect(pendingAdmin).NotTo(BeEmpty())
 
 		// Phase 2: Simulate ClusterManager → Retained
@@ -523,21 +523,21 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
 		Expect(cr.Status.ObservedDiscardGeneration).To(Equal(int64(1)))
 
-		// Verify pending passwords have been promoted in the source secret.
-		sourceSecret = &corev1.Secret{}
+		// Verify pending passwords have been promoted in the controller secret.
+		controllerSecret = &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: testMocoSystemNamespace,
 			Name:      cluster.ControllerSecretName(),
-		}, sourceSecret)
+		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(sourceSecret.Data).NotTo(HaveKey(password.AdminPasswordPendingKey))
-		Expect(sourceSecret.Data).NotTo(HaveKey(password.RotationIDKey))
-		Expect(string(sourceSecret.Data["ADMIN_PASSWORD"])).To(Equal(pendingAdmin))
+		Expect(controllerSecret.Data).NotTo(HaveKey(password.AdminPasswordPendingKey))
+		Expect(controllerSecret.Data).NotTo(HaveKey(password.RotationIDKey))
+		Expect(string(controllerSecret.Data["ADMIN_PASSWORD"])).To(Equal(pendingAdmin))
 
 		// Phase 7: second cycle — bumping rotationGeneration on an
 		// already-completed CR must still trigger handleStartRotation
 		// (the previous cycle's RotationReady=True is stale).
-		cycle1Admin := string(sourceSecret.Data["ADMIN_PASSWORD"])
+		cycle1Admin := string(controllerSecret.Data["ADMIN_PASSWORD"])
 
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
@@ -549,7 +549,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Succeed())
 
 		// The Reconciler must seed the new cycle: pending passwords
-		// appear in the source Secret, RotationReady flips to
+		// appear in the controller Secret, RotationReady flips to
 		// False/Pending, and the derived step settles on ApplyingRetain
 		// waiting for ClusterManager.
 		Eventually(func() string {
@@ -574,13 +574,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		// Sanity: the second cycle's pending password is different from
 		// the first cycle's now-current password, and the new rotationID
 		// is set on status.
-		sourceSecret = &corev1.Secret{}
+		controllerSecret = &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: testMocoSystemNamespace,
 			Name:      cluster.ControllerSecretName(),
-		}, sourceSecret)
+		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(string(sourceSecret.Data[password.AdminPasswordPendingKey])).NotTo(Equal(cycle1Admin))
+		Expect(string(controllerSecret.Data[password.AdminPasswordPendingKey])).NotTo(Equal(cycle1Admin))
 
 		cr = &mocov1beta2.CredentialRotation{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
@@ -908,7 +908,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
 
-		// Capture the pending (new) password from the source Secret — this is what
+		// Capture the pending (new) password from the controller Secret — this is what
 		// the user Secret should hold after Retained phase distributes it.
 		var pendingAdminPwd string
 		Eventually(func() error {

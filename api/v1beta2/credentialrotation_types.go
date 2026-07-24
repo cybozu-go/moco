@@ -146,7 +146,7 @@ const (
 
 	// ReasonRefused — the requested operation could not start (e.g.
 	// MySQLCluster has 0 replicas). Nothing has been mutated in MySQL
-	// or the source Secret. Used by RotationReady and DiscardReady.
+	// or the controller Secret. Used by RotationReady and DiscardReady.
 	ReasonRefused = "Refused"
 
 	// ReasonBlocked — a cycle that previously started cannot progress
@@ -155,7 +155,7 @@ const (
 	// required. Used by RotationReady and DiscardReady.
 	ReasonBlocked = "Blocked"
 
-	// ReasonStale — persisted state (typically the source Secret) is
+	// ReasonStale — persisted state (typically the controller Secret) is
 	// inconsistent (rotation ID mismatch, partial pending keys, etc.).
 	// Manual recovery is required. Used by RotationReady and
 	// DiscardReady.

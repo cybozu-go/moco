@@ -150,7 +150,7 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 
 	case mocov1beta2.StepStalePending:
-		// Stuck on inconsistent source Secret. The transition into
+		// Stuck on inconsistent controller Secret. The transition into
 		// Stale already emitted a Warning Event with the diagnostic
 		// detail in the condition Message; just log here to avoid event
 		// spam while waiting for manual recovery.
@@ -196,21 +196,21 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	sourceSecret := &corev1.Secret{}
+	controllerSecret := &corev1.Secret{}
 	secretName := cluster.ControllerSecretName()
 	if err := r.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      secretName,
-	}, sourceSecret); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get source secret: %w", err)
+	}, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get controller secret: %w", err)
 	}
 
-	rotationID := password.GetRotationID(sourceSecret)
+	rotationID := password.GetRotationID(controllerSecret)
 	if rotationID == "" {
 		rotationID = uuid.New().String()
 	}
 
-	if _, err := password.SetPendingPasswords(sourceSecret, rotationID); err != nil {
+	if _, err := password.SetPendingPasswords(controllerSecret, rotationID); err != nil {
 		mocoevent.RotationPendingSetFailed.Emit(cr, r.Recorder, err)
 		initCycleConditionsIfAbsent(cr)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
@@ -221,8 +221,8 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	if err := r.Update(ctx, sourceSecret); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update source secret with pending passwords: %w", err)
+	if err := r.Update(ctx, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update controller secret with pending passwords: %w", err)
 	}
 
 	cr.Status.RotationID = rotationID
@@ -250,15 +250,15 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	sourceSecret := &corev1.Secret{}
+	controllerSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
-	}, sourceSecret); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get source secret: %w", err)
+	}, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get controller secret: %w", err)
 	}
 
-	hasPending, err := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
+	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
 	if err != nil {
 		mocoevent.RotationPendingInconsistent.Emit(cr, r.Recorder, err)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
@@ -278,7 +278,7 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	pendingPasswd, err := password.MySQLPasswordFromPending(sourceSecret)
+	pendingPasswd, err := password.MySQLPasswordFromPending(controllerSecret)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to read pending passwords: %w", err)
 	}
@@ -462,15 +462,15 @@ func (r *CredentialRotationReconciler) handleApplyingDiscard(ctx context.Context
 func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	sourceSecret := &corev1.Secret{}
+	controllerSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
-	}, sourceSecret); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get source secret for confirm: %w", err)
+	}, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get controller secret for confirm: %w", err)
 	}
 
-	hasPending, pendingErr := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
+	hasPending, pendingErr := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
 	if pendingErr != nil {
 		mocoevent.RotationPendingConfirmInconsistent.Emit(cr, r.Recorder, pendingErr)
 		cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
@@ -482,11 +482,11 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 	}
 
 	if hasPending {
-		if err := password.PromotePendingPasswords(sourceSecret); err != nil {
+		if err := password.PromotePendingPasswords(controllerSecret); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to promote pending passwords: %w", err)
 		}
-		if err := r.Update(ctx, sourceSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update source secret after promote: %w", err)
+		if err := r.Update(ctx, controllerSecret); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update controller secret after promote: %w", err)
 		}
 	} else {
 		userSecret := &corev1.Secret{}
@@ -496,7 +496,7 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		}, userSecret); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get user secret for crash recovery verification: %w", err)
 		}
-		if !password.CurrentPasswordsMatch(sourceSecret, userSecret) {
+		if !password.CurrentPasswordsMatch(controllerSecret, userSecret) {
 			mocoevent.InconsistentRotationState.Emit(cr, r.Recorder, cr.Status.RotationID)
 			cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
 				fmt.Sprintf("Pending keys lost without promotion for rotationID %s", cr.Status.RotationID))
@@ -599,13 +599,14 @@ func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			handler.EnqueueRequestsFromMapFunc(mapClusterToCR),
 			builder.WithPredicates(clusterReplicasChangedPredicate{}),
 		).
-		// Wake the reconciler when the controller-namespace source Secret
-		// changes — this lets the operator clean up a Stale source Secret
-		// (or restore one) without waiting for the periodic requeue.
+		// Wake the reconciler when the controller Secret in the system
+		// namespace changes — this lets the operator clean up a Stale
+		// controller Secret (or restore one) without waiting for the
+		// periodic requeue.
 		Watches(
 			&corev1.Secret{},
-			handler.EnqueueRequestsFromMapFunc(r.mapSourceSecretToCR),
-			builder.WithPredicates(sourceSecretPredicate(r.SystemNamespace)),
+			handler.EnqueueRequestsFromMapFunc(r.mapControllerSecretToCR),
+			builder.WithPredicates(controllerSecretPredicate(r.SystemNamespace)),
 		).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
@@ -625,11 +626,11 @@ func mapClusterToCR(_ context.Context, obj client.Object) []reconcile.Request {
 	}}
 }
 
-// mapSourceSecretToCR reverse-parses a controller-namespace Secret name
+// mapControllerSecretToCR reverse-parses a controller-namespace Secret name
 // ("mysql-<ns>.<name>") back to the CredentialRotation that may be
 // interested in it. The reverse parse is best-effort: if the name does
 // not match the expected pattern, no request is enqueued.
-func (r *CredentialRotationReconciler) mapSourceSecretToCR(_ context.Context, obj client.Object) []reconcile.Request {
+func (r *CredentialRotationReconciler) mapControllerSecretToCR(_ context.Context, obj client.Object) []reconcile.Request {
 	if obj.GetNamespace() != r.SystemNamespace {
 		return nil
 	}
@@ -675,10 +676,10 @@ func (clusterReplicasChangedPredicate) Update(e event.UpdateEvent) bool {
 
 func (clusterReplicasChangedPredicate) Generic(_ event.GenericEvent) bool { return false }
 
-// sourceSecretPredicate filters Secret events to only those that live in
+// controllerSecretPredicate filters Secret events to only those that live in
 // the controller's system namespace. This avoids reconciling for every
 // secret change cluster-wide.
-func sourceSecretPredicate(systemNamespace string) predicate.Predicate {
+func controllerSecretPredicate(systemNamespace string) predicate.Predicate {
 	return predicate.NewPredicateFuncs(func(obj client.Object) bool {
 		return obj.GetNamespace() == systemNamespace
 	})

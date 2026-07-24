@@ -71,7 +71,7 @@ const (
 
 	// StepRotationBlocked means the rotation phase started but cannot
 	// progress (e.g. MySQLCluster scaled to 0 mid-RETAIN, after pending
-	// passwords were written to the source Secret).
+	// passwords were written to the controller Secret).
 	StepRotationBlocked RotationStep = "RotationBlocked"
 
 	// StepDiscardRefused means the discard phase could not start (e.g.
@@ -85,7 +85,7 @@ const (
 	// DISCARD may have completed; manual recovery is required.
 	StepDiscardBlocked RotationStep = "DiscardBlocked"
 
-	// StepStalePending means the source Secret is in an inconsistent
+	// StepStalePending means the controller Secret is in an inconsistent
 	// state; manual recovery is required.
 	StepStalePending RotationStep = "StalePending"
 )
@@ -97,7 +97,7 @@ const (
 func (cr *CredentialRotation) Step() RotationStep {
 	// Stale states are stuck and take priority — neither generation
 	// comparison nor sub-step conditions are meaningful while the
-	// source Secret is inconsistent.
+	// controller Secret is inconsistent.
 	if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonStale) ||
 		IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonStale) {
 		return StepStalePending

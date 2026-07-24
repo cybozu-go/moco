@@ -1212,7 +1212,7 @@ var _ = Describe("manager", func() {
 				"instance %d should have rotated all users", i)
 		}
 
-		// Verify RETAIN_STARTED marker was set in the source secret.
+		// Verify RETAIN_STARTED marker was set in the controller secret.
 		secret := &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.ControllerSecretName()}, secret)
 		Expect(err).NotTo(HaveOccurred())

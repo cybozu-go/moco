@@ -2,7 +2,9 @@
 
 ## Background
 
-MOCO manages 8 system MySQL users (`moco-admin`, `moco-agent`, `moco-repl`, `moco-clone-donor`, `moco-exporter`, `moco-backup`, `moco-readonly`, `moco-writable`). Their passwords are generated at cluster creation, stored in a controller-managed Secret in the system namespace, and distributed to per-namespace Secrets. Once generated, these passwords never change.
+MOCO manages 8 system MySQL users (`moco-admin`, `moco-agent`, `moco-repl`, `moco-clone-donor`, `moco-exporter`, `moco-backup`, `moco-readonly`, `moco-writable`). Their passwords are generated at cluster creation, stored in a controller-managed credential Secret (the **controller Secret**, named by `ControllerSecretName()`) in the system namespace, and distributed to per-namespace Secrets. Once generated, these passwords never change.
+
+> The controller Secret is distinct from the *replication source Secret* (`spec.replicationSourceSecretName`), which holds donor connection info for an intermediate-primary cluster. This document only uses "controller Secret" for the credential Secret.
 
 If a credential leak occurs, the only recovery option today is recreating the cluster. This design introduces an in-place rotation mechanism that avoids downtime, using a dedicated **CredentialRotation** CRD with its own controller.
 
@@ -199,7 +201,7 @@ only appears with `Status=True`, and `Pending` / `Refused` / `Blocked` /
 | `Pending` | `RotationReady` or `DiscardReady` | `False` | Not in the matching steady state, no error recorded — the cycle is in flight, or the other Ready is True. |
 | `Refused` | `RotationReady` or `DiscardReady` | `False` | The requested operation could not start (e.g. `replicas == 0`). Nothing has been mutated. |
 | `Blocked` | `RotationReady` or `DiscardReady` | `False` | A started cycle cannot progress (e.g. cluster scaled to 0 after pending passwords were written). Manual recovery required. |
-| `Stale` | `RotationReady` or `DiscardReady` | `False` | The source Secret (or other persisted state) is inconsistent. Manual recovery required. |
+| `Stale` | `RotationReady` or `DiscardReady` | `False` | The controller Secret (or other persisted state) is inconsistent. Manual recovery required. |
 | `Retained` | `DualPassword` | `True` | MySQL holds a dual-password set on all system users. |
 | `NotRetained` | `DualPassword` | `False` | MySQL is not currently holding a dual-password set. |
 
@@ -297,7 +299,7 @@ Any one of the following conditions allows deletion (OR).
 
 The CR is long-lived and purely declarative, so it works naturally with GitOps. The lifecycle is driven by committing `rotationGeneration` / `discardGeneration` bumps; each commit triggers an ArgoCD sync that advances the cycle. No imperative CLI calls or CR deletions are required for normal operation.
 
-**Do not mix GitOps with `kubectl moco rotate-credential` / `discard-old-credential`.** The CLI patches the same spec fields GitOps manages. If the CLI bumps a counter, GitOps reconcile will try to roll it back, but the webhook rejects any decrease — leaving the resource permanently `OutOfSync`. Worse, the CLI-triggered phase already mutates MySQL passwords irreversibly. Pick one source of truth per environment.
+**Do not mix GitOps with `kubectl moco rotate-credential` / `discard-old-credential`.** The CLI patches the same spec fields GitOps manages. If the CLI bumps a counter, GitOps reconciliation will try to roll it back, but the webhook rejects any decrease — leaving the resource permanently `OutOfSync`. Worse, the CLI-triggered phase already mutates MySQL passwords irreversibly. Pick one source of truth per environment.
 
 ## Rotate
 
@@ -308,7 +310,7 @@ Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneratio
 | # | Action | Persistence |
 |---|---|---|
 | 1 | Generate (or reuse on crash recovery) the rotation UUID. | — |
-| 2 | Write 8 `*_PENDING` keys and `ROTATION_ID` into the source Secret. | Secret.Update |
+| 2 | Write 8 `*_PENDING` keys and `ROTATION_ID` into the controller Secret. | Secret.Update |
 | 3 | Set `RotationReady=False/Pending`, `DiscardReady=False/Pending`, `DualPassword=False/NotRetained`. | Status.Update |
 
 ### ClusterManager: ApplyingRetain → DistributingPassword
@@ -316,11 +318,11 @@ Triggered when the outstanding phase is `rotation` (i.e. `spec.rotationGeneratio
 | # | Action | Persistence |
 |---|---|---|
 | 1 | Pre-check: every instance is scanned for pre-existing dual passwords. Skipped if the `RETAIN_STARTED` marker is set (crash recovery). | — |
-| 2 | Set `RETAIN_STARTED` marker (rotationID) in the source Secret. | Secret.Update |
+| 2 | Set `RETAIN_STARTED` marker (rotationID) in the controller Secret. | Secret.Update |
 | 3 | For each instance: connect with the current password, disable `super_read_only` on every instance that runs with it on (replicas, and the intermediate primary when `spec.replicationSourceSecretName` is set), execute `ALTER USER ... RETAIN CURRENT PASSWORD` per user (skipping users where `HasDualPassword` is already true), restore `super_read_only`. | MySQL |
 | 4 | Set `DualPassword=True/Retained` (and clear any prior `RotationReady=False/Blocked` back to `False/Pending`). | Status.Update |
 
-**Pre-check + `RETAIN_STARTED` marker.** If any instance already has a dual-password set from outside this cycle, a `DualPasswordExists` Warning Event is emitted and the step waits. Once the pre-check passes, the marker is persisted so that, after a crash and restart, the reconcile skips the pre-check and resumes RETAIN. From that point, per-user `HasDualPassword` provides idempotency.
+**Pre-check + `RETAIN_STARTED` marker.** If any instance already has a dual-password set from outside this cycle, a `DualPasswordExists` Warning Event is emitted and the step waits. Once the pre-check passes, the marker is persisted so that, after a crash and restart, the reconciliation skips the pre-check and resumes RETAIN. From that point, per-user `HasDualPassword` provides idempotency.
 
 ### Reconciler: DistributingPassword → AwaitingRollout
 
@@ -377,12 +379,12 @@ A cluster with 0 replicas stops rotation at three points:
 
 | # | Action | Persistence |
 |---|---|---|
-| 1 | Promote pending passwords to current in the source Secret (`PromotePendingPasswords`). | Secret.Update |
+| 1 | Promote pending passwords to current in the controller Secret (`PromotePendingPasswords`). | Secret.Update |
 | 2 | Promote `observedDiscardGeneration = spec.discardGeneration`. Set `RotationReady=True/Reconciled`, `DiscardReady=False/Pending`. | Status.Update |
 
-## Source Secret Layout
+## Controller Secret Layout
 
-During rotation, the source Secret (in the controller namespace) holds both current and pending passwords:
+During rotation, the controller Secret (in the controller namespace) holds both current and pending passwords:
 
 ```
 ADMIN_PASSWORD:         <current>
@@ -397,9 +399,9 @@ RETAIN_STARTED:         <uuid>     # only during the ApplyingRetain step (crash-
 
 `HasPendingPasswords` validates that all 8 `*_PENDING` keys and `ROTATION_ID` are present together and that the rotation ID matches the expected value. Partial states (some pending keys missing, or `ROTATION_ID` without pending keys) are reported as inconsistent state.
 
-### Why Embed Pending Passwords in the Source Secret?
+### Why Embed Pending Passwords in the Controller Secret?
 
-An alternative is a separate Secret owned by the CR. Pending passwords are embedded in the source Secret instead because:
+An alternative is a separate Secret owned by the CR. Pending passwords are embedded in the controller Secret instead because:
 
 1. **Crash safety of the promote step.** `PromotePendingPasswords` promotes pending passwords to current by renaming keys within a single object — atomic at the Secret level. A separate Secret would require copying data between two objects; a crash between the read and the write could lose the new passwords permanently.
 2. **Simpler failure modes.** With a single Secret, the only question on crash recovery is "did the update succeed?". With two Secrets, every sub-step has to reason about cross-object consistency.
@@ -412,7 +414,7 @@ An alternative is a separate Secret owned by the CR. Pending passwords are embed
 The reconciler watches:
 - `CredentialRotation` (primary).
 - `MySQLCluster` (filtered to `Spec.Replicas` change or `DeletionTimestamp` flip), mapped to the same namespace/name — so a `Refused` / `Blocked` cycle resumes immediately on scale-up.
-- `Secret` in the system namespace (filtered by the `mysql-<ns>.<name>` naming pattern), so a Stale source Secret can be cleaned up without waiting for the 15-second requeue.
+- `Secret` in the system namespace (filtered by the `mysql-<ns>.<name>` naming pattern), so a Stale controller Secret can be cleaned up without waiting for the 15-second requeue.
 
 For sub-steps owned by ClusterManager (`ApplyingRetain`, `ApplyingDiscard` DB work), the reconciler requeues every 15s while observing the condition for progress.
 
@@ -527,7 +529,7 @@ All recovery procedures share one principle: **reset MySQL passwords back to the
 
 ### How to Reset MySQL Passwords
 
-Retrieve the current passwords from the source Secret:
+Retrieve the current passwords from the controller Secret:
 
 ```console
 $ kubectl -n <system-namespace> get secret <controller-secret-name> \
@@ -588,7 +590,7 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- \
 
 **Symptom:** Warning Event `RotationPendingError`.
 
-**Cause:** A previous rotation was interrupted, leaving `*_PENDING` keys and a `ROTATION_ID` from a different cycle in the source Secret.
+**Cause:** A previous rotation was interrupted, leaving `*_PENDING` keys and a `ROTATION_ID` from a different cycle in the controller Secret.
 
 **Why this needs MySQL cleanup:** The interrupted rotation may have partially executed RETAIN. Without cleanup, a new rotation would see `HasDualPassword=true` on those instances, skip RETAIN, and leave stale passwords — breaking connectivity after DISCARD.
 
@@ -598,7 +600,7 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- \
 # 1. Delete the CR; reconcileV1Secret is now free to re-distribute old passwords.
 $ kubectl delete credentialrotation my-cluster
 
-# 2. Clean the source Secret.
+# 2. Clean the controller Secret.
 $ kubectl -n <system-namespace> edit secret <controller-secret-name>
 # Delete all *_PENDING keys and ROTATION_ID.
 
@@ -616,7 +618,7 @@ $ kubectl moco rotate-credential <cluster-name>
 
 **Symptom:** Warning Event `MissingRotationPending`.
 
-**Cause:** The source Secret lost its pending keys (manual edit, restore from backup, etc.) while the CR is in `AwaitingDiscard`.
+**Cause:** The controller Secret lost its pending keys (manual edit, restore from backup, etc.) while the CR is in `AwaitingDiscard`.
 
 **Why this is dangerous:** All instances hold dual passwords and Pods may be using the (now-lost) pending passwords. MySQL stores only password hashes — the pending values cannot be recovered.
 

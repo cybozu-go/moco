@@ -142,7 +142,7 @@ var (
 	MissingRotationPending = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "MissingRotationPending",
-		Message: "Pending passwords not found in source secret for rotationID %s. Manual cleanup required: See MOCO documentation for recovery procedures",
+		Message: "Pending passwords not found in controller secret for rotationID %s. Manual cleanup required: See MOCO documentation for recovery procedures",
 	}
 	SecretsDistributed = MOCOEvent{
 		Type:    corev1.EventTypeNormal,

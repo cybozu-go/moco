@@ -69,16 +69,16 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	log := logFromContext(ctx)
 	cluster := ss.Cluster
 
-	sourceSecret := &corev1.Secret{}
+	controllerSecret := &corev1.Secret{}
 	if err := p.reader.Get(ctx, client.ObjectKey{
 		Namespace: p.systemNamespace,
 		Name:      cluster.ControllerSecretName(),
-	}, sourceSecret); err != nil {
-		return false, fmt.Errorf("failed to get source secret for rotation: %w", err)
+	}, controllerSecret); err != nil {
+		return false, fmt.Errorf("failed to get controller secret for rotation: %w", err)
 	}
 
 	// Wait for the controller to generate pending passwords.
-	hasPending, err := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
+	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify pending passwords: %w", err)
 	}
@@ -98,7 +98,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		return false, nil
 	}
 
-	currentPasswd, err := password.NewMySQLPasswordFromSecret(sourceSecret)
+	currentPasswd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
 	if err != nil {
 		return false, err
 	}
@@ -107,7 +107,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	// this rotation cycle. Skip if RETAIN_STARTED marker is present (crash
 	// recovery after partial RETAIN — per-user HasDualPassword in
 	// rotateInstanceUsers provides idempotency).
-	retainStarted := string(sourceSecret.Data[password.RetainStartedKey]) == cr.Status.RotationID
+	retainStarted := string(controllerSecret.Data[password.RetainStartedKey]) == cr.Status.RotationID
 	if !retainStarted {
 		for idx := range replicas {
 			op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
@@ -128,14 +128,14 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		}
 
 		// Mark that pre-check passed and RETAIN is about to start.
-		sourceSecret.Data[password.RetainStartedKey] = []byte(cr.Status.RotationID)
-		if err := p.client.Update(ctx, sourceSecret); err != nil {
+		controllerSecret.Data[password.RetainStartedKey] = []byte(cr.Status.RotationID)
+		if err := p.client.Update(ctx, controllerSecret); err != nil {
 			return false, fmt.Errorf("failed to set RETAIN_STARTED marker: %w", err)
 		}
 	}
 
 	// Execute ALTER USER RETAIN on all instances.
-	pendingMap, err := password.PendingKeyMap(sourceSecret)
+	pendingMap, err := password.PendingKeyMap(controllerSecret)
 	if err != nil {
 		return false, err
 	}
@@ -188,15 +188,15 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	log := logFromContext(ctx)
 	cluster := ss.Cluster
 
-	sourceSecret := &corev1.Secret{}
+	controllerSecret := &corev1.Secret{}
 	if err := p.reader.Get(ctx, client.ObjectKey{
 		Namespace: p.systemNamespace,
 		Name:      cluster.ControllerSecretName(),
-	}, sourceSecret); err != nil {
-		return false, fmt.Errorf("failed to get source secret for discard: %w", err)
+	}, controllerSecret); err != nil {
+		return false, fmt.Errorf("failed to get controller secret for discard: %w", err)
 	}
 
-	hasPending, err := password.HasPendingPasswords(sourceSecret, cr.Status.RotationID)
+	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify pending passwords for discard: %w", err)
 	}
@@ -238,12 +238,12 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	// and every Pod is running with the new password.
 
 	// Connect with the pending (new) password.
-	pendingPasswd, err := password.MySQLPasswordFromPending(sourceSecret)
+	pendingPasswd, err := password.MySQLPasswordFromPending(controllerSecret)
 	if err != nil {
 		return false, err
 	}
 
-	pendingMap, err := password.PendingKeyMap(sourceSecret)
+	pendingMap, err := password.PendingKeyMap(controllerSecret)
 	if err != nil {
 		return false, err
 	}

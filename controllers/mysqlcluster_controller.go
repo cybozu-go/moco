@@ -443,7 +443,7 @@ func passwordForDistribution(controllerSecret *corev1.Secret, preferPending bool
 	// connected applications mid-rotation.
 	hasPending, err := password.HasPendingPasswords(controllerSecret, expectedRotationID)
 	if err != nil {
-		return nil, fmt.Errorf("inconsistent pending password state in source Secret: %w", err)
+		return nil, fmt.Errorf("inconsistent pending password state in controller Secret: %w", err)
 	}
 	if hasPending {
 		return password.MySQLPasswordFromPending(controllerSecret)

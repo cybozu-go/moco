@@ -9,7 +9,7 @@ import (
 
 // Pending password key constants.
 //
-// During rotation, the source Secret holds both current and pending passwords.
+// During rotation, the controller Secret holds both current and pending passwords.
 // The pending state must be all-or-nothing: either all 8 *_PENDING keys plus
 // ROTATION_ID are present (and ROTATION_ID matches the expected value), or none
 // are present. Any partial state is treated as an unrecoverable inconsistency
@@ -74,7 +74,7 @@ func GetRotationID(secret *corev1.Secret) string {
 	return string(secret.Data[RotationIDKey])
 }
 
-// HasPendingPasswords validates the pending state of a source secret.
+// HasPendingPasswords validates the pending state of a controller secret.
 //
 // Returns:
 //   - (false, nil): no pending keys and no ROTATION_ID — clean state
