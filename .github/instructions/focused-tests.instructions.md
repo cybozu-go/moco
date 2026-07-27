@@ -16,7 +16,7 @@ When running a specific MOCO test case, first use the same entry points as CI an
 - Backup envtest: `make backup-envtest FOCUS='part of spec name'`
 - Full envtest set: `make envtest`
 - Small package tests/install/vet/gofmt: `make test`
-- MySQL integration tests: `make test-bkop MYSQL_VERSION='8.4.8'` or `make test-dbop MYSQL_VERSION='8.4.8'`
+- MySQL integration tests: `make test-bkop MYSQL_VERSION='8.4.10'` or `make test-dbop MYSQL_VERSION='8.4.10'`
 - E2E and upgrade tests should follow `.github/actions/e2e/action.yaml` and `.github/actions/upgrade/action.yaml`; use the `e2e/Makefile` targets from inside `e2e/`.
 
 ## Why Make targets first
