@@ -202,7 +202,7 @@ func newPVCsForStatefulSet(sts *appsv1.StatefulSet, pvcSizes map[string]resource
 	replicas := ptr.Deref(sts.Spec.Replicas, 1)
 
 	for _, template := range sts.Spec.VolumeClaimTemplates {
-		for i := int32(0); i < replicas; i++ {
+		for i := range replicas {
 			pvc := template.DeepCopy()
 			pvc.Name = fmt.Sprintf("%s-%s-%d", template.Name, sts.Name, i)
 			pvc.Namespace = "default"

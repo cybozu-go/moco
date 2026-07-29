@@ -80,7 +80,7 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 
 	pvcSizes := make(map[string]*resource.Quantity)
 	for templateName, size := range newSizes {
-		for ordinal := int32(0); ordinal < replicas; ordinal++ {
+		for ordinal := range replicas {
 			name := fmt.Sprintf("%s-%s-%d", templateName, sts.Name, ordinal)
 			pvcSizes[name] = size
 		}
