@@ -34,3 +34,14 @@ Only use raw `go test` for a quick diagnostic. For envtest packages, carry over 
 ENVTEST_KUBERNETES_VERSION=1.35.0 ENVTEST_ASSETS_DIR="$PWD/bin" \
   go test ./controllers -run TestAPIs -ginkgo.focus 'part of spec name'
 ```
+
+## Standard Go tests in envtest packages
+
+`FOCUS` is passed to `-ginkgo.focus`; it filters Ginkgo specs only. It does not select a top-level standard-library test declared as `func TestXxx(t *testing.T)`. Do not use `make controller-envtest FOCUS='TestReconcilePVC'` as a focused command for such a test.
+
+For a quick diagnostic of a standard Go test in `controllers`, use an exact `-run` expression so that `TestAPIs` is excluded and envtest is not started:
+
+```sh
+go test ./controllers -run '^TestReconcilePVC$' -count=1
+```
+

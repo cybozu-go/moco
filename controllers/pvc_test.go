@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -29,27 +29,24 @@ import (
 
 func TestReconcilePVC(t *testing.T) {
 	tests := []struct {
-		name            string
-		cluster         *mocov1beta2.MySQLCluster
-		setupClient     func(*testing.T) client.Client
-		wantSize        resource.Quantity
-		wantLabels      map[string]string
-		wantAnnotations map[string]string
-		wantMetrics     string
+		name        string
+		clusterName string
+		arrangeFunc func(*testing.T, client.Client)
+		assertFunc  func(*testing.T, client.Client)
+		wantMetrics string
 	}{
 		{
-			name:    "resize succeeded",
-			cluster: newMySQLClusterWithVolumeSize(resource.MustParse("2Gi")),
-			setupClient: func(t *testing.T) client.Client {
+			name:        "resize succeeded",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
 				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
 				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				return setupMockClient(t, cluster, sts)
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
 			},
-			wantSize: resource.MustParse("2Gi"),
-			wantLabels: map[string]string{
-				"app.kubernetes.io/created-by": "moco",
-				"app.kubernetes.io/instance":   "mysql-cluster",
-				"app.kubernetes.io/name":       "mysql",
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), mysqlPVCLabels(), nil)
 			},
 			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
 # TYPE moco_cluster_volume_resized_total counter
@@ -57,107 +54,141 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 `,
 		},
 		{
-			name: "label synced",
-			cluster: func() *mocov1beta2.MySQLCluster {
+			name:        "PVC without storage request",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				pvcs[0].(*corev1.PersistentVolumeClaim).Spec.Resources.Requests = make(corev1.ResourceList)
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), mysqlPVCLabels(), nil)
+			},
+			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
+# TYPE moco_cluster_volume_resized_total counter
+moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
+`,
+		},
+		{
+			name:        "non-expandable StorageClass",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = new("non-expandable")
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				objects := append([]client.Object{cluster, sts, newNonExpandableStorageClass()}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("1Gi"), mysqlPVCLabels(), nil)
+			},
+		},
+		{
+			name:        "actual PVC is larger than requested size",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("500Gi"),
+				})
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("500Gi"), mysqlPVCLabels(), nil)
+			},
+		},
+		{
+			name:        "label synced",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
 				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
 				cluster.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
 					"need-update": "updated",
 					"foo":         "updated",
-				}
-				return cluster
-			}(),
-			setupClient: func(t *testing.T) client.Client {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				cluster.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
-					"need-update": "not-updated",
-					"foo":         "not-updated",
 				}
 				sts := newStatefulSetWithVolumeSize(resource.MustParse("2Gi"))
 				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
 					"need-update": "not-updated",
 					"foo":         "not-updated",
 				}
-				return setupMockClient(t, cluster, sts)
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
 			},
-			wantSize: resource.MustParse("2Gi"),
-			wantLabels: map[string]string{
-				"app.kubernetes.io/created-by": "moco",
-				"app.kubernetes.io/instance":   "mysql-cluster",
-				"app.kubernetes.io/name":       "mysql",
-				"need-update":                  "updated",
-				"foo":                          "not-updated",
+			assertFunc: func(t *testing.T, c client.Client) {
+				wantLabels := mysqlPVCLabels()
+				wantLabels["need-update"] = "updated"
+				wantLabels["foo"] = "not-updated"
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), wantLabels, nil)
 			},
 		},
 		{
-			name: "annotation synced",
-			cluster: func() *mocov1beta2.MySQLCluster {
+			name:        "annotation synced",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
 				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
 				cluster.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
 					"need-update": "updated",
 					"foo":         "updated",
-				}
-				return cluster
-			}(),
-			setupClient: func(t *testing.T) client.Client {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				cluster.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
-					"need-update": "not-updated",
-					"foo":         "not-updated",
 				}
 				sts := newStatefulSetWithVolumeSize(resource.MustParse("2Gi"))
 				sts.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
 					"need-update": "not-updated",
 					"foo":         "not-updated",
 				}
-				return setupMockClient(t, cluster, sts)
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
 			},
-			wantSize: resource.MustParse("2Gi"),
-			wantLabels: map[string]string{
-				"app.kubernetes.io/created-by": "moco",
-				"app.kubernetes.io/instance":   "mysql-cluster",
-				"app.kubernetes.io/name":       "mysql",
-			},
-			wantAnnotations: map[string]string{
-				"need-update": "updated",
-				"foo":         "not-updated",
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), mysqlPVCLabels(), map[string]string{
+					"need-update": "updated",
+					"foo":         "not-updated",
+				})
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			scheme := runtime.NewScheme()
+			if err := clientgoscheme.AddToScheme(scheme); err != nil {
+				t.Fatalf("failed to add scheme: %v", err)
+			}
+			if err := mocov1beta2.AddToScheme(scheme); err != nil {
+				t.Fatalf("failed to add scheme: %v", err)
+			}
+
+			c := fake.NewClientBuilder().WithScheme(scheme).Build()
+			createObjects(t, c, newExpandableStorageClass())
+			tt.arrangeFunc(t, c)
+
+			var cluster mocov1beta2.MySQLCluster
+			if err := c.Get(t.Context(), types.NamespacedName{Name: tt.clusterName, Namespace: "default"}, &cluster); err != nil {
+				t.Fatalf("failed to get MySQLCluster: %v", err)
+			}
+
 			registry := prometheus.NewRegistry()
+			metrics.Register(registry)
+
 			r := &MySQLClusterReconciler{
-				Client:                tt.setupClient(t),
+				Client:                c,
 				PVCSyncAnnotationKeys: []string{"need-update"},
 				PVCSyncLabelKeys:      []string{"need-update"},
 			}
 
-			metrics.Register(registry)
-
-			err := r.reconcilePVC(ctx, tt.cluster)
-			if err != nil {
+			if err := r.reconcilePVC(t.Context(), &cluster); err != nil {
 				t.Fatalf("reconcilePVC() error = %v", err)
 			}
 
-			var pvc corev1.PersistentVolumeClaim
-			if err := r.Get(ctx, types.NamespacedName{Name: "mysql-data-moco-mysql-cluster-0", Namespace: tt.cluster.Namespace}, &pvc); err != nil {
-				t.Fatalf("failed to get PVC: %v", err)
-			}
-			if !pvc.Spec.Resources.Requests.Storage().Equal(tt.wantSize) {
-				t.Errorf("unexpected PVC size: got: %s, want: %s", pvc.Spec.Resources.Requests.Storage().String(), tt.wantSize.String())
-			}
-			if diff := cmp.Diff(tt.wantLabels, pvc.Labels); len(diff) != 0 {
-				t.Errorf("unexpected PVC labels: %s", diff)
-			}
-			if diff := cmp.Diff(tt.wantAnnotations, pvc.Annotations); len(diff) != 0 {
-				t.Errorf("unexpected PVC annotations: %s", diff)
-			}
+			tt.assertFunc(t, c)
 
-			if len(tt.wantMetrics) == 0 {
-				return
-			}
 			if err := testutil.GatherAndCompare(registry, strings.NewReader(tt.wantMetrics), "moco_cluster_volume_resized_total"); err != nil {
 				t.Errorf("metrics comparison failed: %v", err)
 			}
@@ -165,186 +196,88 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 	}
 }
 
-func setupMockClient(t *testing.T, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) client.Client {
-	t.Helper()
-
-	scheme := runtime.NewScheme()
-	if err := clientgoscheme.AddToScheme(scheme); err != nil {
-		t.Fatalf("failed to add scheme: %v", err)
-	}
-	if err := mocov1beta2.AddToScheme(scheme); err != nil {
-		t.Fatalf("failed to add scheme: %v", err)
-	}
-
+func newPVCsForStatefulSet(sts *appsv1.StatefulSet, pvcSizes map[string]resource.Quantity) []client.Object {
 	var pvcs []client.Object
 
-	for _, pvc := range sts.Spec.VolumeClaimTemplates {
-		for i := int32(0); i < *sts.Spec.Replicas; i++ {
-			pvc.Name = fmt.Sprintf("%s-%s-%d", pvc.Name, cluster.PrefixedName(), i)
-			pvc.Namespace = cluster.Namespace
+	replicas := ptr.Deref(sts.Spec.Replicas, 1)
+
+	for _, template := range sts.Spec.VolumeClaimTemplates {
+		for i := int32(0); i < replicas; i++ {
+			pvc := template.DeepCopy()
+			pvc.Name = fmt.Sprintf("%s-%s-%d", template.Name, sts.Name, i)
+			pvc.Namespace = "default"
 
 			labels := make(map[string]string)
 			maps.Copy(labels, pvc.Labels)
 			maps.Copy(labels, sts.Spec.Selector.MatchLabels)
 			pvc.Labels = labels
 
-			pvc.Spec.StorageClassName = new("default")
-			pvcs = append(pvcs, &pvc)
+			if size, ok := pvcSizes[pvc.Name]; ok {
+				if pvc.Spec.Resources.Requests == nil {
+					pvc.Spec.Resources.Requests = corev1.ResourceList{}
+				}
+				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = size
+			}
+			pvcs = append(pvcs, pvc)
 		}
 	}
 
-	storageClass := &storagev1.StorageClass{
+	return pvcs
+}
+
+func newExpandableStorageClass() *storagev1.StorageClass {
+	return &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",
 		},
 		Provisioner:          "kubernetes.io/no-provisioner",
 		AllowVolumeExpansion: new(true),
 	}
-
-	client := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(cluster, sts, storageClass).
-		WithObjects(pvcs...).
-		Build()
-
-	return client
 }
 
-func TestNeedResizePVC(t *testing.T) {
-	tests := []struct {
-		name             string
-		cluster          *mocov1beta2.MySQLCluster
-		sts              *appsv1.StatefulSet
-		wantResizeTarget map[string]corev1.PersistentVolumeClaim
-		wantResize       bool
-		wantError        error
-	}{
-		{
-			name:       "no resizing",
-			cluster:    newMySQLClusterWithVolumeSize(resource.MustParse("1Gi")),
-			sts:        newStatefulSetWithVolumeSize(resource.MustParse("1Gi")),
-			wantResize: false,
+func newNonExpandableStorageClass() *storagev1.StorageClass {
+	return &storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "non-expandable",
 		},
-		{
-			name:    "need resizing",
-			cluster: newMySQLClusterWithVolumeSize(resource.MustParse("2Gi")),
-			sts:     newStatefulSetWithVolumeSize(resource.MustParse("1Gi")),
-			wantResizeTarget: func() map[string]corev1.PersistentVolumeClaim {
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvc := sts.Spec.VolumeClaimTemplates[0]
-				m := make(map[string]corev1.PersistentVolumeClaim)
-				m[pvc.Name] = pvc
-				return m
-			}(),
-			wantResize: true,
-		},
-		{
-			name:       "reduce volume size error",
-			cluster:    newMySQLClusterWithVolumeSize(resource.MustParse("1Gi")),
-			sts:        newStatefulSetWithVolumeSize(resource.MustParse("2Gi")),
-			wantResize: false,
-		},
-		{
-			name:    "StatefulSet has more PVCs",
-			cluster: newMySQLClusterWithVolumeSize(resource.MustParse("1Gi")),
-			sts: func() *appsv1.StatefulSet {
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvc := corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "new-data",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: new("default"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")},
-						},
-					},
-				}
-
-				sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates, pvc)
-
-				return sts
-			}(),
-			wantResize: false,
-		},
-		{
-			name: "MySQLCluster has more PVCs",
-			cluster: func() *mocov1beta2.MySQLCluster {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("1Gi"))
-				pvc := mocov1beta2.PersistentVolumeClaim{
-					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
-					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-						WithStorageClassName("default").WithResources(corev1ac.VolumeResourceRequirements().
-						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
-					)),
-				}
-				cluster.Spec.VolumeClaimTemplates = append(cluster.Spec.VolumeClaimTemplates, pvc)
-				return cluster
-			}(),
-			sts:        newStatefulSetWithVolumeSize(resource.MustParse("1Gi")),
-			wantResize: false,
-		},
-		{
-			name: "Mix expansion and reduction",
-			cluster: func() *mocov1beta2.MySQLCluster {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				pvc := mocov1beta2.PersistentVolumeClaim{
-					ObjectMeta: mocov1beta2.ObjectMeta{Name: "new-data"},
-					Spec: mocov1beta2.PersistentVolumeClaimSpecApplyConfiguration(*corev1ac.PersistentVolumeClaimSpec().
-						WithStorageClassName("default").WithResources(corev1ac.VolumeResourceRequirements().
-						WithRequests(corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("1Gi")}),
-					)),
-				}
-				cluster.Spec.VolumeClaimTemplates = append(cluster.Spec.VolumeClaimTemplates, pvc)
-				return cluster
-			}(),
-			sts: func() *appsv1.StatefulSet {
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvc := corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "new-data",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						StorageClassName: new("default"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("2Gi")},
-						},
-					},
-				}
-
-				sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates, pvc)
-
-				return sts
-			}(),
-			wantResizeTarget: func() map[string]corev1.PersistentVolumeClaim {
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvc := sts.Spec.VolumeClaimTemplates[0]
-				m := make(map[string]corev1.PersistentVolumeClaim)
-				m[pvc.Name] = pvc
-				return m
-			}(),
-			wantResize: true,
-		},
+		Provisioner:          "kubernetes.io/no-provisioner",
+		AllowVolumeExpansion: new(false),
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &MySQLClusterReconciler{}
-			resizeTarget, resize := r.needResizePVC(tt.cluster, tt.sts)
-			if tt.wantResize != resize {
-				t.Fatalf("want resize %v, got %v", tt.wantResize, resize)
-			}
+func createObjects(t *testing.T, c client.Client, objects ...client.Object) {
+	t.Helper()
 
-			if len(tt.wantResizeTarget) != len(resizeTarget) {
-				t.Fatalf("want resize target length %v, got %v", len(tt.wantResizeTarget), len(resizeTarget))
-			}
+	for _, object := range objects {
+		if err := c.Create(t.Context(), object); err != nil {
+			t.Fatalf("failed to create %T %s: %v", object, client.ObjectKeyFromObject(object), err)
+		}
+	}
+}
 
-			for key, value := range tt.wantResizeTarget {
-				if diff := cmp.Diff(value, resizeTarget[key]); len(diff) != 0 {
-					t.Fatalf("unexpected resize target: %s", diff)
-				}
-			}
-		})
+func assertPVC(t *testing.T, c client.Client, name string, wantSize resource.Quantity, wantLabels, wantAnnotations map[string]string) {
+	t.Helper()
+
+	var pvc corev1.PersistentVolumeClaim
+	if err := c.Get(t.Context(), types.NamespacedName{Name: name, Namespace: "default"}, &pvc); err != nil {
+		t.Fatalf("failed to get PVC %q: %v", name, err)
+	}
+	if got := pvc.Spec.Resources.Requests.Storage(); !got.Equal(wantSize) {
+		t.Errorf("unexpected PVC %q size: got: %s, want: %s", name, got.String(), wantSize.String())
+	}
+	if diff := cmp.Diff(wantLabels, pvc.Labels); len(diff) != 0 {
+		t.Errorf("unexpected PVC %q labels: %s", name, diff)
+	}
+	if diff := cmp.Diff(wantAnnotations, pvc.Annotations); len(diff) != 0 {
+		t.Errorf("unexpected PVC %q annotations: %s", name, diff)
+	}
+}
+
+func mysqlPVCLabels() map[string]string {
+	return map[string]string{
+		constants.LabelAppName:      constants.AppNameMySQL,
+		constants.LabelAppCreatedBy: constants.AppCreator,
+		constants.LabelAppInstance:  "mysql-cluster",
 	}
 }
 
