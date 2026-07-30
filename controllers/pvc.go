@@ -69,6 +69,9 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 
 	newSizes := make(map[string]*resource.Quantity)
 	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
+		if pvc.Spec.Resources == nil || pvc.Spec.Resources.Requests == nil {
+			continue
+		}
 		newSize := pvc.Spec.Resources.Requests.Storage()
 		if newSize == nil {
 			continue

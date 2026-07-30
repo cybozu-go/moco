@@ -36,17 +36,19 @@ func TestReconcilePVC(t *testing.T) {
 		wantMetrics string
 	}{
 		{
-			name:        "resize succeeded",
+			name:        "actual PVC is smaller than requested size",
 			clusterName: "mysql-cluster",
 			arrangeFunc: func(t *testing.T, c client.Client) {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvcs := newPVCsForStatefulSet(sts, nil)
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("250Gi"),
+				})
 				objects := append([]client.Object{cluster, sts}, pvcs...)
 				createObjects(t, c, objects...)
 			},
 			assertFunc: func(t *testing.T, c client.Client) {
-				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), mysqlPVCLabels(), nil)
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("300Gi"), mysqlPVCLabels(), nil)
 			},
 			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
 # TYPE moco_cluster_volume_resized_total counter
@@ -54,37 +56,19 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 `,
 		},
 		{
-			name:        "PVC without storage request",
+			name:        "actual PVC is equal to requested size",
 			clusterName: "mysql-cluster",
 			arrangeFunc: func(t *testing.T, c client.Client) {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				pvcs := newPVCsForStatefulSet(sts, nil)
-				pvcs[0].(*corev1.PersistentVolumeClaim).Spec.Resources.Requests = make(corev1.ResourceList)
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("300Gi"),
+				})
 				objects := append([]client.Object{cluster, sts}, pvcs...)
 				createObjects(t, c, objects...)
 			},
 			assertFunc: func(t *testing.T, c client.Client) {
-				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("2Gi"), mysqlPVCLabels(), nil)
-			},
-			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
-# TYPE moco_cluster_volume_resized_total counter
-moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
-`,
-		},
-		{
-			name:        "non-expandable StorageClass",
-			clusterName: "mysql-cluster",
-			arrangeFunc: func(t *testing.T, c client.Client) {
-				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
-				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
-				sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = new("non-expandable")
-				pvcs := newPVCsForStatefulSet(sts, nil)
-				objects := append([]client.Object{cluster, sts, newNonExpandableStorageClass()}, pvcs...)
-				createObjects(t, c, objects...)
-			},
-			assertFunc: func(t *testing.T, c client.Client) {
-				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("1Gi"), mysqlPVCLabels(), nil)
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("300Gi"), mysqlPVCLabels(), nil)
 			},
 		},
 		{
@@ -102,6 +86,129 @@ moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
 			assertFunc: func(t *testing.T, c client.Client) {
 				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("500Gi"), mysqlPVCLabels(), nil)
 			},
+		},
+		{
+			name:        "PVC without storage request",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				pvcs[0].(*corev1.PersistentVolumeClaim).Spec.Resources.Requests = make(corev1.ResourceList)
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("300Gi"), mysqlPVCLabels(), nil)
+			},
+			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
+# TYPE moco_cluster_volume_resized_total counter
+moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
+`,
+		},
+		{
+			name:        "MySQLCluster without storage request",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				cluster.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests = nil
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("200Gi"),
+				})
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("200Gi"), mysqlPVCLabels(), nil)
+			},
+		},
+		{
+			name:        "non-expandable StorageClass",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("2Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("1Gi"))
+				sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = new("non-expandable")
+				pvcs := newPVCsForStatefulSet(sts, nil)
+				objects := append([]client.Object{cluster, sts, newNonExpandableStorageClass()}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("1Gi"), mysqlPVCLabels(), nil)
+			},
+		},
+		{
+			name:        "StatefulSet is updating",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				sts.Generation = 2
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("250Gi"),
+				})
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("250Gi"), mysqlPVCLabels(), nil)
+			},
+		},
+		{
+			name:        "PVC with unrelated name is not resized",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("200Gi"),
+				})
+				unrelatedPvc := pvcs[0].(*corev1.PersistentVolumeClaim).DeepCopy()
+				unrelatedPvc.Name = "unrelated-moco-mysql-cluster-0"
+				objects := append([]client.Object{cluster, sts, unrelatedPvc}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("300Gi"), mysqlPVCLabels(), nil)
+				assertPVC(t, c, "unrelated-moco-mysql-cluster-0", resource.MustParse("200Gi"), mysqlPVCLabels(), nil)
+			},
+			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
+# TYPE moco_cluster_volume_resized_total counter
+moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
+`,
+		},
+		{
+			name:        "StatefulSet does not exist",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				createObjects(t, c, newMySQLClusterWithVolumeSize(resource.MustParse("300Gi")))
+			},
+			assertFunc: func(t *testing.T, c client.Client) {},
+		},
+		{
+			name:        "multiple PVCs with mixed sizes",
+			clusterName: "mysql-cluster",
+			arrangeFunc: func(t *testing.T, c client.Client) {
+				cluster := newMySQLClusterWithVolumeSize(resource.MustParse("300Gi"))
+				sts := newStatefulSetWithVolumeSize(resource.MustParse("200Gi"))
+				sts.Spec.Replicas = new(int32(2))
+				sts.Status.ReadyReplicas = 2
+				pvcs := newPVCsForStatefulSet(sts, map[string]resource.Quantity{
+					"mysql-data-moco-mysql-cluster-0": resource.MustParse("250Gi"),
+					"mysql-data-moco-mysql-cluster-1": resource.MustParse("500Gi"),
+				})
+				objects := append([]client.Object{cluster, sts}, pvcs...)
+				createObjects(t, c, objects...)
+			},
+			assertFunc: func(t *testing.T, c client.Client) {
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-0", resource.MustParse("300Gi"), mysqlPVCLabels(), nil)
+				assertPVC(t, c, "mysql-data-moco-mysql-cluster-1", resource.MustParse("500Gi"), mysqlPVCLabels(), nil)
+			},
+			wantMetrics: `# HELP moco_cluster_volume_resized_total The number of successful volume resizes
+# TYPE moco_cluster_volume_resized_total counter
+moco_cluster_volume_resized_total{name="mysql-cluster",namespace="default"} 1
+`,
 		},
 		{
 			name:        "label synced",

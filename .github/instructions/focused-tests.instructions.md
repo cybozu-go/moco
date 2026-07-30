@@ -44,4 +44,3 @@ For a quick diagnostic of a standard Go test in `controllers`, use an exact `-ru
 ```sh
 go test ./controllers -run '^TestReconcilePVC$' -count=1
 ```
-
