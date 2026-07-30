@@ -1,12 +1,20 @@
 ---
 name: table-driven-aaa-tests
-description: 'Refactor or implement Go table-driven tests using case-specific Arrange and Assert functions with one shared Act. Use when consolidating duplicated tests, fake-client fixtures, setup helpers, resource builders, expected-state checks, or subtests while preserving behavior and coverage.'
+description: 'Refactor or implement Go standard-library TestXxx table-driven tests when Arrange or Assert varies by case, using case-specific functions and one shared Act. Use for duplicated tests, fake-client fixtures, setup helpers, resource builders, or expected-state checks. Do not use for Ginkgo specs or tables with common Arrange and Assert logic.'
 argument-hint: 'Describe the Go test file or test cases to refactor'
 ---
 
 # Table-Driven Arrange/Act/Assert Tests
 
-Use this workflow to structure Go tests so each table entry owns its initial state and expected outcome while the test loop owns one common operation under test.
+Use this workflow only for Go standard-library tests declared as `func TestXxx(t *testing.T)`. It does not apply to Ginkgo specs.
+
+## Choose the Test Shape
+
+- Use case-specific `arrangeFunc` and `assertFunc` when Arrange or Assert behavior varies between test cases. Once this pattern is selected, define both functions for every case.
+- Keep setup and assertions that every case needs directly in the `t.Run` body. Do not repeat common work in case functions.
+- When Arrange and Assert are both common, write a conventional table-driven test. Put inputs, options, and expected values in fields such as `input`, `want`, or `wantErr`, and keep the shared Arrange and Assert logic in the test loop.
+
+Different parameter or expected values alone do not justify `arrangeFunc` or `assertFunc`. Use them when the cases need different setup or assertion behavior.
 
 ## Target Shape
 
@@ -30,6 +38,7 @@ testCases := []struct {
 for _, tt := range testCases {
     t.Run(tt.name, func(t *testing.T) {
         dependency := newDependency(t)
+        // common setup for every case...
         tt.arrangeFunc(t, dependency)
 
         subject := loadSubject(t, dependency)
@@ -37,12 +46,11 @@ for _, tt := range testCases {
             t.Fatalf("act failed: %v", err)
         }
 
+        // common assertions for every case...
         tt.assertFunc(t, dependency)
     })
 }
 ```
-
-Adapt the fields for per-case identifiers, expected errors, metrics, events, or configuration. Keep the operation being tested in the common loop.
 
 ## Recommended
 
@@ -61,10 +69,9 @@ struct {
 }
 ```
 
-- `arrangeFunc` creates all case-specific resources and initial values.
-- `assertFunc` reloads results and performs case-specific checks.
-- Expected errors or optional side effects remain fields when their checking logic is common.
-- Do not keep parallel `wantX` fields if only one case-specific assertion closure consumes them more clearly.
+- `arrangeFunc` arranges case-specific resources and initial values.
+- `assertFunc` performs case-specific checks.
+- Keep expected errors or optional side effects as fields when their checking logic is common.
 
 ### Build Fresh Common Infrastructure
 
@@ -76,19 +83,11 @@ Inside each `t.Run`:
 - reload the subject from the dependency when persistence is part of the contract
 - construct the reconciler or service with common configuration
 
-Fresh dependencies prevent state and metrics from leaking between subtests. Move genuinely invariant setup into the common loop; leave resources whose values define a scenario in its Arrange closure.
+Fresh dependencies prevent state and metrics from leaking between subtests. Keep invariant setup in the common loop and scenario-specific state in `arrangeFunc`.
 
 ### Extract Narrow Helpers
 
-Create helpers only for repeated mechanical work, such as:
-
-- building resource objects
-- deriving child objects from templates
-- creating a list of objects in a fake client
-- loading and comparing one resource
-- returning a fresh expected label or annotation map
-
-Helpers should expose the arranged state instead of hiding an entire scenario. Prefer:
+Create helpers only for repeated mechanical work. Helpers should expose the arranged state instead of hiding an entire scenario. Prefer:
 
 ```go
 objects := newObjectsForStatefulSet(cluster, statefulSet, sizes)
