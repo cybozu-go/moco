@@ -82,6 +82,7 @@ generate: aqua-install ## Generate code containing DeepCopy, DeepCopyInto, and D
 apidoc: aqua-install $(wildcard api/*/*_types.go)
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta2/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
 	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/backuppolicy_types.go -f api/v1beta2/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta2.md
+	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/credentialrotation_types.go -n CredentialRotation > docs/crd_credentialrotation_v1beta2.md
 
 .PHONY: book
 book: aqua-install

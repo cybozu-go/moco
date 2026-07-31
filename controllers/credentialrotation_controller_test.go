@@ -29,7 +29,7 @@ func crStep(cr *mocov1beta2.CredentialRotation) string {
 
 // simulateRetainDone mimics the side effect of ClusterManager finishing
 // RETAIN: DualPassword flips to True, which moves Step from
-// ApplyingRetain to DistributingPassword.
+// ApplyingRetain to Promoting.
 func simulateRetainDone(cr *mocov1beta2.CredentialRotation) {
 	cr.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test simulate RETAIN done")
 }
@@ -39,6 +39,29 @@ func simulateRetainDone(cr *mocov1beta2.CredentialRotation) {
 // Step from ApplyingDiscard to Finalizing.
 func simulateDiscardDone(cr *mocov1beta2.CredentialRotation) {
 	cr.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained, "test simulate DISCARD done")
+}
+
+// syncStatefulSetRolloutComplete makes the StatefulSet status report a
+// settled rollout for its current generation. No StatefulSet controller
+// runs in envtest, and handleAwaitingRollout bumps the pod template
+// (restart annotation) after its distribution catch-up check, so a single
+// status write can become stale; call this inside an Eventually together
+// with the step assertion so the status keeps tracking the generation.
+func syncStatefulSetRolloutComplete(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
+	sts := &appsv1.StatefulSet{}
+	if err := k8sClient.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.PrefixedName(),
+	}, sts); err != nil {
+		return err
+	}
+	sts.Status.ObservedGeneration = sts.Generation
+	sts.Status.Replicas = *sts.Spec.Replicas
+	sts.Status.CurrentRevision = "rev-1"
+	sts.Status.UpdateRevision = "rev-1"
+	sts.Status.UpdatedReplicas = *sts.Spec.Replicas
+	sts.Status.ReadyReplicas = *sts.Spec.Replicas
+	return k8sClient.Status().Update(ctx, sts)
 }
 
 var _ = Describe("CredentialRotation reconciler", func() {
@@ -178,7 +201,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(cr.OwnerReferences[0].Name).To(Equal(cluster.Name))
 	})
 
-	It("should distribute secrets and set Rotated when phase is Retained", func() {
+	It("should promote passwords and trigger distribution when phase is Retained", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -222,6 +245,17 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepApplyingRetain)))
 
+		// Capture the staged pending password before promotion consumes it.
+		controllerSecret := &corev1.Secret{}
+		err = k8sClient.Get(ctx, client.ObjectKey{
+			Namespace: testMocoSystemNamespace,
+			Name:      cluster.ControllerSecretName(),
+		}, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+		pendingAdmin := string(controllerSecret.Data[password.AdminPasswordPendingKey])
+		Expect(pendingAdmin).NotTo(BeEmpty())
+		oldAdmin := string(controllerSecret.Data["ADMIN_PASSWORD"])
+
 		// Simulate ClusterManager advancing phase to Retained.
 		Eventually(func() error {
 			cr := &mocov1beta2.CredentialRotation{}
@@ -232,9 +266,10 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		// The reconciler should distribute secrets and enter
-		// AwaitingRollout (DiscardReady will flip to True only after
-		// the StatefulSet rollout settles).
+		// The reconciler should promote the pending passwords to current
+		// and enter AwaitingRollout (DiscardReady will flip to True only
+		// after distribution catches up and the StatefulSet rollout
+		// settles).
 		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
@@ -243,14 +278,31 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
 
-		// Verify user secret has pending passwords.
-		userSecret := &corev1.Secret{}
+		// Verify the controller Secret was promoted: current = new,
+		// old archived as *_OLD, pending gone, ROTATION_ID kept.
+		controllerSecret = &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
-			Namespace: "test",
-			Name:      cluster.UserSecretName(),
-		}, userSecret)
+			Namespace: testMocoSystemNamespace,
+			Name:      cluster.ControllerSecretName(),
+		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(userSecret.Data).To(HaveKey("ADMIN_PASSWORD"))
+		Expect(string(controllerSecret.Data["ADMIN_PASSWORD"])).To(Equal(pendingAdmin))
+		Expect(string(controllerSecret.Data[password.AdminPasswordOldKey])).To(Equal(oldAdmin))
+		Expect(controllerSecret.Data).NotTo(HaveKey(password.AdminPasswordPendingKey))
+		Expect(controllerSecret.Data).To(HaveKey(password.RotationIDKey))
+
+		// MySQLClusterReconciler (watching the controller Secret) must
+		// redistribute the promoted current passwords.
+		Eventually(func() string {
+			userSecret := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: "test",
+				Name:      cluster.UserSecretName(),
+			}, userSecret); err != nil {
+				return ""
+			}
+			return string(userSecret.Data["ADMIN_PASSWORD"])
+		}).Should(Equal(pendingAdmin))
 
 		// Verify my.cnf secret exists.
 		mycnfSecret := &corev1.Secret{}
@@ -260,14 +312,19 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}, mycnfSecret)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Verify restart annotation on StatefulSet.
-		sts := &appsv1.StatefulSet{}
-		err = k8sClient.Get(ctx, client.ObjectKey{
-			Namespace: "test",
-			Name:      cluster.PrefixedName(),
-		}, sts)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(sts.Spec.Template.Annotations).To(HaveKey(constants.AnnPasswordRotationRestart))
+		// Verify the restart annotation is applied once distribution has
+		// caught up (handleAwaitingRollout applies it after the catch-up
+		// check, so this is not immediate).
+		Eventually(func() map[string]string {
+			sts := &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: "test",
+				Name:      cluster.PrefixedName(),
+			}, sts); err != nil {
+				return nil
+			}
+			return sts.Spec.Template.Annotations
+		}).Should(HaveKey(constants.AnnPasswordRotationRestart))
 	})
 
 	It("should advance to Discarding when rollout is complete", func() {
@@ -330,26 +387,12 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
 
-		// Simulate StatefulSet rollout complete so handleAwaitingRollout
+		// Simulate the StatefulSet rollout settling so handleAwaitingRollout
 		// flips DiscardReady=True and the CR enters AwaitingDiscard.
-		Eventually(func() error {
-			sts := &appsv1.StatefulSet{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{
-				Namespace: "test",
-				Name:      cluster.PrefixedName(),
-			}, sts); err != nil {
-				return err
-			}
-			sts.Status.ObservedGeneration = sts.Generation
-			sts.Status.Replicas = *sts.Spec.Replicas
-			sts.Status.CurrentRevision = "rev-1"
-			sts.Status.UpdateRevision = "rev-1"
-			sts.Status.UpdatedReplicas = *sts.Spec.Replicas
-			sts.Status.ReadyReplicas = *sts.Spec.Replicas
-			return k8sClient.Status().Update(ctx, sts)
-		}).Should(Succeed())
-
 		Eventually(func() string {
+			if err := syncStatefulSetRolloutComplete(ctx, cluster); err != nil {
+				return ""
+			}
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
@@ -441,8 +484,9 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return k8sClient.Status().Update(ctx, cr)
 		}).Should(Succeed())
 
-		// Phase 3: → AwaitingRollout (reconciler distributes secrets,
-		// promotes observedRotationGeneration, waits for the post-distribute
+		// Phase 3: → AwaitingRollout (reconciler promotes pending → current
+		// in the controller Secret, promotes observedRotationGeneration;
+		// MySQLClusterReconciler redistributes; the reconciler waits for the
 		// rolling restart to settle before opening the verification window).
 		Eventually(func() string {
 			cr := &mocov1beta2.CredentialRotation{}
@@ -452,26 +496,12 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
 
-		// Phase 3b: Simulate the StatefulSet rollout completing →
+		// Phase 3b: Simulate the StatefulSet rollout settling →
 		// AwaitingDiscard (reconciler flips DiscardReady=True).
-		Eventually(func() error {
-			sts := &appsv1.StatefulSet{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{
-				Namespace: "test",
-				Name:      cluster.PrefixedName(),
-			}, sts); err != nil {
-				return err
-			}
-			sts.Status.ObservedGeneration = sts.Generation
-			sts.Status.Replicas = *sts.Spec.Replicas
-			sts.Status.CurrentRevision = "rev-1"
-			sts.Status.UpdateRevision = "rev-1"
-			sts.Status.UpdatedReplicas = *sts.Spec.Replicas
-			sts.Status.ReadyReplicas = *sts.Spec.Replicas
-			return k8sClient.Status().Update(ctx, sts)
-		}).Should(Succeed())
-
 		Eventually(func() string {
+			if err := syncStatefulSetRolloutComplete(ctx, cluster); err != nil {
+				return ""
+			}
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
@@ -523,7 +553,8 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
 		Expect(cr.Status.ObservedDiscardGeneration).To(Equal(int64(1)))
 
-		// Verify pending passwords have been promoted in the controller secret.
+		// Verify the promoted passwords are current and all rotation
+		// bookkeeping keys have been cleaned up.
 		controllerSecret = &corev1.Secret{}
 		err = k8sClient.Get(ctx, client.ObjectKey{
 			Namespace: testMocoSystemNamespace,
@@ -531,6 +562,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(controllerSecret.Data).NotTo(HaveKey(password.AdminPasswordPendingKey))
+		Expect(controllerSecret.Data).NotTo(HaveKey(password.AdminPasswordOldKey))
 		Expect(controllerSecret.Data).NotTo(HaveKey(password.RotationIDKey))
 		Expect(string(controllerSecret.Data["ADMIN_PASSWORD"])).To(Equal(pendingAdmin))
 
@@ -773,27 +805,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
 
-		// Simulate StatefulSet rollout complete so the CR reaches
+		// Simulate the StatefulSet rollout settling so the CR reaches
 		// AwaitingDiscard (the webhook requires this to accept a
 		// discardGeneration bump).
-		Eventually(func() error {
-			sts := &appsv1.StatefulSet{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{
-				Namespace: "test",
-				Name:      cluster.PrefixedName(),
-			}, sts); err != nil {
-				return err
-			}
-			sts.Status.ObservedGeneration = sts.Generation
-			sts.Status.Replicas = *sts.Spec.Replicas
-			sts.Status.CurrentRevision = "rev-1"
-			sts.Status.UpdateRevision = "rev-1"
-			sts.Status.UpdatedReplicas = *sts.Spec.Replicas
-			sts.Status.ReadyReplicas = *sts.Spec.Replicas
-			return k8sClient.Status().Update(ctx, sts)
-		}).Should(Succeed())
-
 		Eventually(func() string {
+			if err := syncStatefulSetRolloutComplete(ctx, cluster); err != nil {
+				return ""
+			}
 			cr := &mocov1beta2.CredentialRotation{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
 				return ""
@@ -846,7 +864,7 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).ShouldNot(Equal(string(mocov1beta2.StepApplyingDiscard)))
 	})
 
-	It("should self-heal user secret with pending passwords after Retained", func() {
+	It("should self-heal user secret with the promoted passwords after Retained", func() {
 		cluster := testNewMySQLCluster("test")
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
@@ -868,8 +886,8 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return nil
 		}).Should(Succeed())
 
-		// Create a CredentialRotation CR and advance through to Rotated
-		// (where pending passwords have been distributed to user Secret).
+		// Create a CredentialRotation CR and let the reconciler seed the
+		// pending passwords.
 		cr := &mocov1beta2.CredentialRotation{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -890,26 +908,9 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepApplyingRetain)))
 
-		// Simulate ClusterManager → Retained, then let reconciler advance to Rotated.
-		Eventually(func() error {
-			cr := &mocov1beta2.CredentialRotation{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
-				return err
-			}
-			simulateRetainDone(cr)
-			return k8sClient.Status().Update(ctx, cr)
-		}).Should(Succeed())
-
-		Eventually(func() string {
-			cr := &mocov1beta2.CredentialRotation{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
-				return ""
-			}
-			return crStep(cr)
-		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
-
-		// Capture the pending (new) password from the controller Secret — this is what
-		// the user Secret should hold after Retained phase distributes it.
+		// Capture the staged pending (new) password before promotion
+		// consumes it — this is what the user Secret must hold after the
+		// promotion is distributed.
 		var pendingAdminPwd string
 		Eventually(func() error {
 			source := &corev1.Secret{}
@@ -927,8 +928,40 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Succeed())
 		Expect(pendingAdminPwd).NotTo(Equal(oldAdminPwd))
 
-		// Tamper the user Secret. The MySQLClusterReconciler must self-heal it
-		// back to the pending (new) password — NOT the old current password.
+		// Simulate ClusterManager → Retained; the reconciler promotes the
+		// pending passwords to current and advances to AwaitingRollout.
+		Eventually(func() error {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return err
+			}
+			simulateRetainDone(cr)
+			return k8sClient.Status().Update(ctx, cr)
+		}).Should(Succeed())
+
+		Eventually(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crStep(cr)
+		}).Should(Equal(string(mocov1beta2.StepAwaitingRollout)))
+
+		// Wait for MySQLClusterReconciler to distribute the promoted
+		// current password.
+		Eventually(func() string {
+			secret := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: "test",
+				Name:      cluster.UserSecretName(),
+			}, secret); err != nil {
+				return ""
+			}
+			return string(secret.Data["ADMIN_PASSWORD"])
+		}).Should(Equal(pendingAdminPwd))
+
+		// Tamper the user Secret. The MySQLClusterReconciler must self-heal
+		// it back to the promoted (new) password — NOT the old password.
 		Eventually(func() error {
 			secret := &corev1.Secret{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{

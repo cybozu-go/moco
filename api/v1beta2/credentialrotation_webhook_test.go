@@ -31,7 +31,7 @@ func setCRIdle(cr *mocov1beta2.CredentialRotation) {
 }
 
 // setCRInFlight drives cr's status to an actively-progressing rotation
-// phase (RETAIN done; conditions match Step=DistributingPassword).
+// phase (RETAIN done; conditions match Step=Promoting).
 func setCRInFlight(cr *mocov1beta2.CredentialRotation) {
 	cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test in flight")
 	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test in flight")
@@ -54,14 +54,6 @@ func deleteCredentialRotation(name string) error {
 	cr := &mocov1beta2.CredentialRotation{}
 	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, cr); err != nil {
 		return client.IgnoreNotFound(err)
-	}
-	// Reset conditions to an idle state so the validating webhook
-	// allows deletion regardless of the test's intermediate state.
-	if !cr.IsDeletable() {
-		setCRIdle(cr)
-		if err := k8sClient.Status().Update(ctx, cr); err != nil {
-			return client.IgnoreNotFound(err)
-		}
 	}
 	return client.IgnoreNotFound(k8sClient.Delete(ctx, cr))
 }
@@ -314,6 +306,11 @@ var _ = Describe("CredentialRotation Webhook", func() {
 	})
 
 	Context("ValidateDelete", func() {
+		// Deletion is always allowed: the webhook is not registered for
+		// the delete verb. The core invariant (the controller Secret's
+		// current passwords always authenticate) makes deletion
+		// non-destructive; mid-cycle deletion only leaves residue that
+		// blocks the next cycle until cleaned up.
 		It("should allow deletion when conditions are absent (fresh CR)", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
@@ -344,143 +341,7 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should allow deletion when RotationReady=False with Reason=Blocked (recovery escape hatch)", func() {
-			cluster := makeMySQLCluster()
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonBlocked, "scaled to 0")
-			err = k8sClient.Status().Update(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = k8sClient.Delete(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should allow deletion when RotationReady=False with Reason=Stale (recovery escape hatch)", func() {
-			cluster := makeMySQLCluster()
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale, "inconsistent secret")
-			err = k8sClient.Status().Update(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = k8sClient.Delete(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should allow deletion when the owning MySQLCluster is gone (GC)", func() {
-			cluster := makeMySQLCluster()
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			setCRInFlight(cr)
-			err = k8sClient.Status().Update(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Delete the MySQLCluster first to simulate GC ordering after owner
-			// removal. The MySQLCluster mutating webhook adds a finalizer on
-			// create, and no controller runs in this envtest suite to remove
-			// it, so we clear it manually before Delete actually reaps the
-			// object.
-			Eventually(func() error {
-				c := &mocov1beta2.MySQLCluster{}
-				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), c); err != nil {
-					return err
-				}
-				c.Finalizers = nil
-				return k8sClient.Update(ctx, c)
-			}).Should(Succeed())
-			err = k8sClient.Delete(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				c := &mocov1beta2.MySQLCluster{}
-				return k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), c) != nil
-			}).Should(BeTrue())
-
-			err = k8sClient.Delete(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should allow deletion when the owning cluster is terminating (GC unblock)", func() {
-			cluster := makeMySQLCluster()
-			cluster.Finalizers = []string{"moco.cybozu.com/test-block-delete"}
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			setCRInFlight(cr)
-			err = k8sClient.Status().Update(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Delete the cluster — finalizer keeps it in Terminating state.
-			err = k8sClient.Delete(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(func() bool {
-				c := &mocov1beta2.MySQLCluster{}
-				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), c); err != nil {
-					return false
-				}
-				return c.DeletionTimestamp != nil
-			}).Should(BeTrue())
-
-			// GC delete of the CR must be allowed so the cluster can finish terminating.
-			err = k8sClient.Delete(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Clean up: remove the finalizer so the cluster can be deleted.
-			Eventually(func() error {
-				c := &mocov1beta2.MySQLCluster{}
-				if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(cluster), c); err != nil {
-					return err
-				}
-				c.Finalizers = nil
-				return k8sClient.Update(ctx, c)
-			}).Should(Succeed())
-		})
-
-		It("should allow deletion when ownerReference points to a recreated cluster (different UID)", func() {
-			cluster := makeMySQLCluster()
-			err := k8sClient.Create(ctx, cluster)
-			Expect(err).NotTo(HaveOccurred())
-
-			cr := makeCredentialRotation("test", 1)
-			// Stale ownerRef pointing at a UID that no live cluster has.
-			cr.OwnerReferences = []metav1.OwnerReference{{
-				APIVersion: mocov1beta2.GroupVersion.String(),
-				Kind:       "MySQLCluster",
-				Name:       cluster.Name,
-				UID:        "stale-uid",
-				Controller: new(true),
-			}}
-			err = k8sClient.Create(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			setCRInFlight(cr)
-			err = k8sClient.Status().Update(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = k8sClient.Delete(ctx, cr)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should reject deletion while an actively progressing cycle is in flight", func() {
+		It("should allow deletion while an actively progressing cycle is in flight", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -491,19 +352,29 @@ var _ = Describe("CredentialRotation Webhook", func() {
 
 			// In-flight rotation phase: DualPassword=True with
 			// observedRotationGeneration still 0 — Step() returns
-			// DistributingPassword.
+			// Promoting.
 			setCRInFlight(cr)
 			err = k8sClient.Status().Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = k8sClient.Delete(ctx, cr)
-			Expect(err).To(HaveOccurred())
-
-			// Force-cleanup for the AfterEach.
-			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(cr), cr)
 			Expect(err).NotTo(HaveOccurred())
-			setCRIdle(cr)
+		})
+
+		It("should allow deletion when the CR is awaiting discard (dual passwords held)", func() {
+			cluster := makeMySQLCluster()
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test", 1)
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			setCRAwaitingDiscard(cr)
 			err = k8sClient.Status().Update(ctx, cr)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Delete(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

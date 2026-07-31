@@ -2,7 +2,6 @@ package v1beta2
 
 import (
 	"context"
-	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,7 +22,7 @@ type credentialRotationAdmission struct {
 	client client.Reader
 }
 
-//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta2-credentialrotation,mutating=false,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=credentialrotations,verbs=create;update;delete,versions=v1beta2,name=vcredentialrotation.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-moco-cybozu-com-v1beta2-credentialrotation,mutating=false,failurePolicy=fail,sideEffects=None,matchPolicy=Equivalent,groups=moco.cybozu.com,resources=credentialrotations,verbs=create;update,versions=v1beta2,name=vcredentialrotation.kb.io,admissionReviewVersions=v1
 
 var _ admission.Validator[*CredentialRotation] = &credentialRotationAdmission{}
 
@@ -149,65 +148,15 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 	return nil, nil
 }
 
-// hasStaleClusterOwnerRef reports whether cr carries a MySQLCluster owner
-// reference that points at a UID different from cluster.UID, with no matching
-// reference. That signals the CR is left over from a deleted cluster that has
-// since been recreated under the same name.
-func hasStaleClusterOwnerRef(cr *CredentialRotation, cluster *MySQLCluster) bool {
-	hasStale := false
-	for _, ref := range cr.OwnerReferences {
-		if ref.Kind != "MySQLCluster" {
-			continue
-		}
-		if ref.UID == cluster.UID {
-			return false
-		}
-		hasStale = true
-	}
-	return hasStale
-}
-
-func (a *credentialRotationAdmission) ValidateDelete(ctx context.Context, cr *CredentialRotation) (admission.Warnings, error) {
-	// Allow deletion when the CR is idle, or when stuck in a state that
-	// the documented recovery procedure resolves by deleting the CR
-	// (RotationBlocked / StalePending).
-	if cr.IsDeletable() {
-		return nil, nil
-	}
-
-	// Allow garbage-collection deletes: if the owning MySQLCluster is gone,
-	// the CR has nothing to act on and must be reclaimable. Blocking GC here
-	// would orphan the CR and poison a future cluster recreated with the
-	// same name (it would inherit a stale in-progress rotation).
-	cluster := &MySQLCluster{}
-	err := a.client.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, cluster)
-	if apierrors.IsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, apierrors.NewInternalError(err)
-	}
-	// The cluster is being torn down. Owner references use blockOwnerDeletion,
-	// so Kubernetes GC must be allowed to remove this CR; otherwise the
-	// MySQLCluster would be stuck in Terminating until the rotation finishes.
-	if cluster.DeletionTimestamp != nil {
-		return nil, nil
-	}
-	// The cluster lookup matches by name only; if the live cluster has a
-	// different UID than the CR's owner, the original cluster has been deleted
-	// and replaced. The CR is stale and must be deletable so it does not
-	// poison the new cluster with leftover rotation state.
-	if hasStaleClusterOwnerRef(cr, cluster) {
-		return nil, nil
-	}
-
-	// Otherwise forbid: a deletion while the cycle is actively progressing
-	// abandons the workflow, leaving pending/dual passwords on instances
-	// with no automatic recovery.
-	errs := field.ErrorList{
-		field.Forbidden(field.NewPath("status", "conditions"),
-			fmt.Sprintf("cannot delete CredentialRotation while a cycle is actively progressing (current step: %q); either wait for the cycle to complete, scale the cluster to 0 (which transitions RotationReady to Blocked), or follow the documented recovery procedure", cr.Step())),
-	}
-	return nil, apierrors.NewInvalid(
-		schema.GroupKind{Group: GroupVersion.Group, Kind: "CredentialRotation"}, cr.Name, errs)
+// ValidateDelete always allows deletion. The core invariant — the controller
+// Secret's current passwords always authenticate on every instance — makes CR
+// deletion non-destructive: per-namespace Secrets always hold the canonical
+// current passwords, so deleting the CR at any step never breaks
+// connectivity. Mid-cycle deletion can only leave residue (dual passwords in
+// MySQL, stale bookkeeping keys in the controller Secret) that blocks the
+// next rotation cycle until the documented recovery procedure cleans it up.
+// The webhook is not registered for the delete verb, so this method exists
+// only to satisfy the admission.Validator interface.
+func (a *credentialRotationAdmission) ValidateDelete(_ context.Context, _ *CredentialRotation) (admission.Warnings, error) {
+	return nil, nil
 }

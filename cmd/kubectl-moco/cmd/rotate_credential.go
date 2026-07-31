@@ -2,16 +2,16 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // rotateCredentialCmd triggers a credential rotation.
@@ -39,6 +39,9 @@ func rotateCredential(ctx context.Context, clusterName string) error {
 	}
 	if cluster.Spec.Replicas <= 0 {
 		return errors.New("cannot rotate: MySQLCluster has 0 replicas")
+	}
+	if err := checkClusterSafeForCredentialOps(cluster, true); err != nil {
+		return err
 	}
 
 	// Check if CR already exists
@@ -83,19 +86,52 @@ func rotateCredential(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("cannot rotate: a rotation cycle is in flight (current step: %q). Wait for it to complete or follow the recovery procedure", cr.Step())
 	}
 
-	newGen := cr.Spec.RotationGeneration + 1
-	patch, err := json.Marshal(map[string]any{
-		"spec": map[string]any{
-			"rotationGeneration": newGen,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal patch: %w", err)
+	// Use Update instead of Patch so the write carries the resourceVersion
+	// of the object the pre-checks above ran against. If another
+	// kubectl-moco (or anything else) modified the CR in between, the
+	// apiserver rejects this write with a Conflict instead of silently
+	// applying a bump decided against stale state.
+	cr.Spec.RotationGeneration++
+	if err := kubeClient.Update(ctx, cr); err != nil {
+		if apierrors.IsConflict(err) {
+			return fmt.Errorf("the CredentialRotation was modified concurrently; re-run the command: %w", err)
+		}
+		return fmt.Errorf("failed to update CredentialRotation: %w", err)
 	}
-	if err := kubeClient.Patch(ctx, cr, client.RawPatch(types.MergePatchType, patch)); err != nil {
-		return fmt.Errorf("failed to patch CredentialRotation: %w", err)
+	fmt.Printf("Updated CredentialRotation %s/%s with rotationGeneration=%d\n", namespace, clusterName, cr.Spec.RotationGeneration)
+	return nil
+}
+
+// checkClusterSafeForCredentialOps refuses to start a rotation or discard
+// step when the cluster is in a state where the step cannot make progress
+// or could act on an unhealthy cluster:
+//
+//   - spec.offline: no mysqld is running, so RETAIN/DISCARD SQL cannot run.
+//   - clustering stopped: the ClusterManager that executes the rotation SQL
+//     is suspended for this cluster.
+//   - reconciliation stopped (only when needsReconciliation is true): the
+//     rotation phase depends on MySQLClusterReconciler distributing the
+//     promoted passwords, so it would park in AwaitingRollout. The discard
+//     phase does not need it — distribution finished before the CR reached
+//     AwaitingDiscard — so discard passes false and stays allowed.
+//   - not Healthy: rotating credentials while the cluster is degraded would
+//     pile a rolling restart on top of an existing failure.
+//
+// These are point-in-time checks for operator convenience (fail fast with a
+// clear message); the controller and webhook remain the authority.
+func checkClusterSafeForCredentialOps(cluster *mocov1beta2.MySQLCluster, needsReconciliation bool) error {
+	if cluster.Spec.Offline {
+		return errors.New("cannot proceed: the MySQLCluster is offline (spec.offline is true)")
 	}
-	fmt.Printf("Updated CredentialRotation %s/%s with rotationGeneration=%d\n", namespace, clusterName, newGen)
+	if needsReconciliation && cluster.Annotations[constants.AnnReconciliationStopped] == "true" {
+		return fmt.Errorf("cannot proceed: reconciliation is stopped (annotation %s=true)", constants.AnnReconciliationStopped)
+	}
+	if cluster.Annotations[constants.AnnClusteringStopped] == "true" {
+		return fmt.Errorf("cannot proceed: clustering is stopped (annotation %s=true)", constants.AnnClusteringStopped)
+	}
+	if !meta.IsStatusConditionTrue(cluster.Status.Conditions, mocov1beta2.ConditionHealthy) {
+		return errors.New("cannot proceed: the MySQLCluster is not Healthy")
+	}
 	return nil
 }
 

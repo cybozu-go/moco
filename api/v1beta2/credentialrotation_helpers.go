@@ -28,20 +28,22 @@ const (
 	// (RETAIN has not yet succeeded for this cycle).
 	StepApplyingRetain RotationStep = "ApplyingRetain"
 
-	// StepDistributingPassword means the Reconciler should distribute
-	// pending passwords to per-namespace Secrets and trigger the
-	// rolling restart. Detected when newRotation is true and
-	// DualPassword is True (RETAIN succeeded; the Reconciler now needs
-	// to publish the new password).
-	StepDistributingPassword RotationStep = "DistributingPassword"
+	// StepPromoting means the Reconciler should promote the pending
+	// passwords to current in the controller Secret. Detected when
+	// newRotation is true and DualPassword is True (RETAIN succeeded on
+	// every instance, so both old and new passwords authenticate
+	// everywhere and the new set can safely become canonical).
+	StepPromoting RotationStep = "Promoting"
 
-	// StepAwaitingRollout sits between StepDistributingPassword and
-	// StepAwaitingDiscard. The Reconciler has distributed the pending
-	// passwords and triggered the rolling restart; MySQL holds the
-	// dual-password set. The CR is waiting for the StatefulSet rollout
-	// to settle before the verification window (StepAwaitingDiscard)
-	// opens — DiscardReady stays False/Pending until every Pod is
-	// running with the new password.
+	// StepAwaitingRollout sits between StepPromoting and
+	// StepAwaitingDiscard. The new passwords are canonical current in
+	// the controller Secret; MySQL holds the dual-password set. The
+	// Reconciler waits for MySQLClusterReconciler to distribute the
+	// current passwords to the per-namespace Secrets, triggers the
+	// rolling restart, and waits for the StatefulSet rollout to settle
+	// before the verification window (StepAwaitingDiscard) opens —
+	// DiscardReady stays False/Pending until every Pod is running with
+	// the new password.
 	StepAwaitingRollout RotationStep = "AwaitingRollout"
 
 	// StepAwaitingDiscard is the action-availability steady state for
@@ -58,9 +60,11 @@ const (
 	StepApplyingDiscard RotationStep = "ApplyingDiscard"
 
 	// StepFinalizing means DISCARD is complete and the Reconciler
-	// should promote the pending passwords to current in the source
-	// Secret. Detected when newDiscard is true and DualPassword has
-	// flipped back to False.
+	// should clean up the rotation bookkeeping keys (*_OLD, ROTATION_ID)
+	// from the controller Secret and mark the cycle complete. No
+	// password values move — the canonical current passwords were
+	// promoted before distribution. Detected when newDiscard is true
+	// and DualPassword has flipped back to False.
 	StepFinalizing RotationStep = "Finalizing"
 
 	// StepRotationRefused means the rotation could not start (e.g.
@@ -131,8 +135,9 @@ func (cr *CredentialRotation) Step() RotationStep {
 			// RETAIN has not yet succeeded for this cycle.
 			return StepApplyingRetain
 		}
-		// RETAIN succeeded; pending passwords need to be distributed.
-		return StepDistributingPassword
+		// RETAIN succeeded; the pending passwords need to be promoted
+		// to current in the controller Secret.
+		return StepPromoting
 	}
 
 	if newDiscard {
@@ -149,7 +154,7 @@ func (cr *CredentialRotation) Step() RotationStep {
 			return StepApplyingDiscard
 		}
 		// DISCARD succeeded (DualPassword flipped back to False);
-		// the Reconciler now promotes the pending passwords.
+		// the Reconciler now cleans up the rotation bookkeeping keys.
 		return StepFinalizing
 	}
 
@@ -158,7 +163,7 @@ func (cr *CredentialRotation) Step() RotationStep {
 	// can if a CR was persisted by an older controller version.
 	//   DualPassword=False ⇒ Idle.
 	//   DualPassword=True  ⇒ AwaitingRollout until the Reconciler flips
-	//                        DiscardReady=True after the post-distribute
+	//                        DiscardReady=True after the post-promotion
 	//                        rollout settles, then AwaitingDiscard.
 	// Trusting DualPassword also handles legacy CRs that carried both
 	// Ready conditions as True simultaneously (the previous "generation
@@ -192,32 +197,6 @@ func (cr *CredentialRotation) IsIdle() bool {
 // spec.discardGeneration to trigger the discard phase.
 func (cr *CredentialRotation) IsAwaitingDiscard() bool {
 	return cr.Step() == StepAwaitingDiscard
-}
-
-// IsDeletable reports whether the CR may be deleted without abandoning
-// an actively progressing cycle. The CR is deletable when:
-//   - idle (no mutations exist),
-//   - the most recent rotation request was Refused without mutations,
-//   - the cycle is stuck in a state that the documented recovery
-//     procedure resolves by deleting the CR (Blocked / Stale, either
-//     phase).
-//
-// AwaitingDiscard and DiscardRefused are NOT deletable: MySQL still
-// holds dual passwords, and a naïve deletion would leave behind state
-// that no controller can recover from. Operators must use the
-// documented recovery procedure (which scales the cluster down to
-// transition into Blocked first).
-func (cr *CredentialRotation) IsDeletable() bool {
-	switch cr.Step() {
-	case StepIdle,
-		StepRotationRefused,
-		StepRotationBlocked,
-		StepDiscardBlocked,
-		StepStalePending:
-		return true
-	default:
-		return false
-	}
 }
 
 // SetRotationReady sets or updates the RotationReady condition.

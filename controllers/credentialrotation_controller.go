@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -106,16 +105,24 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 
 	case mocov1beta2.StepApplyingRetain:
-		// ClusterManager owns RETAIN.
+		// ClusterManager owns RETAIN. If clustering is stopped, the
+		// ClusterManager loop for this cluster is paused and RETAIN will
+		// not run; surface that instead of waiting silently.
+		if isClusteringStopped(cluster) {
+			log.Info("rotation is paused: clustering is stopped", "rotationID", cr.Status.RotationID)
+			mocoevent.RotationPaused.Emit(cr, r.Recorder,
+				fmt.Sprintf("clustering is stopped (annotation %s=true), so RETAIN cannot run", constants.AnnClusteringStopped))
+		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 
-	case mocov1beta2.StepDistributingPassword:
-		return r.handleDistributingPassword(ctx, cr, cluster)
+	case mocov1beta2.StepPromoting:
+		return r.handlePromoting(ctx, cr, cluster)
 
 	case mocov1beta2.StepAwaitingRollout:
-		// Reconciler waits for the post-distribute StatefulSet rollout
-		// to settle, then flips DiscardReady=True so the verification
-		// window opens.
+		// Reconciler waits for MySQLClusterReconciler to distribute the
+		// promoted current passwords, triggers the rolling restart, and
+		// waits for the StatefulSet rollout to settle, then flips
+		// DiscardReady=True so the verification window opens.
 		return r.handleAwaitingRollout(ctx, cr, cluster)
 
 	case mocov1beta2.StepAwaitingDiscard:
@@ -242,12 +249,17 @@ func (r *CredentialRotationReconciler) handleStartRotation(ctx context.Context, 
 	return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 }
 
-// handleDistributingPassword: distributes pending passwords to per-namespace
-// Secrets, triggers the rolling restart, and promotes
-// observedRotationGeneration. DiscardReady stays False/Pending — the next
-// step (StepAwaitingRollout) waits for the StatefulSet rollout to settle
-// before flipping DiscardReady=True and opening the verification window.
-func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
+// handlePromoting promotes the pending passwords to current in the
+// controller Secret and records the rotation phase as complete by
+// promoting observedRotationGeneration.
+//
+// This is the point where the core invariant flips from "current = old"
+// to "current = new": Step()==StepPromoting implies DualPassword=True,
+// i.e. ALTER USER ... RETAIN succeeded on every instance, so both
+// password sets authenticate everywhere and making the new set canonical
+// is safe. Distribution to per-namespace Secrets is NOT done here — it is
+// MySQLClusterReconciler's normal job (it always distributes current).
+func (r *CredentialRotationReconciler) handlePromoting(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
 	controllerSecret := &corev1.Secret{}
@@ -258,105 +270,112 @@ func (r *CredentialRotationReconciler) handleDistributingPassword(ctx context.Co
 		return ctrl.Result{}, fmt.Errorf("failed to get controller secret: %w", err)
 	}
 
-	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
+	state, err := password.RotationState(controllerSecret, cr.Status.RotationID)
 	if err != nil {
 		mocoevent.RotationPendingInconsistent.Emit(cr, r.Recorder, err)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
-			fmt.Sprintf("Pending password state inconsistency: %v", err))
+			fmt.Sprintf("Rotation state inconsistency: %v", err))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to Stale: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
-	if !hasPending {
-		mocoevent.MissingRotationPending.Emit(cr, r.Recorder, cr.Status.RotationID)
+
+	switch state {
+	case password.RotationSecretPending:
+		// One atomic Secret update: current → *_OLD, *_PENDING → current,
+		// delete the pending keys and RETAIN_STARTED. ROTATION_ID stays
+		// until the cycle completes.
+		if err := password.PromotePendingPasswords(controllerSecret, cr.Status.RotationID); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to promote pending passwords: %w", err)
+		}
+		if err := r.Update(ctx, controllerSecret); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update controller secret after promote: %w", err)
+		}
+	case password.RotationSecretPromoted:
+		// Crash recovery: the Secret update succeeded but the status
+		// update below did not. The *_OLD key group with a matching
+		// ROTATION_ID is the "promotion done" marker; just re-run the
+		// status update.
+		log.Info("controller Secret already promoted (crash recovery)",
+			"rotationID", cr.Status.RotationID)
+	case password.RotationSecretClean:
+		// The pending keys disappeared without promotion (manual edit,
+		// restore from backup, ...). The staged passwords are gone, but
+		// the canonical current (old) passwords still authenticate
+		// everywhere — nothing is broken; the cycle just cannot proceed.
+		mocoevent.InconsistentRotationState.Emit(cr, r.Recorder, cr.Status.RotationID)
 		cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
-			fmt.Sprintf("Pending passwords not found for rotationID %s", cr.Status.RotationID))
+			fmt.Sprintf("Pending passwords lost without promotion for rotationID %s", cr.Status.RotationID))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to Stale: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	pendingPasswd, err := password.MySQLPasswordFromPending(controllerSecret)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to read pending passwords: %w", err)
-	}
-
-	newSecret := pendingPasswd.ToSecret()
-	userSecretName := cluster.UserSecretName()
-	userSecret := corev1ac.Secret(userSecretName, cluster.Namespace).
-		WithAnnotations(newSecret.Annotations).
-		WithLabels(labelSet(cluster, false)).
-		WithData(newSecret.Data)
-	if err := setControllerReference(cluster, userSecret, r.Scheme); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to set ownerReference to user Secret: %w", err)
-	}
-	userKey := client.ObjectKey{Namespace: cluster.Namespace, Name: userSecretName}
-	if _, err := apply(ctx, r.Client, userKey, userSecret, corev1ac.ExtractSecret); err != nil {
-		if !errors.Is(err, ErrApplyConfigurationNotChanged) {
-			return ctrl.Result{}, fmt.Errorf("failed to apply user Secret: %w", err)
-		}
-	}
-
-	mycnfSecret := pendingPasswd.ToMyCnfSecret()
-	mycnfSecretName := cluster.MyCnfSecretName()
-	mycnfSecretAC := corev1ac.Secret(mycnfSecretName, cluster.Namespace).
-		WithAnnotations(mycnfSecret.Annotations).
-		WithLabels(labelSet(cluster, false)).
-		WithData(mycnfSecret.Data)
-	if err := setControllerReference(cluster, mycnfSecretAC, r.Scheme); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to set ownerReference to my.cnf Secret: %w", err)
-	}
-	mycnfKey := client.ObjectKey{Namespace: cluster.Namespace, Name: mycnfSecretName}
-	if _, err := apply(ctx, r.Client, mycnfKey, mycnfSecretAC, corev1ac.ExtractSecret); err != nil {
-		if !errors.Is(err, ErrApplyConfigurationNotChanged) {
-			return ctrl.Result{}, fmt.Errorf("failed to apply my.cnf Secret: %w", err)
-		}
-	}
-
-	// Add restart annotation to StatefulSet Pod template via Server-Side Apply
-	// under a dedicated field manager so the rotation annotation key is not
-	// silently removed by the next MySQLCluster reconcile.
-	stsName := cluster.PrefixedName()
-	stsAC := appsv1ac.StatefulSet(stsName, cluster.Namespace).
-		WithSpec(appsv1ac.StatefulSetSpec().
-			WithTemplate(corev1ac.PodTemplateSpec().
-				WithAnnotations(map[string]string{
-					constants.AnnPasswordRotationRestart: cr.Status.RotationID,
-				})))
-	if err := r.Apply(ctx, stsAC, client.FieldOwner(credRotationFieldManager), client.ForceOwnership); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to apply rotation annotation to StatefulSet: %w", err)
-	}
-
-	// Enter AwaitingRollout. observedRotationGeneration is promoted
-	// here, but DiscardReady stays False/Pending — handleAwaitingRollout
-	// will flip it to True once the rolling restart settles.
+	// Enter AwaitingRollout. observedRotationGeneration is promoted here,
+	// but DiscardReady stays False/Pending — handleAwaitingRollout flips
+	// it to True once distribution catches up and the rolling restart
+	// settles.
 	cr.Status.ObservedRotationGeneration = cr.Spec.RotationGeneration
 	if err := r.updateStatus(ctx, cr); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update status after distribution: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to update status after promotion: %w", err)
 	}
 
-	log.Info("distributed pending passwords and triggered rolling restart", "rotationID", cr.Status.RotationID)
-	mocoevent.SecretsDistributed.Emit(cr, r.Recorder, cr.Status.RotationID)
+	log.Info("promoted pending passwords to current in the controller Secret", "rotationID", cr.Status.RotationID)
+	mocoevent.PasswordsPromoted.Emit(cr, r.Recorder, cr.Status.RotationID)
 
 	return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 }
 
-// handleAwaitingRollout waits for the post-distribute StatefulSet rollout
-// to settle. While the rollout is in flight, some Pods may still be
-// running with the old password loaded via EnvFrom; flipping
-// DiscardReady=True before every Pod has picked up the new password
-// would let an operator-initiated DISCARD strip the secondary password
-// out from under them. Once the rollout is complete, all Pods are using
-// the new password and the verification window is genuinely open.
+// handleAwaitingRollout gates the verification window on two things, in
+// order:
+//
+//  1. Distribution catch-up: the per-namespace user Secret and my.cnf
+//     Secret must be derived from the controller Secret's current
+//     (promoted) passwords. Distribution itself is MySQLClusterReconciler's
+//     normal job; this handler only observes the result. The rolling
+//     restart annotation must not be applied before this point — a Pod
+//     that restarts early still works (the old password authenticates
+//     during the dual window), but the rollout could settle with Pods on
+//     the old password, and a subsequent DISCARD would remove the very
+//     password those Pods use.
+//  2. Rollout completion: while the rollout is in flight, some Pods may
+//     still be running with the old password loaded via EnvFrom; flipping
+//     DiscardReady=True before every Pod has picked up the new password
+//     would let an operator-initiated DISCARD strip the secondary password
+//     out from under them.
+//
+// Once both have settled, all Pods are using the new password and the
+// verification window is genuinely open.
 func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
+	caughtUp, err := r.distributionCaughtUp(ctx, cluster)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if !caughtUp {
+		// Distribution is MySQLClusterReconciler's job; if reconciliation
+		// is stopped, the promoted passwords will never propagate and the
+		// rotation stays parked here. Surface that instead of waiting
+		// silently. The wait itself is safe: the current passwords keep
+		// authenticating everywhere.
+		if isReconciliationStopped(cluster) {
+			log.Info("rotation is paused: reconciliation is stopped", "rotationID", cr.Status.RotationID)
+			mocoevent.RotationPaused.Emit(cr, r.Recorder,
+				fmt.Sprintf("reconciliation is stopped (annotation %s=true), so the promoted passwords are not distributed", constants.AnnReconciliationStopped))
+		}
+		log.Info("waiting for per-namespace Secrets to catch up with the promoted passwords",
+			"rotationID", cr.Status.RotationID)
+		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+	}
+
+	stsName := cluster.PrefixedName()
 	sts := &appsv1.StatefulSet{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Namespace: cluster.Namespace,
-		Name:      cluster.PrefixedName(),
+		Name:      stsName,
 	}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
 			// The StatefulSet has not been created yet (or was deleted);
@@ -365,20 +384,107 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 		}
 		return ctrl.Result{}, fmt.Errorf("failed to get StatefulSet for rollout check: %w", err)
 	}
+
+	// Add the restart annotation to the StatefulSet Pod template via
+	// Server-Side Apply under a dedicated field manager so the rotation
+	// annotation key is not silently removed by the next MySQLCluster
+	// reconcile.
+	//
+	// Apply ONLY when the pod template does not already carry this
+	// rotation's annotation. A content-no-op re-apply is NOT harmless
+	// here: every StatefulSet update that is not a pure partition change
+	// passes the StatefulSetDefaulter mutating webhook, which resets
+	// spec.updateStrategy.rollingUpdate.partition to replicas to guard
+	// rollouts. Re-applying on each reconcile would keep resetting the
+	// partition that StatefulSetPartitionReconciler walks down, and the
+	// rollout would never complete. (MySQLClusterReconciler avoids the
+	// same trap with its ExtractStatefulSet + DeepEqual gate.)
+	//
+	// The Get above is served from the informer cache, but reconciles are
+	// triggered after the cache has stored the update, so at most one
+	// extra apply can occur — and it also checks the rollout only against
+	// an annotated template, never against a stale pre-annotation object.
+	if sts.Spec.Template.Annotations[constants.AnnPasswordRotationRestart] != cr.Status.RotationID {
+		stsAC := appsv1ac.StatefulSet(stsName, cluster.Namespace).
+			WithSpec(appsv1ac.StatefulSetSpec().
+				WithTemplate(corev1ac.PodTemplateSpec().
+					WithAnnotations(map[string]string{
+						constants.AnnPasswordRotationRestart: cr.Status.RotationID,
+					})))
+		if err := r.Apply(ctx, stsAC, client.FieldOwner(credRotationFieldManager), client.ForceOwnership); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to apply rotation annotation to StatefulSet: %w", err)
+		}
+		log.Info("applied the rotation restart annotation to the StatefulSet",
+			"rotationID", cr.Status.RotationID)
+		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+	}
+
 	if !isStatefulSetRolloutComplete(sts) {
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
 	cr.SetDiscardReady(metav1.ConditionTrue, mocov1beta2.ReasonReconciled,
-		"Rotation phase finished and post-distribute rollout settled; awaiting-discard steady state — discard is now allowed.")
+		"Rotation phase finished and post-promotion rollout settled; awaiting-discard steady state — discard is now allowed.")
 	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status after rollout: %w", err)
 	}
 
-	log.Info("post-distribute rollout settled; awaiting-discard window open",
+	log.Info("post-promotion rollout settled; awaiting-discard window open",
 		"rotationID", cr.Status.RotationID)
 	mocoevent.AwaitingDiscard.Emit(cr, r.Recorder, cr.Status.RotationID)
 	return ctrl.Result{}, nil
+}
+
+// distributionCaughtUp reports whether the per-namespace user Secret and
+// my.cnf Secret are derived from the controller Secret's current
+// passwords. It never writes — MySQLClusterReconciler is the only writer
+// of the per-namespace Secrets, and its watch on the controller Secret
+// triggers redistribution promptly after promotion.
+func (r *CredentialRotationReconciler) distributionCaughtUp(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (bool, error) {
+	controllerSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: r.SystemNamespace,
+		Name:      cluster.ControllerSecretName(),
+	}, controllerSecret); err != nil {
+		return false, fmt.Errorf("failed to get controller secret: %w", err)
+	}
+
+	userSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.UserSecretName(),
+	}, userSecret); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get user secret: %w", err)
+	}
+	if !password.CurrentPasswordsMatch(controllerSecret, userSecret) {
+		return false, nil
+	}
+
+	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
+	if err != nil {
+		return false, fmt.Errorf("failed to read current passwords: %w", err)
+	}
+	expectedMyCnf := passwd.ToMyCnfSecret()
+	mycnfSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: cluster.Namespace,
+		Name:      cluster.MyCnfSecretName(),
+	}, mycnfSecret); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get my.cnf secret: %w", err)
+	}
+	for key, expected := range expectedMyCnf.Data {
+		actual, ok := mycnfSecret.Data[key]
+		if !ok || string(actual) != string(expected) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // isStatefulSetRolloutComplete reports whether the StatefulSet has fully
@@ -452,13 +558,23 @@ func (r *CredentialRotationReconciler) handleApplyingDiscard(ctx context.Context
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
-	// DiscardReady=False/Pending already; ClusterManager owns from here.
+	// DiscardReady=False (reason=Pending) already; ClusterManager owns
+	// from here. If clustering is stopped, its loop is paused and DISCARD
+	// will not run; surface that instead of waiting silently.
+	if isClusteringStopped(cluster) {
+		log.Info("discard is paused: clustering is stopped", "rotationID", cr.Status.RotationID)
+		mocoevent.RotationPaused.Emit(cr, r.Recorder,
+			fmt.Sprintf("clustering is stopped (annotation %s=true), so DISCARD cannot run", constants.AnnClusteringStopped))
+	}
 	return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 }
 
-// handleFinalize promotes the pending passwords to current in the source
-// Secret, marks the discard phase complete, and flips DualPassword
-// to NotRetained for the next cycle.
+// handleFinalize cleans up the rotation bookkeeping keys (*_OLD,
+// ROTATION_ID, RETAIN_STARTED) from the controller Secret, marks the
+// discard phase complete, and returns the CR to the Idle steady state.
+// No password values move — the canonical current passwords were promoted
+// before distribution (handlePromoting). Every action here is idempotent,
+// so a crash at any point simply re-runs.
 func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
@@ -467,48 +583,24 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
 	}, controllerSecret); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get controller secret for confirm: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get controller secret for cleanup: %w", err)
 	}
 
-	hasPending, pendingErr := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
-	if pendingErr != nil {
-		mocoevent.RotationPendingConfirmInconsistent.Emit(cr, r.Recorder, pendingErr)
+	if err := password.CleanupRotationKeys(controllerSecret, cr.Status.RotationID); err != nil {
+		// An inconsistent secret at Finalizing (unpromoted pending keys,
+		// partial *_OLD group, or a ROTATION_ID from a different cycle)
+		// means manual tampering — refuse to hide that by deleting the
+		// bookkeeping around it.
+		mocoevent.RotationPendingInconsistent.Emit(cr, r.Recorder, err)
 		cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
-			fmt.Sprintf("Pending password state inconsistency during confirm: %v", pendingErr))
+			fmt.Sprintf("Rotation state inconsistency during cleanup: %v", err))
 		if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to Stale: %w", statusErr)
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
-
-	if hasPending {
-		if err := password.PromotePendingPasswords(controllerSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to promote pending passwords: %w", err)
-		}
-		if err := r.Update(ctx, controllerSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update controller secret after promote: %w", err)
-		}
-	} else {
-		userSecret := &corev1.Secret{}
-		if err := r.Get(ctx, client.ObjectKey{
-			Namespace: cluster.Namespace,
-			Name:      cluster.UserSecretName(),
-		}, userSecret); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get user secret for crash recovery verification: %w", err)
-		}
-		if !password.CurrentPasswordsMatch(controllerSecret, userSecret) {
-			mocoevent.InconsistentRotationState.Emit(cr, r.Recorder, cr.Status.RotationID)
-			cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonStale,
-				fmt.Sprintf("Pending keys lost without promotion for rotationID %s", cr.Status.RotationID))
-			if statusErr := r.updateStatus(ctx, cr); statusErr != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to update status to Stale: %w", statusErr)
-			}
-			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
-		}
-
-		log.Info("no pending passwords found, verified crash recovery (already promoted)",
-			"rotationID", cr.Status.RotationID)
-		mocoevent.RotationCrashRecovery.Emit(cr, r.Recorder, cr.Status.RotationID)
+	if err := r.Update(ctx, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update controller secret after cleanup: %w", err)
 	}
 
 	// Return to Idle steady state.
@@ -608,6 +700,22 @@ func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			handler.EnqueueRequestsFromMapFunc(r.mapControllerSecretToCR),
 			builder.WithPredicates(controllerSecretPredicate(r.SystemNamespace)),
 		).
+		// Wake the reconciler when a per-namespace user Secret changes —
+		// handleAwaitingRollout waits for MySQLClusterReconciler to
+		// distribute the promoted passwords, and this watch lets it
+		// observe the catch-up without waiting for the periodic requeue.
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapUserSecretToCR),
+		).
+		// Wake the reconciler when the cluster's StatefulSet changes —
+		// handleAwaitingRollout waits for the rolling restart to settle,
+		// and this watch lets it flip DiscardReady=True as soon as the
+		// rollout completes.
+		Watches(
+			&appsv1.StatefulSet{},
+			handler.EnqueueRequestsFromMapFunc(mapStatefulSetToCR),
+		).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
@@ -628,8 +736,11 @@ func mapClusterToCR(_ context.Context, obj client.Object) []reconcile.Request {
 
 // mapControllerSecretToCR reverse-parses a controller-namespace Secret name
 // ("mysql-<ns>.<name>") back to the CredentialRotation that may be
-// interested in it. The reverse parse is best-effort: if the name does
-// not match the expected pattern, no request is enqueued.
+// interested in it. Splitting at the first "." is unambiguous: namespace
+// names are RFC 1123 DNS labels and can never contain a dot, while any
+// dots in the cluster name are preserved on the right-hand side. The
+// reverse parse is best-effort: if the name does not match the expected
+// pattern, no request is enqueued.
 func (r *CredentialRotationReconciler) mapControllerSecretToCR(_ context.Context, obj client.Object) []reconcile.Request {
 	if obj.GetNamespace() != r.SystemNamespace {
 		return nil
@@ -648,6 +759,61 @@ func (r *CredentialRotationReconciler) mapControllerSecretToCR(_ context.Context
 		NamespacedName: types.NamespacedName{
 			Namespace: rest[:idx],
 			Name:      rest[idx+1:],
+		},
+	}}
+}
+
+// mapUserSecretToCR maps a per-namespace user Secret ("moco-<cluster>")
+// or my.cnf Secret ("moco-my-cnf-<cluster>") to the CredentialRotation of
+// the same cluster, so handleAwaitingRollout observes distribution
+// catch-up of both Secrets without waiting for the periodic requeue.
+// System-namespace Secrets are handled by mapControllerSecretToCR
+// instead. Best-effort: a non-matching name enqueues nothing; a false
+// positive (another Secret that happens to carry the prefix) only causes
+// a cheap no-op reconcile.
+func (r *CredentialRotationReconciler) mapUserSecretToCR(_ context.Context, obj client.Object) []reconcile.Request {
+	if obj.GetNamespace() == r.SystemNamespace {
+		return nil
+	}
+	name := obj.GetName()
+	const prefix = "moco-"
+	if !strings.HasPrefix(name, prefix) {
+		return nil
+	}
+	// "moco-my-cnf-<x>" is ambiguous: it is the my.cnf Secret of cluster
+	// "<x>" but also the user Secret of a cluster literally named
+	// "my-cnf-<x>". Enqueue both interpretations rather than guessing —
+	// the extra request is a cheap no-op when no such CR exists.
+	reqs := []reconcile.Request{{
+		NamespacedName: types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      name[len(prefix):],
+		},
+	}}
+	const mycnfPrefix = "moco-my-cnf-"
+	if strings.HasPrefix(name, mycnfPrefix) {
+		reqs = append(reqs, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: obj.GetNamespace(),
+				Name:      name[len(mycnfPrefix):],
+			},
+		})
+	}
+	return reqs
+}
+
+// mapStatefulSetToCR maps a cluster StatefulSet ("moco-<cluster>") to the
+// CredentialRotation of the same cluster.
+func mapStatefulSetToCR(_ context.Context, obj client.Object) []reconcile.Request {
+	const prefix = "moco-"
+	name := obj.GetName()
+	if !strings.HasPrefix(name, prefix) {
+		return nil
+	}
+	return []reconcile.Request{{
+		NamespacedName: types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      name[len(prefix):],
 		},
 	}}
 }

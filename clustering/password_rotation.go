@@ -2,6 +2,7 @@ package clustering
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -64,7 +65,15 @@ func crBelongsToCluster(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2
 
 // handleApplyingRetain executes ALTER USER RETAIN CURRENT PASSWORD on all
 // instances, then flips DualPassword to True so the derived step
-// transitions from ApplyingRetain to DistributingPassword.
+// transitions from ApplyingRetain to Promoting.
+//
+// RETAIN is all-or-nothing: this handler aborts on the first instance
+// that cannot be reached or fails ALTER USER, and DualPassword=True is
+// only written after every instance holds the dual-password set. The
+// Reconciler's promotion step (which makes the new passwords canonical
+// current) depends on this — skipping an unreachable instance here would
+// let promotion create an instance where the canonical current password
+// does not authenticate.
 func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet, cr *mocov1beta2.CredentialRotation) (bool, error) {
 	log := logFromContext(ctx)
 	cluster := ss.Cluster
@@ -78,13 +87,20 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	}
 
 	// Wait for the controller to generate pending passwords.
-	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
+	state, err := password.RotationState(controllerSecret, cr.Status.RotationID)
 	if err != nil {
 		return false, fmt.Errorf("failed to verify pending passwords: %w", err)
 	}
-	if !hasPending {
+	switch state {
+	case password.RotationSecretClean:
 		log.Info("waiting for controller to generate pending passwords", "rotationID", cr.Status.RotationID)
 		return false, nil
+	case password.RotationSecretPromoted:
+		// Promotion already happened for this rotationID, yet the step is
+		// still ApplyingRetain (DualPassword=False). This combination is
+		// inconsistent — the Reconciler only promotes after DualPassword
+		// flipped to True. Refuse to run RETAIN on top of it.
+		return false, fmt.Errorf("controller secret is already promoted for rotationID %s but DualPassword is False; manual recovery required", cr.Status.RotationID)
 	}
 
 	replicas := int(cluster.Spec.Replicas)
@@ -158,7 +174,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	log.Info("applied ALTER USER RETAIN for all instances", "rotationID", cr.Status.RotationID)
 
 	// Flip DualPassword to True. The derived step transitions
-	// from ApplyingRetain to DistributingPassword and the Reconciler
+	// from ApplyingRetain to Promoting and the Reconciler
 	// picks up from there.
 	if err := p.updateCRCondition(ctx, func(fresh *mocov1beta2.CredentialRotation) {
 		fresh.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained,
@@ -196,13 +212,23 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 		return false, fmt.Errorf("failed to get controller secret for discard: %w", err)
 	}
 
-	hasPending, err := password.HasPendingPasswords(controllerSecret, cr.Status.RotationID)
+	// By the time the step derives to ApplyingDiscard the rotation phase
+	// has completed, i.e. the new passwords were promoted to canonical
+	// current, and the *_OLD group with a matching ROTATION_ID stays in
+	// the Secret until Finalizing. Require exactly that Promoted state:
+	//   - Pending means current is still the OLD password, and DISCARD
+	//     would remove the very secondary that current matches.
+	//   - Clean means the bookkeeping keys were lost mid-cycle (manual
+	//     edit, restore from backup, ...), so nothing proves that current
+	//     holds the promoted passwords; running DISCARD and auth plugin
+	//     migration against unverified values could break the core
+	//     invariant.
+	state, err := password.RotationState(controllerSecret, cr.Status.RotationID)
 	if err != nil {
-		return false, fmt.Errorf("failed to verify pending passwords for discard: %w", err)
+		return false, fmt.Errorf("failed to verify rotation state for discard: %w", err)
 	}
-	if !hasPending {
-		log.Info("waiting for pending passwords for discard", "rotationID", cr.Status.RotationID)
-		return false, nil
+	if state != password.RotationSecretPromoted {
+		return false, fmt.Errorf("controller secret is not in the promoted state for rotationID %s (state=%v); refusing DISCARD", cr.Status.RotationID, state)
 	}
 
 	replicas := int(cluster.Spec.Replicas)
@@ -231,26 +257,28 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 		return false, nil
 	}
 
-	// The post-distribute rollout wait is owned by the Reconciler
+	// The post-promotion rollout wait is owned by the Reconciler
 	// (handleAwaitingRollout) and is what gates DiscardReady=True in
 	// the first place. By the time the operator can bump
 	// discardGeneration and reach this handler, rollout has settled
 	// and every Pod is running with the new password.
 
-	// Connect with the pending (new) password.
-	pendingPasswd, err := password.MySQLPasswordFromPending(controllerSecret)
+	// Connect with the current (new) password. DISCARD removes the
+	// secondary (old) password; the current password is the primary and
+	// is unaffected before, during, and after DISCARD.
+	currentPasswd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
 	if err != nil {
 		return false, err
 	}
 
-	pendingMap, err := password.PendingKeyMap(controllerSecret)
+	currentMap, err := password.CurrentKeyMap(controllerSecret)
 	if err != nil {
 		return false, err
 	}
 
 	primaryIndex := cluster.Status.CurrentPrimaryIndex
 	authPlugin, err := func() (string, error) {
-		op, err := p.dbf.New(ctx, cluster, pendingPasswd, primaryIndex)
+		op, err := p.dbf.New(ctx, cluster, currentPasswd, primaryIndex)
 		if err != nil {
 			return "", err
 		}
@@ -263,12 +291,12 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	log.Info("determined target auth plugin for migration", "authPlugin", authPlugin, "rotationID", cr.Status.RotationID)
 
 	for idx := range replicas {
-		op, err := p.dbf.New(ctx, cluster, pendingPasswd, idx)
+		op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
 		if err != nil {
 			return false, err
 		}
 
-		if err := discardInstanceUsers(ctx, op, pendingMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster), authPlugin); err != nil {
+		if err := discardInstanceUsers(ctx, op, currentMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster), authPlugin); err != nil {
 			_ = op.Close()
 			return false, err
 		}
@@ -364,7 +392,7 @@ func rotateInstanceUsers(
 	pendingMap map[string]string,
 	instanceIndex int,
 	needsSuperReadOnlyOff bool,
-) error {
+) (err error) {
 	log := logFromContext(ctx)
 
 	if needsSuperReadOnlyOff {
@@ -372,9 +400,8 @@ func rotateInstanceUsers(
 			return fmt.Errorf("failed to disable super_read_only on instance %d: %w", instanceIndex, err)
 		}
 		defer func() {
-			if err := op.SetSuperReadOnly(ctx, true); err != nil {
-				log.Error(err, "failed to re-enable super_read_only (clustering loop will recover)",
-					"instance", instanceIndex)
+			if restoreErr := op.SetSuperReadOnly(ctx, true); restoreErr != nil {
+				err = errors.Join(err, fmt.Errorf("failed to re-enable super_read_only on instance %d: %w", instanceIndex, restoreErr))
 			}
 		}()
 	}
@@ -406,11 +433,11 @@ func rotateInstanceUsers(
 func discardInstanceUsers(
 	ctx context.Context,
 	op dbop.Operator,
-	pendingMap map[string]string,
+	currentMap map[string]string,
 	instanceIndex int,
 	needsSuperReadOnlyOff bool,
 	authPlugin string,
-) error {
+) (err error) {
 	log := logFromContext(ctx)
 
 	if needsSuperReadOnlyOff {
@@ -418,9 +445,8 @@ func discardInstanceUsers(
 			return fmt.Errorf("failed to disable super_read_only on instance %d for discard: %w", instanceIndex, err)
 		}
 		defer func() {
-			if err := op.SetSuperReadOnly(ctx, true); err != nil {
-				log.Error(err, "failed to re-enable super_read_only (clustering loop will recover)",
-					"instance", instanceIndex)
+			if restoreErr := op.SetSuperReadOnly(ctx, true); restoreErr != nil {
+				err = errors.Join(err, fmt.Errorf("failed to re-enable super_read_only on instance %d: %w", instanceIndex, restoreErr))
 			}
 		}()
 	}
@@ -452,9 +478,9 @@ func discardInstanceUsers(
 			log.Info("skipping auth plugin migration (already using target plugin)", "user", user, "instance", instanceIndex, "authPlugin", authPlugin)
 			continue
 		}
-		pwd, ok := pendingMap[user]
+		pwd, ok := currentMap[user]
 		if !ok {
-			return fmt.Errorf("pending password not found for user %s during auth plugin migration", user)
+			return fmt.Errorf("current password not found for user %s during auth plugin migration", user)
 		}
 		if err := op.MigrateUserAuthPlugin(ctx, user, pwd, authPlugin); err != nil {
 			return fmt.Errorf("failed to migrate auth plugin for %s on instance %d: %w", user, instanceIndex, err)

@@ -7,16 +7,29 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Pending password key constants.
+// Rotation key constants.
 //
-// During rotation, the controller Secret holds both current and pending passwords.
-// The pending state must be all-or-nothing: either all 8 *_PENDING keys plus
-// ROTATION_ID are present (and ROTATION_ID matches the expected value), or none
-// are present. Any partial state is treated as an unrecoverable inconsistency
-// and reported as an error. The controller never attempts automatic repair of
-// partial state; explicit manual cleanup is required (documented in Event messages).
+// The controller Secret always holds the 8 canonical current password keys.
+// During a rotation cycle it additionally holds bookkeeping keys:
+//
+//   - *_PENDING keys stage the new passwords between seeding and promotion.
+//   - *_OLD keys archive the previous passwords between promotion and cycle
+//     completion. They exist for recovery only (MySQL stores only hashes) and
+//     double as the "promotion done" marker for crash recovery.
+//   - ROTATION_ID identifies the cycle from seeding to completion.
+//   - RETAIN_STARTED marks that the RETAIN pre-check passed; it is removed
+//     at promotion.
+//
+// Each key group is all-or-nothing: either all 8 keys of a group plus
+// ROTATION_ID are present (and ROTATION_ID matches the expected value), or
+// none are. The two groups never coexist — promotion replaces the pending
+// group with the old group in a single Secret update. Any partial state is
+// treated as an unrecoverable inconsistency and reported as an error. The
+// controller never attempts automatic repair of partial state; explicit
+// manual cleanup is required (documented in Event messages).
 const (
 	pendingKeySuffix = "_PENDING"
+	oldKeySuffix     = "_OLD"
 
 	AdminPasswordPendingKey       = AdminPasswordKey + pendingKeySuffix
 	AgentPasswordPendingKey       = agentPasswordKey + pendingKeySuffix
@@ -26,6 +39,15 @@ const (
 	BackupPasswordPendingKey      = BackupPasswordKey + pendingKeySuffix
 	ReadOnlyPasswordPendingKey    = readOnlyPasswordKey + pendingKeySuffix
 	WritablePasswordPendingKey    = writablePasswordKey + pendingKeySuffix
+
+	AdminPasswordOldKey       = AdminPasswordKey + oldKeySuffix
+	AgentPasswordOldKey       = agentPasswordKey + oldKeySuffix
+	ReplicationPasswordOldKey = replicationPasswordKey + oldKeySuffix
+	CloneDonorPasswordOldKey  = cloneDonorPasswordKey + oldKeySuffix
+	ExporterPasswordOldKey    = exporterPasswordKey + oldKeySuffix
+	BackupPasswordOldKey      = BackupPasswordKey + oldKeySuffix
+	ReadOnlyPasswordOldKey    = readOnlyPasswordKey + oldKeySuffix
+	WritablePasswordOldKey    = writablePasswordKey + oldKeySuffix
 
 	RotationIDKey    = "ROTATION_ID"
 	RetainStartedKey = "RETAIN_STARTED"
@@ -42,6 +64,17 @@ var allPendingKeys = []string{
 	WritablePasswordPendingKey,
 }
 
+var allOldKeys = []string{
+	AdminPasswordOldKey,
+	AgentPasswordOldKey,
+	ReplicationPasswordOldKey,
+	CloneDonorPasswordOldKey,
+	ExporterPasswordOldKey,
+	BackupPasswordOldKey,
+	ReadOnlyPasswordOldKey,
+	WritablePasswordOldKey,
+}
+
 // pendingToCurrentKey maps pending key → current key for PromotePendingPasswords.
 var pendingToCurrentKey = map[string]string{
 	AdminPasswordPendingKey:       AdminPasswordKey,
@@ -52,6 +85,18 @@ var pendingToCurrentKey = map[string]string{
 	BackupPasswordPendingKey:      BackupPasswordKey,
 	ReadOnlyPasswordPendingKey:    readOnlyPasswordKey,
 	WritablePasswordPendingKey:    writablePasswordKey,
+}
+
+// currentToOldKey maps current key → old key for PromotePendingPasswords.
+var currentToOldKey = map[string]string{
+	AdminPasswordKey:       AdminPasswordOldKey,
+	agentPasswordKey:       AgentPasswordOldKey,
+	replicationPasswordKey: ReplicationPasswordOldKey,
+	cloneDonorPasswordKey:  CloneDonorPasswordOldKey,
+	exporterPasswordKey:    ExporterPasswordOldKey,
+	BackupPasswordKey:      BackupPasswordOldKey,
+	readOnlyPasswordKey:    ReadOnlyPasswordOldKey,
+	writablePasswordKey:    WritablePasswordOldKey,
 }
 
 // userToPendingKey maps MySQL user name → pending key for PendingKeyMap.
@@ -66,6 +111,18 @@ var userToPendingKey = map[string]string{
 	constants.WritableUser:    WritablePasswordPendingKey,
 }
 
+// userToCurrentKey maps MySQL user name → current key for CurrentKeyMap.
+var userToCurrentKey = map[string]string{
+	constants.AdminUser:       AdminPasswordKey,
+	constants.AgentUser:       agentPasswordKey,
+	constants.ReplicationUser: replicationPasswordKey,
+	constants.CloneDonorUser:  cloneDonorPasswordKey,
+	constants.ExporterUser:    exporterPasswordKey,
+	constants.BackupUser:      BackupPasswordKey,
+	constants.ReadOnlyUser:    readOnlyPasswordKey,
+	constants.WritableUser:    writablePasswordKey,
+}
+
 // GetRotationID returns the stored ROTATION_ID from the secret, or "" if absent.
 func GetRotationID(secret *corev1.Secret) string {
 	if secret.Data == nil {
@@ -74,18 +131,52 @@ func GetRotationID(secret *corev1.Secret) string {
 	return string(secret.Data[RotationIDKey])
 }
 
-// HasPendingPasswords validates the pending state of a controller secret.
+// RotationSecretState describes the rotation bookkeeping state of a
+// controller Secret, derived from which key groups are present.
+type RotationSecretState int
+
+const (
+	// RotationSecretClean means no rotation bookkeeping keys are present.
+	// The Secret holds only the canonical current passwords.
+	RotationSecretClean RotationSecretState = iota
+
+	// RotationSecretPending means all 8 *_PENDING keys and a matching
+	// ROTATION_ID are present: new passwords are staged but not yet
+	// promoted to current.
+	RotationSecretPending
+
+	// RotationSecretPromoted means all 8 *_OLD keys and a matching
+	// ROTATION_ID are present with no *_PENDING keys: the staged
+	// passwords have been promoted to current and the previous passwords
+	// are archived for recovery.
+	RotationSecretPromoted
+)
+
+// String implements fmt.Stringer for readable log and error messages.
+func (s RotationSecretState) String() string {
+	switch s {
+	case RotationSecretClean:
+		return "Clean"
+	case RotationSecretPending:
+		return "Pending"
+	case RotationSecretPromoted:
+		return "Promoted"
+	default:
+		return fmt.Sprintf("Unknown(%d)", int(s))
+	}
+}
+
+// RotationState validates the rotation bookkeeping state of a controller
+// secret.
 //
-// Returns:
-//   - (false, nil): no pending keys and no ROTATION_ID — clean state
-//   - (true, nil):  all 8 *_PENDING keys + ROTATION_ID present, ID matches
-//   - (*, error):   inconsistent state that requires manual cleanup:
-//   - partial pending keys (some present, some missing)
-//   - ROTATION_ID present without pending keys (or vice versa)
-//   - ROTATION_ID mismatch (stale pending from a previous rotation)
-func HasPendingPasswords(secret *corev1.Secret, expectedRotationID string) (bool, error) {
+// Returns an error for any inconsistent state that requires manual cleanup:
+//   - partial key groups (some keys of a group present, some missing)
+//   - both the pending and the old group present
+//   - a key group present without ROTATION_ID, or ROTATION_ID without a group
+//   - ROTATION_ID mismatch (stale keys from a different rotation cycle)
+func RotationState(secret *corev1.Secret, expectedRotationID string) (RotationSecretState, error) {
 	if secret.Data == nil {
-		return false, nil
+		return RotationSecretClean, nil
 	}
 
 	pendingCount := 0
@@ -94,42 +185,59 @@ func HasPendingPasswords(secret *corev1.Secret, expectedRotationID string) (bool
 			pendingCount++
 		}
 	}
+	oldCount := 0
+	for _, key := range allOldKeys {
+		if _, ok := secret.Data[key]; ok {
+			oldCount++
+		}
+	}
 	_, hasRotationID := secret.Data[RotationIDKey]
 
-	// Neither pending keys nor ROTATION_ID
-	if pendingCount == 0 && !hasRotationID {
-		return false, nil
+	if pendingCount == 0 && oldCount == 0 && !hasRotationID {
+		return RotationSecretClean, nil
 	}
 
-	// Partial state: some pending keys but not all, or ROTATION_ID without
-	// pending keys, or vice versa. This is always an error — no automatic
-	// repair is attempted. The caller should surface this as a Warning Event
-	// with manual cleanup instructions.
-	if pendingCount != len(allPendingKeys) || !hasRotationID {
-		return false, fmt.Errorf("inconsistent pending state: %d/%d pending keys present, ROTATION_ID present=%v",
-			pendingCount, len(allPendingKeys), hasRotationID)
+	// Partial state or an impossible combination. This is always an error —
+	// no automatic repair is attempted. The caller should surface this as a
+	// Warning Event with manual cleanup instructions.
+	if (pendingCount != 0 && pendingCount != len(allPendingKeys)) ||
+		(oldCount != 0 && oldCount != len(allOldKeys)) ||
+		(pendingCount != 0 && oldCount != 0) ||
+		(pendingCount == 0 && oldCount == 0) || // ROTATION_ID without a key group
+		!hasRotationID {
+		return RotationSecretClean, fmt.Errorf(
+			"inconsistent rotation state: %d/%d pending keys, %d/%d old keys, ROTATION_ID present=%v",
+			pendingCount, len(allPendingKeys), oldCount, len(allOldKeys), hasRotationID)
 	}
 
-	// All present — check ROTATION_ID match
 	storedID := string(secret.Data[RotationIDKey])
 	if storedID != expectedRotationID {
-		return false, fmt.Errorf("ROTATION_ID mismatch: stored=%q expected=%q", storedID, expectedRotationID)
+		return RotationSecretClean, fmt.Errorf("ROTATION_ID mismatch: stored=%q expected=%q", storedID, expectedRotationID)
 	}
 
-	return true, nil
+	if pendingCount == len(allPendingKeys) {
+		return RotationSecretPending, nil
+	}
+	return RotationSecretPromoted, nil
 }
 
 // SetPendingPasswords generates new random passwords and stores them as *_PENDING keys
 // in the secret's Data. ROTATION_ID is also stored.
 // Idempotent: if pending passwords already exist with a matching rotationID, returns
 // the existing pending passwords without regeneration.
+// Returns an error on inconsistent state, or when the Secret already holds a
+// promoted (*_OLD) state — leftover old keys from an abandoned cycle must be
+// cleaned up manually before a new cycle can be seeded.
 func SetPendingPasswords(secret *corev1.Secret, rotationID string) (*MySQLPassword, error) {
-	has, err := HasPendingPasswords(secret, rotationID)
+	state, err := RotationState(secret, rotationID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot set pending passwords: %w", err)
 	}
-	if has {
+	switch state {
+	case RotationSecretPending:
 		return MySQLPasswordFromPending(secret)
+	case RotationSecretPromoted:
+		return nil, fmt.Errorf("cannot set pending passwords: leftover promoted state (old password keys) exists for rotationID %s", rotationID)
 	}
 
 	pwd, err := NewMySQLPassword()
@@ -178,59 +286,90 @@ func MySQLPasswordFromPending(secret *corev1.Secret) (*MySQLPassword, error) {
 	}, nil
 }
 
-// PromotePendingPasswords copies pending passwords to current keys and
-// then removes the pending keys along with ROTATION_ID and RETAIN_STARTED
-// from the secret — i.e. it makes the pending set the new canonical set.
-// Idempotent: if no pending keys and no ROTATION_ID exist, returns nil (no-op).
-// Returns error only on inconsistent state (partial pending keys).
-func PromotePendingPasswords(secret *corev1.Secret) error {
-	if secret.Data == nil {
+// PromotePendingPasswords makes the staged pending passwords the new
+// canonical current set, in a single in-memory mutation intended to be
+// persisted with one Secret update:
+//
+//   - the current values are archived under the *_OLD keys,
+//   - the *_PENDING values become the current values,
+//   - the *_PENDING keys and RETAIN_STARTED are removed,
+//   - ROTATION_ID is kept until the cycle completes (CleanupRotationKeys).
+//
+// The caller must only invoke this after ALTER USER ... RETAIN CURRENT
+// PASSWORD succeeded on every instance — that is what makes the new current
+// values authenticate everywhere.
+//
+// Idempotent: if the Secret is already in the promoted state for the given
+// rotationID, returns nil without changes. Returns an error on any
+// inconsistent state, or when there is nothing to promote (clean state).
+func PromotePendingPasswords(secret *corev1.Secret, rotationID string) error {
+	state, err := RotationState(secret, rotationID)
+	if err != nil {
+		return fmt.Errorf("cannot promote pending passwords: %w", err)
+	}
+	switch state {
+	case RotationSecretPromoted:
 		return nil
+	case RotationSecretClean:
+		return fmt.Errorf("cannot promote pending passwords: no pending state for rotationID %s", rotationID)
 	}
 
-	pendingCount := 0
-	for _, key := range allPendingKeys {
-		if _, ok := secret.Data[key]; ok {
-			pendingCount++
+	// Archive current → old, then copy pending → current.
+	for currentKey := range currentToOldKey {
+		if _, ok := secret.Data[currentKey]; !ok {
+			return fmt.Errorf("cannot promote pending passwords: current key %s is missing", currentKey)
 		}
 	}
-	_, hasRotationID := secret.Data[RotationIDKey]
-
-	// No pending state at all — idempotent no-op
-	if pendingCount == 0 && !hasRotationID {
-		return nil
+	for currentKey, oldKey := range currentToOldKey {
+		secret.Data[oldKey] = secret.Data[currentKey]
 	}
-
-	// Partial state: some pending keys remain but not all, or pending keys
-	// exist without ROTATION_ID. This indicates an inconsistency that should
-	// not be auto-repaired. Return an error so the caller can surface it for
-	// manual investigation.
-	if pendingCount != len(allPendingKeys) {
-		return fmt.Errorf("inconsistent pending state during promote: %d/%d pending keys present",
-			pendingCount, len(allPendingKeys))
-	}
-	if !hasRotationID {
-		return fmt.Errorf("inconsistent pending state during promote: all pending keys present but ROTATION_ID is missing")
-	}
-
-	// Copy pending → current
 	for pendingKey, currentKey := range pendingToCurrentKey {
 		secret.Data[currentKey] = secret.Data[pendingKey]
 	}
 
-	// Delete pending keys, ROTATION_ID, and RETAIN_STARTED
 	for _, key := range allPendingKeys {
 		delete(secret.Data, key)
 	}
-	delete(secret.Data, RotationIDKey)
 	delete(secret.Data, RetainStartedKey)
 
 	return nil
 }
 
+// CleanupRotationKeys removes the *_OLD keys, ROTATION_ID, and
+// RETAIN_STARTED from the secret at the end of a rotation cycle. The
+// canonical current passwords are untouched. Idempotent: a clean secret
+// (crash recovery after the keys were already removed) is a no-op.
+//
+// The state is validated with RotationState first, so an inconsistent
+// secret (unpromoted *_PENDING keys, a partial *_OLD group, or a
+// ROTATION_ID from a different cycle) is surfaced as an error instead of
+// being silently erased — deleting such bookkeeping would hide the very
+// inconsistency it records.
+func CleanupRotationKeys(secret *corev1.Secret, rotationID string) error {
+	state, err := RotationState(secret, rotationID)
+	if err != nil {
+		return fmt.Errorf("cannot clean up rotation keys: %w", err)
+	}
+	if state == RotationSecretPending {
+		return fmt.Errorf("cannot clean up rotation keys: unpromoted pending passwords are present for rotationID %s", rotationID)
+	}
+	// Promoted, or Clean (already cleaned; a leftover RETAIN_STARTED
+	// marker alone is also reported as Clean and removed here).
+	if secret.Data == nil {
+		return nil
+	}
+	for _, key := range allOldKeys {
+		delete(secret.Data, key)
+	}
+	delete(secret.Data, RotationIDKey)
+	delete(secret.Data, RetainStartedKey)
+	return nil
+}
+
 // CurrentPasswordsMatch returns true if all 8 current password keys exist
-// and have identical values in both secrets. This is used to verify crash
-// recovery by comparing the controller Secret with the user Secret.
+// and have identical values in both secrets. This is used to verify that a
+// distributed per-namespace Secret has caught up with the controller
+// Secret's current passwords.
 // Returns false if either secret has nil Data or is missing any key.
 func CurrentPasswordsMatch(secretA, secretB *corev1.Secret) bool {
 	if secretA.Data == nil || secretB.Data == nil {
@@ -261,6 +400,24 @@ func PendingKeyMap(secret *corev1.Secret) (map[string]string, error) {
 	result := make(map[string]string, len(userToPendingKey))
 	for user, pendingKey := range userToPendingKey {
 		result[user] = string(secret.Data[pendingKey])
+	}
+	return result, nil
+}
+
+// CurrentKeyMap returns a map of MySQL user name → current password.
+// Returns error if current keys are not all present.
+func CurrentKeyMap(secret *corev1.Secret) (map[string]string, error) {
+	if secret.Data == nil {
+		return nil, fmt.Errorf("secret %s/%s has no data", secret.Namespace, secret.Name)
+	}
+
+	result := make(map[string]string, len(userToCurrentKey))
+	for user, currentKey := range userToCurrentKey {
+		val, ok := secret.Data[currentKey]
+		if !ok {
+			return nil, fmt.Errorf("current key %s not found in secret %s/%s", currentKey, secret.Namespace, secret.Name)
+		}
+		result[user] = string(val)
 	}
 	return result, nil
 }

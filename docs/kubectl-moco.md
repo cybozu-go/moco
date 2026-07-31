@@ -73,12 +73,21 @@ Creates a CredentialRotation CR if it doesn't exist, or increments `rotationGene
 
 This can only be run when no rotation cycle is in flight (the CredentialRotation CR is idle: `RotationReady=True`, or the previous request was refused without any changes).
 
+As a safety measure, the command refuses to start when the cluster cannot make progress with a rotation:
+
+- `spec.offline` is `true`.
+- The `moco.cybozu.com/reconciliation-stopped=true` or `moco.cybozu.com/clustering-stopped=true` annotation is set.
+- The MySQLCluster is not `Healthy`.
+
 ## `kubectl moco discard-old-credential CLUSTER_NAME`
 
 Discard old passwords after a successful credential rotation.
 Bumps `spec.discardGeneration` to match `spec.rotationGeneration` on the CredentialRotation CR.
 
 This can only be run when the CredentialRotation CR is awaiting discard (`DiscardReady=True`; the post-distribute rollout has settled).
+
+Almost the same safety checks as `rotate-credential` apply: the command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`.
+Stopped reconciliation does not block this command — the discard phase does not depend on it, because the new passwords were already distributed before the CR reached the awaiting-discard state.
 
 ## `kubectl moco switchover CLUSTER_NAME`
 

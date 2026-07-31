@@ -1197,12 +1197,12 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the phase to transition to DistributingPassword.
+		// Wait for the step to transition to Promoting.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepDistributingPassword))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepPromoting))
 		}).Should(Succeed())
 
 		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
@@ -1238,12 +1238,16 @@ var _ = Describe("manager", func() {
 			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
 		}).Should(Succeed())
 
-		// Create the controller Secret with pending passwords.
+		// Create the controller Secret in the promoted state: the rotation
+		// phase completed, so the new passwords are canonical current and
+		// the previous ones are archived under the *_OLD keys.
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
 		rotationID := "00000000-0000-4000-8000-000000000002"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = password.PromotePendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Create(ctx, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
@@ -1363,12 +1367,12 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the phase to transition to DistributingPassword.
+		// Wait for the step to transition to Promoting.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepDistributingPassword))
+			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepPromoting))
 		}).Should(Succeed())
 
 		// Admin user should have been skipped (has dual password), others should have been rotated.
@@ -1395,11 +1399,14 @@ var _ = Describe("manager", func() {
 			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
 		}).Should(Succeed())
 
+		// Promoted state: the rotation phase completed before discard.
 		controllerSecret := mysqlPassword.ToSecret()
 		controllerSecret.Namespace = "test"
 		controllerSecret.Name = cluster.ControllerSecretName()
 		rotationID := "00000000-0000-4000-8000-000000000004"
 		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = password.PromotePendingPasswords(controllerSecret, rotationID)
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.Create(ctx, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())

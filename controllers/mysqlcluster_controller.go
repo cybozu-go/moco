@@ -340,63 +340,17 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		return err
 	}
 
-	// During credential rotation, the CredentialRotationReconciler owns secret
-	// distribution from the DistributingPassword step onward. Choose which
-	// password to distribute based on the derived rotation step:
-	//   - Idle / ApplyingRetain / RotationRefused / RotationBlocked / StalePending:
-	//     current passwords (pending not yet distributed).
-	//   - DistributingPassword: skip; the rotation reconciler is the writer.
-	//   - AwaitingRollout / AwaitingDiscard / ApplyingDiscard / Finalizing /
-	//     DiscardRefused / DiscardBlocked:
-	//     pending passwords (already distributed by the rotation reconciler).
-	//     Re-applying here self-heals if the per-namespace user/my.cnf Secret
-	//     was deleted during rotation; apply() is a no-op when content matches.
-	// Transient lookup errors must NOT silently fall back to current passwords:
-	// doing so would overwrite already-distributed pending credentials and break
-	// the rolling restart / discard flow. Only NotFound and NoMatch (CRD not
-	// installed) are treated as "no active rotation".
-	usePending := false
-	var activeRotationID string
-	var cr mocov1beta2.CredentialRotation
-	switch err := r.Get(ctx, client.ObjectKey{
-		Namespace: cluster.Namespace,
-		Name:      cluster.Name,
-	}, &cr); {
-	case err == nil:
-		// Ignore a CredentialRotation that belongs to a previously deleted
-		// cluster (same name, different UID). Otherwise leftover rotation state
-		// would skip Secret reconciliation for the new cluster or distribute
-		// the wrong password set.
-		if !crBelongsToCluster(&cr, cluster) {
-			break
-		}
-		switch cr.Step() {
-		case mocov1beta2.StepDistributingPassword:
-			return nil
-		case mocov1beta2.StepAwaitingRollout,
-			mocov1beta2.StepAwaitingDiscard,
-			mocov1beta2.StepApplyingDiscard,
-			mocov1beta2.StepFinalizing,
-			mocov1beta2.StepDiscardRefused,
-			mocov1beta2.StepDiscardBlocked:
-			// Pending was already distributed during DistributingPassword,
-			// so per-namespace Secrets must keep pending values through
-			// every post-distribution step — including the Refused/Blocked
-			// branches that can be entered if the cluster scales to 0
-			// during/after the discard bump. Reverting to current here
-			// would leave Pods that restart in the Refused/Blocked window
-			// with stale credentials, which become invalid once DISCARD
-			// eventually completes.
-			usePending = true
-			activeRotationID = cr.Status.RotationID
-		}
-	case apierrors.IsNotFound(err), meta.IsNoMatchError(err):
-		// No active rotation — proceed with current passwords.
-	default:
-		return fmt.Errorf("failed to get CredentialRotation: %w", err)
-	}
-
-	passwd, err := passwordForDistribution(secret, usePending, activeRotationID)
+	// Always distribute the controller Secret's current passwords.
+	//
+	// Credential rotation needs no special handling here: the
+	// CredentialRotationReconciler promotes the new passwords to current
+	// in the controller Secret only after ALTER USER ... RETAIN succeeded
+	// on every instance, so whatever this function distributes —
+	// pre-promotion old values or post-promotion new values —
+	// authenticates on every instance (the core invariant of the rotation
+	// design). This reconciler is the only writer of the per-namespace
+	// user/my.cnf Secrets; apply() below is a no-op when content matches.
+	passwd, err := password.NewMySQLPasswordFromSecret(secret)
 	if err != nil {
 		return fmt.Errorf("failed to derive password for distribution: %w", err)
 	}
@@ -410,45 +364,6 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 	}
 
 	return nil
-}
-
-// crBelongsToCluster reports whether cr carries an ownerReference whose UID
-// matches the given MySQLCluster. Used to drop stale CRs left over after a
-// cluster was deleted and another recreated under the same name.
-func crBelongsToCluster(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) bool {
-	for _, ref := range cr.OwnerReferences {
-		if ref.UID == cluster.UID {
-			return true
-		}
-	}
-	return false
-}
-
-func passwordForDistribution(controllerSecret *corev1.Secret, preferPending bool, expectedRotationID string) (*password.MySQLPassword, error) {
-	if !preferPending {
-		return password.NewMySQLPasswordFromSecret(controllerSecret)
-	}
-
-	// Phase=Discarded is briefly observed after handleDiscardedPhase promotes
-	// pending → current (removing *_PENDING keys and ROTATION_ID atomically)
-	// and before it updates Phase to Completed. In that window the pending
-	// state is fully gone; fall back to current.
-	//
-	// Use HasPendingPasswords with the active CR's rotationID so we surface
-	// both partial pending state and stale pending from a prior cycle (e.g.
-	// the controller Secret hasn't caught up to a newer rotationID in the CR
-	// status). Silently falling back to current would let MySQLCluster
-	// reconciliation overwrite the per-namespace Secrets that
-	// handleRetainedPhase already populated with the new passwords, reverting
-	// connected applications mid-rotation.
-	hasPending, err := password.HasPendingPasswords(controllerSecret, expectedRotationID)
-	if err != nil {
-		return nil, fmt.Errorf("inconsistent pending password state in controller Secret: %w", err)
-	}
-	if hasPending {
-		return password.MySQLPasswordFromPending(controllerSecret)
-	}
-	return password.NewMySQLPasswordFromSecret(controllerSecret)
 }
 
 func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword) error {
@@ -2103,6 +2018,32 @@ func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.
 		return requestsForIndexedClusters(ctx, a.GetNamespace(), "spec.backupPolicyName", a.GetName())
 	})
 
+	// The controller Secret lives in the system namespace and is not owned by
+	// the MySQLCluster, so Owns(&corev1.Secret{}) does not cover it. This
+	// watch makes reconcileV1Secret redistribute promptly after the
+	// CredentialRotationReconciler promotes rotated passwords to current —
+	// a promptness concern, not a correctness one (the current passwords
+	// always authenticate). The Secret name is formatted as
+	// "mysql-<cluster.Namespace>.<cluster.Name>" (ControllerSecretName);
+	// splitting at the first "." is unambiguous because namespace names
+	// are RFC 1123 DNS labels and can never contain a dot.
+	controllerSecretHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+		if a.GetNamespace() != r.SystemNamespace {
+			return nil
+		}
+		name := a.GetName()
+		if !strings.HasPrefix(name, "mysql-") {
+			return nil
+		}
+		fields := strings.SplitN(name[len("mysql-"):], ".", 2)
+		if len(fields) != 2 {
+			return nil
+		}
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{Namespace: fields[0], Name: fields[1]}},
+		}
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta2.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -2118,6 +2059,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.
 		Watches(certificateObj, certHandler).
 		Watches(&corev1.ConfigMap{}, configMapHandler).
 		Watches(&mocov1beta2.BackupPolicy{}, backupPolicyHandler).
+		Watches(&corev1.Secret{}, controllerSecretHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).

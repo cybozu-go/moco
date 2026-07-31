@@ -20,7 +20,7 @@ func withCondition(cr *CredentialRotation, condType string, status metav1.Condit
 // the controllers leave the CR in for each Step. Inlined here instead
 // of importing controller helpers because v1beta2 must not depend on
 // the controller package. ApplyingRetain and Finalizing collapse to
-// the same triple (F/F/F); DistributingPassword and ApplyingDiscard
+// the same triple (F/F/F); Promoting and ApplyingDiscard
 // collapse to the same triple (F/F/T) — the spec/status generation
 // fields disambiguate which Step the CR is in.
 func crWith(spec CredentialRotationSpec, status CredentialRotationStatus, rotStatus, discStatus, dpStatus metav1.ConditionStatus, rotReason, discReason, dpReason string) *CredentialRotation {
@@ -52,7 +52,7 @@ func crCycleNoDualPw(spec CredentialRotationSpec, status CredentialRotationStatu
 		ReasonPending, ReasonPending, ReasonNotRetained)
 }
 
-// crCycleDualPw covers Step=DistributingPassword and Step=ApplyingDiscard
+// crCycleDualPw covers Step=Promoting and Step=ApplyingDiscard
 // — both project to RotationReady=False/Pending, DiscardReady=False/Pending,
 // DualPassword=True/Retained.
 func crCycleDualPw(spec CredentialRotationSpec, status CredentialRotationStatus) *CredentialRotation {
@@ -83,12 +83,12 @@ func TestStep(t *testing.T) {
 			want: StepApplyingRetain,
 		},
 		{
-			name: "first cycle: RETAIN done (DualPassword=True) is DistributingPassword",
+			name: "first cycle: RETAIN done (DualPassword=True) is Promoting",
 			cr: crCycleDualPw(
 				CredentialRotationSpec{RotationGeneration: 1},
 				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
 			),
-			want: StepDistributingPassword,
+			want: StepPromoting,
 		},
 		{
 			name: "cycle 1 fully completed, no spec change is Idle",
@@ -120,7 +120,7 @@ func TestStep(t *testing.T) {
 		},
 		{
 			// Post-distribute, pre-rollout-complete: generations match
-			// for rotation (observed bumped in handleDistributingPassword)
+			// for rotation (observed bumped in handlePromoting)
 			// but DiscardReady has not yet been flipped to True.
 			name: "post-distribute pre-rollout-complete (DualPassword=True, DiscardReady=False) is AwaitingRollout",
 			cr: crCycleDualPw(

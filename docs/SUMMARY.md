@@ -21,6 +21,7 @@
 - [Custom resources](crd.md)
     - [MySQLCluster v1beta2](crd_mysqlcluster_v1beta2.md)
     - [BackupPolicy v1beta2](crd_backuppolicy_v1beta2.md)
+    - [CredentialRotation v1beta2](crd_credentialrotation_v1beta2.md)
 - [Commands](commands.md)
     - [kubectl-moco](kubectl-moco.md)
     - [moco-controller](moco-controller.md)

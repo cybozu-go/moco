@@ -835,3 +835,61 @@ If you want to leave read-only mode, restart clustering as follows. Then, MOCO w
 ```console
 $ kubectl moco start clustering <CLUSTER_NAME>
 ```
+
+### Rotating system user passwords
+
+MOCO can rotate the passwords of the system MySQL users (such as `moco-admin`, `moco-readonly`, and `moco-writable`) without downtime.
+Use this when a credential may have leaked, or as a regular security measure.
+
+Rotation is driven by a `CredentialRotation` custom resource and works in two steps.
+It uses MySQL's dual-password feature: between the two steps, both the old and the new passwords are accepted, so applications and MOCO components never lose access.
+
+First, start a rotation:
+
+```console
+$ kubectl moco rotate-credential <CLUSTER_NAME>
+```
+
+This creates a CredentialRotation resource with the same name as the cluster, or bumps its `spec.rotationGeneration` if it already exists.
+MOCO then generates new passwords, applies them to every instance while keeping the old ones as secondary passwords, distributes the new passwords to the Secrets, and restarts the Pods.
+The command refuses to run while another rotation is in progress, or when the cluster is offline, unhealthy, or has clustering or reconciliation stopped.
+
+Wait until the rotation step finishes:
+
+```console
+$ kubectl wait --for=condition=DiscardReady credentialrotation/<CLUSTER_NAME> --timeout=30m
+```
+
+When `DiscardReady` becomes `True`, every Pod runs with the new passwords, and the old passwords still work as secondary passwords.
+This is the verification window: check that your applications and tools can connect with the new credentials.
+Applications that read the credentials from the `moco-<CLUSTER_NAME>` Secret must re-read it to pick up the new values.
+
+When you are confident, discard the old passwords:
+
+```console
+$ kubectl moco discard-old-credential <CLUSTER_NAME>
+$ kubectl wait --for=condition=RotationReady credentialrotation/<CLUSTER_NAME> --timeout=10m
+```
+
+The command checks that the cluster is `Healthy`.
+Right after the rolling restart, the cluster may need a short time to become `Healthy` again; if the command refuses for that reason, wait a moment and retry.
+
+After `RotationReady` becomes `True`, the cycle is complete and only the new passwords are accepted.
+
+You can check the progress at any time:
+
+```console
+$ kubectl get credentialrotation <CLUSTER_NAME>
+NAME   ROTATIONREADY   DISCARDREADY   DUALPASSWORD   ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
+test   False           True           True           1             1                  0            0                 5m
+```
+
+If you manage the cluster with GitOps, bump `spec.rotationGeneration` and `spec.discardGeneration` in Git instead of using the CLI commands.
+Do not mix the two methods.
+
+Do not [stop clustering or reconciliation](#stop-clustering-and-reconciliation) while a rotation is in progress.
+A rotation in flight pauses while they are stopped — the CredentialRotation reports this with a `RotationPaused` warning Event — and resumes automatically after you start them again.
+
+There is no rollback once a rotation starts: complete the cycle and rotate again if needed.
+If a rotation gets stuck, read the recovery procedures in the [design document](./designdoc/credential_rotation_crd.md).
+See also [`kubectl-moco.md`](kubectl-moco.md) for the command reference.

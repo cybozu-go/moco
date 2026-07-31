@@ -127,32 +127,22 @@ var (
 	RotationPendingInconsistent = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "RotationPendingError",
-		Message: "Pending password state inconsistency: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
-	RotationPendingConfirmInconsistent = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "RotationPendingError",
-		Message: "Pending password state inconsistency during confirm: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
+		Message: "Rotation state inconsistency: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
 	}
 	RotationStarted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "RotationStarted",
 		Message: "Started rotation cycle (rotationID: %s, generation: %d)",
 	}
-	MissingRotationPending = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "MissingRotationPending",
-		Message: "Pending passwords not found in controller secret for rotationID %s. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
-	SecretsDistributed = MOCOEvent{
+	PasswordsPromoted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
-		Reason:  "SecretsDistributed",
-		Message: "Distributed new passwords and triggered rolling restart (rotationID: %s)",
+		Reason:  "PasswordsPromoted",
+		Message: "Promoted the new passwords to canonical current in the controller Secret (rotationID: %s)",
 	}
 	AwaitingDiscard = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "AwaitingDiscard",
-		Message: "Post-distribute StatefulSet rollout settled; verification window open (rotationID: %s)",
+		Message: "Post-promotion StatefulSet rollout settled; verification window open (rotationID: %s)",
 	}
 	DiscardRefused = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
@@ -162,17 +152,12 @@ var (
 	DiscardStarted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "DiscardStarted",
-		Message: "Discard requested; ClusterManager will wait for StatefulSet rollout before DISCARD (rotationID: %s)",
+		Message: "Discard requested; ClusterManager will run DISCARD OLD PASSWORD on all instances (rotationID: %s)",
 	}
 	InconsistentRotationState = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "InconsistentState",
-		Message: "No pending passwords found for rotationID %s and controller Secret does not match user Secret. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
-	RotationCrashRecovery = MOCOEvent{
-		Type:    corev1.EventTypeNormal,
-		Reason:  "CrashRecovery",
-		Message: "No pending passwords found for rotationID %s; confirmed prior promotion via user Secret match. Proceeding to Completed.",
+		Message: "Pending passwords lost without promotion for rotationID %s. Manual cleanup required: See MOCO documentation for recovery procedures",
 	}
 	RotationCompleted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
@@ -208,5 +193,10 @@ var (
 		Type:    corev1.EventTypeWarning,
 		Reason:  "PasswordRotationError",
 		Message: "Password rotation encountered an error: %v",
+	}
+	RotationPaused = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "RotationPaused",
+		Message: "Credential rotation cannot progress: %s. The cluster keeps working with the current passwords; the rotation resumes automatically afterwards",
 	}
 )

@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/spf13/cobra"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // discardOldCredentialCmd triggers the discard phase of a credential rotation.
@@ -33,6 +32,9 @@ func discardOldCredential(ctx context.Context, clusterName string) error {
 	}, cluster); err != nil {
 		return fmt.Errorf("failed to get MySQLCluster: %w", err)
 	}
+	if err := checkClusterSafeForCredentialOps(cluster, false); err != nil {
+		return err
+	}
 
 	cr := &mocov1beta2.CredentialRotation{}
 	if err := kubeClient.Get(ctx, types.NamespacedName{
@@ -52,16 +54,15 @@ func discardOldCredential(ctx context.Context, clusterName string) error {
 
 	// Bump discardGeneration to match rotationGeneration, signaling that the
 	// retained old password from the current rotation should be discarded.
-	patch, err := json.Marshal(map[string]any{
-		"spec": map[string]any{
-			"discardGeneration": cr.Spec.RotationGeneration,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal patch: %w", err)
-	}
-	if err := kubeClient.Patch(ctx, cr, client.RawPatch(types.MergePatchType, patch)); err != nil {
-		return fmt.Errorf("failed to patch CredentialRotation: %w", err)
+	// Use Update instead of Patch so the write carries the resourceVersion
+	// of the object the pre-checks above ran against; a concurrent
+	// modification surfaces as a Conflict instead of a lost update.
+	cr.Spec.DiscardGeneration = cr.Spec.RotationGeneration
+	if err := kubeClient.Update(ctx, cr); err != nil {
+		if apierrors.IsConflict(err) {
+			return fmt.Errorf("the CredentialRotation was modified concurrently; re-run the command: %w", err)
+		}
+		return fmt.Errorf("failed to update CredentialRotation: %w", err)
 	}
 	fmt.Printf("Set discardGeneration=%d on CredentialRotation %s/%s\n", cr.Spec.RotationGeneration, namespace, clusterName)
 	return nil
