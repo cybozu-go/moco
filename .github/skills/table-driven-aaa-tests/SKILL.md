@@ -1,6 +1,6 @@
 ---
 name: table-driven-aaa-tests
-description: 'Refactor or implement Go standard-library TestXxx table-driven tests when Arrange or Assert varies by case, using case-specific functions and one shared Act. Use for duplicated tests, fake-client fixtures, setup helpers, resource builders, or expected-state checks. Do not use for Ginkgo specs or tables with common Arrange and Assert logic.'
+description: 'Implement or refactor Go standard-library TestXxx table-driven tests when Arrange or Assert varies by case, using case-specific functions and one shared Act. Do not use for Ginkgo specs or tables with common Arrange and Assert logic.'
 argument-hint: 'Describe the Go test file or test cases to refactor'
 ---
 
@@ -10,7 +10,7 @@ Use this workflow only for Go standard-library tests declared as `func TestXxx(t
 
 ## Choose the Test Shape
 
-- Use case-specific `arrangeFunc` and `assertFunc` when Arrange or Assert behavior varies between test cases. Once this pattern is selected, define both functions for every case.
+- Use case-specific `arrangeFunc` and `assertFunc` when Arrange or Assert behavior varies between test cases.
 - Keep setup and assertions that every case needs directly in the `t.Run` body. Do not repeat common work in case functions.
 - When Arrange and Assert are both common, write a conventional table-driven test. Put inputs, options, and expected values in fields such as `input`, `want`, or `wantErr`, and keep the shared Arrange and Assert logic in the test loop.
 
@@ -78,7 +78,6 @@ struct {
 Inside each `t.Run`:
 
 - create a fresh scheme, fake client, database, registry, clock, or other mutable dependency
-- register common types or common resources
 - run `arrangeFunc`
 - reload the subject from the dependency when persistence is part of the contract
 - construct the reconciler or service with common configuration
@@ -93,5 +92,3 @@ Create helpers only for repeated mechanical work. Helpers should expose the arra
 objects := newObjectsForStatefulSet(cluster, statefulSet, sizes)
 createObjects(t, client, objects...)
 ```
-
-over a helper that silently creates the scheme, client, all resources, and scenario-specific overrides before returning only the client.
