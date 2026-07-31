@@ -223,14 +223,19 @@ spec: {rotationGeneration: 1, discardGeneration: 1}
 		_, err := kubectl(nil, "moco", "-n", ns, "rotate-credential", "test")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("reconciliation is stopped"))
-		kubectlSafe(nil, "moco", "-n", ns, "start", "reconciliation", "test")
 
-		By("starting a rotation and stopping reconciliation right after")
-		Eventually(func() error {
-			_, err := kubectl(nil, "moco", "-n", ns, "rotate-credential", "test")
-			return err
-		}).WithPolling(2 * time.Second).Should(Succeed())
-		kubectlSafe(nil, "moco", "-n", ns, "stop", "reconciliation", "test")
+		By("starting a rotation with a direct generation bump (the GitOps path)")
+		// The CLI refuses to start while reconciliation is stopped, and a
+		// rotation started just before the stop can win the race: seeding,
+		// RETAIN, promotion, and distribution can all finish before the
+		// stop annotation lands, and then the cycle proceeds without ever
+		// pausing. Bumping the generation directly while reconciliation is
+		// already stopped guarantees that distribution cannot catch up, so
+		// the cycle pauses in AwaitingRollout and emits RotationPaused.
+		cr, err := getCredentialRotation(ns, "test")
+		Expect(err).NotTo(HaveOccurred())
+		kubectlSafe(nil, "patch", "-n", ns, "credentialrotation", "test", "--type", "merge",
+			"-p", fmt.Sprintf(`{"spec":{"rotationGeneration":%d}}`, cr.Spec.RotationGeneration+1))
 
 		By("waiting for the RotationPaused warning Event")
 		Eventually(func() error {

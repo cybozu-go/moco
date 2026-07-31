@@ -476,7 +476,7 @@ A scale-down after promotion pauses the cycle in `AwaitingRollout` / `AwaitingDi
 
 The [stop clustering / stop reconciliation feature](../usage.md#stop-clustering-and-reconciliation) also pauses a rotation in flight:
 
-- With **reconciliation stopped**, `MySQLClusterReconciler` does not distribute the promoted passwords, so the cycle pauses in `AwaitingRollout`.
+- With **reconciliation stopped**, `MySQLClusterReconciler` does not distribute the promoted passwords, so the cycle pauses in `AwaitingRollout`. The pause only happens while distribution has not caught up yet: if the annotation is added after the promoted passwords were already distributed, the remaining rollout continues (the partition controller does not depend on `MySQLClusterReconciler`) and the cycle completes normally.
 - With **clustering stopped**, the ClusterManager loop is paused, so `ApplyingRetain` and `ApplyingDiscard` cannot run their SQL.
 
 This is intentional: the stop annotations are explicit operator requests, and the rotation controllers must not bypass them. The paused states are safe — the current passwords keep authenticating everywhere — and the cycle resumes automatically when the operator runs `kubectl moco start clustering` / `start reconciliation`. While paused, the Reconciler emits a `RotationPaused` Warning Event on the CredentialRotation that names the blocking annotation. The CLI refuses to *start* a step that a stop annotation would pause (see [User Interface](#user-interface)); the Events cover the case where the annotation is added mid-cycle.
