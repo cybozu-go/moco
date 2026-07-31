@@ -622,7 +622,7 @@ If a `MySQLCluster` is deleted and another is recreated under the same name befo
 
 ## Recovery Procedures
 
-All recovery procedures share one principle: **reset MySQL passwords to the current values in the controller Secret.** Thanks to the core invariant, the current values always authenticate, so recovery never needs to guess which password set is live. `ALTER USER ... IDENTIFIED BY` (without RETAIN) sets the primary password and clears any secondary, returning MySQL to a clean single-password state.
+All recovery procedures share one principle: **reset MySQL passwords to the current values in the controller Secret.** Thanks to the core invariant, the current values always authenticate, so recovery never needs to guess which password set is live. Note that `ALTER USER ... IDENTIFIED BY` (without RETAIN) only replaces the primary password — it does **not** remove a retained secondary password. The reset therefore pairs it with `ALTER USER ... DISCARD OLD PASSWORD`, which removes the secondary if one exists and does nothing otherwise. Together they return MySQL to a clean single-password state. Skipping the DISCARD step would leave the secondary passwords in place, and the next rotation would be blocked by the RETAIN pre-check (`DualPasswordExists`).
 
 Note what recovery **never** requires anymore: restarting Pods. Per-namespace Secrets only ever hold canonical current values, so Pods never depend on a password that recovery would take away.
 
@@ -661,6 +661,14 @@ $ kubectl -n <namespace> exec <primary-pod> -c mysqld -- \
   ALTER USER 'moco-backup'@'%'       IDENTIFIED BY '<backup-password>';
   ALTER USER 'moco-readonly'@'%'     IDENTIFIED BY '<readonly-password>';
   ALTER USER 'moco-writable'@'%'     IDENTIFIED BY '<writable-password>';
+  ALTER USER 'moco-admin'@'%'        DISCARD OLD PASSWORD;
+  ALTER USER 'moco-agent'@'%'        DISCARD OLD PASSWORD;
+  ALTER USER 'moco-repl'@'%'         DISCARD OLD PASSWORD;
+  ALTER USER 'moco-clone-donor'@'%'  DISCARD OLD PASSWORD;
+  ALTER USER 'moco-exporter'@'%'     DISCARD OLD PASSWORD;
+  ALTER USER 'moco-backup'@'%'       DISCARD OLD PASSWORD;
+  ALTER USER 'moco-readonly'@'%'     DISCARD OLD PASSWORD;
+  ALTER USER 'moco-writable'@'%'     DISCARD OLD PASSWORD;
 "
 ```
 
@@ -679,6 +687,14 @@ $ kubectl -n <namespace> exec <replica-pod> -c mysqld -- \
   ALTER USER 'moco-backup'@'%'       IDENTIFIED BY '<backup-password>';
   ALTER USER 'moco-readonly'@'%'     IDENTIFIED BY '<readonly-password>';
   ALTER USER 'moco-writable'@'%'     IDENTIFIED BY '<writable-password>';
+  ALTER USER 'moco-admin'@'%'        DISCARD OLD PASSWORD;
+  ALTER USER 'moco-agent'@'%'        DISCARD OLD PASSWORD;
+  ALTER USER 'moco-repl'@'%'         DISCARD OLD PASSWORD;
+  ALTER USER 'moco-clone-donor'@'%'  DISCARD OLD PASSWORD;
+  ALTER USER 'moco-exporter'@'%'     DISCARD OLD PASSWORD;
+  ALTER USER 'moco-backup'@'%'       DISCARD OLD PASSWORD;
+  ALTER USER 'moco-readonly'@'%'     DISCARD OLD PASSWORD;
+  ALTER USER 'moco-writable'@'%'     DISCARD OLD PASSWORD;
   SET GLOBAL super_read_only=ON;
 "
 ```

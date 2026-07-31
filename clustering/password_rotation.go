@@ -454,8 +454,8 @@ func discardInstanceUsers(
 	for _, user := range constants.MocoUsers {
 		// Idempotency: skip DISCARD if the user no longer has a retained old
 		// password (e.g., a partial retry after controller restart or transient
-		// DB error). MySQL rejects DISCARD OLD PASSWORD once there is no
-		// retained password, which would otherwise wedge the rotation.
+		// DB error). DISCARD OLD PASSWORD is a no-op in that case; skipping
+		// makes the retry explicit in the logs.
 		hasDual, err := op.HasDualPassword(ctx, user)
 		if err != nil {
 			return fmt.Errorf("failed to check dual password for %s on instance %d: %w", user, instanceIndex, err)
