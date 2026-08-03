@@ -202,7 +202,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
 
-		ctx, cancel := context.WithCancel(ctx)
+		mgrCtx, cancel := context.WithCancel(ctx)
 		managerDone := make(chan struct{})
 		stopFunc = func() {
 			cancel()
@@ -211,7 +211,7 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		go func() {
 			defer close(managerDone)
 			defer GinkgoRecover()
-			err := mgr.Start(ctx)
+			err := mgr.Start(mgrCtx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(100 * time.Millisecond)
