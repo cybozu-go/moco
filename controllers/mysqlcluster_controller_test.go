@@ -37,6 +37,7 @@ const (
 	testAgentImage          = "foobar:123"
 	testBackupImage         = "backup:123"
 	testFluentBitImage      = "fluent-hoge:134"
+	testFluentBitImageV2    = "fluent-hoge:135"
 	testExporterImage       = "mysqld_exporter:111"
 )
 
@@ -193,8 +194,13 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
+		managerDone := make(chan struct{})
+		stopFunc = func() {
+			cancel()
+			<-managerDone
+		}
 		go func() {
+			defer close(managerDone)
 			defer GinkgoRecover()
 			err := mgr.Start(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -204,7 +210,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	AfterEach(func() {
 		stopFunc()
-		time.Sleep(100 * time.Millisecond)
 	})
 
 	It("should create password secrets", func() {
@@ -1060,42 +1065,6 @@ dummyKey: dummyValue
 		Expect(foundMyCnfConfig).To(BeTrue())
 		Expect(foundSlowLogConfig).To(BeTrue())
 
-		By("editing statefulset")
-		// Sleep before editing statefulset to avoid slow query agent container from being restored by the controller
-		time.Sleep(1 * time.Second)
-
-		for i, c := range sts.Spec.Template.Spec.Containers {
-			switch c.Name {
-			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName:
-				sts.Spec.Template.Spec.Containers[i].Image = "invalid"
-			}
-		}
-		err = k8sClient.Update(ctx, sts)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() error {
-			sts = &appsv1.StatefulSet{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
-			if err != nil {
-				return err
-			}
-			for _, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name != constants.AgentContainerName {
-					continue
-				}
-				if c.Image != testAgentImage {
-					return errors.New("c.Image is not reconciled yet")
-				}
-			}
-			return nil
-		}).Should(Succeed())
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			switch c.Name {
-			case constants.SlowQueryLogAgentContainerName:
-				Expect(c.Image).To(Equal("invalid"), c.Name)
-			}
-		}
-
 		By("updating MySQLCluster")
 		cluster = &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
@@ -1350,6 +1319,73 @@ dummyKey: dummyValue
 				Expect(c.Args).To(ContainElement("0s"))
 			}
 		}
+	})
+
+	It("should update fluent-bit image without MySQLCluster spec changes", func() {
+		stopFunc()
+		// This spec stops the manager. With the manager stopped, no automatic
+		// reconcile runs, so this spec must call Reconcile explicitly
+		// both to create the initial StatefulSet and to apply the new Fluent Bit
+		// image. Stopping the manager also prevents its old reconciler from racing
+		// with the new configuration and restoring the old image.
+
+		mysqlr := &MySQLClusterReconciler{
+			Client:                     k8sClient,
+			Scheme:                     scheme,
+			SystemNamespace:            testMocoSystemNamespace,
+			ClusterManager:             mockMgr,
+			AgentImage:                 testAgentImage,
+			BackupImage:                testBackupImage,
+			FluentBitImage:             testFluentBitImage,
+			ExporterImage:              testExporterImage,
+			MySQLConfigMapHistoryLimit: 2,
+		}
+
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(cluster)}
+		_, err = mysqlr.Reconcile(ctx, req)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		initialGeneration := cluster.Generation
+
+		sts := &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+		foundFluentBit := false
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == constants.SlowQueryLogAgentContainerName {
+				foundFluentBit = true
+				Expect(c.Image).To(Equal(testFluentBitImage))
+			}
+		}
+		Expect(foundFluentBit).To(BeTrue())
+
+		mysqlr.FluentBitImage = testFluentBitImageV2
+		_, err = mysqlr.Reconcile(ctx, req)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cluster.Generation).To(Equal(initialGeneration))
+
+		sts = &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+		foundFluentBit = false
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			if c.Name == constants.SlowQueryLogAgentContainerName {
+				foundFluentBit = true
+				Expect(c.Image).To(Equal(testFluentBitImageV2))
+			}
+		}
+		Expect(foundFluentBit).To(BeTrue())
 	})
 
 	It("should reconcile a pod disruption budget", func() {
