@@ -597,7 +597,10 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		return ctrl.Result{}, fmt.Errorf("failed to update controller secret after cleanup: %w", err)
 	}
 
-	// Return to Idle steady state.
+	// Return to Idle steady state. RotationID is cleared to keep the
+	// documented invariant "empty when no cycle is active".
+	completedRotationID := cr.Status.RotationID
+	cr.Status.RotationID = ""
 	cr.Status.ObservedDiscardGeneration = cr.Spec.DiscardGeneration
 	cr.SetRotationReady(metav1.ConditionTrue, mocov1beta2.ReasonReconciled,
 		"Cycle complete; idle steady state — rotate is now allowed.")
@@ -608,10 +611,10 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 	}
 
 	log.Info("rotation completed",
-		"rotationID", cr.Status.RotationID,
+		"rotationID", completedRotationID,
 		"observedRotationGeneration", cr.Status.ObservedRotationGeneration,
 		"observedDiscardGeneration", cr.Status.ObservedDiscardGeneration)
-	mocoevent.RotationCompleted.Emit(cr, r.Recorder, cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
+	mocoevent.RotationCompleted.Emit(cr, r.Recorder, completedRotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
 
 	return ctrl.Result{}, nil
 }
