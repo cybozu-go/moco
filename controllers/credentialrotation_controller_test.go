@@ -548,12 +548,14 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			return crStep(cr)
 		}).Should(Equal(string(mocov1beta2.StepIdle)))
 
-		// Verify observed generations are updated.
+		// Verify observed generations are updated and the rotationID is
+		// cleared (it must be empty when no cycle is active).
 		cr = &mocov1beta2.CredentialRotation{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
 		Expect(cr.Status.ObservedDiscardGeneration).To(Equal(int64(1)))
+		Expect(cr.Status.RotationID).To(BeEmpty())
 
 		// Verify the promoted passwords are current and all rotation
 		// bookkeeping keys have been cleaned up.
