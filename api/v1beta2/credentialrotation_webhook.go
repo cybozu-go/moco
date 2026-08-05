@@ -100,8 +100,10 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 	if rotationIncreased {
 		// rotationGeneration can only increase when the CR is idle —
 		// i.e. no rotation cycle is in flight and MySQL is not holding
-		// dual passwords. Stuck states (Blocked / Stale) must be cleared
-		// via the documented recovery procedure (delete + recreate) first.
+		// dual passwords. Stuck states clear themselves first: Blocked
+		// resumes on scale-up, and Stale recovers automatically after
+		// the operator cleans the controller Secret (see the recovery
+		// procedures in the design doc).
 		if !oldCR.IsIdle() {
 			errs = append(errs, field.Forbidden(field.NewPath("spec", "rotationGeneration"),
 				"can only increment rotationGeneration when the CR is idle (RotationReady=True, DiscardReady=False, DualPassword=False, or the previous request was Refused without mutations)"))
