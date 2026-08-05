@@ -66,11 +66,14 @@ type CredentialRotationStatus struct {
 	RotationID string `json:"rotationID,omitempty"`
 
 	// ObservedRotationGeneration is the last rotationGeneration whose
-	// rotation phase (RETAIN + pending-password distribution) completed
-	// successfully. Equality with spec.rotationGeneration is a necessary
-	// condition for the cycle to leave the rotation phase, but not
-	// sufficient on its own: RotationReady=True is only set at the very
-	// end of the full cycle (after the discard phase finalises).
+	// rotation phase completed: RETAIN succeeded on every instance and
+	// the pending password was promoted to the controller Secret's
+	// current password. It is updated immediately after promotion,
+	// before Secret distribution and the StatefulSet rollout, so
+	// equality with spec.rotationGeneration does not imply that
+	// distribution, the rollout, or the full rotate-discard cycle has
+	// completed: RotationReady=True is only set at the very end of the
+	// full cycle (after the discard phase finalises).
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional

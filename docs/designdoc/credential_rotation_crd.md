@@ -105,7 +105,7 @@ State is exposed as three Conditions:
   └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-> In this diagram, `Cond→False/Pending` is compact notation for setting the condition to `status: False` with `reason: Pending`. The prose and tables in this document spell it out as `Cond=False` (`reason=Pending`).
+> In this diagram, `Cond→False/Pending` is compact notation for setting the condition to `status: False` with `reason: Pending`. The text and tables in this document use `Cond=False` (`reason=Pending`) instead.
 
 ## Key Design Decisions
 
@@ -542,7 +542,7 @@ ClusterManager reads the CredentialRotation CR inside each tick and dispatches o
 - `ApplyingDiscard` → run the DISCARD flow (only after observing `DiscardReady=False` (`reason=Pending`), written by the Reconciler).
 - Any other step → no-op for rotation; normal clustering continues.
 
-A CR whose ownerReference UID does not match the live cluster (stale CR) is ignored. Status writes use `retry.RetryOnConflict` with a fresh `Get` inside the retry to avoid conflicts with concurrent status updates from the reconciler.
+A CR whose ownerReference UID does not match the live cluster (stale CR) is ignored.
 
 ### MySQLClusterReconciler
 
