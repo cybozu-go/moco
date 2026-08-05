@@ -107,8 +107,10 @@ type CredentialRotationStatus struct {
 const (
 	// ConditionRotationReady is True iff the CR is in the idle steady
 	// state — no rotation or discard is in flight, no dual password is
-	// held, and the operator may bump spec.rotationGeneration to start
-	// a new cycle. Aligned with IsIdle().
+	// known to be held (after a Stale recovery the MySQL state is
+	// unverified; see ReasonUnverified), and the operator may bump
+	// spec.rotationGeneration to start a new cycle. Aligned with
+	// IsIdle().
 	ConditionRotationReady = "RotationReady"
 
 	// ConditionDiscardReady is True iff the CR is in the awaiting-discard
@@ -123,7 +125,9 @@ const (
 	// state in MySQL — True is the affirmative observation, not a "good"
 	// state. The cycle's terminal state has DualPassword=False, mirroring
 	// how Kubernetes uses conditions such as MemoryPressure where True
-	// describes the situation, not health.
+	// describes the situation, not health. After a Stale recovery the
+	// status is Unknown (ReasonUnverified) until the next cycle's
+	// pre-check verifies the MySQL state.
 	ConditionDualPassword = "DualPassword"
 )
 

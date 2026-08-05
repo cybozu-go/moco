@@ -246,6 +246,8 @@ The Kubernetes API conventions discourage `phase`-style enums and recommend Cond
 | `DiscardReady` | Awaiting-discard steady state (`Step()==StepAwaitingDiscard`): rotation phase done, rollout settled, dual password held. Operator may bump `discardGeneration`. | A cycle is in flight that is not yet awaiting-discard, the CR is idle, the discard phase is in flight, or it is stuck. |
 | `DualPassword` | MySQL holds a dual-password set on the system users (between successful RETAIN and successful DISCARD). | No dual-password state in MySQL. |
 
+`DualPassword` can also be `Unknown` (`reason=Unverified`) right after a Stale recovery, when the reconciler could not verify the MySQL state — see the [Reason values](#reason-values) below.
+
 > `RotationReady` and `DiscardReady` are **not** equivalent to `IsIdle()` / `IsAwaitingDiscard()` in the strict sense — `IsIdle()` also returns true for `StepRotationRefused` (where `RotationReady=False` with `reason=Refused`), since nothing has been mutated and a retry is safe. The webhook uses the `IsIdle()` / `IsAwaitingDiscard()` predicates to decide whether a `rotationGeneration` / `discardGeneration` bump is allowed.
 
 **Using `kubectl wait`.** `kubectl wait --for=condition=RotationReady` waits for Idle (previous cycle fully done, next rotate allowed). `kubectl wait --for=condition=DiscardReady` waits for AwaitingDiscard (rollout settled, discard allowed). The two are never used together.
