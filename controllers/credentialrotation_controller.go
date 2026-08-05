@@ -157,13 +157,7 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 
 	case mocov1beta2.StepStalePending:
-		// Stuck on inconsistent controller Secret. The transition into
-		// Stale already emitted a Warning Event with the diagnostic
-		// detail in the condition Message; just log here to avoid event
-		// spam while waiting for manual recovery.
-		log.Info("CR is stuck in Stale state; manual recovery required",
-			"rotationID", cr.Status.RotationID)
-		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+		return r.handleStalePending(ctx, cr, cluster)
 
 	default:
 		log.Info("unrecognized rotation step; ignoring", "step", step)
@@ -618,6 +612,54 @@ func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *m
 		"observedRotationGeneration", cr.Status.ObservedRotationGeneration,
 		"observedDiscardGeneration", cr.Status.ObservedDiscardGeneration)
 	mocoevent.RotationCompleted.Emit(cr, r.Recorder, cr.Status.RotationID, cr.Spec.RotationGeneration, cr.Spec.DiscardGeneration)
+
+	return ctrl.Result{}, nil
+}
+
+// handleStalePending waits for manual recovery of an inconsistent
+// controller Secret. While the rotation bookkeeping keys are present, it
+// only logs — the transition into Stale already emitted a Warning Event
+// with the diagnostic detail in the condition Message. Once the operator
+// has removed all bookkeeping keys (the Secret is Clean again), the
+// wedged cycle is aborted: the observed generations catch up to spec so
+// the cycle does not restart by itself, and the conditions return to the
+// idle steady state. The operator then requests a fresh rotation with a
+// new generation bump. Leftover dual passwords on MySQL instances (if the
+// operator skipped the reset step) are caught by the DualPasswordExists
+// pre-check of that next cycle.
+func (r *CredentialRotationReconciler) handleStalePending(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
+	log := crlog.FromContext(ctx)
+
+	controllerSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: r.SystemNamespace,
+		Name:      cluster.ControllerSecretName(),
+	}, controllerSecret); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get controller secret: %w", err)
+	}
+	if state, err := password.RotationState(controllerSecret, ""); err != nil || state != password.RotationSecretClean {
+		log.Info("CR is stuck in Stale state; manual recovery required",
+			"rotationID", cr.Status.RotationID)
+		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+	}
+
+	abortedRotationID := cr.Status.RotationID
+	cr.Status.RotationID = ""
+	cr.Status.ObservedRotationGeneration = cr.Spec.RotationGeneration
+	cr.Status.ObservedDiscardGeneration = cr.Spec.DiscardGeneration
+	cr.SetRotationReady(metav1.ConditionTrue, mocov1beta2.ReasonReconciled,
+		"Recovered after manual cleanup of the controller Secret; the wedged cycle was aborted. Idle steady state — rotate is now allowed.")
+	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending,
+		"Idle steady state; no dual-password set to discard.")
+	cr.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained,
+		"No RETAIN has been issued in the current cycle yet.")
+	if err := r.updateStatus(ctx, cr); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update status after Stale recovery: %w", err)
+	}
+
+	log.Info("recovered from Stale state after manual cleanup of the controller secret",
+		"abortedRotationID", abortedRotationID)
+	mocoevent.RotationRecovered.Emit(cr, r.Recorder, abortedRotationID)
 
 	return ctrl.Result{}, nil
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
@@ -862,6 +863,139 @@ var _ = Describe("CredentialRotation reconciler", func() {
 			}
 			return crStep(cr)
 		}).ShouldNot(Equal(string(mocov1beta2.StepApplyingDiscard)))
+	})
+
+	It("should recover from StalePending after the controller secret is cleaned manually", func() {
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, secret)
+		}).Should(Succeed())
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{
+				RotationGeneration: 1,
+			},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crStep(cr)
+		}).Should(Equal(string(mocov1beta2.StepApplyingRetain)))
+
+		cr = &mocov1beta2.CredentialRotation{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+		Expect(err).NotTo(HaveOccurred())
+		firstRotationID := cr.Status.RotationID
+		Expect(firstRotationID).NotTo(BeEmpty())
+
+		// Corrupt the controller secret: remove one pending key so the
+		// pending group becomes partial (an inconsistent state).
+		Eventually(func() error {
+			controllerSecret := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, controllerSecret); err != nil {
+				return err
+			}
+			delete(controllerSecret.Data, password.AdminPasswordPendingKey)
+			return k8sClient.Update(ctx, controllerSecret)
+		}).Should(Succeed())
+
+		// Simulate RETAIN completion; handlePromoting then detects the
+		// inconsistent secret and flips RotationReady to False/Stale.
+		Eventually(func() error {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return err
+			}
+			simulateRetainDone(cr)
+			return k8sClient.Status().Update(ctx, cr)
+		}).Should(Succeed())
+
+		Eventually(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crStep(cr)
+		}).Should(Equal(string(mocov1beta2.StepStalePending)))
+
+		// Perform the manual recovery: delete all rotation bookkeeping
+		// keys from the controller secret.
+		Eventually(func() error {
+			controllerSecret := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, controllerSecret); err != nil {
+				return err
+			}
+			for key := range controllerSecret.Data {
+				if strings.HasSuffix(key, "_PENDING") || strings.HasSuffix(key, "_OLD") {
+					delete(controllerSecret.Data, key)
+				}
+			}
+			delete(controllerSecret.Data, password.RotationIDKey)
+			delete(controllerSecret.Data, password.RetainStartedKey)
+			return k8sClient.Update(ctx, controllerSecret)
+		}).Should(Succeed())
+
+		// The reconciler should abort the wedged cycle and return to Idle.
+		Eventually(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crStep(cr)
+		}).Should(Equal(string(mocov1beta2.StepIdle)))
+
+		cr = &mocov1beta2.CredentialRotation{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status.RotationID).To(BeEmpty())
+		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
+		Expect(cr.IsIdle()).To(BeTrue())
+
+		// A fresh rotation can now be requested with a new generation bump.
+		Eventually(func() error {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return err
+			}
+			cr.Spec.RotationGeneration = 2
+			return k8sClient.Update(ctx, cr)
+		}).Should(Succeed())
+
+		Eventually(func() string {
+			cr := &mocov1beta2.CredentialRotation{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr); err != nil {
+				return ""
+			}
+			return crStep(cr)
+		}).Should(Equal(string(mocov1beta2.StepApplyingRetain)))
+
+		cr = &mocov1beta2.CredentialRotation{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status.RotationID).NotTo(BeEmpty())
+		Expect(cr.Status.RotationID).NotTo(Equal(firstRotationID))
 	})
 
 	It("should self-heal user secret with the promoted passwords after Retained", func() {

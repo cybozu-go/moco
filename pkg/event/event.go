@@ -129,6 +129,11 @@ var (
 		Reason:  "RotationPendingError",
 		Message: "Rotation state inconsistency: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
 	}
+	RotationRecovered = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "RotationRecovered",
+		Message: "Recovered from the Stale state after manual cleanup of the controller Secret; the wedged cycle (rotationID: %q) was aborted. Rotate is allowed again",
+	}
 	RotationStarted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "RotationStarted",
