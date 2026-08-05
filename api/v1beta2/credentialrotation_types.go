@@ -172,6 +172,14 @@ const (
 	// holding a dual-password set (initial state for a cycle, or already
 	// discarded).
 	ReasonNotRetained = "NotRetained"
+
+	// ReasonUnverified — DualPassword is Unknown; the controller could
+	// not verify the MySQL dual-password state. Set only during Stale
+	// recovery, where the reconciler must not claim "no dual password"
+	// without connecting to MySQL. The next rotation cycle's pre-check
+	// verifies the real state. Step() treats Unknown like False, so the
+	// CR still derives Idle.
+	ReasonUnverified = "Unverified"
 )
 
 // +kubebuilder:object:root=true

@@ -641,8 +641,12 @@ func (r *CredentialRotationReconciler) handleStalePending(ctx context.Context, c
 		return ctrl.Result{}, fmt.Errorf("failed to get controller secret: %w", err)
 	}
 	if state, err := password.RotationState(controllerSecret, ""); err != nil || state != password.RotationSecretClean {
+		// An inconsistent Secret is the very state this handler waits
+		// on (the transition into Stale already reported it), so it is
+		// not returned as a reconcile error.
 		log.Info("CR is stuck in Stale state; manual recovery required",
 			"rotationID", cr.Status.RotationID)
+		//nolint:nilerr
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
@@ -654,8 +658,12 @@ func (r *CredentialRotationReconciler) handleStalePending(ctx context.Context, c
 		"Recovered after manual cleanup of the controller Secret; the wedged cycle was aborted. Idle steady state — rotate is now allowed.")
 	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending,
 		"Idle steady state; no dual-password set to discard.")
-	cr.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained,
-		"No RETAIN has been issued in the current cycle yet.")
+	// The reconciler never connects to MySQL, so it cannot know whether
+	// the operator's recovery also removed leftover dual passwords.
+	// Unknown is honest; the next cycle's pre-check verifies the real
+	// state (and waits with DualPasswordExists if dual passwords remain).
+	cr.SetDualPassword(metav1.ConditionUnknown, mocov1beta2.ReasonUnverified,
+		"MySQL dual-password state was not verified during Stale recovery; the next rotation's pre-check verifies it.")
 	if err := r.updateStatus(ctx, cr); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status after Stale recovery: %w", err)
 	}

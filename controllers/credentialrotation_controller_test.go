@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -972,6 +973,13 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(cr.Status.RotationID).To(BeEmpty())
 		Expect(cr.Status.ObservedRotationGeneration).To(Equal(int64(1)))
 		Expect(cr.IsIdle()).To(BeTrue())
+
+		// The reconciler cannot verify the MySQL dual-password state, so
+		// DualPassword must be Unknown (not False) after the recovery.
+		dualPw := apimeta.FindStatusCondition(cr.Status.Conditions, mocov1beta2.ConditionDualPassword)
+		Expect(dualPw).NotTo(BeNil())
+		Expect(dualPw.Status).To(Equal(metav1.ConditionUnknown))
+		Expect(dualPw.Reason).To(Equal(mocov1beta2.ReasonUnverified))
 
 		// A fresh rotation can now be requested with a new generation bump.
 		Eventually(func() error {

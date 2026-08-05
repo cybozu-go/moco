@@ -254,8 +254,9 @@ The Kubernetes API conventions discourage `phase`-style enums and recommend Cond
 
 Each `Reason` has a single meaning across every condition that uses it. A
 Reason is always paired with a fixed `Status` value — for example, `Reconciled`
-only appears with `Status=True`, and `Pending` / `Refused` / `Blocked` /
-`Stale` only appear with `Status=False`.
+only appears with `Status=True`, `Pending` / `Refused` / `Blocked` / `Stale`
+only appear with `Status=False`, and `Unverified` only appears with
+`Status=Unknown`.
 
 | Reason | Appears on condition | With status | Meaning |
 |---|---|---|---|
@@ -266,6 +267,7 @@ only appears with `Status=True`, and `Pending` / `Refused` / `Blocked` /
 | `Stale` | `RotationReady` or `DiscardReady` | `False` | The controller Secret (or other persisted state) is inconsistent. Manual recovery required; once the controller Secret is cleaned, the controller aborts the stuck cycle and returns the CR to Idle by itself (`RotationRecovered` Event). |
 | `Retained` | `DualPassword` | `True` | MySQL holds a dual-password set on all system users. |
 | `NotRetained` | `DualPassword` | `False` | MySQL is not currently holding a dual-password set. |
+| `Unverified` | `DualPassword` | `Unknown` | Set only during Stale recovery: the reconciler never connects to MySQL, so it cannot claim `False`. The next cycle's pre-check verifies the real state. `Step()` treats `Unknown` like `False`, so the CR still derives `Idle`. |
 
 > **Events.** In addition to the condition transitions, the controllers emit Kubernetes Events for `kubectl describe` visibility. Their reasons are distinct from the condition `Reason` values above. Events on the CredentialRotation (emitted by the Reconciler): `RotationStarted`, `PasswordsPromoted`, `AwaitingDiscard`, `DiscardStarted`, `RotationCompleted`, `RotationRecovered`, and the Warnings `RotationRefused`, `DiscardRefused`, `RotationPaused`, `RotationPendingError`, `InconsistentState`, `StaleCredentialRotation`. Events on the MySQLCluster (emitted by the ClusterManager): `RetainApplied`, `DiscardApplied`, and the Warnings `RotationBlocked`, `DiscardBlocked`, `DualPasswordExists`, `PasswordRotationError`.
 
