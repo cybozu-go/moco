@@ -210,7 +210,7 @@ Each transition has one *driver* that does the work and then writes the change �
 | `Finalizing` → `Succeeded` | Reconciler | phase, `status.completionTime`, `Finished=True` |
 | any → `Blocked` | whichever component hits the obstacle | phase, `status.message` (and `DiscardReady=False` (`reason=Blocked`) on the discard side) |
 | `Blocked` → (resume) | Reconciler | see [Resuming from Blocked](#resuming-from-blocked) |
-| any → `Failed` | whichever component detects the inconsistency | phase, `status.message`, `Finished=True` (`reason=Failed`) |
+| any → `Failed` | whichever component detects the inconsistency | phase, `status.message`, `status.completionTime`, `Finished=True` (`reason=Failed`) |
 | `Succeeded` → (deleted) | Reconciler | deletes the CR after the TTL |
 
 Because the phase and the conditions are written atomically, ordering guarantees fall out of the state machine itself. For example, the `DiscardStarted` Event and `DiscardReady=False` are recorded in the same update that sets phase `ApplyingDiscard` — so ClusterManager, which acts on that phase, can never run DISCARD SQL before the request was recorded.
@@ -250,7 +250,7 @@ Because the CR is single-use, "at most one" also covers failure handling: a `Fai
 
 ### OwnerReference
 
-CredentialRotation sets an ownerReference to the target MySQLCluster so that Kubernetes garbage-collects it on cluster deletion. The ownerReference does not set `blockOwnerDeletion`, and the CR carries no finalizer.
+CredentialRotation sets an ownerReference to the target MySQLCluster so that Kubernetes garbage-collects it on cluster deletion. The Reconciler adds the reference at adoption, **before it writes any status** (see the seed handler). The ownerReference does not set `blockOwnerDeletion`, and the CR carries no finalizer.
 
 ### Spec / Status Fields
 
@@ -319,7 +319,7 @@ $ kubectl -n <ns> wait credentialrotation <cluster> --for=condition=Finished --t
 $ kubectl -n <ns> get credentialrotation <cluster> -o jsonpath='{.status.phase}'
 ```
 
-> **Events.** In addition to the status, the controllers emit Kubernetes Events for `kubectl describe` visibility. Events on the CredentialRotation: `RotationStarted`, `PasswordsPromoted`, `AwaitingDiscard`, `DiscardStarted`, `RotationCompleted`, and the Warnings `RotationPaused`, `RotationFailed`, `StaleCredentialRotation`. Events on the MySQLCluster (emitted by the ClusterManager): `RetainApplied`, `DiscardApplied`, and the Warnings `RotationBlocked`, `DiscardBlocked`, `DualPasswordExists`, `PasswordRotationError`. `RotationFailed` carries the same detail as `status.message`. When diagnosing a stall, **describe both objects** — DB-side trouble (`DualPasswordExists`, unreachable instances) is reported on the MySQLCluster, and mirrored more coarsely into the CR's `status.message`.
+> **Events.** In addition to the status, the controllers emit Kubernetes Events for `kubectl describe` visibility. Events on the CredentialRotation: `RotationStarted`, `PasswordsPromoted`, `AwaitingDiscard`, `DiscardStarted`, `RotationCompleted`, and the Warnings `RotationBlocked`, `DiscardBlocked`, `RotationPaused`, `RotationFailed`, `StaleCredentialRotation`. Events on the MySQLCluster (emitted by the ClusterManager): `RetainApplied`, `DiscardApplied`, and the Warnings `RotationBlocked`, `DiscardBlocked`, `DualPasswordExists`, `PasswordRotationError`. The two `Blocked` reasons appear on both objects: the Reconciler emits them on the CR when it blocks at seed or discard-start, ClusterManager on the MySQLCluster when its pre-checks block. `RotationFailed` carries the same detail as `status.message`. When diagnosing a stall, **describe both objects** — DB-side trouble (`DualPasswordExists`, unreachable instances) is reported on the MySQLCluster, and mirrored more coarsely into the CR's `status.message`.
 
 ## Validation Webhook
 
@@ -399,10 +399,12 @@ test "$(kubectl -n "$NS" get credentialrotation "$CLUSTER" -o jsonpath='{.status
 
 Runs when a CR has no phase yet, and again when the phase is `Blocked` with `spec.discard: false` (the resume path — every step below is idempotent). The handler no-ops when the MySQLCluster is terminating (`deletionTimestamp` set); the CR will be garbage-collected with it.
 
+Before anything else — **including every status write below** — the handler adopts the CR: it adds the MySQLCluster ownerReference in a metadata update. Adoption-before-status is what makes the stale rule sound: because status is only ever written after the ownerReference exists, a CR with a non-empty status and no ownerReference can only be an orphan (see [Stale CR handling](#stale-cr-handling-cluster-recreated-under-the-same-name)).
+
 | # | Action | Persistence |
 |---|---|---|
-| 1 | If `spec.discard` is already `true` (only possible when the create webhook was bypassed): set phase `Failed` — the verification window cannot be skipped. | Status.Update |
-| 2 | If `cluster.Spec.Replicas <= 0` (scaled down between admission and reconcile): set phase `Blocked` with a message; retry when replicas > 0. Nothing has been mutated. | Status.Update |
+| 1 | If `spec.discard` is already `true` (only possible when the create webhook was bypassed): set phase `Failed` and emit `RotationFailed` — the verification window cannot be skipped. | Status.Update |
+| 2 | If `cluster.Spec.Replicas <= 0` (scaled down between admission and reconcile): set phase `Blocked` with a message, seed the same initial conditions as step 5, and emit a `RotationBlocked` Warning Event on the CR; retry when replicas > 0. Nothing has been mutated. | Status.Update |
 | 3 | Take the `ROTATION_ID` stored in the controller Secret, or generate a new UUID when there is none. Reusing the stored ID makes this step idempotent across crashes, and also adopts the residue of an abandoned cycle (see ValidateDelete). The controller Secret is **updated, never created** by rotation code: if it does not exist, the handler waits — a Secret containing only bookkeeping keys must never come into existence. | — |
 | 4 | Write 8 `*_PENDING` keys and `ROTATION_ID` into the controller Secret. A complete pending set that already matches the `ROTATION_ID` is kept as is. If the Secret is inconsistent or still holds `*_OLD` keys, set phase `Failed` with a message naming the recovery procedure and emit a `RotationFailed` Warning Event — that branch writes only the status, not the Secret. | Secret.Update |
 | 5 | Set `status.rotationID`, phase `ApplyingRetain`, `DiscardReady=False` (`reason=Pending`), `DualPassword=False` (`reason=NotRetained`), `Finished=False` (`reason=Running`). Emit `RotationStarted` Event. | Status.Update |
@@ -495,6 +497,8 @@ Triggered on a ClusterManager tick when the phase is `ApplyingDiscard`. (The ato
 | 3 | Re-list the instances and verify no system user still holds a dual password — this catches an instance added by a scale-up during step 2, which cloned its donor's dual-password state. If one is found, run step 2 for it and re-verify. | MySQL (read-only) |
 | 4 | Set `DualPassword=False` (`reason=NotRetained`) and phase `Finalizing`. Emit `DiscardApplied` Event on the MySQLCluster. | Status.Update |
 
+An unreachable instance aborts the loop for this tick; the flow retries on later ticks with no upper bound, and the failure is reported the same way as in the RETAIN flow (`PasswordRotationError` on the MySQLCluster, mirrored into the CR's `status.message`).
+
 **Connecting with the current password is always correct.** DISCARD removes the *secondary* (old) password; the current (new) password is the primary and is unaffected before, during, and after DISCARD. There is no ordering hazard here — this is the invariant at work.
 
 ### Reconciler: `Finalizing` → `Succeeded`
@@ -548,7 +552,7 @@ A `Failed` CR:
 
 - **stays** — the controller never deletes it,
 - **blocks the next rotation** — the name is occupied, so `rotate-credential` fails with `AlreadyExists` until the operator deletes the CR,
-- carries the diagnosis in `status.message` (naming the recovery procedure) and a `RotationFailed` Warning Event, and sets `Finished=True` (`reason=Failed`) so waiting scripts terminate.
+- carries the diagnosis in `status.message` (naming the recovery procedure) and a Warning Event (`RotationFailed`; the stale case uses `StaleCredentialRotation` instead), and sets `Finished=True` (`reason=Failed`) and `status.completionTime` so waiting scripts terminate.
 
 Recovery is always the same shape: follow the named [Recovery Procedure](#recovery-procedures), **delete the Failed CR**, and create a new one. The new CR starts from a clean slate — fresh UID, fresh status — so no state from the failed attempt can leak into the next cycle.
 
@@ -582,7 +586,7 @@ A discard in flight is not affected by stopped reconciliation: the promoted pass
 The controller exports, per CredentialRotation (labels `name`, `namespace`):
 
 - `moco_credential_rotation_phase{phase=...}` — 1 for the current phase, 0 otherwise (one series per known phase, mirroring the `moco_cluster_*` convention).
-- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` as a Unix timestamp; also usable as "time since last successful rotation" on the cluster level.
+- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` of the last **`Succeeded`** rotation as a Unix timestamp; usable as "time since last successful rotation" on the cluster level.
 
 Recommended alerts:
 
@@ -723,7 +727,7 @@ Behavior on a stale CR:
 
 | Component | Behavior |
 |---|---|
-| `CredentialRotationReconciler` | Set phase `Failed` with message "leftover from a previous cluster; delete this CR", emit `StaleCredentialRotation` Warning Event, and do nothing else. (Writing the terminal status is not adoption — no ownerReference is added and no rotation action runs. It makes the situation visible in `kubectl get` and terminates waiting scripts.) A stale CR that is already `Succeeded` is still TTL-deleted — deleting a terminal CR is always safe. |
+| `CredentialRotationReconciler` | Set phase `Failed` with `Finished=True` (`reason=Failed`) and message "leftover from a previous cluster; delete this CR", emit `StaleCredentialRotation` Warning Event, and take no other action. (Writing the terminal status is not adoption — no ownerReference is added and no rotation action runs. It makes the situation visible in `kubectl get` and terminates waiting scripts.) A stale CR that is already `Succeeded` is still TTL-deleted — deleting a terminal CR is always safe. |
 | `ClusterManager` | Return early; do not run RETAIN / DISCARD |
 | Validation webhook | Reject spec updates (the discard flip) on a stale CR |
 | `MySQLClusterReconciler` | (does not read the CR at all) |
@@ -862,6 +866,9 @@ $ kubectl moco rotate-credential <cluster-name>
 
 # 1. Reset MySQL passwords on all instances (see "How to Reset MySQL
 #    Passwords"). This clears the leftover secondary passwords.
+#    If the discard already completed before the CR was deleted (no
+#    instance holds a dual password — e.g. deletion during Finalizing),
+#    steps 0 and 1 can be skipped; the keys are the only residue.
 
 # 2. Clean the controller Secret.
 $ kubectl -n <system-namespace> edit secret <controller-secret-name>
