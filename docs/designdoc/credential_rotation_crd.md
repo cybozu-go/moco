@@ -343,7 +343,7 @@ Note what create-time validation does **not** need to check. "Is another rotatio
 
 The spec is immutable except for one transition:
 
-- `spec.discard` may change from `false` to `true`, and only while `DiscardReady=True` (the verification window is open, so the post-promotion rollout has settled).
+- `spec.discard` may change from `false` to `true`, and only while `DiscardReady=True` (the verification window is open, so the post-promotion rollout has settled) and the live MySQLCluster has more than 0 replicas — the flag is one-way, so admitting it on a 0-replica cluster would run the discard automatically on the next scale-up without another operator confirmation (defense in depth; a 0-replica cluster is unreachable through the normal API).
 - `spec.discard` can never change from `true` to `false`.
 - No other spec change is allowed.
 - The update is rejected when the CR is **stale** (see [Stale CR handling](#stale-cr-handling-cluster-recreated-under-the-same-name)): a discard request against a leftover CR from a deleted cluster would otherwise be admitted and then silently ignored by the controllers.
@@ -470,7 +470,7 @@ The CredentialRotationReconciler gates progress:
 | # | Action | Persistence |
 |---|---|---|
 | 1 | Wait until the per-namespace user Secret and `my.cnf` Secret are derived from the controller Secret's **current** passwords (content comparison against the distributed Secrets). If not yet, requeue — MySQLClusterReconciler will catch up. | — |
-| 2 | Add `moco.cybozu.com/password-rotation-restart: <rotationID>` to the StatefulSet pod template with server-side apply (SSA), under field manager `moco-credential-rotation` with `ForceOwnership`. Skip the apply when the pod template already carries **this rotation's** annotation value. | StatefulSet.Apply |
+| 2 | Add `moco.cybozu.com/password-rotation-restart: <rotationID>` to the StatefulSet pod template with a **merge patch** under field manager `moco-credential-rotation`. A patch — unlike a server-side apply, which is an upsert — fails with NotFound when the StatefulSet was deleted between the cached read and the write, so this step can never create a minimal StatefulSet that would poison the real one with immutable-field conflicts. Skip the patch when the pod template already carries **this rotation's** annotation value. | StatefulSet.Patch |
 | 3 | Check whether the StatefulSet rollout is complete — only against a pod template that carries this rotation's annotation, never against a stale pre-annotation object. Confirm that `status.observedGeneration` has caught up with `metadata.generation`, `status.currentRevision` matches `status.updateRevision`, and `status.replicas`, `status.updatedReplicas`, and `status.readyReplicas` all equal the desired `spec.replicas`. If any check is not satisfied, requeue and check again later. | — |
 | 4 | After all rollout checks pass, set phase `AwaitingDiscard` and `DiscardReady=True` (`reason=RolloutSettled`). This records that the new password has been distributed and all Pods are ready, so the verification window is open. Emit an `AwaitingDiscard` Event. | Status.Update |
 
@@ -603,7 +603,7 @@ A discard in flight is not affected by stopped reconciliation: the promoted pass
 The controller exports, per CredentialRotation (labels `name`, `namespace`):
 
 - `moco_credential_rotation_phase{phase=...}` — 1 for the current phase, 0 otherwise (one series per known phase, mirroring the `moco_cluster_*` convention).
-- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` of the last **`Succeeded`** rotation as a Unix timestamp; usable as "time since last successful rotation" at the cluster level.
+- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` of the last **`Succeeded`** rotation as a Unix timestamp; usable as "time since last successful rotation" at the cluster level. It survives the CR's TTL deletion, but is removed when the MySQLCluster itself disappears — a cluster recreated under the same name must not inherit the previous cluster's success record.
 
 Recommended alerts:
 
@@ -656,7 +656,7 @@ The reconciler watches:
 
 For phases owned by ClusterManager (`ApplyingRetain`, `ApplyingDiscard`), the reconciler requeues every 15s while observing the status for progress. The TTL deletion of `Succeeded` CRs uses `RequeueAfter` until the deadline.
 
-The rolling-restart annotation is applied with the dedicated field manager `moco-credential-rotation` and `ForceOwnership`. This keeps the annotation owned by the Reconciler, so the regular `MySQLClusterReconciler` does not remove it during its next reconcile.
+The rolling-restart annotation is written under the dedicated field manager `moco-credential-rotation`. `MySQLClusterReconciler`'s server-side apply never lists this annotation key, so the key stays owned by the Reconciler and survives the regular reconciles.
 
 The reconciler never writes per-namespace Secrets, and rotation code never creates the controller Secret (update-only; see seed step 3).
 

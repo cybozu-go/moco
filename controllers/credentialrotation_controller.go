@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -19,8 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
-	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -42,10 +41,10 @@ const (
 	// window open for scripts and kubectl describe.
 	DefaultCredentialRotationTTL = time.Hour
 
-	// credRotationFieldManager is the field manager used for Server-Side Apply
-	// writes by the CredentialRotation reconciler. It is intentionally distinct
-	// from MySQLClusterReconciler's "moco-controller" so that fields written
-	// here (notably the rolling-restart annotation on the StatefulSet pod
+	// credRotationFieldManager is the field manager for the CredentialRotation
+	// reconciler's writes. It is intentionally distinct from
+	// MySQLClusterReconciler's "moco-controller" so that fields written here
+	// (notably the rolling-restart annotation on the StatefulSet pod
 	// template) are not removed when MySQLClusterReconciler re-applies its own
 	// view of the StatefulSet, which does not declare the rotation annotation.
 	credRotationFieldManager = "moco-credential-rotation"
@@ -79,10 +78,16 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	cr := &mocov1beta2.CredentialRotation{}
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
 		if apierrors.IsNotFound(err) {
-			// The phase series end with the object; the completed
-			// timestamp survives as the record of the last successful
-			// rotation.
+			// The phase series end with the object. The completed
+			// timestamp survives CR deletion as the record of the last
+			// successful rotation — but only while the cluster itself
+			// exists; a cluster recreated under the same name must not
+			// inherit the previous cluster's success record.
 			deleteRotationPhaseMetrics(req.Name, req.Namespace)
+			cluster := &mocov1beta2.MySQLCluster{}
+			if err := r.Get(ctx, req.NamespacedName, cluster); apierrors.IsNotFound(err) {
+				deleteRotationCompletedMetric(req.Name, req.Namespace)
+			}
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -401,16 +406,33 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 	// extra apply can occur — and it also checks the rollout only against
 	// an annotated template, never against a stale pre-annotation object.
 	if sts.Spec.Template.Annotations[constants.AnnPasswordRotationRestart] != cr.Status.RotationID {
-		stsAC := appsv1ac.StatefulSet(stsName, cluster.Namespace).
-			WithSpec(appsv1ac.StatefulSetSpec().
-				WithTemplate(corev1ac.PodTemplateSpec().
-					WithAnnotations(map[string]string{
-						constants.AnnPasswordRotationRestart: cr.Status.RotationID,
-					})))
-		if err := r.Apply(ctx, stsAC, client.FieldOwner(credRotationFieldManager), client.ForceOwnership); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to apply rotation annotation to StatefulSet: %w", err)
+		// Use a merge patch, NOT server-side apply: SSA is an upsert, and
+		// if the StatefulSet was deleted between the (cached) Get above
+		// and the write, an apply would CREATE a minimal StatefulSet that
+		// poisons the real one (immutable-field conflicts on the next
+		// MySQLClusterReconciler apply). A merge patch fails with
+		// NotFound instead, and the requeue retries safely.
+		annJSON, err := json.Marshal(map[string]any{
+			"spec": map[string]any{
+				"template": map[string]any{
+					"metadata": map[string]any{
+						"annotations": map[string]string{
+							constants.AnnPasswordRotationRestart: cr.Status.RotationID,
+						},
+					},
+				},
+			},
+		})
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to marshal the rotation annotation patch: %w", err)
 		}
-		log.Info("applied the rotation restart annotation to the StatefulSet",
+		if err := r.Patch(ctx, sts, client.RawPatch(types.MergePatchType, annJSON), client.FieldOwner(credRotationFieldManager)); err != nil {
+			if apierrors.IsNotFound(err) {
+				return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+			}
+			return ctrl.Result{}, fmt.Errorf("failed to patch the rotation annotation onto the StatefulSet: %w", err)
+		}
+		log.Info("patched the rotation restart annotation onto the StatefulSet",
 			"rotationID", cr.Status.RotationID)
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
@@ -703,6 +725,13 @@ func deleteRotationPhaseMetrics(name, namespace string) {
 		"name":      name,
 		"namespace": namespace,
 	})
+}
+
+func deleteRotationCompletedMetric(name, namespace string) {
+	if metrics.CredentialRotationCompletedTimestampVec == nil {
+		return
+	}
+	metrics.CredentialRotationCompletedTimestampVec.DeleteLabelValues(name, namespace)
 }
 
 // updateStatus stamps the current metadata.generation into

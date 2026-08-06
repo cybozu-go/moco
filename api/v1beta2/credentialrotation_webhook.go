@@ -101,9 +101,20 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 			} else {
 				errs = append(errs, field.InternalError(field.NewPath("metadata", "name"), err))
 			}
-		} else if oldCR.IsStaleFor(cluster) {
-			errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
-				"this CredentialRotation is a leftover from a previous MySQLCluster; delete it"))
+		} else {
+			if oldCR.IsStaleFor(cluster) {
+				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+					"this CredentialRotation is a leftover from a previous MySQLCluster; delete it"))
+			}
+			// The flag is one-way: admitting it on a 0-replica cluster
+			// would run the discard automatically on the next scale-up,
+			// without another operator confirmation. Unreachable through
+			// the normal API (the MySQLCluster webhook forbids 0
+			// replicas), kept as defense in depth.
+			if cluster.Spec.Replicas <= 0 {
+				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+					"cannot request the discard while the MySQLCluster has 0 replicas"))
+			}
 		}
 	}
 
