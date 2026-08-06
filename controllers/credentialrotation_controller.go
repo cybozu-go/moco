@@ -123,7 +123,7 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		default:
 			log.Info("marking stale CredentialRotation as Failed")
 			mocoevent.StaleCredentialRotation.Emit(cr, r.Recorder)
-			return r.fail(ctx, cr,
+			return ctrl.Result{}, r.markFailed(ctx, cr,
 				"this CredentialRotation is a leftover from a previous MySQLCluster; delete it")
 		}
 	}
@@ -254,9 +254,16 @@ func (r *CredentialRotationReconciler) handleSeed(ctx context.Context, cr *mocov
 		rotationID = uuid.New().String()
 	}
 
+	if state, err := password.RotationState(controllerSecret, rotationID); err != nil {
+		return r.fail(ctx, cr, fmt.Sprintf(
+			"cannot stage pending passwords: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
+	} else if state == password.RotationSecretPromoted {
+		return r.fail(ctx, cr,
+			"the controller Secret holds *_OLD keys from an abandoned cycle; follow the 'Leftover Old Passwords' recovery procedure, then delete this CR and create a new one")
+	}
 	if _, err := password.SetPendingPasswords(controllerSecret, rotationID); err != nil {
 		return r.fail(ctx, cr, fmt.Sprintf(
-			"cannot stage pending passwords: %v; follow the recovery procedure named for this state in the design doc (Inconsistent Controller Secret, or Leftover Old Passwords when *_OLD keys are present), then delete this CR and create a new one", err))
+			"cannot stage pending passwords: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
 	}
 	if err := r.Update(ctx, controllerSecret); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update controller secret with pending passwords: %w", err)
@@ -536,16 +543,25 @@ func (r *CredentialRotationReconciler) handleSucceeded(ctx context.Context, cr *
 	return ctrl.Result{}, nil
 }
 
-// fail moves the CR to the terminal Failed phase, persists it, and emits
-// the RotationFailed Warning Event.
-func (r *CredentialRotationReconciler) fail(ctx context.Context, cr *mocov1beta2.CredentialRotation, message string) (ctrl.Result, error) {
+// markFailed moves the CR to the terminal Failed phase and persists it.
+func (r *CredentialRotationReconciler) markFailed(ctx context.Context, cr *mocov1beta2.CredentialRotation, message string) error {
 	log := crlog.FromContext(ctx)
 
 	cr.Fail(message, metav1.Now())
 	if err := r.updateStatus(ctx, cr); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update status to Failed: %w", err)
+		return fmt.Errorf("failed to update status to Failed: %w", err)
 	}
 	log.Info("rotation failed", "message", message)
+	return nil
+}
+
+// fail is markFailed plus the RotationFailed Warning Event. The stale
+// branch uses markFailed directly: it emits StaleCredentialRotation
+// instead.
+func (r *CredentialRotationReconciler) fail(ctx context.Context, cr *mocov1beta2.CredentialRotation, message string) (ctrl.Result, error) {
+	if err := r.markFailed(ctx, cr, message); err != nil {
+		return ctrl.Result{}, err
+	}
 	mocoevent.RotationFailed.Emit(cr, r.Recorder, message)
 	return ctrl.Result{}, nil
 }

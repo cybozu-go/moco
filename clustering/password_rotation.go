@@ -193,7 +193,7 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 
 	// Move to Promoting, writing DualPassword=True in the same update so a
 	// single read never sees the phase and the condition disagree.
-	if err := p.updateCRStatus(ctx, cr.UID, phaseIsRetainOrBlocked(), func(fresh *mocov1beta2.CredentialRotation) {
+	if err := p.updateCRStatus(ctx, cr.UID, phaseIs(mocov1beta2.PhaseApplyingRetain), func(fresh *mocov1beta2.CredentialRotation) {
 		fresh.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained,
 			"All instances now hold a dual-password set.")
 		fresh.SetPhase(mocov1beta2.PhasePromoting,
@@ -295,13 +295,23 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	// Run DISCARD + plugin migration, then re-verify until no instance
 	// holds a dual password. The re-verification catches an instance
 	// added by a scale-up during the loop, which cloned its donor's
-	// dual-password state before the donor was discarded.
+	// dual-password state before the donor was discarded. The replica
+	// count is re-read from the live cluster on every round — ss.Cluster
+	// is a snapshot from the start of the tick and would hide a mid-tick
+	// scale-up.
 	for round := 0; ; round++ {
 		if round >= maxDiscardReverifyRounds {
 			return false, fmt.Errorf("instances still hold dual passwords after %d discard rounds", maxDiscardReverifyRounds)
 		}
 
-		replicas = int(cluster.Spec.Replicas)
+		freshCluster := &mocov1beta2.MySQLCluster{}
+		if err := p.client.Get(ctx, client.ObjectKey{
+			Namespace: p.name.Namespace,
+			Name:      p.name.Name,
+		}, freshCluster); err != nil {
+			return false, fmt.Errorf("failed to re-read the cluster for discard re-verification: %w", err)
+		}
+		replicas = int(freshCluster.Spec.Replicas)
 		for idx := range replicas {
 			op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
 			if err != nil {
@@ -373,6 +383,20 @@ func (p *managerProcess) failRotation(ctx context.Context, cr *mocov1beta2.Crede
 	return nil
 }
 
+// mirrorRotationError fetches the CR and mirrors a rotation error into its
+// status.message, with less detail than the MySQLCluster Event but durable.
+func (p *managerProcess) mirrorRotationError(ctx context.Context, rotationErr error) {
+	cr := &mocov1beta2.CredentialRotation{}
+	if err := p.client.Get(ctx, client.ObjectKey{
+		Namespace: p.name.Namespace,
+		Name:      p.name.Name,
+	}, cr); err != nil {
+		return
+	}
+	p.mirrorCRMessage(ctx, cr, fmt.Sprintf(
+		"Rotation cannot progress and retries every tick: %v. See the PasswordRotationError Events on the MySQLCluster for details.", rotationErr))
+}
+
 // mirrorCRMessage best-effort mirrors a wait reason into status.message so
 // it stays visible after the Events expire. No-op when the message is
 // already set.
@@ -392,15 +416,6 @@ func (p *managerProcess) mirrorCRMessage(ctx context.Context, cr *mocov1beta2.Cr
 func phaseIs(phase mocov1beta2.RotationPhase) func(*mocov1beta2.CredentialRotation) bool {
 	return func(cr *mocov1beta2.CredentialRotation) bool {
 		return cr.Status.Phase == phase
-	}
-}
-
-// phaseIsRetainOrBlocked matches the two phases the RETAIN completion
-// transition may be written from: the normal ApplyingRetain, or Blocked
-// when the completion races with a scale-down observation.
-func phaseIsRetainOrBlocked() func(*mocov1beta2.CredentialRotation) bool {
-	return func(cr *mocov1beta2.CredentialRotation) bool {
-		return cr.Status.Phase == mocov1beta2.PhaseApplyingRetain || cr.Status.Phase == mocov1beta2.PhaseBlocked
 	}
 }
 

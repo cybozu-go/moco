@@ -206,6 +206,9 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		log := logFromContext(ctx)
 		log.Error(err, "password rotation error (will retry next cycle)")
 		event.PasswordRotationError.Emit(ss.Cluster, p.recorder, err)
+		// Mirror the error into the CR's status.message so the stall stays
+		// visible after the Event expires (best-effort).
+		p.mirrorRotationError(ctx, err)
 	} else if redo {
 		return true, nil
 	}
