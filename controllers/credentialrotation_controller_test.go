@@ -127,6 +127,21 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
+		// Clear finalizers left on StatefulSets (e.g. the orphan finalizer
+		// from a DeletePropagationOrphan delete, which envtest's missing
+		// garbage collector never removes) so DeleteAllOf actually works.
+		stss := &appsv1.StatefulSetList{}
+		err = k8sClient.List(ctx, stss, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		for i := range stss.Items {
+			sts := &stss.Items[i]
+			if len(sts.Finalizers) == 0 {
+				continue
+			}
+			sts.Finalizers = nil
+			err := k8sClient.Update(ctx, sts)
+			Expect(err).NotTo(HaveOccurred())
+		}
 		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace("test"))
@@ -175,19 +190,27 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx2, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
+		done := make(chan struct{})
 		go func() {
+			defer GinkgoRecover()
+			defer close(done)
 			err := mgr.Start(ctx2)
 			if err != nil {
 				panic(err)
 			}
 		}()
+		// Stop synchronously: wait until Start returns, so this spec's
+		// manager can never keep reconciling into the next spec and fight
+		// the next manager over the same objects.
+		stopFunc = func() {
+			cancel()
+			<-done
+		}
 		time.Sleep(100 * time.Millisecond)
 	})
 
 	AfterEach(func() {
 		stopFunc()
-		time.Sleep(100 * time.Millisecond)
 	})
 
 	It("should seed the pending passwords and reach ApplyingRetain on creation", func() {
@@ -490,6 +513,22 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Eventually(func() bool {
 			fresh := &mocov1beta2.MySQLCluster{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, fresh)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+
+		// Do what the garbage collector would do in a real cluster: delete
+		// the StatefulSet owned by the deleted cluster. Without this, the
+		// reconciler for the recreated cluster takes the volumeClaimTemplates
+		// re-creation path and deletes the StatefulSet with
+		// DeletePropagationOrphan; envtest runs no garbage collector to
+		// remove the orphan finalizer, so the StatefulSet would remain
+		// terminating forever and poison every subsequent spec.
+		sts := &appsv1.StatefulSet{}
+		if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts); err == nil {
+			Expect(k8sClient.Delete(ctx, sts)).To(Succeed())
+		}
+		Eventually(func() bool {
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, &appsv1.StatefulSet{})
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
 

@@ -195,18 +195,25 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
+		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
+			defer close(done)
 			err := mgr.Start(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
+		// Stop synchronously: wait until Start returns, so this spec's
+		// manager can never keep reconciling into the next spec and fight
+		// the next manager over the same objects.
+		stopFunc = func() {
+			cancel()
+			<-done
+		}
 		time.Sleep(100 * time.Millisecond)
 	})
 
 	AfterEach(func() {
 		stopFunc()
-		time.Sleep(100 * time.Millisecond)
 	})
 
 	It("should create password secrets", func() {

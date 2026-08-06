@@ -119,9 +119,17 @@ var _ = Describe("MySQLCluster reconciler startup", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		startCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		done := make(chan struct{})
+		// Stop synchronously: wait until Start returns, so this manager can
+		// never keep reconciling into the next spec and fight its manager
+		// over the same objects.
+		defer func() {
+			cancel()
+			<-done
+		}()
 		go func() {
 			defer GinkgoRecover()
+			defer close(done)
 			err := mgr.Start(startCtx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
