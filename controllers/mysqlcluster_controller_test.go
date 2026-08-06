@@ -993,10 +993,8 @@ dummyKey: dummyValue
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.SecurityContext).NotTo(BeNil())
-			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
+			Expect(c.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+			Expect(c.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
 		}
 
 		mysqldContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.MysqldContainerName)
@@ -1211,12 +1209,9 @@ dummyKey: dummyValue
 		Expect(mysqldContainer.LivenessProbe).NotTo(BeNil())
 		Expect(mysqldContainer.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(new(int64(200))))
 		Expect(mysqldContainer.SecurityContext).NotTo(BeNil())
-		Expect(mysqldContainer.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
-		Expect(*mysqldContainer.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
-		Expect(mysqldContainer.SecurityContext.RunAsUser).NotTo(BeNil())
-		Expect(*mysqldContainer.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-		Expect(mysqldContainer.SecurityContext.RunAsGroup).NotTo(BeNil())
-		Expect(*mysqldContainer.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
+		Expect(mysqldContainer.SecurityContext.ReadOnlyRootFilesystem).To(HaveValue(BeTrue()))
+		Expect(mysqldContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+		Expect(mysqldContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
 
 		agentContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.AgentContainerName)
 		Expect(agentContainer).NotTo(BeNil())
@@ -1247,10 +1242,8 @@ dummyKey: dummyValue
 		Expect(dummyContainer.Image).To(Equal("dummy:latest"))
 		Expect(dummyContainer.SecurityContext).NotTo(BeNil())
 		Expect(dummyContainer.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
-		Expect(dummyContainer.SecurityContext.RunAsUser).NotTo(BeNil())
-		Expect(*dummyContainer.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-		Expect(dummyContainer.SecurityContext.RunAsGroup).NotTo(BeNil())
-		Expect(*dummyContainer.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
+		Expect(dummyContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+		Expect(dummyContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
 
 		cpInitContainer = findContainer(sts.Spec.Template.Spec.InitContainers, constants.CopyInitContainerName)
 		Expect(cpInitContainer).NotTo(BeNil())
@@ -1275,12 +1268,9 @@ dummyKey: dummyValue
 		Expect(initDummyContainer).NotTo(BeNil())
 		Expect(initDummyContainer.SecurityContext).NotTo(BeNil())
 		Expect(initDummyContainer.Image).To(Equal("init-dummy:latest"))
-		Expect(initDummyContainer.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
-		Expect(*initDummyContainer.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
-		Expect(initDummyContainer.SecurityContext.RunAsUser).NotTo(BeNil())
-		Expect(*initDummyContainer.SecurityContext.RunAsUser).To(Equal(int64(0)))
-		Expect(initDummyContainer.SecurityContext.RunAsGroup).NotTo(BeNil())
-		Expect(*initDummyContainer.SecurityContext.RunAsGroup).To(Equal(int64(0)))
+		Expect(initDummyContainer.SecurityContext.ReadOnlyRootFilesystem).To(HaveValue(BeTrue()))
+		Expect(initDummyContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(0))))
+		Expect(initDummyContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(0))))
 
 		foundDummyVolume := false
 		for _, v := range sts.Spec.Template.Spec.Volumes {
