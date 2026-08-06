@@ -126,23 +126,21 @@ func testGetCondition(cluster *mocov1beta2.MySQLCluster, condType string) (metav
 	return metav1.Condition{}, fmt.Errorf("no %s condition", condType)
 }
 
-// setApplyingRetainState drives cr's status to a state where Step() returns
-// StepApplyingRetain, so that the ClusterManager loop picks up the RETAIN
+// setApplyingRetainState drives cr's status to the ApplyingRetain phase,
+// so that the ClusterManager loop picks up the RETAIN
 // sub-step under test.
 func setApplyingRetainState(cr *mocov1beta2.CredentialRotation) {
-	cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingRetain")
-	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingRetain")
-	cr.SetDualPassword(metav1.ConditionFalse, mocov1beta2.ReasonNotRetained, "test setup ApplyingRetain")
+	cr.InitConditions()
+	cr.SetPhase(mocov1beta2.PhaseApplyingRetain, "test setup ApplyingRetain")
 }
 
-// setApplyingDiscardState drives cr's status to a state where Step() returns
-// StepApplyingDiscard. Mirrors the state right after the operator bumps
-// discardGeneration and the Reconciler flipped DiscardReady to Pending.
+// setApplyingDiscardState drives cr's status to the ApplyingDiscard phase.
+// Mirrors the state right after the Reconciler records the discard request.
 func setApplyingDiscardState(cr *mocov1beta2.CredentialRotation) {
-	cr.Status.ObservedRotationGeneration = cr.Spec.RotationGeneration
-	cr.SetRotationReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingDiscard")
-	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingDiscard")
+	cr.InitConditions()
 	cr.SetDualPassword(metav1.ConditionTrue, mocov1beta2.ReasonRetained, "test setup ApplyingDiscard")
+	cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonPending, "test setup ApplyingDiscard")
+	cr.SetPhase(mocov1beta2.PhaseApplyingDiscard, "test setup ApplyingDiscard")
 }
 
 var _ = Describe("manager", func() {
@@ -1186,9 +1184,7 @@ var _ = Describe("manager", func() {
 					UID:        cluster.UID,
 				}},
 			},
-			Spec: mocov1beta2.CredentialRotationSpec{
-				RotationGeneration: 1,
-			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1197,12 +1193,12 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the step to transition to Promoting.
+		// Wait for the phase to transition to Promoting.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepPromoting))
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhasePromoting))
 		}).Should(Succeed())
 
 		// Verify ALTER USER RETAIN was called on all 3 instances for all users.
@@ -1276,8 +1272,7 @@ var _ = Describe("manager", func() {
 				}},
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
-				RotationGeneration: 1,
-				DiscardGeneration:  1,
+				Discard: true,
 			},
 		}
 		err = k8sClient.Create(ctx, cr)
@@ -1292,7 +1287,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepFinalizing))
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseFinalizing))
 		}).Should(Succeed())
 
 		// Verify DISCARD OLD PASSWORD was called on all 3 instances for all users.
@@ -1356,9 +1351,7 @@ var _ = Describe("manager", func() {
 					UID:        cluster.UID,
 				}},
 			},
-			Spec: mocov1beta2.CredentialRotationSpec{
-				RotationGeneration: 1,
-			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
 		}
 		err = k8sClient.Create(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
@@ -1367,12 +1360,12 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Status().Update(ctx, cr)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the step to transition to Promoting.
+		// Wait for the phase to transition to Promoting.
 		Eventually(func(g Gomega) {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepPromoting))
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhasePromoting))
 		}).Should(Succeed())
 
 		// Admin user should have been skipped (has dual password), others should have been rotated.
@@ -1433,8 +1426,7 @@ var _ = Describe("manager", func() {
 				}},
 			},
 			Spec: mocov1beta2.CredentialRotationSpec{
-				RotationGeneration: 1,
-				DiscardGeneration:  1,
+				Discard: true,
 			},
 		}
 		err = k8sClient.Create(ctx, cr)
@@ -1448,7 +1440,7 @@ var _ = Describe("manager", func() {
 			cr := &mocov1beta2.CredentialRotation{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(cr.Step()).To(Equal(mocov1beta2.StepFinalizing))
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseFinalizing))
 		}).Should(Succeed())
 
 		// AdminUser should have been skipped; others should have been discarded.

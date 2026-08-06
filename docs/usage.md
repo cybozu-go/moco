@@ -850,9 +850,9 @@ First, start a rotation:
 $ kubectl moco rotate-credential <CLUSTER_NAME>
 ```
 
-This creates a CredentialRotation resource with the same name as the cluster, or bumps its `spec.rotationGeneration` if it already exists.
+This creates a single-use CredentialRotation resource with the same name as the cluster; the creation itself starts the rotation.
 MOCO then generates new passwords, applies them to every instance while keeping the old ones as secondary passwords, distributes the new passwords to the Secrets, and restarts the Pods.
-The command refuses to run while another rotation is in progress, or when the cluster is offline, unhealthy, or has clustering or reconciliation stopped.
+The command refuses to run while another rotation occupies the name (in flight, waiting for its automatic deletion, or failed — the error message explains what to do), or when the cluster is offline, unhealthy, or has clustering or reconciliation stopped.
 
 Wait until the rotation step finishes:
 
@@ -868,24 +868,26 @@ When you are confident, discard the old passwords:
 
 ```console
 $ kubectl moco discard-old-credential <CLUSTER_NAME>
-$ kubectl wait --for=condition=RotationReady credentialrotation/<CLUSTER_NAME> --timeout=10m
+$ kubectl wait --for=condition=Finished credentialrotation/<CLUSTER_NAME> --timeout=10m
 ```
 
 The command checks that the cluster is `Healthy`.
 Right after the rolling restart, the cluster may need a short time to become `Healthy` again; if the command refuses for that reason, wait a moment and retry.
 
-After `RotationReady` becomes `True`, the cycle is complete and only the new passwords are accepted.
+`Finished` becomes `True` on both outcomes; check that `status.phase` says `Succeeded`.
+The cycle is then complete, only the new passwords are accepted, and the CredentialRotation deletes itself automatically after a while (controller flag `--credential-rotation-ttl`, default 1h).
+A failed rotation stays as a `Failed` object instead: its `status.message` names the recovery procedure, and the next rotation cannot start until you delete it.
 
 You can check the progress at any time:
 
 ```console
 $ kubectl get credentialrotation <CLUSTER_NAME>
-NAME   ROTATIONREADY   DISCARDREADY   DUALPASSWORD   ROTATIONGEN   OBSERVEDROTATION   DISCARDGEN   OBSERVEDDISCARD   AGE
-test   False           True           True           1             1                  0            0                 5m
+NAME   PHASE             DISCARD   AGE
+test   AwaitingDiscard   false     5m
 ```
 
-If you manage the cluster with GitOps, bump `spec.rotationGeneration` and `spec.discardGeneration` in Git instead of using the CLI commands.
-Do not mix the two methods.
+The CredentialRotation resource is an operation object driven by the CLI.
+Do not manage it with GitOps tools: the controller deletes the object when the rotation succeeds, and a GitOps sync would recreate it — and every recreation starts a new, unrequested rotation.
 
 Do not [stop clustering or reconciliation](#stop-clustering-and-reconciliation) while a rotation is in progress.
 A rotation in flight pauses while they are stopped — the CredentialRotation reports this with a `RotationPaused` warning Event — and resumes automatically after you start them again.

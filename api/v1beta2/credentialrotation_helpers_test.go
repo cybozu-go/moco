@@ -3,341 +3,246 @@ package v1beta2
 import (
 	"testing"
 
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// withCondition is a small helper for building test CRs.
-func withCondition(cr *CredentialRotation, condType string, status metav1.ConditionStatus, reason string) *CredentialRotation {
-	cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
-		Type:   condType,
-		Status: status,
-		Reason: reason,
-	})
-	return cr
-}
+func TestIsTerminal(t *testing.T) {
+	t.Parallel()
 
-// Fixture constructors mirror the steady-state condition triples that
-// the controllers leave the CR in for each Step. Inlined here instead
-// of importing controller helpers because v1beta2 must not depend on
-// the controller package. ApplyingRetain and Finalizing collapse to
-// the same triple (F/F/F); Promoting and ApplyingDiscard
-// collapse to the same triple (F/F/T) — the spec/status generation
-// fields disambiguate which Step the CR is in.
-func crWith(spec CredentialRotationSpec, status CredentialRotationStatus, rotStatus, discStatus, dpStatus metav1.ConditionStatus, rotReason, discReason, dpReason string) *CredentialRotation {
-	cr := &CredentialRotation{Spec: spec, Status: status}
-	withCondition(cr, ConditionRotationReady, rotStatus, rotReason)
-	withCondition(cr, ConditionDiscardReady, discStatus, discReason)
-	withCondition(cr, ConditionDualPassword, dpStatus, dpReason)
-	return cr
-}
-
-func crIdle(spec CredentialRotationSpec, status CredentialRotationStatus) *CredentialRotation {
-	return crWith(spec, status,
-		metav1.ConditionTrue, metav1.ConditionFalse, metav1.ConditionFalse,
-		ReasonReconciled, ReasonPending, ReasonNotRetained)
-}
-
-func crAwaitingDiscard(spec CredentialRotationSpec, status CredentialRotationStatus) *CredentialRotation {
-	return crWith(spec, status,
-		metav1.ConditionFalse, metav1.ConditionTrue, metav1.ConditionTrue,
-		ReasonPending, ReasonReconciled, ReasonRetained)
-}
-
-// crCycleNoDualPw covers Step=ApplyingRetain and Step=Finalizing — both
-// project to RotationReady=False/Pending, DiscardReady=False/Pending,
-// DualPassword=False/NotRetained.
-func crCycleNoDualPw(spec CredentialRotationSpec, status CredentialRotationStatus) *CredentialRotation {
-	return crWith(spec, status,
-		metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionFalse,
-		ReasonPending, ReasonPending, ReasonNotRetained)
-}
-
-// crCycleDualPw covers Step=Promoting and Step=ApplyingDiscard
-// — both project to RotationReady=False/Pending, DiscardReady=False/Pending,
-// DualPassword=True/Retained.
-func crCycleDualPw(spec CredentialRotationSpec, status CredentialRotationStatus) *CredentialRotation {
-	return crWith(spec, status,
-		metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionTrue,
-		ReasonPending, ReasonPending, ReasonRetained)
-}
-
-func TestStep(t *testing.T) {
-	cases := []struct {
-		name string
-		cr   *CredentialRotation
-		want RotationStep
+	testCases := []struct {
+		phase RotationPhase
+		want  bool
 	}{
-		{
-			name: "fresh CR with no conditions is Idle",
-			cr: &CredentialRotation{
-				Spec: CredentialRotationSpec{RotationGeneration: 1},
-			},
-			want: StepIdle,
-		},
-		{
-			name: "first cycle: RETAIN in flight (RotationReady=False/Pending, DualPassword=False)",
-			cr: crCycleNoDualPw(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
-			),
-			want: StepApplyingRetain,
-		},
-		{
-			name: "first cycle: RETAIN done (DualPassword=True) is Promoting",
-			cr: crCycleDualPw(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
-			),
-			want: StepPromoting,
-		},
-		{
-			name: "cycle 1 fully completed, no spec change is Idle",
-			cr: crIdle(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: StepIdle,
-		},
-		{
-			// Regression: cycle 2 must NOT jump straight to ApplyingRetain
-			// just because newRotation=true && DualPassword=False. The
-			// RotationReady=True from cycle 1 is stale; handleStartRotation
-			// has not yet seeded pending passwords.
-			name: "cycle 2: rotationGeneration bumped after completion is Idle (regression)",
-			cr: crIdle(
-				CredentialRotationSpec{RotationGeneration: 2, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: StepIdle,
-		},
-		{
-			name: "cycle 2: after handleStartRotation seeded the cycle is ApplyingRetain",
-			cr: crCycleNoDualPw(
-				CredentialRotationSpec{RotationGeneration: 2, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: StepApplyingRetain,
-		},
-		{
-			// Post-distribute, pre-rollout-complete: generations match
-			// for rotation (observed bumped in handlePromoting)
-			// but DiscardReady has not yet been flipped to True.
-			name: "post-distribute pre-rollout-complete (DualPassword=True, DiscardReady=False) is AwaitingRollout",
-			cr: crCycleDualPw(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 0},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: StepAwaitingRollout,
-		},
-		{
-			name: "awaiting discard (DiscardReady=True/Reconciled, DualPassword=True)",
-			cr: crAwaitingDiscard(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 0},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: StepAwaitingDiscard,
-		},
-		{
-			// Upgrade compatibility: a CR written by the previous
-			// "generation tracking" controller could carry both
-			// RotationReady=True and DiscardReady=True while holding a
-			// dual-password set (awaiting-discard window). The new
-			// controller must still classify it as AwaitingDiscard so
-			// the webhook allows the operator to bump discardGeneration.
-			name: "legacy awaiting-discard (RotationReady=True, DiscardReady=True, DualPassword=True) maps to AwaitingDiscard",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 0},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-				metav1.ConditionTrue, metav1.ConditionTrue, metav1.ConditionTrue,
-				ReasonReconciled, ReasonReconciled, ReasonRetained),
-			want: StepAwaitingDiscard,
-		},
-		{
-			// Regression: discardGeneration bumped from AwaitingDiscard
-			// must transition to ApplyingDiscard so handleApplyingDiscard
-			// can flip DiscardReady to Pending.
-			name: "discardGeneration bumped from AwaitingDiscard is ApplyingDiscard (stale DiscardReady=True OK)",
-			cr: crAwaitingDiscard(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: StepApplyingDiscard,
-		},
-		{
-			name: "discard in flight (DiscardReady=False/Pending, DualPassword=True)",
-			cr: crCycleDualPw(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: StepApplyingDiscard,
-		},
-		{
-			name: "DISCARD finished but observedDiscardGeneration not yet promoted is Finalizing",
-			cr: crCycleNoDualPw(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: StepFinalizing,
-		},
-		{
-			name: "rotation Refused (replicas=0 at start) is RotationRefused",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionFalse,
-				ReasonRefused, ReasonPending, ReasonNotRetained),
-			want: StepRotationRefused,
-		},
-		{
-			name: "rotation Blocked (replicas=0 mid-RETAIN) is RotationBlocked",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionFalse,
-				ReasonBlocked, ReasonPending, ReasonNotRetained),
-			want: StepRotationBlocked,
-		},
-		{
-			name: "discard Refused (replicas=0 when discard requested) is DiscardRefused",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionTrue,
-				ReasonPending, ReasonRefused, ReasonRetained),
-			want: StepDiscardRefused,
-		},
-		{
-			name: "discard Blocked (replicas=0 mid-DISCARD) is DiscardBlocked",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionTrue,
-				ReasonPending, ReasonBlocked, ReasonRetained),
-			want: StepDiscardBlocked,
-		},
-		{
-			name: "rotation Stale takes priority over generation comparison",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 2, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionFalse,
-				ReasonStale, ReasonPending, ReasonNotRetained),
-			want: StepStalePending,
-		},
+		{"", false},
+		{PhaseApplyingRetain, false},
+		{PhasePromoting, false},
+		{PhaseAwaitingRollout, false},
+		{PhaseAwaitingDiscard, false},
+		{PhaseApplyingDiscard, false},
+		{PhaseFinalizing, false},
+		{PhaseBlocked, false},
+		{PhaseSucceeded, true},
+		{PhaseFailed, true},
 	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.cr.Step()
-			if got != tc.want {
-				t.Errorf("Step() = %q, want %q", got, tc.want)
+	for _, tc := range testCases {
+		t.Run(string(tc.phase), func(t *testing.T) {
+			cr := &CredentialRotation{}
+			cr.Status.Phase = tc.phase
+			if got := cr.IsTerminal(); got != tc.want {
+				t.Errorf("IsTerminal() with phase %q = %v, want %v", tc.phase, got, tc.want)
 			}
 		})
 	}
 }
 
-func TestIsIdle(t *testing.T) {
-	cases := []struct {
-		name string
-		cr   *CredentialRotation
-		want bool
+func TestIsDiscardReady(t *testing.T) {
+	t.Parallel()
+
+	cr := &CredentialRotation{}
+	if cr.IsDiscardReady() {
+		t.Error("IsDiscardReady() must be false with no conditions")
+	}
+	cr.SetDiscardReady(metav1.ConditionFalse, ReasonPending, "t")
+	if cr.IsDiscardReady() {
+		t.Error("IsDiscardReady() must be false with DiscardReady=False")
+	}
+	cr.SetDiscardReady(metav1.ConditionTrue, ReasonRolloutSettled, "t")
+	if !cr.IsDiscardReady() {
+		t.Error("IsDiscardReady() must be true with DiscardReady=True")
+	}
+}
+
+func TestInitConditions(t *testing.T) {
+	t.Parallel()
+
+	cr := &CredentialRotation{}
+	cr.InitConditions()
+
+	for _, tc := range []struct {
+		condType string
+		status   metav1.ConditionStatus
+		reason   string
+	}{
+		{ConditionDiscardReady, metav1.ConditionFalse, ReasonPending},
+		{ConditionDualPassword, metav1.ConditionFalse, ReasonNotRetained},
+		{ConditionFinished, metav1.ConditionFalse, ReasonRunning},
+	} {
+		cond := apimeta.FindStatusCondition(cr.Status.Conditions, tc.condType)
+		if cond == nil {
+			t.Fatalf("condition %s not initialised", tc.condType)
+		}
+		if cond.Status != tc.status || cond.Reason != tc.reason {
+			t.Errorf("condition %s = (%s, %s), want (%s, %s)", tc.condType, cond.Status, cond.Reason, tc.status, tc.reason)
+		}
+	}
+
+	// InitConditions must not overwrite existing conditions.
+	cr.SetDualPassword(metav1.ConditionTrue, ReasonRetained, "t")
+	cr.InitConditions()
+	if !apimeta.IsStatusConditionTrue(cr.Status.Conditions, ConditionDualPassword) {
+		t.Error("InitConditions must keep an existing DualPassword condition")
+	}
+}
+
+func TestFailAndSucceed(t *testing.T) {
+	t.Parallel()
+
+	now := metav1.Now()
+
+	fail := &CredentialRotation{}
+	fail.Fail("broken", now)
+	if fail.Status.Phase != PhaseFailed {
+		t.Errorf("Fail: phase = %q, want Failed", fail.Status.Phase)
+	}
+	if fail.Status.Message != "broken" {
+		t.Errorf("Fail: message = %q", fail.Status.Message)
+	}
+	if fail.Status.CompletionTime == nil || !fail.Status.CompletionTime.Equal(&now) {
+		t.Error("Fail: completionTime not set")
+	}
+	cond := apimeta.FindStatusCondition(fail.Status.Conditions, ConditionFinished)
+	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != ReasonFailed {
+		t.Errorf("Fail: Finished condition = %+v", cond)
+	}
+	if !fail.IsTerminal() {
+		t.Error("Fail: must be terminal")
+	}
+	// Fail also seeds the other conditions so a Failed CR always carries a
+	// complete condition set.
+	if apimeta.FindStatusCondition(fail.Status.Conditions, ConditionDiscardReady) == nil {
+		t.Error("Fail: DiscardReady must be seeded")
+	}
+
+	ok := &CredentialRotation{}
+	ok.Succeed("done", now)
+	if ok.Status.Phase != PhaseSucceeded {
+		t.Errorf("Succeed: phase = %q, want Succeeded", ok.Status.Phase)
+	}
+	if ok.Status.CompletionTime == nil {
+		t.Error("Succeed: completionTime not set")
+	}
+	cond = apimeta.FindStatusCondition(ok.Status.Conditions, ConditionFinished)
+	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != ReasonSucceeded {
+		t.Errorf("Succeed: Finished condition = %+v", cond)
+	}
+}
+
+func TestHasStatus(t *testing.T) {
+	t.Parallel()
+
+	cr := &CredentialRotation{}
+	if cr.HasStatus() {
+		t.Error("a fresh CR must not have status")
+	}
+	cr.Status.Phase = PhaseApplyingRetain
+	if !cr.HasStatus() {
+		t.Error("a CR with a phase has status")
+	}
+
+	cr = &CredentialRotation{}
+	cr.Status.RotationID = "b7b7c37a-0000-0000-0000-000000000000"
+	if !cr.HasStatus() {
+		t.Error("a CR with a rotationID has status")
+	}
+
+	cr = &CredentialRotation{}
+	cr.InitConditions()
+	if !cr.HasStatus() {
+		t.Error("a CR with conditions has status")
+	}
+}
+
+func TestIsStaleFor(t *testing.T) {
+	t.Parallel()
+
+	clusterUID := types.UID("11111111-1111-1111-1111-111111111111")
+	otherUID := types.UID("22222222-2222-2222-2222-222222222222")
+	cluster := &MySQLCluster{}
+	cluster.UID = clusterUID
+
+	ownerRef := func(uid types.UID) metav1.OwnerReference {
+		return metav1.OwnerReference{
+			APIVersion: GroupVersion.String(),
+			Kind:       "MySQLCluster",
+			Name:       "test",
+			UID:        uid,
+		}
+	}
+
+	testCases := []struct {
+		name      string
+		refs      []metav1.OwnerReference
+		hasStatus bool
+		want      bool
 	}{
 		{
-			name: "fresh CR is idle",
-			cr:   &CredentialRotation{Spec: CredentialRotationSpec{RotationGeneration: 1}},
-			want: true,
-		},
-		{
-			name: "cycle 1 fully completed is idle",
-			cr: crIdle(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: true,
-		},
-		{
-			name: "cycle 2 bump observed before first reconcile is idle",
-			cr: crIdle(
-				CredentialRotationSpec{RotationGeneration: 2, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: true,
-		},
-		{
-			name: "rotation Refused is idle (no mutations to recover from)",
-			cr: crWith(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{},
-				metav1.ConditionFalse, metav1.ConditionFalse, metav1.ConditionFalse,
-				ReasonRefused, ReasonPending, ReasonNotRetained),
-			want: true,
-		},
-		{
-			name: "RETAIN in flight is not idle",
-			cr: crCycleNoDualPw(
-				CredentialRotationSpec{RotationGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 0, ObservedDiscardGeneration: 0},
-			),
+			name: "matching ownerReference",
+			refs: []metav1.OwnerReference{ownerRef(clusterUID)},
 			want: false,
 		},
 		{
-			name: "awaiting discard is not idle",
-			cr: crAwaitingDiscard(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 0},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
+			name:      "matching ownerReference with status",
+			refs:      []metav1.OwnerReference{ownerRef(clusterUID)},
+			hasStatus: true,
+			want:      false,
+		},
+		{
+			name: "mismatching ownerReference",
+			refs: []metav1.OwnerReference{ownerRef(otherUID)},
+			want: true,
+		},
+		{
+			name: "no ownerReference, empty status (fresh)",
+			want: false,
+		},
+		{
+			name:      "no ownerReference, non-empty status (orphan)",
+			hasStatus: true,
+			want:      true,
+		},
+		{
+			name: "non-MySQLCluster ownerReference only, empty status",
+			refs: []metav1.OwnerReference{{
+				APIVersion: "apps/v1",
+				Kind:       "StatefulSet",
+				Name:       "x",
+				UID:        otherUID,
+			}},
 			want: false,
 		},
 	}
-
-	for _, tc := range cases {
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.cr.IsIdle()
-			if got != tc.want {
-				t.Errorf("IsIdle() = %v, want %v", got, tc.want)
+			cr := &CredentialRotation{}
+			cr.OwnerReferences = tc.refs
+			if tc.hasStatus {
+				cr.Status.Phase = PhaseApplyingRetain
+			}
+			if got := cr.IsStaleFor(cluster); got != tc.want {
+				t.Errorf("IsStaleFor() = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestIsAwaitingDiscard(t *testing.T) {
-	cases := []struct {
-		name string
-		cr   *CredentialRotation
-		want bool
-	}{
-		{
-			name: "awaiting discard steady state",
-			cr: crAwaitingDiscard(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 0},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: true,
-		},
-		{
-			name: "idle is not awaiting discard",
-			cr: crIdle(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 1},
-			),
-			want: false,
-		},
-		{
-			name: "discard in flight is not awaiting discard",
-			cr: crCycleDualPw(
-				CredentialRotationSpec{RotationGeneration: 1, DiscardGeneration: 1},
-				CredentialRotationStatus{ObservedRotationGeneration: 1, ObservedDiscardGeneration: 0},
-			),
-			want: false,
-		},
-	}
+func TestIsConditionFalseWithReason(t *testing.T) {
+	t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.cr.IsAwaitingDiscard()
-			if got != tc.want {
-				t.Errorf("IsAwaitingDiscard() = %v, want %v", got, tc.want)
-			}
-		})
+	cr := &CredentialRotation{}
+	if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonBlocked) {
+		t.Error("must be false when the condition is absent")
+	}
+	cr.SetDiscardReady(metav1.ConditionFalse, ReasonBlocked, "t")
+	if !IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonBlocked) {
+		t.Error("must be true for (False, Blocked)")
+	}
+	if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonPending) {
+		t.Error("must be false for a different reason")
+	}
+	cr.SetDiscardReady(metav1.ConditionTrue, ReasonRolloutSettled, "t")
+	if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonRolloutSettled) {
+		t.Error("must be false when the status is True")
 	}
 }

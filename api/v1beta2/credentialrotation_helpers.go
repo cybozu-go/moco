@@ -5,203 +5,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RotationStep represents the internal workflow step of a rotation cycle.
-// It is derived on the fly from the combination of conditions and the
-// rotationGeneration / discardGeneration comparisons; it is NOT stored on
-// the CR. Persisting a phase enum violates the Kubernetes API
-// conventions, which is why the workflow is represented as a small set
-// of orthogonal Conditions instead.
-type RotationStep string
-
-const (
-	// StepIdle is the action-availability steady state for "rotate is
-	// allowed": no work is in flight and no dual password is held.
-	// Also covers a fresh CR with no conditions yet, and the transient
-	// window between an operator's rotationGeneration bump and the next
-	// reconcile (RotationReady=True is stale until handleStartRotation
-	// seeds the cycle).
-	StepIdle RotationStep = "Idle"
-
-	// StepApplyingRetain means ClusterManager is executing or about to
-	// execute ALTER USER ... RETAIN CURRENT PASSWORD on all instances.
-	// Detected when newRotation is true and DualPassword is False
-	// (RETAIN has not yet succeeded for this cycle).
-	StepApplyingRetain RotationStep = "ApplyingRetain"
-
-	// StepPromoting means the Reconciler should promote the pending
-	// passwords to current in the controller Secret. Detected when
-	// newRotation is true and DualPassword is True (RETAIN succeeded on
-	// every instance, so both old and new passwords authenticate
-	// everywhere and the new set can safely become canonical).
-	StepPromoting RotationStep = "Promoting"
-
-	// StepAwaitingRollout sits between StepPromoting and
-	// StepAwaitingDiscard. The new passwords are canonical current in
-	// the controller Secret; MySQL holds the dual-password set. The
-	// Reconciler waits for MySQLClusterReconciler to distribute the
-	// current passwords to the per-namespace Secrets, triggers the
-	// rolling restart, and waits for the StatefulSet rollout to settle
-	// before the verification window (StepAwaitingDiscard) opens —
-	// DiscardReady stays False/Pending until every Pod is running with
-	// the new password.
-	StepAwaitingRollout RotationStep = "AwaitingRollout"
-
-	// StepAwaitingDiscard is the action-availability steady state for
-	// "discard is allowed": the rotation phase finished, the
-	// post-distribute rollout settled, MySQL is holding a dual-password
-	// set, and the CR is waiting for the operator to bump
-	// discardGeneration.
-	StepAwaitingDiscard RotationStep = "AwaitingDiscard"
-
-	// StepApplyingDiscard means the discard phase is in flight.
-	// Subsumes the post-distribute StatefulSet rollout wait:
-	// ClusterManager checks the StatefulSet rollout state itself and
-	// defers DISCARD until the rollout has completed.
-	StepApplyingDiscard RotationStep = "ApplyingDiscard"
-
-	// StepFinalizing means DISCARD is complete and the Reconciler
-	// should clean up the rotation bookkeeping keys (*_OLD, ROTATION_ID)
-	// from the controller Secret and mark the cycle complete. No
-	// password values move — the canonical current passwords were
-	// promoted before distribution. Detected when newDiscard is true
-	// and DualPassword has flipped back to False.
-	StepFinalizing RotationStep = "Finalizing"
-
-	// StepRotationRefused means the rotation could not start (e.g.
-	// MySQLCluster has 0 replicas). Nothing has been mutated yet, so
-	// the CR is still effectively idle for the purposes of accepting a
-	// new rotationGeneration.
-	StepRotationRefused RotationStep = "RotationRefused"
-
-	// StepRotationBlocked means the rotation phase started but cannot
-	// progress (e.g. MySQLCluster scaled to 0 mid-RETAIN, after pending
-	// passwords were written to the controller Secret).
-	StepRotationBlocked RotationStep = "RotationBlocked"
-
-	// StepDiscardRefused means the discard phase could not start (e.g.
-	// MySQLCluster scaled to 0 between AwaitingDiscard and the first
-	// DISCARD). Dual passwords are still held; manual recovery is
-	// required if the operator wants to abandon the cycle.
-	StepDiscardRefused RotationStep = "DiscardRefused"
-
-	// StepDiscardBlocked means the discard phase started but cannot
-	// progress (e.g. MySQLCluster scaled to 0 mid-DISCARD). Partial
-	// DISCARD may have completed; manual recovery is required.
-	StepDiscardBlocked RotationStep = "DiscardBlocked"
-
-	// StepStalePending means the controller Secret is in an inconsistent
-	// state; manual recovery is required.
-	StepStalePending RotationStep = "StalePending"
-)
-
-// Step derives the current internal workflow step from spec, status, and
-// conditions. Pure function of persisted state. See the condition godocs
-// (ConditionRotationReady / ConditionDiscardReady / ConditionDualPassword)
-// for the semantics each branch projects onto.
-func (cr *CredentialRotation) Step() RotationStep {
-	// Stale states are stuck and take priority — neither generation
-	// comparison nor sub-step conditions are meaningful while the
-	// controller Secret is inconsistent.
-	if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonStale) ||
-		IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonStale) {
-		return StepStalePending
-	}
-
-	// Conditions have never been written → the controller hasn't
-	// reconciled yet. Treat as idle so the very first reconcile can
-	// initialise the cycle via handleStartRotation.
-	if apimeta.FindStatusCondition(cr.Status.Conditions, ConditionRotationReady) == nil {
-		return StepIdle
-	}
-
-	newRotation := cr.Spec.RotationGeneration > cr.Status.ObservedRotationGeneration
-	newDiscard := cr.Spec.DiscardGeneration > cr.Status.ObservedDiscardGeneration
-	dualPassword := apimeta.IsStatusConditionTrue(cr.Status.Conditions, ConditionDualPassword)
-	rotationReady := apimeta.IsStatusConditionTrue(cr.Status.Conditions, ConditionRotationReady)
-
-	if newRotation {
-		// Stale RotationReady=True from the previous cycle: route back
-		// to Idle so handleStartRotation seeds the new cycle.
-		if rotationReady {
-			return StepIdle
-		}
-		if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonRefused) {
-			return StepRotationRefused
-		}
-		if IsConditionFalseWithReason(cr, ConditionRotationReady, ReasonBlocked) {
-			return StepRotationBlocked
-		}
-		if !dualPassword {
-			// RETAIN has not yet succeeded for this cycle.
-			return StepApplyingRetain
-		}
-		// RETAIN succeeded; the pending passwords need to be promoted
-		// to current in the controller Secret.
-		return StepPromoting
-	}
-
-	if newDiscard {
-		if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonRefused) {
-			return StepDiscardRefused
-		}
-		if IsConditionFalseWithReason(cr, ConditionDiscardReady, ReasonBlocked) {
-			return StepDiscardBlocked
-		}
-		// Stale DiscardReady=True is fine here — dualPassword still
-		// being True is enough to route to ApplyingDiscard so
-		// handleApplyingDiscard can flip the condition.
-		if dualPassword {
-			return StepApplyingDiscard
-		}
-		// DISCARD succeeded (DualPassword flipped back to False);
-		// the Reconciler now cleans up the rotation bookkeeping keys.
-		return StepFinalizing
-	}
-
-	// Generations match. DualPassword is the authoritative physical-state
-	// signal — it cannot diverge from MySQL the way the Ready conditions
-	// can if a CR was persisted by an older controller version.
-	//   DualPassword=False ⇒ Idle.
-	//   DualPassword=True  ⇒ AwaitingRollout until the Reconciler flips
-	//                        DiscardReady=True after the post-promotion
-	//                        rollout settles, then AwaitingDiscard.
-	// Trusting DualPassword also handles legacy CRs that carried both
-	// Ready conditions as True simultaneously (the previous "generation
-	// tracking" semantics), since those always also have DiscardReady=True
-	// and so map cleanly to AwaitingDiscard.
-	if dualPassword {
-		if apimeta.IsStatusConditionTrue(cr.Status.Conditions, ConditionDiscardReady) {
-			return StepAwaitingDiscard
-		}
-		return StepAwaitingRollout
-	}
-	return StepIdle
+// IsTerminal reports whether the cycle has ended (Succeeded or Failed).
+func (cr *CredentialRotation) IsTerminal() bool {
+	return cr.Status.Phase == PhaseSucceeded || cr.Status.Phase == PhaseFailed
 }
 
-// IsIdle reports whether the CR is in a state that permits the operator
-// to start a new rotation cycle by bumping spec.rotationGeneration. This
-// is true when the previous cycle has fully completed (rotation +
-// discard), or when the previous rotation request was refused without
-// any mutations, or when no cycle has been reconciled yet.
-func (cr *CredentialRotation) IsIdle() bool {
-	switch cr.Step() {
-	case StepIdle, StepRotationRefused:
-		return true
-	default:
-		return false
-	}
+// IsDiscardReady reports whether the verification window is open, i.e.
+// the operator may set spec.discard to true. The validating webhook uses
+// this to gate the discard flip.
+func (cr *CredentialRotation) IsDiscardReady() bool {
+	return apimeta.IsStatusConditionTrue(cr.Status.Conditions, ConditionDiscardReady)
 }
 
-// IsAwaitingDiscard reports whether the CR is in the steady state that
-// follows a completed rotation phase, where the operator may bump
-// spec.discardGeneration to trigger the discard phase.
-func (cr *CredentialRotation) IsAwaitingDiscard() bool {
-	return cr.Step() == StepAwaitingDiscard
-}
-
-// SetRotationReady sets or updates the RotationReady condition.
-func (cr *CredentialRotation) SetRotationReady(status metav1.ConditionStatus, reason, message string) {
-	cr.setCondition(ConditionRotationReady, status, reason, message)
+// SetPhase sets the phase and the human-readable message together. It
+// must be persisted in the same Status().Update() as any condition
+// changes that belong to the transition, so a single read never sees the
+// phase and the conditions disagree.
+func (cr *CredentialRotation) SetPhase(phase RotationPhase, message string) {
+	cr.Status.Phase = phase
+	cr.Status.Message = message
 }
 
 // SetDiscardReady sets or updates the DiscardReady condition.
@@ -212,6 +34,47 @@ func (cr *CredentialRotation) SetDiscardReady(status metav1.ConditionStatus, rea
 // SetDualPassword sets or updates the DualPassword condition.
 func (cr *CredentialRotation) SetDualPassword(status metav1.ConditionStatus, reason, message string) {
 	cr.setCondition(ConditionDualPassword, status, reason, message)
+}
+
+// SetFinished sets or updates the Finished condition.
+func (cr *CredentialRotation) SetFinished(status metav1.ConditionStatus, reason, message string) {
+	cr.setCondition(ConditionFinished, status, reason, message)
+}
+
+// InitConditions seeds the three conditions with their initial in-flight
+// values. Called on the first status write of a cycle (including a
+// Blocked start), so every phase always carries a complete condition set.
+func (cr *CredentialRotation) InitConditions() {
+	if apimeta.FindStatusCondition(cr.Status.Conditions, ConditionDiscardReady) == nil {
+		cr.SetDiscardReady(metav1.ConditionFalse, ReasonPending,
+			"The verification window has not opened yet.")
+	}
+	if apimeta.FindStatusCondition(cr.Status.Conditions, ConditionDualPassword) == nil {
+		cr.SetDualPassword(metav1.ConditionFalse, ReasonNotRetained,
+			"No RETAIN has been issued in this cycle yet.")
+	}
+	if apimeta.FindStatusCondition(cr.Status.Conditions, ConditionFinished) == nil {
+		cr.SetFinished(metav1.ConditionFalse, ReasonRunning,
+			"The rotation cycle is in progress.")
+	}
+}
+
+// Fail moves the CR to the terminal Failed phase: it sets the phase, the
+// diagnosis message, CompletionTime, and Finished=True (reason=Failed) in
+// one in-memory mutation. The caller persists it with a single status
+// update and emits the matching Warning Event.
+func (cr *CredentialRotation) Fail(message string, now metav1.Time) {
+	cr.InitConditions()
+	cr.SetPhase(PhaseFailed, message)
+	cr.Status.CompletionTime = &now
+	cr.SetFinished(metav1.ConditionTrue, ReasonFailed, message)
+}
+
+// Succeed moves the CR to the terminal Succeeded phase.
+func (cr *CredentialRotation) Succeed(message string, now metav1.Time) {
+	cr.SetPhase(PhaseSucceeded, message)
+	cr.Status.CompletionTime = &now
+	cr.SetFinished(metav1.ConditionTrue, ReasonSucceeded, "The rotation cycle completed.")
 }
 
 // StampObservedGeneration sets status.observedGeneration to the current
@@ -232,15 +95,38 @@ func (cr *CredentialRotation) setCondition(condType string, status metav1.Condit
 	})
 }
 
+// HasStatus reports whether the controller has ever written the status.
+// Together with the ownerReference this defines staleness: status is only
+// ever written after adoption (the ownerReference is added first), so a
+// CR with a status but no MySQLCluster ownerReference can only be an
+// orphan left over from a deleted cluster.
+func (cr *CredentialRotation) HasStatus() bool {
+	return cr.Status.Phase != "" || len(cr.Status.Conditions) > 0 || cr.Status.RotationID != ""
+}
+
 // IsConditionFalseWithReason reports whether the named condition is present
-// with Status=False and the given Reason. The Stale / Refused / Blocked
-// reasons that Step() checks all live on Status=False, so this helper
-// captures that pattern. Named to match apimeta.IsStatusConditionTrue /
-// IsStatusConditionFalse / IsStatusConditionPresentAndEqual.
+// with Status=False and the given Reason. Named to match
+// apimeta.IsStatusConditionTrue / IsStatusConditionFalse /
+// IsStatusConditionPresentAndEqual.
 func IsConditionFalseWithReason(cr *CredentialRotation, condType, reason string) bool {
 	cond := apimeta.FindStatusCondition(cr.Status.Conditions, condType)
 	if cond == nil {
 		return false
 	}
 	return cond.Status == metav1.ConditionFalse && cond.Reason == reason
+}
+
+// IsStaleFor reports whether the CR is a leftover from a different
+// MySQLCluster incarnation and must not act on (or be acted on for) the
+// given live cluster. A CR is stale when its MySQLCluster ownerReference
+// carries a UID different from the live cluster's, or when it has no
+// MySQLCluster ownerReference but a non-empty status (an orphan — see
+// HasStatus). A CR with no ownerReference and an empty status is fresh.
+func (cr *CredentialRotation) IsStaleFor(cluster *MySQLCluster) bool {
+	for _, ref := range cr.OwnerReferences {
+		if ref.Kind == "MySQLCluster" && ref.APIVersion == GroupVersion.String() {
+			return ref.UID != cluster.UID
+		}
+	}
+	return cr.HasStatus()
 }

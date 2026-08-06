@@ -29,7 +29,8 @@ var _ admission.Validator[*CredentialRotation] = &credentialRotationAdmission{}
 func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *CredentialRotation) (admission.Warnings, error) {
 	var errs field.ErrorList
 
-	// MySQLCluster with the same name must exist
+	// The target MySQLCluster (same name, same namespace) must exist,
+	// must not be terminating, and must have replicas > 0.
 	cluster := &MySQLCluster{}
 	if err := a.client.Get(ctx, types.NamespacedName{
 		Namespace: cr.Namespace,
@@ -42,30 +43,21 @@ func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *Cr
 			errs = append(errs, field.InternalError(field.NewPath("metadata", "name"), err))
 		}
 	} else {
-		// Replicas must be > 0
+		if cluster.DeletionTimestamp != nil {
+			errs = append(errs, field.Invalid(field.NewPath("metadata", "name"), cr.Name,
+				"target MySQLCluster is being deleted"))
+		}
 		if cluster.Spec.Replicas <= 0 {
 			errs = append(errs, field.Invalid(field.NewPath("metadata", "name"), cr.Name,
 				"target MySQLCluster must have replicas > 0"))
 		}
 	}
 
-	// rotationGeneration must be exactly 1 at create time. The counter is
-	// a CR-lifetime measure of completed cycles and must start at 1 so
-	// rotationGeneration == observedRotationGeneration reliably reports
-	// the number of rotations performed against this CR.
-	if cr.Spec.RotationGeneration != 1 {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "rotationGeneration"),
-			cr.Spec.RotationGeneration, "must be 1 at create time"))
-	}
-
-	// discardGeneration must be 0 at create time. A non-zero value would
-	// short-circuit the cycle straight into ApplyingDiscard, skipping the
-	// AwaitingRollout wait that gates DiscardReady=True. Discard must
-	// always be requested via update once the CR reaches the
-	// awaiting-discard steady state (see ValidateUpdate).
-	if cr.Spec.DiscardGeneration != 0 {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "discardGeneration"),
-			cr.Spec.DiscardGeneration, "must be 0 at create time"))
+	// The discard must be requested via update after the verification
+	// window opens; true at create time would skip the window.
+	if cr.Spec.Discard {
+		errs = append(errs, field.Invalid(field.NewPath("spec", "discard"),
+			cr.Spec.Discard, "must be false at create time; request the discard via update once DiscardReady=True"))
 	}
 
 	if len(errs) > 0 {
@@ -78,38 +70,26 @@ func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *Cr
 func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR, newCR *CredentialRotation) (admission.Warnings, error) {
 	var errs field.ErrorList
 
-	// rotationGeneration must be monotonically increasing
-	if newCR.Spec.RotationGeneration < oldCR.Spec.RotationGeneration {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "rotationGeneration"),
-			newCR.Spec.RotationGeneration, "must be >= previous value (monotonically increasing)"))
-	}
-	// discardGeneration must be monotonically increasing
-	if newCR.Spec.DiscardGeneration < oldCR.Spec.DiscardGeneration {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "discardGeneration"),
-			newCR.Spec.DiscardGeneration, "must be >= previous value (monotonically increasing)"))
-	}
-	// discardGeneration must not exceed rotationGeneration
-	if newCR.Spec.DiscardGeneration > newCR.Spec.RotationGeneration {
-		errs = append(errs, field.Invalid(field.NewPath("spec", "discardGeneration"),
-			newCR.Spec.DiscardGeneration, "must be <= rotationGeneration"))
+	// The spec is immutable except for the one-way discard flip.
+	if oldCR.Spec.Discard && !newCR.Spec.Discard {
+		errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+			"cannot be set back to false"))
 	}
 
-	rotationIncreased := newCR.Spec.RotationGeneration > oldCR.Spec.RotationGeneration
-	discardIncreased := newCR.Spec.DiscardGeneration > oldCR.Spec.DiscardGeneration
-
-	if rotationIncreased {
-		// rotationGeneration can only increase when the CR is idle —
-		// i.e. no rotation cycle is in flight and MySQL is not holding
-		// dual passwords. Stuck states clear themselves first: Blocked
-		// resumes on scale-up, and Stale recovers automatically after
-		// the operator cleans the controller Secret (see the recovery
-		// procedures in the design doc).
-		if !oldCR.IsIdle() {
-			errs = append(errs, field.Forbidden(field.NewPath("spec", "rotationGeneration"),
-				"can only increment rotationGeneration when the CR is idle (RotationReady=True, DiscardReady=False, DualPassword=False, or the previous request was Refused without mutations)"))
+	if !oldCR.Spec.Discard && newCR.Spec.Discard {
+		// The discard may only be requested while the verification window
+		// is open. Reading the status during admission is best-effort
+		// against concurrent status writes; the controllers re-check the
+		// actual state at execution time, so a stale admission decision
+		// can only delay the discard, never corrupt it.
+		if !oldCR.IsDiscardReady() {
+			errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+				"can only be set while the verification window is open (DiscardReady=True)"))
 		}
 
-		// Check MySQLCluster replicas > 0
+		// A discard request against a stale CR (a leftover from a deleted
+		// cluster) would be admitted and then silently ignored by the
+		// controllers; reject it here instead.
 		cluster := &MySQLCluster{}
 		if err := a.client.Get(ctx, types.NamespacedName{
 			Namespace: newCR.Namespace,
@@ -121,25 +101,9 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 			} else {
 				errs = append(errs, field.InternalError(field.NewPath("metadata", "name"), err))
 			}
-		} else if cluster.Spec.Replicas <= 0 {
-			errs = append(errs, field.Invalid(field.NewPath("metadata", "name"), newCR.Name,
-				"target MySQLCluster must have replicas > 0"))
-		}
-	}
-
-	if discardIncreased {
-		// discardGeneration can only increase while the CR is in the
-		// awaiting-discard steady state (rotation phase done, MySQL
-		// still holding dual passwords, no discard in flight). This also
-		// rejects increasing both generations in one update: the old CR
-		// is idle then, and allowing it would derive Step=ApplyingDiscard
-		// right after the rotation phase promotes
-		// observedRotationGeneration, skipping the AwaitingRollout gate —
-		// DISCARD could run while Pods still authenticate with the old
-		// password.
-		if !oldCR.IsAwaitingDiscard() {
-			errs = append(errs, field.Forbidden(field.NewPath("spec", "discardGeneration"),
-				"can only increment discardGeneration when the CR is awaiting discard (RotationReady=False, DiscardReady=True, DualPassword=True; post-distribute rollout has settled)"))
+		} else if oldCR.IsStaleFor(cluster) {
+			errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+				"this CredentialRotation is a leftover from a previous MySQLCluster; delete it"))
 		}
 	}
 
@@ -153,12 +117,12 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 // ValidateDelete always allows deletion. The core invariant — the controller
 // Secret's current passwords always authenticate on every instance — makes CR
 // deletion non-destructive: per-namespace Secrets always hold the canonical
-// current passwords, so deleting the CR at any step never breaks
+// current passwords, so deleting the CR at any phase never breaks
 // connectivity. Mid-cycle deletion can only leave residue (dual passwords in
-// MySQL, stale bookkeeping keys in the controller Secret) that blocks the
-// next rotation cycle until the documented recovery procedure cleans it up.
-// The webhook is not registered for the delete verb, so this method exists
-// only to satisfy the admission.Validator interface.
+// MySQL, stale bookkeeping keys in the controller Secret); the next CR adopts
+// pending residue and fails on promoted residue until the documented recovery
+// procedure cleans it up. The webhook is not registered for the delete verb,
+// so this method exists only to satisfy the admission.Validator interface.
 func (a *credentialRotationAdmission) ValidateDelete(_ context.Context, _ *CredentialRotation) (admission.Warnings, error) {
 	return nil, nil
 }

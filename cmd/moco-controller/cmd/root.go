@@ -40,6 +40,7 @@ var config struct {
 	maxConcurrentReconciles       int
 	mySQLConfigMapHistoryLimit    int
 	partitionUpdateInterval       time.Duration
+	credentialRotationTTL         time.Duration
 	qps                           int
 	disableDefaultSecurityContext bool
 	zapOpts                       zap.Options
@@ -114,6 +115,7 @@ func init() {
 	fs.IntVar(&config.maxConcurrentReconciles, "max-concurrent-reconciles", 8, "The maximum number of concurrent reconciles which can be run")
 	fs.IntVar(&config.mySQLConfigMapHistoryLimit, "mysql-configmap-history-limit", 10, "The maximum number of MySQLConfigMap's history to be kept")
 	fs.DurationVar(&config.partitionUpdateInterval, "partition-update-interval", 0*time.Millisecond, "The minimum update interval for partitions (e.g., 5s, 100ms)")
+	fs.DurationVar(&config.credentialRotationTTL, "credential-rotation-ttl", time.Hour, "How long a succeeded CredentialRotation is kept before automatic deletion")
 	fs.BoolVar(&config.disableDefaultSecurityContext, "disable-default-security-context", false, "Disable injecting default runAsUser/runAsGroup on managed containers and fsGroup on managed pods. Enable this on platforms such as OpenShift that assign project-scoped UID/GID/fsGroup ranges.")
 	// The default QPS is 20.
 	// https://github.com/kubernetes-sigs/controller-runtime/blob/a26de2d610c3cf4b2a02688534aaf5a65749c743/pkg/client/config/config.go#L84-L85

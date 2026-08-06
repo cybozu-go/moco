@@ -14,7 +14,7 @@ import (
 var discardOldCredentialCmd = &cobra.Command{
 	Use:   "discard-old-credential CLUSTER_NAME",
 	Short: "Discard old passwords after rotation",
-	Long:  "Discard old passwords after a successful credential rotation. Bumps discardGeneration to match rotationGeneration. Requires the CR to be awaiting discard (DiscardReady=True, DualPassword=True; post-distribute rollout has settled).",
+	Long:  "Discard old passwords after a successful credential rotation. Sets spec.discard to true. Requires the verification window to be open (DiscardReady=True).",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return discardOldCredential(cmd.Context(), args[0])
@@ -44,27 +44,31 @@ func discardOldCredential(ctx context.Context, clusterName string) error {
 		return fmt.Errorf("failed to get CredentialRotation: %w", err)
 	}
 
-	if credentialRotationIsStale(cr, cluster) {
-		return fmt.Errorf("CredentialRotation %s/%s is stale (ownerReference UID does not match the current cluster). Delete it before discarding", namespace, clusterName)
+	if cr.IsStaleFor(cluster) {
+		return fmt.Errorf("the CredentialRotation %s/%s is a leftover from a previous MySQLCluster. Delete it before discarding", namespace, clusterName)
 	}
 
-	if !cr.IsAwaitingDiscard() {
-		return fmt.Errorf("cannot discard: the CR must be awaiting discard (DiscardReady=True, DualPassword=True; post-distribute rollout has settled); current step: %q", cr.Step())
+	if cr.Spec.Discard {
+		fmt.Printf("The discard was already requested on CredentialRotation %s/%s (phase: %q)\n", namespace, clusterName, cr.Status.Phase)
+		return nil
 	}
 
-	// Bump discardGeneration to match rotationGeneration, signaling that the
-	// retained old password from the current rotation should be discarded.
+	if !cr.IsDiscardReady() {
+		return fmt.Errorf("cannot discard: the verification window is not open (DiscardReady must be True); current phase: %q", cr.Status.Phase)
+	}
+
 	// Use Update instead of Patch so the write carries the resourceVersion
 	// of the object the pre-checks above ran against; a concurrent
 	// modification surfaces as a Conflict instead of a lost update.
-	cr.Spec.DiscardGeneration = cr.Spec.RotationGeneration
+	cr.Spec.Discard = true
 	if err := kubeClient.Update(ctx, cr); err != nil {
 		if apierrors.IsConflict(err) {
 			return fmt.Errorf("the CredentialRotation was modified concurrently; re-run the command: %w", err)
 		}
 		return fmt.Errorf("failed to update CredentialRotation: %w", err)
 	}
-	fmt.Printf("Set discardGeneration=%d on CredentialRotation %s/%s\n", cr.Spec.RotationGeneration, namespace, clusterName)
+	fmt.Printf("Requested the discard on CredentialRotation %s/%s\n", namespace, clusterName)
+	fmt.Printf("Wait for completion with: kubectl -n %s wait credentialrotation %s --for=condition=Finished --timeout=30m\n", namespace, clusterName)
 	return nil
 }
 

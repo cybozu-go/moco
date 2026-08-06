@@ -49,6 +49,19 @@ func credentialRotationConditionIs(ns, name, condType string, status metav1.Cond
 	}
 }
 
+func credentialRotationPhaseIs(ns, name string, phase mocov1beta2.RotationPhase) func() error {
+	return func() error {
+		cr, err := getCredentialRotation(ns, name)
+		if err != nil {
+			return err
+		}
+		if cr.Status.Phase != phase {
+			return fmt.Errorf("phase is %q (message: %s), not %q", cr.Status.Phase, cr.Status.Message, phase)
+		}
+		return nil
+	}
+}
+
 func clusterHealthyIs(ns, name string, status metav1.ConditionStatus) func() error {
 	return func() error {
 		cluster, err := getCluster(ns, name)
@@ -123,30 +136,20 @@ var _ = Context("credential rotation", Ordered, func() {
 apiVersion: moco.cybozu.com/v1beta2
 kind: CredentialRotation
 metadata: {namespace: rotation, name: nosuch}
-spec: {rotationGeneration: 1, discardGeneration: 0}
+spec: {discard: false}
 `), "apply", "-f", "-")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("MySQLCluster with the same name must exist"))
 
-		By("creating a CR with rotationGeneration != 1")
+		By("creating a CR with discard: true")
 		_, err = kubectl([]byte(`
 apiVersion: moco.cybozu.com/v1beta2
 kind: CredentialRotation
 metadata: {namespace: rotation, name: test}
-spec: {rotationGeneration: 2, discardGeneration: 0}
+spec: {discard: true}
 `), "apply", "-f", "-")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("must be 1 at create time"))
-
-		By("creating a CR with discardGeneration != 0")
-		_, err = kubectl([]byte(`
-apiVersion: moco.cybozu.com/v1beta2
-kind: CredentialRotation
-metadata: {namespace: rotation, name: test}
-spec: {rotationGeneration: 1, discardGeneration: 1}
-`), "apply", "-f", "-")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("must be 0 at create time"))
+		Expect(err.Error()).To(ContainSubstring("must be false at create time"))
 	})
 
 	It("should complete a full rotation and discard cycle", func() {
@@ -161,7 +164,13 @@ spec: {rotationGeneration: 1, discardGeneration: 1}
 		Expect(err.Error()).To(ContainSubstring("in flight"))
 		_, err = kubectl(nil, "moco", "-n", ns, "discard-old-credential", "test")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("awaiting discard"))
+		Expect(err.Error()).To(ContainSubstring("verification window"))
+
+		By("rejecting a direct discard flip at admission while the window is closed")
+		_, err = kubectl(nil, "patch", "-n", ns, "credentialrotation", "test",
+			"--type", "merge", "-p", `{"spec":{"discard":true}}`)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("verification window"))
 
 		By("waiting for the verification window (DiscardReady=True)")
 		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionDiscardReady, metav1.ConditionTrue)).
@@ -189,8 +198,14 @@ spec: {rotationGeneration: 1, discardGeneration: 1}
 			_, err := kubectl(nil, "moco", "-n", ns, "discard-old-credential", "test")
 			return err
 		}).WithPolling(2 * time.Second).Should(Succeed())
-		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionRotationReady, metav1.ConditionTrue)).
+		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionFinished, metav1.ConditionTrue)).
 			WithPolling(5 * time.Second).Should(Succeed())
+
+		By("checking the terminal state")
+		cr, err := getCredentialRotation(ns, "test")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseSucceeded))
+		Expect(cr.Status.CompletionTime).NotTo(BeNil())
 
 		By("checking the post-discard state")
 		Expect(rotationMySQLAuth(ns, "moco-test-0", oldPass)).NotTo(Succeed(), "old password must be discarded")
@@ -210,34 +225,38 @@ spec: {rotationGeneration: 1, discardGeneration: 1}
 			Expect(key).NotTo(Equal("RETAIN_STARTED"))
 		}
 
-		By("checking the observed generations")
-		cr, err := getCredentialRotation(ns, "test")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(cr.Status.ObservedRotationGeneration).To(Equal(cr.Spec.RotationGeneration))
-		Expect(cr.Status.ObservedDiscardGeneration).To(Equal(cr.Spec.DiscardGeneration))
+		By("waiting for the TTL to delete the Succeeded CR")
+		// The e2e controller runs with --credential-rotation-ttl=30s.
+		Eventually(func() error {
+			_, err := getCredentialRotation(ns, "test")
+			if err == nil {
+				return errors.New("the CR still exists")
+			}
+			return nil
+		}).WithTimeout(3 * time.Minute).WithPolling(5 * time.Second).Should(Succeed())
 	})
 
-	It("should pause while reconciliation is stopped and resume afterwards", func() {
-		By("refusing rotate-credential while reconciliation is stopped")
-		kubectlSafe(nil, "moco", "-n", ns, "stop", "reconciliation", "test")
+	It("should pause while clustering is stopped and resume afterwards", func() {
+		By("refusing rotate-credential while clustering is stopped")
+		kubectlSafe(nil, "moco", "-n", ns, "stop", "clustering", "test")
 		_, err := kubectl(nil, "moco", "-n", ns, "rotate-credential", "test")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("reconciliation is stopped"))
+		Expect(err.Error()).To(ContainSubstring("clustering is stopped"))
 
-		By("starting a rotation with a direct generation bump (the GitOps path)")
-		// The CLI refuses to start while reconciliation is stopped, and a
-		// rotation started just before the stop can win the race: seeding,
-		// RETAIN, promotion, and distribution can all finish before the
-		// stop annotation lands, and then the cycle proceeds without ever
-		// pausing. Bumping the generation directly while reconciliation is
-		// already stopped guarantees that distribution cannot catch up, so
-		// the cycle pauses in AwaitingRollout and emits RotationPaused.
-		cr, err := getCredentialRotation(ns, "test")
-		Expect(err).NotTo(HaveOccurred())
-		kubectlSafe(nil, "patch", "-n", ns, "credentialrotation", "test", "--type", "merge",
-			"-p", fmt.Sprintf(`{"spec":{"rotationGeneration":%d}}`, cr.Spec.RotationGeneration+1))
+		By("creating the CR directly (bypassing the CLI's fail-fast check)")
+		// The webhook does not check the stop annotations — the controller
+		// pauses instead. The cycle seeds and then parks in ApplyingRetain
+		// because the ClusterManager loop is suspended.
+		kubectlSafe([]byte(`
+apiVersion: moco.cybozu.com/v1beta2
+kind: CredentialRotation
+metadata: {namespace: rotation, name: test}
+spec: {discard: false}
+`), "apply", "-f", "-")
+		Eventually(credentialRotationPhaseIs(ns, "test", mocov1beta2.PhaseApplyingRetain)).
+			WithPolling(2 * time.Second).Should(Succeed())
 
-		By("waiting for the RotationPaused warning Event")
+		By("waiting for the RotationPaused warning Event and the status message")
 		Eventually(func() error {
 			out, err := kubectl(nil, "get", "-n", ns, "events",
 				"--field-selector", "involvedObject.kind=CredentialRotation,involvedObject.name=test,reason=RotationPaused",
@@ -254,43 +273,33 @@ spec: {rotationGeneration: 1, discardGeneration: 1}
 			}
 			return nil
 		}).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(Succeed())
+		Eventually(func() error {
+			cr, err := getCredentialRotation(ns, "test")
+			if err != nil {
+				return err
+			}
+			if !strings.Contains(cr.Status.Message, "Paused") {
+				return fmt.Errorf("status.message does not record the pause: %q", cr.Status.Message)
+			}
+			return nil
+		}).WithPolling(5 * time.Second).Should(Succeed())
 
 		By("checking that the cluster keeps working while paused")
 		currentPass := rotationAdminPassword("moco-system", controllerSecret)
 		Expect(rotationMySQLAuth(ns, "moco-test-0", currentPass)).To(Succeed())
 
-		By("resuming reconciliation and completing the cycle")
-		kubectlSafe(nil, "moco", "-n", ns, "start", "reconciliation", "test")
+		By("resuming clustering and completing the cycle")
+		kubectlSafe(nil, "moco", "-n", ns, "start", "clustering", "test")
 		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionDiscardReady, metav1.ConditionTrue)).
 			WithTimeout(20 * time.Minute).WithPolling(5 * time.Second).Should(Succeed())
 		Eventually(func() error {
 			_, err := kubectl(nil, "moco", "-n", ns, "discard-old-credential", "test")
 			return err
 		}).WithPolling(2 * time.Second).Should(Succeed())
-		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionRotationReady, metav1.ConditionTrue)).
+		Eventually(credentialRotationConditionIs(ns, "test", mocov1beta2.ConditionFinished, metav1.ConditionTrue)).
 			WithPolling(5 * time.Second).Should(Succeed())
-	})
-
-	// Runs after two completed cycles, so both generations are 2 and a
-	// decrement to 1 passes the CRD schema (rotationGeneration >= 1) and
-	// exercises the webhook's monotonicity check.
-	It("should reject invalid generation updates at admission", func() {
-		By("decreasing the generations from 2 to 1")
-		_, err := kubectl(nil, "patch", "-n", ns, "credentialrotation", "test",
-			"--type", "merge", "-p", `{"spec":{"rotationGeneration":1,"discardGeneration":1}}`)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("monotonically increasing"))
-
-		By("decreasing rotationGeneration below the schema minimum")
-		_, err = kubectl(nil, "patch", "-n", ns, "credentialrotation", "test",
-			"--type", "merge", "-p", `{"spec":{"rotationGeneration":0,"discardGeneration":0}}`)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("greater than or equal to 1"))
-
-		By("increasing rotationGeneration and discardGeneration together")
-		_, err = kubectl(nil, "patch", "-n", ns, "credentialrotation", "test",
-			"--type", "merge", "-p", `{"spec":{"rotationGeneration":3,"discardGeneration":3}}`)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("can only increment discardGeneration"))
+		cr, err := getCredentialRotation(ns, "test")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseSucceeded))
 	})
 })

@@ -104,40 +104,23 @@ var (
 	}
 )
 
-// Events emitted during credential rotation. Events whose involved object is
-// the CredentialRotation are emitted by CredentialRotationReconciler; events
-// whose involved object is the MySQLCluster are emitted by the clustering
-// manager.
+// Events emitted during credential rotation. RotationBlocked and
+// DiscardBlocked appear on both objects: the CredentialRotationReconciler
+// emits them on the CredentialRotation when it blocks at seed or
+// discard-start, and the clustering manager emits them on the MySQLCluster
+// when its pre-checks block. All other rotation events have a single
+// involved object: the CredentialRotation for the reconciler's events, the
+// MySQLCluster for the clustering manager's.
 var (
 	StaleCredentialRotation = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "StaleCredentialRotation",
-		Message: "CredentialRotation is owned by a different MySQLCluster UID than the live cluster; delete this CR before starting a new rotation",
-	}
-	RotationRefused = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "RotationRefused",
-		Message: "Cannot start rotation: MySQLCluster replicas is 0",
-	}
-	RotationPendingSetFailed = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "RotationPendingError",
-		Message: "Failed to set pending passwords: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
-	RotationPendingInconsistent = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "RotationPendingError",
-		Message: "Rotation state inconsistency: %v. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
-	RotationRecovered = MOCOEvent{
-		Type:    corev1.EventTypeNormal,
-		Reason:  "RotationRecovered",
-		Message: "Recovered from the Stale state after manual cleanup of the controller Secret; the wedged cycle (rotationID: %q) was aborted. Rotate is allowed again",
+		Message: "CredentialRotation is a leftover from a previous MySQLCluster; delete this CR before starting a new rotation",
 	}
 	RotationStarted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "RotationStarted",
-		Message: "Started rotation cycle (rotationID: %s, generation: %d)",
+		Message: "Started rotation cycle (rotationID: %s)",
 	}
 	PasswordsPromoted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
@@ -149,25 +132,20 @@ var (
 		Reason:  "AwaitingDiscard",
 		Message: "Post-promotion StatefulSet rollout settled; verification window open (rotationID: %s)",
 	}
-	DiscardRefused = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "DiscardRefused",
-		Message: "Cannot start discard: MySQLCluster replicas is 0. Scale the cluster up first.",
-	}
 	DiscardStarted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "DiscardStarted",
 		Message: "Discard requested; ClusterManager will run DISCARD OLD PASSWORD on all instances (rotationID: %s)",
 	}
-	InconsistentRotationState = MOCOEvent{
-		Type:    corev1.EventTypeWarning,
-		Reason:  "InconsistentState",
-		Message: "Pending passwords lost without promotion for rotationID %s. Manual cleanup required: See MOCO documentation for recovery procedures",
-	}
 	RotationCompleted = MOCOEvent{
 		Type:    corev1.EventTypeNormal,
 		Reason:  "RotationCompleted",
-		Message: "Rotation completed (rotationID: %s, rotationGeneration: %d, discardGeneration: %d)",
+		Message: "Rotation completed (rotationID: %s)",
+	}
+	RotationFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "RotationFailed",
+		Message: "Rotation failed: %s",
 	}
 	RotationBlocked = MOCOEvent{
 		Type:    corev1.EventTypeWarning,

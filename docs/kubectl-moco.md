@@ -69,25 +69,30 @@ Fetch the credential information of a specified user
 ## `kubectl moco rotate-credential CLUSTER_NAME`
 
 Rotate system user passwords for a MOCO cluster.
-Creates a CredentialRotation CR if it doesn't exist, or increments `rotationGeneration` to trigger a new rotation cycle.
+Creates a single-use CredentialRotation CR; the creation itself starts the rotation cycle.
 
-This can only be run when no rotation cycle is in flight (the CredentialRotation CR is idle: `RotationReady=True`, or the previous request was refused without any changes).
+If a CredentialRotation already occupies the name, the command refuses and explains its state: a cycle in flight (wait or delete it), a `Succeeded` object waiting for its automatic TTL deletion (delete it to rotate again immediately), a `Failed` object (follow the recovery procedure in its `status.message`, then delete it), or a leftover from a previously deleted cluster (delete it).
 
-As a safety measure, the command refuses to start when the cluster cannot make progress with a rotation:
+As a safety measure, the command also refuses to start when the cluster cannot make progress with a rotation:
 
 - `spec.offline` is `true`.
 - The `moco.cybozu.com/reconciliation-stopped=true` or `moco.cybozu.com/clustering-stopped=true` annotation is set.
-- The MySQLCluster is not `Healthy`.
+- The MySQLCluster is not `Healthy` or has 0 replicas.
+
+Follow the rotation with `kubectl get credentialrotation CLUSTER_NAME -w` (the `PHASE` column) and wait for the verification window with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=DiscardReady`.
 
 ## `kubectl moco discard-old-credential CLUSTER_NAME`
 
 Discard old passwords after a successful credential rotation.
-Bumps `spec.discardGeneration` to match `spec.rotationGeneration` on the CredentialRotation CR.
+Sets `spec.discard: true` on the CredentialRotation CR.
 
-This can only be run when the CredentialRotation CR is awaiting discard (`DiscardReady=True`; the post-distribute rollout has settled).
+This can only be run while the verification window is open (`DiscardReady=True`; the post-promotion rollout has settled).
+After the discard completes, the CR reaches the `Succeeded` phase and is deleted automatically after a TTL (controller flag `--credential-rotation-ttl`, default 1h). Wait for completion with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=Finished` and then check that `status.phase` is `Succeeded`.
 
 Almost the same safety checks as `rotate-credential` apply: the command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`.
-Stopped reconciliation does not block this command — the discard phase does not depend on it, because the new passwords were already distributed before the CR reached the awaiting-discard state.
+Stopped reconciliation does not block this command — the discard phase does not depend on it, because the new passwords were already distributed before the CR reached the verification window.
+
+> **Note:** the CredentialRotation CR is an operation object driven by these commands. Do not manage it with GitOps tools — a sync would recreate the automatically deleted object and trigger an unrequested rotation.
 
 ## `kubectl moco switchover CLUSTER_NAME`
 

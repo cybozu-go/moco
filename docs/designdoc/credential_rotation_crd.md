@@ -560,6 +560,8 @@ Recovery is always the same shape: follow the named [Recovery Procedure](#recove
 
 ## Scaled-down Clusters (replicas=0)
 
+> In practice a 0-replica MySQLCluster cannot be created through the normal API today: the CRD schema defaults `replicas` to 1, and the MySQLCluster webhook accepts only positive odd values and rejects decreases. The handling below is defense in depth (a bypassed webhook, a raw patch with an explicit 0) and future-proofing for scale-down support.
+
 A cluster with 0 replicas stops rotation at three points:
 
 - At admission: the webhook rejects CR creation when `cluster.Spec.Replicas <= 0`.
