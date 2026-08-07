@@ -1336,8 +1336,11 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Create(ctx, controllerSecret)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Mark the admin user as already having a dual password on instance 0.
+		// Mark the admin user as already retained by THIS cycle on instance 0:
+		// a dual password whose primary is this cycle's pending password.
 		of.setDualPassword(cluster.PodHostname(0), constants.AdminUser, true)
+		pendingAdmin := string(controllerSecret.Data[password.AdminPasswordPendingKey])
+		of.setUserPassword(cluster.PodHostname(0), constants.AdminUser, pendingAdmin)
 
 		// Create a CredentialRotation CR in Rotating phase.
 		cr := &mocov1beta2.CredentialRotation{
@@ -1372,6 +1375,76 @@ var _ = Describe("manager", func() {
 		users := of.getRotatedUsers(cluster.PodHostname(0))
 		Expect(users).To(HaveLen(len(constants.MocoUsers) - 1))
 		Expect(users).NotTo(ContainElement(constants.AdminUser))
+	})
+
+	It("should not skip RETAIN for a dual password created outside the cycle", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "00000000-0000-4000-8000-000000000005"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		// Set RETAIN_STARTED to skip the pre-check (crash-retry situation).
+		controllerSecret.Data[password.RetainStartedKey] = []byte(rotationID)
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		// The admin user has a dual password, but its primary is NOT this
+		// cycle's pending password: it was created outside the cycle during
+		// the crash window. Skipping RETAIN here would promote passwords the
+		// user never retained.
+		of.setDualPassword(cluster.PodHostname(0), constants.AdminUser, true)
+		of.setUserPassword(cluster.PodHostname(0), constants.AdminUser, "tampered-password")
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		setApplyingRetainState(cr)
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// The rotation must not proceed: the error is mirrored into the CR
+		// message and the phase stays ApplyingRetain.
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Message).To(ContainSubstring("does not match this cycle's pending password"))
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseApplyingRetain))
+		}).Should(Succeed())
+
+		// The admin user was neither skipped-and-promoted nor re-rotated.
+		Expect(of.getRotatedUsers(cluster.PodHostname(0))).NotTo(ContainElement(constants.AdminUser))
 	})
 
 	It("should skip DISCARD for users without retained password (partial retry)", func() {

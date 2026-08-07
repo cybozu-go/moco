@@ -200,6 +200,8 @@ func newTestOperator(cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassw
 		passwd:    pwd,
 		index:     index,
 		db:        udb,
+		// The Docker port mapping publishes the normal MySQL port.
+		verifyAddr: fmt.Sprintf("localhost:%d", port),
 	}, nil
 }
 

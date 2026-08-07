@@ -1751,6 +1751,12 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 	metrics.CurrentReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 	metrics.UpdatedReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 	metrics.LastPartitionUpdatedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	// The rotation completed-timestamp metric survives CredentialRotation
+	// deletion by design (it records the last successful rotation), so its
+	// lifetime is the cluster's: delete it here, where the cluster's
+	// deletion is certain, rather than from a cache-based guess in the
+	// CredentialRotation reconciler.
+	deleteRotationCompletedMetric(cluster.Name, cluster.Namespace)
 
 	return nil
 }

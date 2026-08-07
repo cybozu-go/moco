@@ -440,6 +440,8 @@ func (o *mockOperator) RotateUserPassword(_ context.Context, user, newPassword s
 	o.factory.mu.Lock()
 	defer o.factory.mu.Unlock()
 	o.factory.rotatedUsers[o.Name()] = append(o.factory.rotatedUsers[o.Name()], user)
+	// Mimic MySQL: RETAIN makes the new password the primary one.
+	o.factory.userPasswords[o.Name()+"/"+user] = newPassword
 	return nil
 }
 
@@ -486,6 +488,16 @@ func (o *mockOperator) HasDualPassword(_ context.Context, user string) (bool, er
 	o.factory.mu.Lock()
 	defer o.factory.mu.Unlock()
 	return o.factory.dualPasswords[o.Name()+"/"+user], nil
+}
+
+func (o *mockOperator) VerifyUserPassword(_ context.Context, user, passwd string) (bool, error) {
+	if o.failing {
+		return false, errors.New("mysqld is down")
+	}
+	o.factory.mu.Lock()
+	defer o.factory.mu.Unlock()
+	stored, ok := o.factory.userPasswords[o.Name()+"/"+user]
+	return ok && stored == passwd, nil
 }
 
 type mockMySQL struct {
@@ -539,6 +551,7 @@ type mockOpFactory struct {
 	discardedUsers map[string][]string // hostname -> users that had DiscardOldPassword called
 	migratedUsers  map[string][]string // hostname -> users that had MigrateUserAuthPlugin called
 	dualPasswords  map[string]bool     // "hostname/user" -> has dual password
+	userPasswords  map[string]string   // "hostname/user" -> primary password (verified by VerifyUserPassword)
 	userAuthPlugin string              // auth plugin returned by GetUserAuthPlugin (empty = "caching_sha2_password")
 }
 
@@ -551,6 +564,7 @@ func newMockOpFactory() *mockOpFactory {
 		discardedUsers:       make(map[string][]string),
 		migratedUsers:        make(map[string][]string),
 		dualPasswords:        make(map[string]bool),
+		userPasswords:        make(map[string]string),
 	}
 }
 
@@ -669,6 +683,12 @@ func (f *mockOpFactory) setDualPassword(name, user string, hasDual bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.dualPasswords[name+"/"+user] = hasDual
+}
+
+func (f *mockOpFactory) setUserPassword(name, user, passwd string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.userPasswords[name+"/"+user] = passwd
 }
 
 func (f *mockOpFactory) setUserAuthPlugin(plugin string) {

@@ -4,16 +4,23 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/cybozu-go/moco/pkg/constants"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 // defaultAuthPlugin is the fallback when authentication_policy's first element
 // is '*' (any plugin allowed) or empty.
 const defaultAuthPlugin = "caching_sha2_password"
+
+// errAccessDenied is the MySQL server error code ER_ACCESS_DENIED_ERROR,
+// returned when a handshake presents wrong credentials.
+const errAccessDenied = 1045
 
 // validPluginName matches MySQL authentication plugin names (alphanumeric + underscore).
 var validPluginName = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -199,6 +206,44 @@ func (o *operator) HasDualPassword(ctx context.Context, user string) (bool, erro
 		return false, fmt.Errorf("failed to check dual password for %s: %w", user, err)
 	}
 	return hasDual, nil
+}
+
+// VerifyUserPassword reports whether the given password currently
+// authenticates the given user on this instance. A dual-password user
+// accepts both the primary and the retained secondary password, so a
+// "true" result means the password is one of the two.
+//
+// A dedicated short-lived connection is opened as the user itself on the
+// normal MySQL port: the admin port would require the
+// SERVICE_CONNECTION_ADMIN privilege, which not all system users hold.
+//
+// user must be one of the fixed system user names defined in pkg/constants/users.go.
+func (o *operator) VerifyUserPassword(ctx context.Context, user, passwd string) (bool, error) {
+	if err := validateMocoUser(user); err != nil {
+		return false, err
+	}
+
+	cfg := mysql.NewConfig()
+	cfg.User = user
+	cfg.Passwd = passwd
+	cfg.Net = "tcp"
+	cfg.Addr = o.verifyAddr
+	cfg.Timeout = connTimeout
+	cfg.ReadTimeout = readTimeout
+	db, err := sqlx.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		return false, fmt.Errorf("failed to open a verification connection for %s: %w", user, err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if err := db.PingContext(ctx); err != nil {
+		var merr *mysql.MySQLError
+		if errors.As(err, &merr) && merr.Number == errAccessDenied {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to verify the password for %s: %w", user, err)
+	}
+	return true, nil
 }
 
 // DiscardOldPassword executes ALTER USER ... DISCARD OLD PASSWORD

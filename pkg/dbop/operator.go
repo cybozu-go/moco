@@ -98,6 +98,14 @@ type Operator interface {
 	// (i.e., User_attributes contains additional_password in mysql.user).
 	// user must be one of the fixed system user names from pkg/constants/users.go.
 	HasDualPassword(ctx context.Context, user string) (bool, error)
+
+	// VerifyUserPassword reports whether the given password currently
+	// authenticates the given user on this instance (as either the primary
+	// or the retained secondary password). It opens a short-lived
+	// connection over the normal MySQL port as that user; "false, nil" means
+	// the server refused the credentials, any other failure returns an error.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	VerifyUserPassword(ctx context.Context, user, password string) (bool, error)
 }
 
 // OperatorFactory represents the factory for Operators.
@@ -150,6 +158,10 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 		passwd:    pwd,
 		index:     index,
 		db:        db,
+		// VerifyUserPassword connects as arbitrary system users, which may
+		// lack the SERVICE_CONNECTION_ADMIN privilege the admin port
+		// requires, so it must use the normal port.
+		verifyAddr: net.JoinHostPort(addr, strconv.Itoa(constants.MySQLPort)),
 	}, nil
 }
 
@@ -161,6 +173,9 @@ type operator struct {
 	passwd    *password.MySQLPassword
 	index     int
 	db        *sqlx.DB
+	// verifyAddr is the instance's normal MySQL port address, used by
+	// VerifyUserPassword to open per-user verification connections.
+	verifyAddr string
 }
 
 var _ Operator = &operator{}

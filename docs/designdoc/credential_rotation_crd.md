@@ -434,14 +434,14 @@ Triggered on a ClusterManager tick when the phase is `ApplyingRetain`. Pre-check
 |---|---|---|
 | 1 | Pre-check: every instance is scanned for pre-existing dual passwords. Steps 1 and 2 are both skipped when the `RETAIN_STARTED` marker already holds this cycle's rotationID (crash recovery). | — |
 | 2 | Set `RETAIN_STARTED` marker (rotationID) in the controller Secret. | Secret.Update |
-| 3 | For each instance, connect with the current password. If the instance is a replica, or the intermediate primary when `spec.replicationSourceSecretName` is set, temporarily disable `super_read_only` (these instances run with it enabled) and re-enable it after the updates. Run `ALTER USER ... RETAIN CURRENT PASSWORD` for each user, skipping users that already have a dual password. | MySQL |
+| 3 | For each instance, connect with the current password. If the instance is a replica, or the intermediate primary when `spec.replicationSourceSecretName` is set, temporarily disable `super_read_only` (these instances run with it enabled) and re-enable it after the updates. Run `ALTER USER ... RETAIN CURRENT PASSWORD` for each user. A user that already has a dual password is **verified, then skipped**: the handler confirms that the pending password authenticates for that user (a short per-user connection). If it does, this cycle's RETAIN already ran (crash retry) and the user is skipped; if it does not, the dual password came from outside the cycle — re-running RETAIN would drop the still-needed current password from the secondary slot, so the handler reports the error and names the recovery procedure instead. | MySQL |
 | 4 | Set `DualPassword=True` (`reason=Retained`) and phase `Promoting` in one status update. Emit `RetainApplied` Event on the MySQLCluster. | Status.Update |
 
 An unreachable instance aborts the loop for this tick; the flow retries on later ticks with no retry limit, and the failure is reported as a `PasswordRotationError` Warning Event on the MySQLCluster and mirrored into the CR's `status.message`.
 
 #### Pre-check and crash recovery
 
-If any instance already has a dual password from outside this rotation cycle, emit a `DualPasswordExists` Warning Event and wait (the CR's `status.message` mirrors the wait reason). After the pre-check succeeds, store the marker before running RETAIN. If the controller crashes and restarts, the marker — when it holds this cycle's rotationID — tells the handler to skip the pre-check and resume RETAIN. The `HasDualPassword` check for each user makes retries safe and idempotent.
+If any instance already has a dual password from outside this rotation cycle, emit a `DualPasswordExists` Warning Event and wait (the CR's `status.message` mirrors the wait reason). After the pre-check succeeds, store the marker before running RETAIN. If the controller crashes and restarts, the marker — when it holds this cycle's rotationID — tells the handler to skip the pre-check and resume RETAIN. The per-user gate in step 3 makes retries safe: a dual password is treated as "this cycle's RETAIN already ran" only after verifying that the pending password authenticates, so a dual password planted outside the cycle during the crash window cannot slip through to promotion.
 
 #### All-or-nothing
 
@@ -606,7 +606,7 @@ A discard in flight is not affected by stopped reconciliation: the promoted pass
 The controller exports, per CredentialRotation (labels `name`, `namespace`):
 
 - `moco_credential_rotation_phase{phase=...}` — 1 for the current phase, 0 otherwise (one series per known phase, mirroring the `moco_cluster_*` convention).
-- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` of the last **`Succeeded`** rotation as a Unix timestamp; usable as "time since last successful rotation" at the cluster level. It survives the CR's TTL deletion, but is removed when the MySQLCluster itself disappears — a cluster recreated under the same name must not inherit the previous cluster's success record.
+- `moco_credential_rotation_completed_timestamp_seconds` — `status.completionTime` of the last **`Succeeded`** rotation as a Unix timestamp; usable as "time since last successful rotation" at the cluster level. It survives the CR's TTL deletion; the MySQLCluster finalizer removes it when the cluster itself is deleted, so a cluster recreated under the same name cannot inherit the previous cluster's success record.
 
 Recommended alerts:
 
@@ -686,8 +686,8 @@ Every row below preserves the core invariant: at each crash point, the controlle
 |---|---|
 | CR created, pending passwords not yet generated | Reconciler re-seeds on next reconcile |
 | Pending passwords generated, status not updated | `ROTATION_ID` reuse + `SetPendingPasswords` returns the existing pending set |
-| Pre-check passed, `RETAIN_STARTED` marker set, RETAIN not yet executed | Marker skips pre-check; `HasDualPassword` makes RETAIN idempotent |
-| RETAIN partially applied | `RETAIN_STARTED` marker + per-user `HasDualPassword` makes re-execution safe |
+| Pre-check passed, `RETAIN_STARTED` marker set, RETAIN not yet executed | Marker skips pre-check; the per-user dual-password gate (verified against the pending password) makes RETAIN idempotent |
+| RETAIN partially applied | `RETAIN_STARTED` marker + the per-user verified gate makes re-execution safe |
 | RETAIN complete, phase not yet updated | Re-run sees all users already retained → writes the transition |
 | `Promoting`, Secret not yet promoted | Promotion is a single atomic update; re-run performs it |
 | `Promoting`, Secret promoted but phase not updated | `*_OLD` group present with matching `ROTATION_ID` and no `*_PENDING` group → promotion done → writes the transition |
@@ -699,9 +699,9 @@ Every row below preserves the core invariant: at each crash point, the controlle
 | `Finalizing`, keys deleted but phase not updated | The Secret is already clean → cleanup is a no-op → status re-runs (key deletion itself is one atomic Secret update, so a partial deletion cannot occur) |
 | `Succeeded`, TTL deletion not yet performed | `completionTime` is persisted → the TTL re-arms and the deletion retries (with a UID precondition) |
 
-### Why `HasDualPassword` instead of per-user status tracking?
+### Why query MySQL instead of per-user status tracking?
 
-MySQL holds only one secondary password slot per user. A second RETAIN with the same pending password would overwrite the secondary slot — evicting the original old password and breaking the controller's ability to connect. Per-user progress stored in Kubernetes status could drift from the real MySQL state. Instead, ClusterManager queries MySQL directly (`mysql.user.User_attributes` for `additional_password`), so MySQL stays the source of truth. The query is read-only and safe to re-run.
+MySQL holds only one secondary password slot per user. A second RETAIN with the same pending password would overwrite the secondary slot — evicting the original old password and breaking the controller's ability to connect. Per-user progress stored in Kubernetes status could drift from the real MySQL state. Instead, ClusterManager queries MySQL directly, so MySQL stays the source of truth: `HasDualPassword` (`mysql.user.User_attributes` for `additional_password`) detects the dual-password state, and `VerifyUserPassword` (a short connection as the user with the pending password) proves the dual password is this cycle's own before RETAIN is skipped. Both checks are read-only and safe to re-run.
 
 ### Idempotency of DISCARD
 

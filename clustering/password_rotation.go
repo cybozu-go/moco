@@ -518,17 +518,33 @@ func rotateInstanceUsers(
 	}
 
 	for _, user := range constants.MocoUsers {
+		newPwd, ok := pendingMap[user]
+		if !ok {
+			return fmt.Errorf("pending password not found for user %s", user)
+		}
 		hasDual, err := op.HasDualPassword(ctx, user)
 		if err != nil {
 			return fmt.Errorf("failed to check dual password for %s on instance %d: %w", user, instanceIndex, err)
 		}
 		if hasDual {
-			log.Info("skipping ALTER USER RETAIN (dual password already exists)", "user", user, "instance", instanceIndex)
+			// This runs only on a crash retry (the RETAIN_STARTED marker is
+			// set), so the dual password normally comes from this cycle's
+			// own RETAIN. Verify that instead of assuming it: if the pending
+			// password does not authenticate, the dual password was created
+			// outside this cycle after the pre-check, and skipping would let
+			// the promotion make passwords canonical that this user never
+			// retained. Re-running RETAIN is no better (it would drop the
+			// still-needed current password from the secondary slot), so
+			// report it for the recovery procedure.
+			verified, err := op.VerifyUserPassword(ctx, user, newPwd)
+			if err != nil {
+				return fmt.Errorf("failed to verify the pending password for %s on instance %d: %w", user, instanceIndex, err)
+			}
+			if !verified {
+				return fmt.Errorf("user %s on instance %d holds a dual password that does not match this cycle's pending password. See the 'Dual Password Exists Outside the Current Cycle' recovery procedure", user, instanceIndex)
+			}
+			log.Info("skipping ALTER USER RETAIN (this cycle's RETAIN already applied)", "user", user, "instance", instanceIndex)
 			continue
-		}
-		newPwd, ok := pendingMap[user]
-		if !ok {
-			return fmt.Errorf("pending password not found for user %s", user)
 		}
 		if err := op.RotateUserPassword(ctx, user, newPwd); err != nil {
 			return fmt.Errorf("failed to rotate password for %s on instance %d: %w", user, instanceIndex, err)

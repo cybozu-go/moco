@@ -86,3 +86,7 @@ func (o NopOperator) GetUserAuthPlugin(ctx context.Context, user string) (string
 func (o NopOperator) HasDualPassword(ctx context.Context, user string) (bool, error) {
 	return false, ErrNop
 }
+
+func (o NopOperator) VerifyUserPassword(ctx context.Context, user, password string) (bool, error) {
+	return false, ErrNop
+}

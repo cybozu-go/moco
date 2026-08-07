@@ -80,14 +80,12 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if apierrors.IsNotFound(err) {
 			// The phase series end with the object. The completed
 			// timestamp survives CR deletion as the record of the last
-			// successful rotation — but only while the cluster itself
-			// exists; a cluster recreated under the same name must not
-			// inherit the previous cluster's success record.
+			// successful rotation; it is removed by the MySQLCluster
+			// finalizer instead, so a cluster recreated under the same
+			// name cannot inherit the previous cluster's success record.
+			// (Checking the cluster from the cache here would race both
+			// a not-yet-drained deletion and a same-name recreation.)
 			deleteRotationPhaseMetrics(req.Name, req.Namespace)
-			cluster := &mocov1beta2.MySQLCluster{}
-			if err := r.Get(ctx, req.NamespacedName, cluster); apierrors.IsNotFound(err) {
-				deleteRotationCompletedMetric(req.Name, req.Namespace)
-			}
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
