@@ -269,8 +269,11 @@ func (r *CredentialRotationReconciler) handleSeed(ctx context.Context, cr *mocov
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
+	// Read the Secret uncached: this handler fails the CR on *_OLD
+	// residue, and a lagging informer holding a previous cycle's
+	// already-cleaned keys must not fail a fresh CR.
 	controllerSecret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{
+	if err := r.APIReader.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
 	}, controllerSecret); err != nil {
@@ -328,8 +331,12 @@ func (r *CredentialRotationReconciler) handleSeed(ctx context.Context, cr *mocov
 func (r *CredentialRotationReconciler) handlePromoting(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
+	// Read the Secret uncached: this handler fails the CR when the staged
+	// state is gone, and a lagging informer that misses the seed's write
+	// must not fail a healthy rotation. (The promotion write itself is
+	// additionally protected by optimistic concurrency.)
 	controllerSecret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{
+	if err := r.APIReader.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
 	}, controllerSecret); err != nil {
@@ -559,8 +566,12 @@ func (r *CredentialRotationReconciler) handleStartDiscard(ctx context.Context, c
 func (r *CredentialRotationReconciler) handleFinalize(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
+	// Read the Secret uncached: this handler fails the CR on an
+	// inconsistent key set, and a lagging informer that misses the
+	// promotion's write must not fail a healthy rotation. (The cleanup
+	// write itself is additionally protected by optimistic concurrency.)
 	controllerSecret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{
+	if err := r.APIReader.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
 	}, controllerSecret); err != nil {
@@ -674,8 +685,15 @@ func (r *CredentialRotationReconciler) surfacePause(ctx context.Context, cr *moc
 // of the per-namespace Secrets, and its watch on the controller Secret
 // triggers redistribution promptly after promotion.
 func (r *CredentialRotationReconciler) distributionCaughtUp(ctx context.Context, cluster *mocov1beta2.MySQLCluster) (bool, error) {
+	// The controller Secret must be read uncached: right after promotion,
+	// a lagging informer can still hold the pre-promotion Secret, whose
+	// current passwords match the still-undistributed per-namespace
+	// Secrets — a false "caught up" would start the rolling restart and
+	// open the verification window before distribution happened. Staleness
+	// of the per-namespace Secrets below only delays progress, never
+	// advances it, so those reads stay cached.
 	controllerSecret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{
+	if err := r.APIReader.Get(ctx, client.ObjectKey{
 		Namespace: r.SystemNamespace,
 		Name:      cluster.ControllerSecretName(),
 	}, controllerSecret); err != nil {

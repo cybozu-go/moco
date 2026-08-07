@@ -662,6 +662,8 @@ The rolling-restart annotation is written under the dedicated field manager `moc
 
 The reconciler never writes per-namespace Secrets, and rotation code never creates the controller Secret (update-only; see seed step 3).
 
+Every handler decision that depends on the controller Secret's **content** — failing the CR on residue or lost staged state, and the distribution catch-up gate — reads the Secret **uncached** (API reader), as ClusterManager already does. A lagging informer cache must neither fail a healthy rotation (e.g. a cache that misses the seed's write while the phase is already `Promoting`) nor advance one too early (e.g. a pre-promotion Secret whose current passwords still match the undistributed per-namespace Secrets, which would open the verification window before distribution). Reads whose staleness can only delay progress stay cached.
+
 ### ClusterManager
 
 ClusterManager reads the CredentialRotation CR inside each tick and dispatches on `status.phase`:
