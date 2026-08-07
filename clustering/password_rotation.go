@@ -117,13 +117,16 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 			"the controller Secret is already promoted for rotationID %s but the phase is still ApplyingRetain; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", cr.Status.RotationID))
 	}
 
+	// spec.offline scales the StatefulSet down to zero Pods while
+	// spec.replicas stays positive, so both fields must block here:
+	// RETAIN would otherwise retry forever against Pods that do not exist.
 	replicas := int(cluster.Spec.Replicas)
-	if replicas == 0 {
-		log.Info("blocked: cluster scaled to 0 replicas before RETAIN", "rotationID", cr.Status.RotationID)
+	if cluster.IsOfflineOrZeroReplicas() {
+		log.Info("blocked: cluster has 0 replicas or is offline before RETAIN", "rotationID", cr.Status.RotationID)
 		event.RotationBlocked.Emit(cluster, p.recorder)
 		if err := p.updateCRStatus(ctx, cr.UID, phaseIs(mocov1beta2.PhaseApplyingRetain), func(fresh *mocov1beta2.CredentialRotation) {
 			fresh.SetPhase(mocov1beta2.PhaseBlocked,
-				"MySQLCluster has 0 replicas; RETAIN resumes when the cluster is scaled up.")
+				"MySQLCluster has 0 replicas or is offline; RETAIN resumes when the cluster is running again.")
 		}); err != nil {
 			return false, err
 		}
@@ -250,15 +253,15 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 			"the controller Secret is not in the promoted state for rotationID %s (state=%v); it cannot be proven that the current keys hold the promoted passwords. Follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", cr.Status.RotationID, state))
 	}
 
-	replicas := int(cluster.Spec.Replicas)
-	if replicas == 0 {
-		log.Info("blocked: cluster scaled to 0 replicas before DISCARD", "rotationID", cr.Status.RotationID)
+	// See the RETAIN handler: spec.offline must block like 0 replicas.
+	if cluster.IsOfflineOrZeroReplicas() {
+		log.Info("blocked: cluster has 0 replicas or is offline before DISCARD", "rotationID", cr.Status.RotationID)
 		event.DiscardBlocked.Emit(cluster, p.recorder)
 		if err := p.updateCRStatus(ctx, cr.UID, phaseIs(mocov1beta2.PhaseApplyingDiscard), func(fresh *mocov1beta2.CredentialRotation) {
 			fresh.SetPhase(mocov1beta2.PhaseBlocked,
-				"MySQLCluster has 0 replicas; DISCARD resumes when the cluster is scaled up.")
+				"MySQLCluster has 0 replicas or is offline; DISCARD resumes when the cluster is running again.")
 			fresh.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
-				"The discard cannot progress: the cluster is scaled to 0 replicas.")
+				"The discard cannot progress: the cluster has 0 replicas or is offline.")
 		}); err != nil {
 			return false, err
 		}
@@ -299,6 +302,7 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	// count is re-read from the live cluster on every round — ss.Cluster
 	// is a snapshot from the start of the tick and would hide a mid-tick
 	// scale-up.
+	var replicas int
 	for round := 0; ; round++ {
 		if round >= maxDiscardReverifyRounds {
 			return false, fmt.Errorf("instances still hold dual passwords after %d discard rounds", maxDiscardReverifyRounds)

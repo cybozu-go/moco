@@ -836,6 +836,14 @@ func (r *MySQLCluster) PodHostname(index int) string {
 	return fmt.Sprintf("%s.%s.%s.svc", r.PodName(index), r.HeadlessServiceName(), r.Namespace)
 }
 
+// IsOfflineOrZeroReplicas returns true when the cluster is configured to
+// run no mysqld instance at all: spec.offline scales the StatefulSet down
+// to zero Pods while keeping spec.replicas intact, so both fields must be
+// checked.
+func (r *MySQLCluster) IsOfflineOrZeroReplicas() bool {
+	return r.Spec.Offline || r.Spec.Replicas <= 0
+}
+
 // SlowQueryLogAgentConfigMapName returns the name of the slow query log agent config name.
 func (r *MySQLCluster) SlowQueryLogAgentConfigMapName() string {
 	return fmt.Sprintf("moco-slow-log-agent-config-%s", r.Name)

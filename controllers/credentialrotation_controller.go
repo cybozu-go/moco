@@ -165,7 +165,8 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// waiting silently.
 		if isClusteringStopped(cluster) {
 			r.surfacePause(ctx, cr, fmt.Sprintf(
-				"clustering is stopped (annotation %s=true), so RETAIN cannot run", constants.AnnClusteringStopped))
+				"clustering is stopped (annotation %s=true), so RETAIN cannot run", constants.AnnClusteringStopped),
+				"the annotation is removed")
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 
@@ -186,7 +187,8 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// ClusterManager owns DISCARD; same pause surfacing as RETAIN.
 		if isClusteringStopped(cluster) {
 			r.surfacePause(ctx, cr, fmt.Sprintf(
-				"clustering is stopped (annotation %s=true), so DISCARD cannot run", constants.AnnClusteringStopped))
+				"clustering is stopped (annotation %s=true), so DISCARD cannot run", constants.AnnClusteringStopped),
+				"the annotation is removed")
 		}
 		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 
@@ -220,15 +222,15 @@ func (r *CredentialRotationReconciler) handleSeed(ctx context.Context, cr *mocov
 			"spec.discard was true before the verification window ever opened (the create webhook was bypassed); delete this CR and create one with discard: false")
 	}
 
-	if cluster.Spec.Replicas <= 0 {
+	if cluster.IsOfflineOrZeroReplicas() {
 		// Nothing has been mutated. Avoid a no-op status write on every
-		// requeue while the cluster stays scaled down.
+		// requeue while the cluster stays down.
 		if cr.Status.Phase == mocov1beta2.PhaseBlocked {
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 		}
 		cr.InitConditions()
 		cr.SetPhase(mocov1beta2.PhaseBlocked,
-			"MySQLCluster has 0 replicas; the rotation starts when the cluster is scaled up. Nothing has been mutated.")
+			"MySQLCluster has 0 replicas or is offline; the rotation starts when the cluster is running again. Nothing has been mutated.")
 		if err := r.updateStatus(ctx, cr); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to Blocked: %w", err)
 		}
@@ -355,7 +357,8 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 		// authenticating everywhere.
 		if isReconciliationStopped(cluster) {
 			r.surfacePause(ctx, cr, fmt.Sprintf(
-				"reconciliation is stopped (annotation %s=true), so the promoted passwords are not distributed", constants.AnnReconciliationStopped))
+				"reconciliation is stopped (annotation %s=true), so the promoted passwords are not distributed", constants.AnnReconciliationStopped),
+				"the annotation is removed")
 		}
 		log.Info("waiting for per-namespace Secrets to catch up with the promoted passwords",
 			"rotationID", cr.Status.RotationID)
@@ -367,7 +370,22 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 	// the cluster is Healthy — so the rollout below freezes too.
 	if isClusteringStopped(cluster) {
 		r.surfacePause(ctx, cr, fmt.Sprintf(
-			"clustering is stopped (annotation %s=true), so the rolling restart cannot advance", constants.AnnClusteringStopped))
+			"clustering is stopped (annotation %s=true), so the rolling restart cannot advance", constants.AnnClusteringStopped),
+			"the annotation is removed")
+	}
+
+	// spec.offline scales the StatefulSet down to zero Pods while
+	// spec.replicas stays positive, and a 0-replica StatefulSet trivially
+	// satisfies every rollout check below — the verification window would
+	// open without a single restarted Pod. Hold this phase instead until
+	// the cluster runs again. (Blocked is not used here: its resume path
+	// with spec.discard=false re-runs the seed, and the seed treats the
+	// promoted controller Secret as a failure.)
+	if cluster.IsOfflineOrZeroReplicas() {
+		r.surfacePause(ctx, cr,
+			"the MySQLCluster has 0 replicas or is offline, so the rolling restart cannot settle",
+			"the cluster is running again")
+		return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 	}
 
 	stsName := cluster.PrefixedName()
@@ -462,17 +480,17 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 func (r *CredentialRotationReconciler) handleStartDiscard(ctx context.Context, cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) (ctrl.Result, error) {
 	log := crlog.FromContext(ctx)
 
-	if cluster.Spec.Replicas <= 0 {
+	if cluster.IsOfflineOrZeroReplicas() {
 		// Avoid a no-op status write on every requeue while the cluster
-		// stays scaled down.
+		// stays down.
 		if cr.Status.Phase == mocov1beta2.PhaseBlocked &&
 			mocov1beta2.IsConditionFalseWithReason(cr, mocov1beta2.ConditionDiscardReady, mocov1beta2.ReasonBlocked) {
 			return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
 		}
 		cr.SetPhase(mocov1beta2.PhaseBlocked,
-			"MySQLCluster has 0 replicas; the discard resumes when the cluster is scaled up.")
+			"MySQLCluster has 0 replicas or is offline; the discard resumes when the cluster is running again.")
 		cr.SetDiscardReady(metav1.ConditionFalse, mocov1beta2.ReasonBlocked,
-			"The discard cannot progress: the cluster is scaled to 0 replicas.")
+			"The discard cannot progress: the cluster has 0 replicas or is offline.")
 		if err := r.updateStatus(ctx, cr); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update status to Blocked: %w", err)
 		}
@@ -593,12 +611,12 @@ func (r *CredentialRotationReconciler) fail(ctx context.Context, cr *mocov1beta2
 // after about an hour; the message is the durable signal). The phase keeps
 // its current value — a pause is not Blocked. The message write is skipped
 // when it would be a no-op.
-func (r *CredentialRotationReconciler) surfacePause(ctx context.Context, cr *mocov1beta2.CredentialRotation, reason string) {
+func (r *CredentialRotationReconciler) surfacePause(ctx context.Context, cr *mocov1beta2.CredentialRotation, reason, resume string) {
 	log := crlog.FromContext(ctx)
 
 	log.Info("rotation is paused", "reason", reason, "rotationID", cr.Status.RotationID)
 	mocoevent.RotationPaused.Emit(cr, r.Recorder, reason)
-	msg := "Paused: " + reason + ". The rotation resumes automatically when the annotation is removed."
+	msg := "Paused: " + reason + ". The rotation resumes automatically when " + resume + "."
 	if cr.Status.Message == msg {
 		return
 	}

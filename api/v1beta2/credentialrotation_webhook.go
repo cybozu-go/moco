@@ -51,6 +51,10 @@ func (a *credentialRotationAdmission) ValidateCreate(ctx context.Context, cr *Cr
 			errs = append(errs, field.Invalid(field.NewPath("metadata", "name"), cr.Name,
 				"target MySQLCluster must have replicas > 0"))
 		}
+		if cluster.Spec.Offline {
+			errs = append(errs, field.Invalid(field.NewPath("metadata", "name"), cr.Name,
+				"target MySQLCluster is offline; the rotation needs running mysqld instances"))
+		}
 	}
 
 	// The discard must be requested via update after the verification
@@ -106,14 +110,16 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
 					"this CredentialRotation is a leftover from a previous MySQLCluster; delete it"))
 			}
-			// The flag is one-way: admitting it on a 0-replica cluster
-			// would run the discard automatically on the next scale-up,
-			// without another operator confirmation. Unreachable through
-			// the normal API (the MySQLCluster webhook forbids 0
-			// replicas), kept as defense in depth.
-			if cluster.Spec.Replicas <= 0 {
+			// The flag is one-way: admitting it while the cluster runs no
+			// mysqld instances (0 replicas, or offline — which scales the
+			// StatefulSet down to zero Pods) would run the discard
+			// automatically when the cluster comes back, without another
+			// operator confirmation. The 0-replica case is unreachable
+			// through the normal API (the MySQLCluster webhook forbids 0
+			// replicas) and kept as defense in depth.
+			if cluster.IsOfflineOrZeroReplicas() {
 				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
-					"cannot request the discard while the MySQLCluster has 0 replicas"))
+					"cannot request the discard while the MySQLCluster runs no mysqld instances (0 replicas or offline)"))
 			}
 		}
 	}

@@ -111,6 +111,18 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should reject when the MySQLCluster is offline", func() {
+			cluster := makeMySQLCluster()
+			cluster.Spec.Offline = true
+			err := k8sClient.Create(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cr := makeCredentialRotation("test")
+			err = k8sClient.Create(ctx, cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("offline"))
+		})
+
 		It("should accept a valid CR", func() {
 			cluster := makeMySQLCluster()
 			err := k8sClient.Create(ctx, cluster)
@@ -145,6 +157,31 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			cr.Spec.Discard = true
 			err := k8sClient.Update(ctx, cr)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should reject the discard flip while the MySQLCluster is offline", func() {
+			cluster := makeMySQLCluster()
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+			cr := makeCredentialRotation("test")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Expect(adoptCR(cr, cluster)).To(Succeed())
+			Expect(openVerificationWindow(cr)).To(Succeed())
+
+			// The one-way flag must not be admitted while no mysqld runs:
+			// it would execute the discard automatically when the cluster
+			// comes back, without another operator confirmation.
+			cluster.Spec.Offline = true
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+
+			cr.Spec.Discard = true
+			err := k8sClient.Update(ctx, cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("offline"))
+
+			// Back online, the same flip is admitted.
+			cluster.Spec.Offline = false
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+			Expect(k8sClient.Update(ctx, cr)).To(Succeed())
 		})
 
 		It("should reject unsetting discard", func() {

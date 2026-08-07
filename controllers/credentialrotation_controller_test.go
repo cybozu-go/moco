@@ -423,6 +423,101 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseApplyingRetain)))
 	})
 
+	It("should block at seed while the cluster is offline and resume when it is back online", func() {
+		cluster := testNewMySQLCluster("test")
+		cluster.Spec.Offline = true
+		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+		Eventually(func() error {
+			secret := &corev1.Secret{}
+			return k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, secret)
+		}).Should(Succeed())
+
+		// The create webhook that rejects this is not registered in this
+		// suite; this exercises the runtime defense in depth.
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+		}
+		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseBlocked)))
+
+		// Nothing was mutated: no pending keys were staged.
+		controllerSecret := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{
+			Namespace: testMocoSystemNamespace,
+			Name:      cluster.ControllerSecretName(),
+		}, controllerSecret)).To(Succeed())
+		Expect(controllerSecret.Data).NotTo(HaveKey(password.AdminPasswordPendingKey))
+
+		// Back online, the Reconciler resumes by re-running the seed.
+		Eventually(func() error {
+			fresh := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, fresh); err != nil {
+				return err
+			}
+			fresh.Spec.Offline = false
+			return k8sClient.Update(ctx, fresh)
+		}).Should(Succeed())
+
+		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseApplyingRetain)))
+	})
+
+	It("should hold AwaitingRollout while the cluster is offline instead of opening the window", func() {
+		cluster := startRotationToApplyingRetain(ctx)
+		Eventually(func() error { return simulateRetainDone(ctx) }).Should(Succeed())
+
+		// Take the cluster offline before the rollout settles.
+		Eventually(func() error {
+			fresh := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, fresh); err != nil {
+				return err
+			}
+			fresh.Spec.Offline = true
+			return k8sClient.Update(ctx, fresh)
+		}).Should(Succeed())
+
+		// Offline scales the StatefulSet to 0 replicas, and a 0-replica
+		// StatefulSet passes every rollout check trivially. Keep its
+		// status "settled" and verify the guard still holds the phase.
+		Eventually(func() string {
+			_ = syncStatefulSetRolloutComplete(ctx, cluster)
+			cr, err := getCR(ctx)
+			if err != nil {
+				return err.Error()
+			}
+			return cr.Status.Message
+		}).Should(ContainSubstring("Paused"), "the offline hold must be surfaced in status.message")
+
+		Consistently(func() string {
+			_ = syncStatefulSetRolloutComplete(ctx, cluster)
+			return crPhase(ctx)
+		}, 3*time.Second, 500*time.Millisecond).Should(Equal(string(mocov1beta2.PhaseAwaitingRollout)),
+			"the verification window must not open while the cluster is offline")
+
+		cr, err := getCR(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(apimeta.IsStatusConditionFalse(cr.Status.Conditions, mocov1beta2.ConditionDiscardReady)).To(BeTrue())
+
+		// Back online, the rollout settles for real and the window opens.
+		Eventually(func() error {
+			fresh := &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, fresh); err != nil {
+				return err
+			}
+			fresh.Spec.Offline = false
+			return k8sClient.Update(ctx, fresh)
+		}).Should(Succeed())
+
+		Eventually(func() string {
+			_ = syncStatefulSetRolloutComplete(ctx, cluster)
+			return crPhase(ctx)
+		}).Should(Equal(string(mocov1beta2.PhaseAwaitingDiscard)))
+	})
+
 	It("should fail at seed on *_OLD residue in the controller secret", func() {
 		cluster := testNewMySQLCluster("test")
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
