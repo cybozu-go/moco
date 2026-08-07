@@ -2,6 +2,7 @@ package v1beta2
 
 import (
 	"testing"
+	"time"
 
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -159,8 +160,10 @@ func TestIsStaleFor(t *testing.T) {
 
 	clusterUID := types.UID("11111111-1111-1111-1111-111111111111")
 	otherUID := types.UID("22222222-2222-2222-2222-222222222222")
+	clusterCreated := metav1.NewTime(time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC))
 	cluster := &MySQLCluster{}
 	cluster.UID = clusterUID
+	cluster.CreationTimestamp = clusterCreated
 
 	ownerRef := func(uid types.UID) metav1.OwnerReference {
 		return metav1.OwnerReference{
@@ -175,6 +178,7 @@ func TestIsStaleFor(t *testing.T) {
 		name      string
 		refs      []metav1.OwnerReference
 		hasStatus bool
+		created   metav1.Time
 		want      bool
 	}{
 		{
@@ -212,11 +216,38 @@ func TestIsStaleFor(t *testing.T) {
 			}},
 			want: false,
 		},
+		{
+			// The CR predates the live cluster: it was created for a
+			// previous incarnation and never reconciled (controller
+			// downtime through a delete-and-recreate).
+			name:    "no ownerReference, empty status, older than the cluster",
+			created: metav1.NewTime(clusterCreated.Add(-time.Minute)),
+			want:    true,
+		},
+		{
+			// Same-second creation must stay fresh: the create webhook
+			// requires the cluster to exist, so a fresh CR is never
+			// strictly older than its cluster.
+			name:    "no ownerReference, empty status, same creation time",
+			created: clusterCreated,
+			want:    false,
+		},
+		{
+			name:    "older than the cluster but matching ownerReference",
+			refs:    []metav1.OwnerReference{ownerRef(clusterUID)},
+			created: metav1.NewTime(clusterCreated.Add(-time.Minute)),
+			want:    false,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cr := &CredentialRotation{}
 			cr.OwnerReferences = tc.refs
+			if tc.created.IsZero() {
+				cr.CreationTimestamp = metav1.NewTime(clusterCreated.Add(time.Minute))
+			} else {
+				cr.CreationTimestamp = tc.created
+			}
 			if tc.hasStatus {
 				cr.Status.Phase = PhaseApplyingRetain
 			}

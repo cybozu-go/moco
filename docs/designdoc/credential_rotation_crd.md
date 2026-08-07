@@ -346,7 +346,7 @@ The spec is immutable except for one transition:
 - `spec.discard` may change from `false` to `true`, but only while `DiscardReady=True` (the verification window is open, so the post-promotion rollout has settled) and while the live MySQLCluster runs mysqld instances (`spec.replicas > 0` and not `spec.offline`). The flag is one-way, so admitting it while nothing runs would execute the discard automatically when the cluster comes back, without another operator confirmation. (The replicas half is defense in depth: a 0-replica cluster cannot be created through the normal API.)
 - `spec.discard` can never change from `true` to `false`.
 - No other spec change is allowed.
-- The update is rejected when the CR is **stale** (see [Stale CR handling](#stale-cr-handling-cluster-recreated-under-the-same-name)): a discard request against a leftover CR from a deleted cluster would otherwise be admitted and then silently ignored by the controllers.
+- The update is rejected when the CR is **stale** (see [Stale CR handling](#stale-cr-handling-cluster-recreated-under-the-same-name)) or when the MySQLCluster is **terminating**: in both cases the flip would be admitted and then silently ignored by the controllers (all rotation handlers no-op while the cluster is terminating).
 
 ### ValidateDelete
 
@@ -733,16 +733,19 @@ While the cluster is terminating, all rotation handlers no-op (the cluster's fin
 
 Garbage collection is asynchronous. With the default background cascading deletion, the MySQLCluster object disappears first and the CR is collected shortly after. A new cluster with the same name can be created inside that window, which is why the stale-CR handling below exists.
 
-One case escapes garbage collection entirely: the cluster is deleted after the CR is admitted but **before the Reconciler adopts it** (adds the ownerReference). Such a CR has no ownerReference and no status, so nothing would ever delete it — and when a cluster is created later under the same name, the Reconciler would treat the CR as fresh, adopt it, and start a rotation nobody asked for. The Reconciler closes this window when it sees the cluster gone: a CR without an ownerReference is marked `Failed` ("the target MySQLCluster was deleted before the rotation started; delete this CredentialRotation") with a `StaleCredentialRotation` Warning Event. The deletion is first confirmed with an uncached read, so an informer cache that lags a just-created cluster cannot cause a false failure. As with the stale handling below, writing the terminal status is not adoption.
+One case escapes garbage collection entirely: the cluster is deleted after the CR is admitted but **before the Reconciler adopts it** (adds the ownerReference). Such a CR has no ownerReference and no status, so nothing would ever delete it — and when a cluster is created later under the same name, the Reconciler would treat the CR as fresh, adopt it, and start a rotation nobody asked for. The Reconciler closes this window when it sees the cluster gone: a CR without an ownerReference is marked `Failed` ("the target MySQLCluster was deleted before the rotation started; delete this CredentialRotation") with a `StaleCredentialRotation` Warning Event. The deletion is first confirmed with an uncached read, so an informer cache that lags a just-created cluster cannot cause a false failure. If the controller is down through the whole delete-and-recreate and only ever sees the new cluster, the age rule of the stale check below still catches the leftover: it is older than the live cluster. As with the stale handling below, writing the terminal status is not adoption.
 
 ### Stale CR handling (cluster recreated under the same name)
 
 If a `MySQLCluster` is deleted and another is recreated under the same name before garbage collection reclaims the original CR, the leftover CR matches the new cluster by `namespace/name` but belongs to the old cluster. Adopting it would let leftover rotation state break the new cluster's credentials.
 
-**"Stale" means either of:**
+**"Stale" means any of:**
 
 - the CR has a MySQLCluster ownerReference whose UID does **not** match the UID of the live cluster, or
-- the CR has **no** MySQLCluster ownerReference but its status is not empty — an orphan from `kubectl delete --cascade=orphan`, which strips ownerReferences. (A CR with no ownerReference **and** an empty status is genuinely new and is treated as fresh.)
+- the CR has **no** MySQLCluster ownerReference but its status is not empty — an orphan from `kubectl delete --cascade=orphan`, which strips ownerReferences, or
+- the CR has **no** MySQLCluster ownerReference and is **older than the live cluster** — it was created for a previous incarnation and never reconciled (controller downtime or backlog through a delete-and-recreate). A genuinely fresh CR is always younger than its cluster, because the create webhook requires the cluster to exist.
+
+A CR with no ownerReference, an empty status, and a creation time not before the cluster's is genuinely new and is treated as fresh.
 
 Behavior on a stale CR:
 

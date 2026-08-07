@@ -159,6 +159,31 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should reject the discard flip while the MySQLCluster is being deleted", func() {
+			cluster := makeMySQLCluster()
+			cluster.Finalizers = append(cluster.Finalizers, "test.moco.cybozu.com/hold")
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+			cr := makeCredentialRotation("test")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Expect(adoptCR(cr, cluster)).To(Succeed())
+			Expect(openVerificationWindow(cr)).To(Succeed())
+
+			// The rotation handlers no-op on a terminating cluster, so the
+			// flip would be admitted and then silently ignored.
+			Expect(k8sClient.Delete(ctx, cluster)).To(Succeed())
+
+			cr.Spec.Discard = true
+			err := k8sClient.Update(ctx, cr)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("being deleted"))
+
+			// Unblock deletion for the AfterEach cleanup.
+			fresh := &mocov1beta2.MySQLCluster{}
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: cluster.Name}, fresh)).To(Succeed())
+			fresh.Finalizers = nil
+			Expect(k8sClient.Update(ctx, fresh)).To(Succeed())
+		})
+
 		It("should reject the discard flip while the MySQLCluster is offline", func() {
 			cluster := makeMySQLCluster()
 			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())

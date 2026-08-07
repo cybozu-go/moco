@@ -110,6 +110,12 @@ func (a *credentialRotationAdmission) ValidateUpdate(ctx context.Context, oldCR,
 				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
 					"this CredentialRotation is a leftover from a previous MySQLCluster; delete it"))
 			}
+			// All rotation handlers no-op while the cluster is terminating,
+			// so the flip would be admitted and then silently ignored.
+			if cluster.DeletionTimestamp != nil {
+				errs = append(errs, field.Forbidden(field.NewPath("spec", "discard"),
+					"cannot request the discard while the MySQLCluster is being deleted"))
+			}
 			// The flag is one-way: admitting it while the cluster runs no
 			// mysqld instances (0 replicas, or offline — which scales the
 			// StatefulSet down to zero Pods) would run the discard

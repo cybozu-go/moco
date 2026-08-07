@@ -119,14 +119,18 @@ func IsConditionFalseWithReason(cr *CredentialRotation, condType, reason string)
 // IsStaleFor reports whether the CR is a leftover from a different
 // MySQLCluster incarnation and must not act on (or be acted on for) the
 // given live cluster. A CR is stale when its MySQLCluster ownerReference
-// carries a UID different from the live cluster's, or when it has no
-// MySQLCluster ownerReference but a non-empty status (an orphan — see
-// HasStatus). A CR with no ownerReference and an empty status is fresh.
+// carries a UID different from the live cluster's, or — without a
+// MySQLCluster ownerReference — when it has a non-empty status (an orphan;
+// see HasStatus) or is older than the live cluster. The age rule covers a
+// CR that was never reconciled before its original cluster was deleted and
+// recreated under the same name (controller downtime or backlog): a
+// genuinely fresh CR is always younger than its cluster, because the
+// create webhook requires the cluster to exist.
 func (cr *CredentialRotation) IsStaleFor(cluster *MySQLCluster) bool {
 	for _, ref := range cr.OwnerReferences {
 		if ref.Kind == "MySQLCluster" && ref.APIVersion == GroupVersion.String() {
 			return ref.UID != cluster.UID
 		}
 	}
-	return cr.HasStatus()
+	return cr.HasStatus() || cr.CreationTimestamp.Before(&cluster.CreationTimestamp)
 }
