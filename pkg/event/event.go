@@ -150,7 +150,7 @@ var (
 	RotationBlocked = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "RotationBlocked",
-		Message: "Cannot proceed with RETAIN: cluster has 0 replicas. Scale the cluster up first.",
+		Message: "Cannot proceed with RETAIN: the cluster has 0 replicas or is offline. Bring the cluster back first.",
 	}
 	DualPasswordExists = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
@@ -165,7 +165,7 @@ var (
 	DiscardBlocked = MOCOEvent{
 		Type:    corev1.EventTypeWarning,
 		Reason:  "DiscardBlocked",
-		Message: "Cannot proceed with DISCARD: cluster has 0 replicas. Scale the cluster up first.",
+		Message: "Cannot proceed with DISCARD: the cluster has 0 replicas or is offline. Bring the cluster back first.",
 	}
 	DiscardApplied = MOCOEvent{
 		Type:    corev1.EventTypeNormal,

@@ -84,7 +84,7 @@ As a safety measure, the command also refuses to start when the cluster cannot m
 - The `moco.cybozu.com/reconciliation-stopped=true` or `moco.cybozu.com/clustering-stopped=true` annotation is set.
 - The MySQLCluster is not `Healthy` or has 0 replicas.
 
-Follow the rotation with `kubectl get credentialrotation CLUSTER_NAME -w` (the `PHASE` column) and wait for the verification window — the period when both the old and the new passwords work, see [usage.md](usage.md) — with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=DiscardReady`.
+Follow the rotation with `kubectl get credentialrotation CLUSTER_NAME -w` (the `PHASE` column). Then wait for the verification window — the period when both the old and the new passwords work (see [usage.md](usage.md)) — with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=DiscardReady`.
 
 ## `kubectl moco discard-old-credential CLUSTER_NAME`
 
@@ -94,7 +94,7 @@ Sets `spec.discard: true` on the CredentialRotation CR.
 This can only be run while the verification window is open (`DiscardReady=True`; the post-promotion rollout has settled).
 After the discard completes, the CR reaches the `Succeeded` phase and is deleted automatically after a TTL (controller flag `--credential-rotation-ttl`, default 1h). Wait for completion with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=Finished` and then check that `status.phase` is `Succeeded`.
 
-The same safety checks as `rotate-credential` apply, with one exception: the command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`, but stopped reconciliation does not block it — the discard phase does not depend on it, because the new passwords were already distributed before the CR reached the verification window.
+The same safety checks as `rotate-credential` apply, with one exception: the command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`, but stopped reconciliation does not block it: the discard phase does not depend on reconciliation, because the new passwords were already distributed before the CR reached the verification window.
 
 > **Note:** the CredentialRotation CR is an operation object driven by these commands. Do not manage it with GitOps tools — a sync would recreate the automatically deleted object and trigger an unrequested rotation.
 

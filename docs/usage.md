@@ -854,9 +854,9 @@ This creates a single-use CredentialRotation resource with the same name as the 
 MOCO then generates new passwords, applies them to every instance while keeping the old ones as secondary passwords, distributes the new passwords to the Secrets, and restarts the Pods.
 The command refuses to run in two cases.
 First, when another rotation already occupies the name — in flight, waiting for automatic deletion, or failed; the error message explains what to do.
-Second, when the cluster is offline, unhealthy, or has clustering or reconciliation stopped.
+Second, when the cluster is offline or unhealthy, or when clustering or reconciliation is stopped.
 
-Wait until the rotation phase finishes:
+Wait until the first (rotate) phase finishes:
 
 ```console
 $ kubectl wait --for=condition=DiscardReady credentialrotation/<CLUSTER_NAME> --timeout=30m

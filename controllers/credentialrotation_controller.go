@@ -810,9 +810,9 @@ func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta2.CredentialRotation{}).
 		// Wake the reconciler when the target MySQLCluster changes — most
-		// importantly when Spec.Replicas transitions to or from 0, so a
-		// Blocked cycle resumes immediately on scale-up instead of
-		// waiting for the periodic requeue.
+		// importantly when Spec.Replicas transitions to or from 0 or
+		// Spec.Offline flips, so a Blocked cycle resumes immediately
+		// instead of waiting for the periodic requeue.
 		Watches(
 			&mocov1beta2.MySQLCluster{},
 			handler.EnqueueRequestsFromMapFunc(mapClusterToCR),
@@ -946,7 +946,7 @@ func mapStatefulSetToCR(_ context.Context, obj client.Object) []reconcile.Reques
 
 // clusterReplicasChangedPredicate filters MySQLCluster events down to
 // those that may unblock or refresh a rotation: creation, deletion, or
-// Spec.Replicas changes.
+// changes of Spec.Replicas or Spec.Offline.
 type clusterReplicasChangedPredicate struct {
 	predicate.Funcs
 }
@@ -961,6 +961,11 @@ func (clusterReplicasChangedPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 	if oldCluster.Spec.Replicas != newCluster.Spec.Replicas {
+		return true
+	}
+	// An offline flip blocks or resumes a rotation exactly like a replicas
+	// change, so it must prompt a reconcile just as promptly.
+	if oldCluster.Spec.Offline != newCluster.Spec.Offline {
 		return true
 	}
 	return (oldCluster.DeletionTimestamp == nil) != (newCluster.DeletionTimestamp == nil)
