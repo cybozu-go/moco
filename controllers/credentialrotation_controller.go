@@ -102,8 +102,20 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 	cluster := &mocov1beta2.MySQLCluster{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
-			// The cluster is gone; garbage collection will delete the CR
-			// via its ownerReference. Nothing to do.
+			// With an ownerReference, garbage collection deletes the CR;
+			// nothing to do. Without one, the cluster disappeared before
+			// this controller could adopt the CR, so garbage collection
+			// will never come: mark the CR Failed (unless it already is
+			// terminal), or a cluster recreated under the same name would
+			// later adopt the leftover and start a rotation nobody asked
+			// for. Writing the terminal status is not adoption: no
+			// ownerReference is added and no rotation action runs.
+			if len(cr.OwnerReferences) == 0 && !cr.IsTerminal() {
+				log.Info("marking a CredentialRotation orphaned before adoption as Failed")
+				mocoevent.StaleCredentialRotation.Emit(cr, r.Recorder)
+				return ctrl.Result{}, r.markFailed(ctx, cr,
+					"the target MySQLCluster was deleted before the rotation started; delete this CredentialRotation")
+			}
 			log.Info("MySQLCluster not found, skipping")
 			return ctrl.Result{}, nil
 		}

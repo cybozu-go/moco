@@ -735,6 +735,8 @@ While the cluster is terminating, all rotation handlers no-op (the cluster's fin
 
 Garbage collection is asynchronous. With the default background cascading deletion, the MySQLCluster object disappears first and the CR is collected shortly after. A new cluster with the same name can be created inside that window, which is why the stale-CR handling below exists.
 
+One window escapes garbage collection entirely: the cluster is deleted after the CR was admitted but **before the Reconciler adopted it** (added the ownerReference). Such a CR has no ownerReference and no status, so nothing would ever delete it — and a cluster created later under the same name would treat it as fresh, adopt it, and start a rotation nobody asked for. The Reconciler closes this window when it sees the cluster gone: a CR without an ownerReference is marked `Failed` ("the target MySQLCluster was deleted before the rotation started; delete this CredentialRotation") with a `StaleCredentialRotation` Warning Event. As with the stale handling below, writing the terminal status is not adoption.
+
 ### Stale CR handling (cluster recreated under the same name)
 
 If a `MySQLCluster` is deleted and another is recreated under the same name before garbage collection reclaims the original CR, the leftover CR matches the new cluster by `namespace/name` but belongs to the old cluster. Adopting it would let leftover rotation state break the new cluster's credentials.

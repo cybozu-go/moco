@@ -621,6 +621,25 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		Expect(cr.Status.Message).To(ContainSubstring("verification window"))
 	})
 
+	It("should fail a CR whose cluster disappeared before adoption", func() {
+		// No MySQLCluster exists (the create webhook that would reject this
+		// is not registered in this suite). The reconciler must not leave
+		// the CR pending forever: without an ownerReference, garbage
+		// collection never deletes it, and a cluster created later under
+		// the same name would adopt it and start an unrequested rotation.
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "test"},
+		}
+		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseFailed)))
+
+		cr, err := getCR(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.OwnerReferences).To(BeEmpty(), "a terminal write must not adopt the CR")
+		Expect(cr.Status.Message).To(ContainSubstring("before the rotation started"))
+	})
+
 	It("should mark a leftover CR from a recreated cluster as Failed", func() {
 		cluster := startRotationToApplyingRetain(ctx)
 
