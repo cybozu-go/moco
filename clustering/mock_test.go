@@ -420,6 +420,9 @@ func (o *mockOperator) SetSuperReadOnly(_ context.Context, on bool) error {
 	if o.failing {
 		return errors.New("mysqld is down")
 	}
+	o.factory.mu.Lock()
+	o.factory.superReadOnlyToggles[o.Name()] = append(o.factory.superReadOnlyToggles[o.Name()], on)
+	o.factory.mu.Unlock()
 	o.mysql.mu.Lock()
 	defer o.mysql.mu.Unlock()
 	o.mysql.status.GlobalVariables.SuperReadOnly = on
@@ -553,6 +556,8 @@ type mockOpFactory struct {
 	dualPasswords  map[string]bool     // "hostname/user" -> has dual password
 	userPasswords  map[string]string   // "hostname/user" -> primary password (verified by VerifyUserPassword)
 	userAuthPlugin string              // auth plugin returned by GetUserAuthPlugin (empty = "caching_sha2_password")
+
+	superReadOnlyToggles map[string][]bool // hostname -> SetSuperReadOnly call history
 }
 
 func newMockOpFactory() *mockOpFactory {
@@ -565,6 +570,7 @@ func newMockOpFactory() *mockOpFactory {
 		migratedUsers:        make(map[string][]string),
 		dualPasswords:        make(map[string]bool),
 		userPasswords:        make(map[string]string),
+		superReadOnlyToggles: make(map[string][]bool),
 	}
 }
 
@@ -689,6 +695,12 @@ func (f *mockOpFactory) setUserPassword(name, user, passwd string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.userPasswords[name+"/"+user] = passwd
+}
+
+func (f *mockOpFactory) getSuperReadOnlyToggles(name string) []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]bool(nil), f.superReadOnlyToggles[name]...)
 }
 
 func (f *mockOpFactory) setUserAuthPlugin(plugin string) {

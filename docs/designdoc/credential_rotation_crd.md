@@ -589,6 +589,14 @@ A cluster taken down after promotion does not corrupt the cycle in `AwaitingRoll
 
 A scale-**up** mid-cycle is also safe: a new instance clones an existing instance's data, including its password and dual-password state (see [Assumptions](#assumptions)). Both MySQL-side flows additionally re-read the live replica count instead of trusting their tick's snapshot — RETAIN retains instances added mid-pass before it declares success (RETAIN step 3), and the discard flow re-verifies all instances before finishing (DISCARD step 3) — so an instance whose clone predates its donor's RETAIN or DISCARD cannot slip through.
 
+## Clusters with a Replication Source
+
+Cross-cluster replication (see [usage.md](../usage.md)) interacts with rotation in two directions, and both are safe by construction.
+
+**Rotating an intermediate cluster** (`spec.replicationSourceSecretName` set). Every instance, including the primary, runs with `super_read_only=1`, so the RETAIN and DISCARD handlers temporarily disable and re-enable it on the primary too (see `needsSuperReadOnlyOff`). The replication source Secret is not touched: it holds the donor accounts that the operator created on the donor (for example `clone-donor` / `clone-init`), which are **not** MOCO system users, so the rotation — which changes only the eight MOCO system users — cannot break the connection to the donor.
+
+**Rotating a donor cluster.** Downstream clusters connect with the operator-created donor accounts, not with the donor's MOCO system users, so rotating the donor does not invalidate their credentials. In addition, every rotation `ALTER USER` runs with `sql_log_bin=0`, so the donor's `mysql.user` changes never replicate into downstream clusters — each cluster keeps its own independent system-user passwords.
+
 ## Stopped Clustering or Reconciliation
 
 The [stop clustering / stop reconciliation feature](../usage.md#stop-clustering-and-reconciliation) also pauses a rotation in flight. A pause keeps the current phase (it is not `Blocked`); the Reconciler emits a `RotationPaused` Warning Event and sets `status.message` to name the blocking annotation, so the pause stays visible after the Event expires.

@@ -1568,6 +1568,87 @@ var _ = Describe("manager", func() {
 		Expect(of.getRotatedUsers(cluster.PodHostname(0))).NotTo(ContainElement(constants.AdminUser))
 	})
 
+	It("should rotate an intermediate cluster, toggling super_read_only on the primary", func() {
+		testSetupResources(ctx, 1, "source")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		// An intermediate cluster becomes healthy only after cloning from
+		// the external donor.
+		sourceSecret := &corev1.Secret{}
+		sourceSecret.Namespace = "test"
+		sourceSecret.Name = "source"
+		sourceSecret.Data = map[string][]byte{
+			constants.CloneSourceHostKey:         []byte("external"),
+			constants.CloneSourcePortKey:         []byte("3306"),
+			constants.CloneSourceUserKey:         []byte("external-donor"),
+			constants.CloneSourcePasswordKey:     []byte("p1"),
+			constants.CloneSourceInitUserKey:     []byte("external-init"),
+			constants.CloneSourceInitPasswordKey: []byte("init"),
+		}
+		Expect(k8sClient.Create(ctx, sourceSecret)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "00000000-0000-4000-8000-000000000008"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		setApplyingRetainState(cr)
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhasePromoting))
+		}).Should(Succeed())
+
+		// RETAIN ran for every user on the intermediate primary.
+		Expect(of.getRotatedUsers(cluster.PodHostname(0))).To(HaveLen(len(constants.MocoUsers)))
+
+		// The intermediate primary runs with super_read_only=1, so the
+		// handler must have disabled it for the ALTER USER statements and
+		// restored it afterwards. Nothing else in this scenario ever
+		// disables super_read_only on an intermediate primary.
+		toggles := of.getSuperReadOnlyToggles(cluster.PodHostname(0))
+		Expect(toggles).To(ContainElement(false), "RETAIN must disable super_read_only on the intermediate primary")
+		Expect(toggles[len(toggles)-1]).To(BeTrue(), "super_read_only must be restored afterwards")
+	})
+
 	It("should skip DISCARD for users without retained password (partial retry)", func() {
 		testSetupResources(ctx, 1, "")
 
