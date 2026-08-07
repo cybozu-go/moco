@@ -425,7 +425,7 @@ Before anything else — **including every status write below** — the handler 
 
 Triggered on a ClusterManager tick when the phase is `ApplyingRetain`. Pre-checks, in order:
 
-1. The controller Secret must hold this cycle's `*_PENDING` keys. Not yet written → wait for the Reconciler. **Already promoted for this rotationID** → the Secret and the phase contradict each other (manual tampering): set phase `Failed` with a message and emit `RotationFailed` on the CR.
+1. The controller Secret must hold this cycle's `*_PENDING` keys. The seed handler stages them before it sets `ApplyingRetain`, so a **clean** Secret (read uncached) means the staged passwords were lost — after ruling out a stale cached CR with an uncached re-read, set phase `Failed` with a message and emit `RotationFailed` on the CR. **Already promoted for this rotationID** → the Secret and the phase contradict each other (manual tampering): `Failed` in the same way.
 2. If the cluster runs no mysqld instances (0 replicas or offline): emit a `RotationBlocked` Warning Event on the MySQLCluster and set phase `Blocked` — see [Clusters Without Running Instances](#clusters-without-running-instances-replicas0-or-offline).
 
 | # | Action | Persistence |
@@ -554,7 +554,7 @@ The phase turns `Failed` when a controller detects a state it must not repair on
 |---|---|---|
 | seed | `spec.discard: true` before the window ever opened (webhook bypass) | delete the CR, create a normal one |
 | seed | `*_OLD` residue from an abandoned earlier cycle | [Leftover Old Passwords](#leftover-old-passwords-abandoned-cycle-after-promotion) |
-| seed / `Promoting` / `Finalizing` | partial key group, `ROTATION_ID` mismatch, or staged state lost (hand-edited or restored Secret) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
+| seed / `ApplyingRetain` / `Promoting` / `Finalizing` | partial key group, `ROTATION_ID` mismatch, or staged state lost (hand-edited or restored Secret) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | `ApplyingRetain` | Secret already promoted for this rotationID (contradicts the phase) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | `ApplyingDiscard` | Secret not in the promoted state (cannot prove current = promoted) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | `ApplyingRetain` / `AwaitingRollout` / `ApplyingDiscard` | a current password key is missing from the controller Secret (hand-edited or restored Secret) — retrying cannot repair this, so the controller fails the CR instead of requeuing forever | [Inconsistent Controller Secret](#inconsistent-controller-secret) |

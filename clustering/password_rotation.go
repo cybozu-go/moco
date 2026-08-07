@@ -107,8 +107,23 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	}
 	switch state {
 	case password.RotationSecretClean:
-		log.Info("waiting for the pending passwords to be staged", "rotationID", cr.Status.RotationID)
-		return false, nil
+		// The seed handler stages the pending passwords BEFORE it sets
+		// ApplyingRetain, and the Secret above was read uncached — so a
+		// clean Secret is not an in-flight state of this phase: the
+		// staged passwords were lost (manual edit or a restore from
+		// backup), and waiting can never make progress. Rule out the one
+		// benign explanation — a stale cached CR whose live phase has
+		// already moved past Finalizing's key cleanup — before failing.
+		freshCR := &mocov1beta2.CredentialRotation{}
+		if err := p.reader.Get(ctx, client.ObjectKeyFromObject(cr), freshCR); err != nil {
+			return false, fmt.Errorf("failed to re-read the CredentialRotation: %w", err)
+		}
+		if freshCR.UID != cr.UID || freshCR.Status.Phase != mocov1beta2.PhaseApplyingRetain {
+			log.Info("cached CredentialRotation was stale; skipping this tick")
+			return false, nil
+		}
+		return false, p.failRotation(ctx, cr, fmt.Sprintf(
+			"the staged pending passwords for rotationID %s were lost (the controller Secret is clean); follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", cr.Status.RotationID))
 	case password.RotationSecretPromoted:
 		// Promotion already happened for this rotationID, yet the phase is
 		// still ApplyingRetain. This combination is inconsistent — the

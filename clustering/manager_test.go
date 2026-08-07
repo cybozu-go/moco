@@ -1377,6 +1377,65 @@ var _ = Describe("manager", func() {
 		Expect(users).NotTo(ContainElement(constants.AdminUser))
 	})
 
+	It("should fail the rotation when the staged pending passwords were lost", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// A clean controller Secret (no staged pending keys) while the CR
+		// says ApplyingRetain: the staged passwords were lost after the
+		// seed. Waiting can never make progress.
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		setApplyingRetainState(cr)
+		cr.Status.RotationID = "00000000-0000-4000-8000-000000000007"
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseFailed))
+			g.Expect(cr.Status.Message).To(ContainSubstring("were lost"))
+		}).Should(Succeed())
+
+		// RETAIN never ran.
+		Expect(of.getRotatedUsers(cluster.PodHostname(0))).To(BeEmpty())
+	})
+
 	It("should fail the rotation when the controller Secret's current passwords are unreadable", func() {
 		testSetupResources(ctx, 1, "")
 
