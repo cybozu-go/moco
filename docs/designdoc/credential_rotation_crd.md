@@ -559,9 +559,10 @@ The phase turns `Failed` when a controller detects a state it must not repair on
 | seed / `Promoting` / `Finalizing` | partial key group, `ROTATION_ID` mismatch, or staged state lost (hand-edited or restored Secret) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | `ApplyingRetain` | Secret already promoted for this rotationID (contradicts the phase) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | `ApplyingDiscard` | Secret not in the promoted state (cannot prove current = promoted) | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
+| `ApplyingRetain` / `AwaitingRollout` / `ApplyingDiscard` | a current password key is missing from the controller Secret (hand-edited or restored Secret) — retrying cannot repair this, so it must not requeue forever | [Inconsistent Controller Secret](#inconsistent-controller-secret) |
 | any | the CR is stale (leftover from a deleted cluster; see below) | delete the CR |
 
-Detection is scoped to the **bookkeeping keys**: tampering with the controller Secret's *current* keys cannot be detected (MySQL stores only hashes), and its remedy is the [reset procedure](#how-to-reset-mysql-passwords), not this state machine.
+Detection covers the **bookkeeping keys** and the **presence** of the current password keys. A changed *value* of a current key cannot be detected (MySQL stores only hashes), and its remedy is the [reset procedure](#how-to-reset-mysql-passwords), not this state machine.
 
 A `Failed` CR:
 

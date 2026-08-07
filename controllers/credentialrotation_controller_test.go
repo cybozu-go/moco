@@ -518,6 +518,34 @@ var _ = Describe("CredentialRotation reconciler", func() {
 		}).Should(Equal(string(mocov1beta2.PhaseAwaitingDiscard)))
 	})
 
+	It("should fail in AwaitingRollout when the controller Secret loses a current password key", func() {
+		cluster := startRotationToApplyingRetain(ctx)
+		Eventually(func() error { return simulateRetainDone(ctx) }).Should(Succeed())
+
+		// Wait until the promotion moved the CR past Promoting.
+		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseAwaitingRollout)))
+
+		// Hand-edit the controller Secret: drop a current password key.
+		// Retrying cannot repair this, so the CR must turn Failed instead
+		// of requeuing forever.
+		Eventually(func() error {
+			controllerSecret := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{
+				Namespace: testMocoSystemNamespace,
+				Name:      cluster.ControllerSecretName(),
+			}, controllerSecret); err != nil {
+				return err
+			}
+			delete(controllerSecret.Data, password.AdminPasswordKey)
+			return k8sClient.Update(ctx, controllerSecret)
+		}).Should(Succeed())
+
+		Eventually(func() string { return crPhase(ctx) }).Should(Equal(string(mocov1beta2.PhaseFailed)))
+		cr, err := getCR(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status.Message).To(ContainSubstring("Inconsistent Controller Secret"))
+	})
+
 	It("should fail at seed on *_OLD residue in the controller secret", func() {
 		cluster := testNewMySQLCluster("test")
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())

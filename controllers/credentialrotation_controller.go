@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -49,6 +50,12 @@ const (
 	// view of the StatefulSet, which does not declare the rotation annotation.
 	credRotationFieldManager = "moco-credential-rotation"
 )
+
+// errCorruptControllerSecret marks a controller Secret whose current
+// password keys cannot be read (manual edit or a restore from backup).
+// Retrying cannot repair it, so callers turn it into a terminal Failed
+// phase instead of requeuing forever.
+var errCorruptControllerSecret = errors.New("the controller Secret is missing current password keys")
 
 // CredentialRotationReconciler reconciles a CredentialRotation object
 type CredentialRotationReconciler struct {
@@ -345,6 +352,15 @@ func (r *CredentialRotationReconciler) handleAwaitingRollout(ctx context.Context
 
 	caughtUp, err := r.distributionCaughtUp(ctx, cluster)
 	if err != nil {
+		// Retrying cannot repair an unreadable controller Secret (a
+		// current password key is missing — manual edit or a restore from
+		// backup); fail with the recovery procedure like every other
+		// controller-Secret inconsistency, so waiters on the Finished
+		// condition do not hang forever.
+		if errors.Is(err, errCorruptControllerSecret) {
+			return r.fail(ctx, cr, fmt.Sprintf(
+				"the controller Secret's current passwords are unreadable after promotion: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
+		}
 		return ctrl.Result{}, err
 	}
 	if !caughtUp {
@@ -640,6 +656,20 @@ func (r *CredentialRotationReconciler) distributionCaughtUp(ctx context.Context,
 		return false, fmt.Errorf("failed to get controller secret: %w", err)
 	}
 
+	// Validate the controller Secret's current keys before any content
+	// comparison: CurrentPasswordsMatch reports a missing key as a plain
+	// mismatch, which would requeue forever instead of surfacing the
+	// corruption. NewMySQLPasswordFromSecret validates only the version
+	// annotation; CurrentKeyMap validates that every current key is
+	// present.
+	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
+	if err == nil {
+		_, err = password.CurrentKeyMap(controllerSecret)
+	}
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", errCorruptControllerSecret, err)
+	}
+
 	userSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Namespace: cluster.Namespace,
@@ -654,10 +684,6 @@ func (r *CredentialRotationReconciler) distributionCaughtUp(ctx context.Context,
 		return false, nil
 	}
 
-	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
-	if err != nil {
-		return false, fmt.Errorf("failed to read current passwords: %w", err)
-	}
 	expectedMyCnf := passwd.ToMyCnfSecret()
 	mycnfSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{

@@ -133,9 +133,18 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		return false, nil
 	}
 
+	// An unreadable current password set cannot be repaired by retrying
+	// (manual edit or a restore from backup), so fail the CR like every
+	// other controller-Secret inconsistency. NewMySQLPasswordFromSecret
+	// validates only the version annotation; CurrentKeyMap validates that
+	// every current key is present.
 	currentPasswd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
+	if err == nil {
+		_, err = password.CurrentKeyMap(controllerSecret)
+	}
 	if err != nil {
-		return false, err
+		return false, p.failRotation(ctx, cr, fmt.Sprintf(
+			"the controller Secret's current passwords are unreadable during RETAIN: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
 	}
 
 	// Pre-check: verify no instance has stale dual passwords from outside
@@ -271,14 +280,19 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 	// Connect with the current (new) password. DISCARD removes the
 	// secondary (old) password; the current password is the primary and
 	// is unaffected before, during, and after DISCARD.
+	// An unreadable current password set cannot be repaired by retrying
+	// (manual edit or a restore from backup), so fail the CR like every
+	// other controller-Secret inconsistency.
 	currentPasswd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
 	if err != nil {
-		return false, err
+		return false, p.failRotation(ctx, cr, fmt.Sprintf(
+			"the controller Secret's current passwords are unreadable during DISCARD: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
 	}
 
 	currentMap, err := password.CurrentKeyMap(controllerSecret)
 	if err != nil {
-		return false, err
+		return false, p.failRotation(ctx, cr, fmt.Sprintf(
+			"the controller Secret's current passwords are unreadable during DISCARD: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
 	}
 
 	primaryIndex := cluster.Status.CurrentPrimaryIndex

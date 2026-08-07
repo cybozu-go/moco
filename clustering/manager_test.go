@@ -1377,6 +1377,68 @@ var _ = Describe("manager", func() {
 		Expect(users).NotTo(ContainElement(constants.AdminUser))
 	})
 
+	It("should fail the rotation when the controller Secret's current passwords are unreadable", func() {
+		testSetupResources(ctx, 1, "")
+
+		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil), "test")
+		defer cm.StopAll()
+
+		cluster, err := testGetCluster(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		cm.Update(client.ObjectKeyFromObject(cluster), "test")
+
+		Eventually(func(g Gomega) {
+			cluster, err = testGetCluster(ctx)
+			g.Expect(err).NotTo(HaveOccurred())
+			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+		}).Should(Succeed())
+
+		// A hand-edited controller Secret: the pending set is staged, but a
+		// current password key was removed. Retrying cannot repair this.
+		controllerSecret := mysqlPassword.ToSecret()
+		controllerSecret.Namespace = "test"
+		controllerSecret.Name = cluster.ControllerSecretName()
+		rotationID := "00000000-0000-4000-8000-000000000006"
+		_, err = password.SetPendingPasswords(controllerSecret, rotationID)
+		Expect(err).NotTo(HaveOccurred())
+		delete(controllerSecret.Data, password.AdminPasswordKey)
+		err = k8sClient.Create(ctx, controllerSecret)
+		Expect(err).NotTo(HaveOccurred())
+
+		cr := &mocov1beta2.CredentialRotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "test",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: mocov1beta2.GroupVersion.String(),
+					Kind:       "MySQLCluster",
+					Name:       cluster.Name,
+					UID:        cluster.UID,
+				}},
+			},
+			Spec: mocov1beta2.CredentialRotationSpec{},
+		}
+		err = k8sClient.Create(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+		setApplyingRetainState(cr)
+		cr.Status.RotationID = rotationID
+		err = k8sClient.Status().Update(ctx, cr)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func(g Gomega) {
+			cr := &mocov1beta2.CredentialRotation{}
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cr)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(cr.Status.Phase).To(Equal(mocov1beta2.PhaseFailed))
+			g.Expect(cr.Status.Message).To(ContainSubstring("Inconsistent Controller Secret"))
+		}).Should(Succeed())
+
+		// RETAIN never ran.
+		Expect(of.getRotatedUsers(cluster.PodHostname(0))).To(BeEmpty())
+	})
+
 	It("should not skip RETAIN for a dual password created outside the cycle", func() {
 		testSetupResources(ctx, 1, "")
 
