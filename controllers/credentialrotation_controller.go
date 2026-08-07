@@ -60,6 +60,10 @@ var errCorruptControllerSecret = errors.New("the controller Secret is missing cu
 // CredentialRotationReconciler reconciles a CredentialRotation object
 type CredentialRotationReconciler struct {
 	client.Client
+	// APIReader reads directly from the API server, bypassing the cache.
+	// Used only where a cached NotFound must not be treated as
+	// authoritative. Defaulted from the manager in SetupWithManager.
+	APIReader               client.Reader
 	Scheme                  *runtime.Scheme
 	Recorder                record.EventRecorder
 	SystemNamespace         string
@@ -111,6 +115,16 @@ func (r *CredentialRotationReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// for. Writing the terminal status is not adoption: no
 			// ownerReference is added and no rotation action runs.
 			if len(cr.OwnerReferences) == 0 && !cr.IsTerminal() {
+				// A cached NotFound is not authoritative: the informer can
+				// lag a just-created cluster, and failing here would
+				// permanently block the very first rotation for it.
+				// Confirm the deletion with an uncached read.
+				if err := r.APIReader.Get(ctx, req.NamespacedName, &mocov1beta2.MySQLCluster{}); err == nil {
+					// The cluster exists; retry once the cache caught up.
+					return ctrl.Result{RequeueAfter: credRotationRequeueInterval}, nil
+				} else if !apierrors.IsNotFound(err) {
+					return ctrl.Result{}, err
+				}
 				log.Info("marking a CredentialRotation orphaned before adoption as Failed")
 				mocoevent.StaleCredentialRotation.Emit(cr, r.Recorder)
 				return ctrl.Result{}, r.markFailed(ctx, cr,
@@ -807,6 +821,9 @@ func hasOwnerReference(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.
 }
 
 func (r *CredentialRotationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.APIReader == nil {
+		r.APIReader = mgr.GetAPIReader()
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta2.CredentialRotation{}).
 		// Wake the reconciler when the target MySQLCluster changes — most
