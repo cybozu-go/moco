@@ -26,6 +26,11 @@ import (
 // appearing faster than they can be discarded.
 const maxDiscardReverifyRounds = 3
 
+// maxRetainReverifyRounds bounds the scale-up catch-up loop of RETAIN in
+// the same way: each round retains only the instances added since the
+// previous one, so two rounds converge unless the cluster keeps growing.
+const maxRetainReverifyRounds = 3
+
 // handlePasswordRotation dispatches to the appropriate handler based on the
 // CredentialRotation CR's phase. It returns (true, nil) when progress was
 // made and the caller should redo the loop, or (false, nil) when no
@@ -195,25 +200,53 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		}
 	}
 
-	// Execute ALTER USER RETAIN on all instances.
+	// Execute ALTER USER RETAIN on all instances. The replica count is
+	// re-read from the live cluster after every pass: a scale-up while
+	// this loop runs can add an instance whose clone finished before its
+	// donor was retained, and promoting without retaining that instance
+	// would break the core invariant on it. An instance that is added but
+	// not yet ready simply fails the connection, which aborts this tick
+	// and retries later — all-or-nothing is preserved.
 	pendingMap, err := password.PendingKeyMap(controllerSecret)
 	if err != nil {
 		return false, err
 	}
 	primaryIndex := cluster.Status.CurrentPrimaryIndex
 
-	for idx := range replicas {
-		op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
-		if err != nil {
-			return false, err
+	retained := 0
+	for round := 0; ; round++ {
+		if round >= maxRetainReverifyRounds {
+			return false, fmt.Errorf("the cluster kept growing during RETAIN for %d rounds", maxRetainReverifyRounds)
 		}
 
-		if err := rotateInstanceUsers(ctx, op, pendingMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster)); err != nil {
+		for idx := retained; idx < replicas; idx++ {
+			op, err := p.dbf.New(ctx, cluster, currentPasswd, idx)
+			if err != nil {
+				return false, err
+			}
+
+			if err := rotateInstanceUsers(ctx, op, pendingMap, idx, needsSuperReadOnlyOff(idx, primaryIndex, cluster)); err != nil {
+				_ = op.Close()
+				return false, err
+			}
 			_ = op.Close()
-			return false, err
+			log.Info("completed ALTER USER RETAIN for instance", "instance", idx, "rotationID", cr.Status.RotationID)
 		}
-		_ = op.Close()
-		log.Info("completed ALTER USER RETAIN for instance", "instance", idx, "rotationID", cr.Status.RotationID)
+		retained = replicas
+
+		freshCluster := &mocov1beta2.MySQLCluster{}
+		if err := p.client.Get(ctx, client.ObjectKey{
+			Namespace: p.name.Namespace,
+			Name:      p.name.Name,
+		}, freshCluster); err != nil {
+			return false, fmt.Errorf("failed to re-read the cluster after RETAIN: %w", err)
+		}
+		if int(freshCluster.Spec.Replicas) <= retained {
+			break
+		}
+		log.Info("cluster was scaled up during RETAIN; retaining the new instances",
+			"from", retained, "to", freshCluster.Spec.Replicas, "rotationID", cr.Status.RotationID)
+		replicas = int(freshCluster.Spec.Replicas)
 	}
 
 	log.Info("applied ALTER USER RETAIN for all instances", "rotationID", cr.Status.RotationID)
