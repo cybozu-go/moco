@@ -202,13 +202,12 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 	// Handle credential rotation if a CredentialRotation CR exists.
 	// Errors are non-fatal: rotation failures must not block core clustering
 	// operations (failover, switchover) that maintain availability.
+	// The error is also mirrored into the CR's status.message by
+	// handlePasswordRotation, which holds the CR with the right UID.
 	if redo, err := p.handlePasswordRotation(ctx, ss); err != nil {
 		log := logFromContext(ctx)
 		log.Error(err, "password rotation error (will retry next cycle)")
 		event.PasswordRotationError.Emit(ss.Cluster, p.recorder, err)
-		// Mirror the error into the CR's status.message so the stall stays
-		// visible after the Event expires (best-effort).
-		p.mirrorRotationError(ctx, err)
 	} else if redo {
 		return true, nil
 	}

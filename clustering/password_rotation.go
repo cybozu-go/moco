@@ -57,16 +57,26 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
 		return false, nil
 	}
 
+	var redo bool
 	switch cr.Status.Phase {
 	case mocov1beta2.PhaseApplyingRetain:
-		return p.handleApplyingRetain(ctx, ss, cr)
+		redo, err = p.handleApplyingRetain(ctx, ss, cr)
 	case mocov1beta2.PhaseApplyingDiscard:
-		return p.handleApplyingDiscard(ctx, ss, cr)
+		redo, err = p.handleApplyingDiscard(ctx, ss, cr)
 	default:
 		// Blocked resumes are the Reconciler's job; every other phase is
 		// not ours either.
 		return false, nil
 	}
+	if err != nil {
+		// Mirror the error into THIS CR's status.message (the UID guard in
+		// updateCRStatus prevents writing an old cycle's error onto a CR
+		// recreated under the same name), so the stall stays visible after
+		// the Events expire. Best-effort.
+		p.mirrorCRMessage(ctx, cr, fmt.Sprintf(
+			"Rotation cannot progress and retries every tick: %v. See the PasswordRotationError Events on the MySQLCluster for details.", err))
+	}
+	return redo, err
 }
 
 // crBelongsToCluster reports whether cr carries an ownerReference whose UID
@@ -447,20 +457,6 @@ func (p *managerProcess) failRotation(ctx context.Context, cr *mocov1beta2.Crede
 	log.Info("rotation failed", "message", message)
 	event.RotationFailed.Emit(cr, p.recorder, message)
 	return nil
-}
-
-// mirrorRotationError fetches the CR and mirrors a rotation error into its
-// status.message, with less detail than the MySQLCluster Event but durable.
-func (p *managerProcess) mirrorRotationError(ctx context.Context, rotationErr error) {
-	cr := &mocov1beta2.CredentialRotation{}
-	if err := p.client.Get(ctx, client.ObjectKey{
-		Namespace: p.name.Namespace,
-		Name:      p.name.Name,
-	}, cr); err != nil {
-		return
-	}
-	p.mirrorCRMessage(ctx, cr, fmt.Sprintf(
-		"Rotation cannot progress and retries every tick: %v. See the PasswordRotationError Events on the MySQLCluster for details.", rotationErr))
 }
 
 // mirrorCRMessage best-effort mirrors a wait reason into status.message so
