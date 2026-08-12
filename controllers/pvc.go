@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -15,12 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
-)
-
-var (
-	ErrReduceVolumeSize = errors.New("cannot reduce volume size")
 )
 
 // reconcilePVC syncs the PVC and volumeClaimTemplate labels and annotations and resizes the PVC as needed.
@@ -37,8 +33,6 @@ var (
 // The deletion and recreation of the StatefulSet are managed by reconcileV1StatefulSet().
 // Therefore, this function should be called before reconcileV1StatefulSet().
 func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
-	log := crlog.FromContext(ctx)
-
 	var sts appsv1.StatefulSet
 	err := r.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.PrefixedName()}, &sts)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -55,14 +49,7 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, cluster *moco
 		return nil
 	}
 
-	resizeTarget, ok := r.needResizePVC(cluster, &sts)
-	if !ok {
-		return nil
-	}
-
-	log.Info("Starting PVC resize")
-
-	resized, err := r.resizePVCs(ctx, cluster, &sts, resizeTarget)
+	resized, err := r.resizePVCs(ctx, cluster, &sts)
 	if err != nil {
 		metrics.VolumeResizedErrorTotal.WithLabelValues(cluster.Name, cluster.Namespace).Inc()
 		return err
@@ -77,11 +64,14 @@ func (r *MySQLClusterReconciler) reconcilePVC(ctx context.Context, cluster *moco
 	return nil
 }
 
-func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet, resizeTarget map[string]corev1.PersistentVolumeClaim) (map[string]corev1.PersistentVolumeClaim, error) {
+func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, error) {
 	log := crlog.FromContext(ctx)
 
 	newSizes := make(map[string]*resource.Quantity)
 	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
+		if pvc.Spec.Resources == nil || pvc.Spec.Resources.Requests == nil {
+			continue
+		}
 		newSize := pvc.Spec.Resources.Requests.Storage()
 		if newSize == nil {
 			continue
@@ -89,18 +79,13 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 		newSizes[pvc.Name] = newSize
 	}
 
-	var replicas int32
-	if sts.Spec.Replicas == nil {
-		replicas = 1
-	} else {
-		replicas = *sts.Spec.Replicas
-	}
-	pvcsToKeep := make(map[string]*resource.Quantity, replicas*int32(len(resizeTarget)))
-	for _, pvc := range resizeTarget {
-		for i := int32(0); i < replicas; i++ {
-			name := fmt.Sprintf("%s-%s-%d", pvc.Name, sts.Name, i)
-			newSize := newSizes[pvc.Name]
-			pvcsToKeep[name] = newSize
+	replicas := ptr.Deref(sts.Spec.Replicas, 1)
+
+	pvcSizes := make(map[string]*resource.Quantity)
+	for templateName, size := range newSizes {
+		for ordinal := range replicas {
+			name := fmt.Sprintf("%s-%s-%d", templateName, sts.Name, ordinal)
+			pvcSizes[name] = size
 		}
 	}
 
@@ -121,8 +106,15 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 	resizedPVC := make(map[string]corev1.PersistentVolumeClaim)
 
 	for _, pvc := range pvcs.Items {
-		newSize, ok := pvcsToKeep[pvc.Name]
+		newSize, ok := pvcSizes[pvc.Name]
 		if !ok {
+			continue
+		}
+
+		currentSize := pvc.Spec.Resources.Requests.Storage()
+		// If the current size is greater than or equal to the new size, skip resizing.
+		// If the current size is nil, it means that the PVC has no size set and needs to be resized.
+		if currentSize != nil && currentSize.Cmp(*newSize) >= 0 {
 			continue
 		}
 
@@ -131,77 +123,28 @@ func (r *MySQLClusterReconciler) resizePVCs(ctx context.Context, cluster *mocov1
 			return resizedPVC, fmt.Errorf("failed to check if volume expansion is supported: %w", err)
 		}
 		if !supported {
-			log.Info("StorageClass used by PVC does not support volume expansion, skipped", "storageClassName", *pvc.Spec.StorageClassName, "pvcName", pvc.Name)
+			storageClassName := ptr.Deref(pvc.Spec.StorageClassName, "")
+			log.Info("StorageClass used by PVC does not support volume expansion, skipped", "storageClassName", storageClassName, "pvcName", pvc.Name)
 			continue
 		}
 
-		switch i := pvc.Spec.Resources.Requests.Storage().Cmp(*newSize); i {
-		case 0: // volume size is equal
-			continue
-		case 1: // current volume size is greater than new size
-			// The size of the Persistent Volume Claims (PVC) cannot be reduced.
-			// Although MOCO permits the reduction of PVC, an automatic resize is not performed.
-			// An error arises if a PVC involving reduction is passed, as it's unexpected.
-			return resizedPVC, fmt.Errorf("failed to resize pvc %q, want size: %s, deployed size: %s: %w", pvc.Name, newSize.String(), pvc.Spec.Resources.Requests.Storage().String(), ErrReduceVolumeSize)
-		case -1: // current volume size is smaller than new size
-			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
+		log.Info("Starting PVC resize", "pvcName", pvc.Name, "currentSize", currentSize.String(), "newSize", newSize.String())
 
-			if err := r.Update(ctx, &pvc); err != nil {
-				return resizedPVC, fmt.Errorf("failed to update PVC: %w", err)
-			}
-
-			log.Info("PVC resized", "pvcName", pvc.Name)
-
-			resizedPVC[pvc.Name] = pvc
+		if pvc.Spec.Resources.Requests == nil {
+			pvc.Spec.Resources.Requests = corev1.ResourceList{}
 		}
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *newSize
+
+		if err := r.Update(ctx, &pvc); err != nil {
+			return resizedPVC, fmt.Errorf("failed to update PVC: %w", err)
+		}
+
+		log.Info("PVC resized", "pvcName", pvc.Name)
+
+		resizedPVC[pvc.Name] = pvc
 	}
 
 	return resizedPVC, nil
-}
-
-func (*MySQLClusterReconciler) needResizePVC(cluster *mocov1beta2.MySQLCluster, sts *appsv1.StatefulSet) (map[string]corev1.PersistentVolumeClaim, bool) {
-	if len(sts.Spec.VolumeClaimTemplates) == 0 {
-		return nil, false
-	}
-
-	pvcSet := make(map[string]corev1.PersistentVolumeClaim, len(sts.Spec.VolumeClaimTemplates))
-	for _, pvc := range sts.Spec.VolumeClaimTemplates {
-		pvcSet[pvc.Name] = pvc
-	}
-
-	resizeTarget := make(map[string]corev1.PersistentVolumeClaim)
-
-	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
-		if _, ok := pvcSet[pvc.Name]; !ok {
-			continue
-		}
-
-		current := pvcSet[pvc.Name]
-
-		deployedSize := current.Spec.Resources.Requests.Storage()
-		wantSize := pvc.Spec.Resources.Requests.Storage()
-
-		switch i := deployedSize.Cmp(wantSize.DeepCopy()); i {
-		case 0: // volume size is equal
-			continue
-		case 1: // volume size is greater
-			// Due to the lack of support for volume size reduction, resizing will not be executed if it implies a smaller size.
-			// It's important to highlight that this does not induce an error.
-			// Instead, the recreation of the StatefulSet will be managed in the reconcileV1StatefulSet() operation, which follows this one.
-			// Hence, the execution flow remains uninterrupted.
-			// ref: docs/designdoc/support_reduce_volume_size.md
-			continue
-		case -1: // volume size is smaller
-			resizeTarget[pvc.Name] = pvcSet[pvc.Name]
-			continue
-		}
-	}
-
-	if len(resizeTarget) == 0 {
-		return nil, false
-	}
-
-	return resizeTarget, true
 }
 
 func (r *MySQLClusterReconciler) isVolumeExpansionSupported(ctx context.Context, pvc *corev1.PersistentVolumeClaim) (bool, error) {
