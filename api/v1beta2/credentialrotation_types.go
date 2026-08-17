@@ -54,10 +54,11 @@ const (
 	// keys from the controller Secret.
 	PhaseFinalizing RotationPhase = "Finalizing"
 
-	// PhaseBlocked — the cluster was scaled to 0 replicas mid-cycle. The
-	// cycle resumes automatically on scale-up; status.message records
-	// where it stopped. Pauses caused by the stop annotations keep their
-	// current phase instead of entering Blocked.
+	// PhaseBlocked — the cluster stopped running mysqld instances
+	// mid-cycle (scaled to 0 replicas, or spec.offline). The cycle
+	// resumes automatically when the cluster runs again; status.message
+	// records where it stopped. Pauses caused by the stop annotations
+	// keep their current phase instead of entering Blocked.
 	PhaseBlocked RotationPhase = "Blocked"
 
 	// PhaseSucceeded — the full cycle completed. The controller deletes
@@ -157,8 +158,8 @@ const (
 	ReasonPending = "Pending"
 
 	// ReasonBlocked — DiscardReady is False because the discard cannot
-	// progress (the cluster was scaled to 0 replicas after spec.discard
-	// was set).
+	// progress (the cluster stopped running mysqld instances — 0
+	// replicas or spec.offline — after spec.discard was set).
 	ReasonBlocked = "Blocked"
 
 	// ReasonRetained — DualPassword is True: MySQL is holding a

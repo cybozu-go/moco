@@ -71,7 +71,7 @@ Fetch the credential information of a specified user
 Rotate system user passwords for a MOCO cluster.
 The command creates a single-use CredentialRotation custom resource (CR); the creation itself starts the rotation cycle.
 
-If a CredentialRotation already occupies the name, the command refuses and explains its state:
+If a CredentialRotation already occupies the name, the command refuses and explains the existing object's state:
 
 - a cycle in flight — wait for it, or delete the CR to abandon it,
 - a `Succeeded` object waiting for its automatic TTL deletion — delete it to rotate again immediately,
@@ -91,10 +91,10 @@ Follow the rotation with `kubectl get credentialrotation CLUSTER_NAME -w` (the `
 Discard old passwords after a successful credential rotation.
 Sets `spec.discard: true` on the CredentialRotation CR.
 
-This can only be run while the verification window is open (`DiscardReady=True`; the post-promotion rollout has settled).
+This can only be run while the verification window is open (`DiscardReady=True`; the rolling restart of the rotate phase has settled).
 After the discard completes, the CR reaches the `Succeeded` phase and is deleted automatically after a TTL (controller flag `--credential-rotation-ttl`, default 1h). Wait for completion with `kubectl wait credentialrotation CLUSTER_NAME --for=condition=Finished` and then check that `status.phase` is `Succeeded`.
 
-The same safety checks as `rotate-credential` apply, with one exception: the command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`, but stopped reconciliation does not block it: the discard phase does not depend on reconciliation, because the new passwords were already distributed before the CR reached the verification window.
+The command refuses to run when the cluster is offline, when clustering is stopped, or when the cluster is not `Healthy`. Unlike `rotate-credential`, stopped reconciliation does not block it: the discard phase does not depend on reconciliation, because the new passwords were already distributed before the CR reached the verification window.
 
 > **Note:** the CredentialRotation CR is an operation object driven by these commands. Do not manage it with GitOps tools — a sync would recreate the automatically deleted object and trigger an unrequested rotation.
 

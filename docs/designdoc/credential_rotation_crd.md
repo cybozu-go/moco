@@ -6,7 +6,7 @@ MOCO manages eight MySQL users: `moco-admin`, `moco-agent`, `moco-repl`, `moco-c
 
 > The controller Secret is distinct from the *replication source Secret* (`spec.replicationSourceSecretName`), which holds donor connection info for an intermediate-primary cluster. This document only uses "controller Secret" for the credential Secret.
 
-If a credential leak occurs, the only recovery option today is recreating the cluster. This design introduces an in-place rotation mechanism that avoids downtime, using a dedicated **CredentialRotation** CRD with its own controller. The new kind starts at `v1beta2` to match the rest of the API group. It has no older versions of its own, and giving it a different version from the group's existing one would only cause confusion.
+If a credential leak occurs, the only recovery option today is recreating the cluster. This design introduces an in-place rotation mechanism that avoids downtime, using a dedicated **CredentialRotation** CRD with its own controller. The new kind starts at `v1beta2` to match the rest of the API group. It has no older versions of its own, and starting it at a different version from the rest of the group would only cause confusion.
 
 ## Why a Dedicated CRD?
 
@@ -54,7 +54,7 @@ The whole design rests on a single invariant:
 
 New passwords are staged as `*_PENDING` keys, applied to every instance with `ALTER USER ... RETAIN CURRENT PASSWORD`, and **promoted to current immediately after RETAIN succeeds on all instances** — at that moment every instance accepts both old and new, so making the new password canonical is safe. Distribution to per-namespace Secrets then happens through the normal `MySQLCluster` reconcile path, which always distributes current passwords. See [The Core Invariant](#the-core-invariant) for why this ordering removes whole classes of failure modes.
 
-The CredentialRotation CR is **single-use**: one object represents one rotation. Creating it starts the rotation; setting `spec.discard: true` starts the discard; after the cycle completes, the controller deletes the object itself (after a TTL). A failed rotation stays as a `Failed` object until the operator removes it.
+The CredentialRotation CR is **single-use**: one object represents one rotation. Creating it starts the rotation; setting `spec.discard: true` starts the discard; after the cycle completes, the controller deletes the object automatically after a TTL. A failed rotation stays as a `Failed` object until the operator removes it.
 
 ```
   kubectl moco rotate-credential  =  create the CR
@@ -100,7 +100,7 @@ The CredentialRotation CR is **single-use**: one object represents one rotation.
                                         recovery procedure)
 ```
 
-> Notation: `DiscardReady→False/Pending` is short for setting the condition to `status: False` with `reason: Pending`. A "ClusterManager tick" is one pass of the per-cluster clustering loop, which runs every few seconds.
+> Notation: `DiscardReady→False/Pending` is short for setting the condition to `status: False` with `reason: Pending`. A "ClusterManager tick" is one pass of the per-cluster clustering loop, which runs on every `--check-interval` period (default 1 minute) and on every watch event for the cluster.
 
 State is exposed in two places:
 
@@ -193,7 +193,7 @@ Clients must treat the phase value set as **open**: new values may be added in f
 
 The **CredentialRotationReconciler** handles K8s resource operations: phase/condition transitions, controller Secret management (seed / promote / cleanup), StatefulSet rolling-restart annotation, distribution catch-up wait, StatefulSet rollout wait, TTL deletion of the completed CR, and resuming from `Blocked`.
 
-The **ClusterManager** handles DB operations: dual-password pre-checks, `ALTER USER RETAIN`, `DISCARD OLD PASSWORD`, auth plugin migration (with a temporary `super_read_only` toggle on the instances that run with it). It also writes the state that belongs to these DB operations: the `RETAIN_STARTED` marker in the controller Secret, the `DualPassword` condition, and the phase transitions out of its two phases (including `Blocked` and `Failed` when its pre-checks stop the flow).
+The **ClusterManager** handles DB operations: dual-password pre-checks, `ALTER USER RETAIN`, `DISCARD OLD PASSWORD`, auth plugin migration (with a temporary `super_read_only` toggle on the instances that run with it enabled). It also writes the state that belongs to these DB operations: the `RETAIN_STARTED` marker in the controller Secret, the `DualPassword` condition, and the phase transitions out of its two phases (including `Blocked` and `Failed` when its pre-checks stop the flow).
 
 The **MySQLClusterReconciler** distributes the controller Secret's current passwords to per-namespace Secrets — its normal job, unchanged by rotation.
 
@@ -266,7 +266,7 @@ CredentialRotation sets an ownerReference to the target MySQLCluster so that Kub
 | `status.completionTime` | metav1.Time | Set when the phase turns terminal. The TTL deadline is computed from it. |
 | `status.conditions` | `[]metav1.Condition` | See [Conditions](#conditions). |
 
-`spec.discard` is a bool rather than a `stage`-style enum on purpose: the spec has exactly one legal transition, and a two-value one-way flag cannot express an invalid request, while an enum would allow invalid values. The webhook admits the flip only while `DiscardReady=True`; this reads status during admission and is therefore best-effort against concurrent status writes, which is fine — the controllers re-check the actual state at execution time, so a stale admission decision can only delay the discard, never corrupt it.
+`spec.discard` is a bool rather than a `stage`-style enum on purpose: the spec has exactly one legal transition, and a two-value one-way flag cannot express an invalid request, while an enum would allow invalid values. The webhook admits the flip only while `DiscardReady=True`; this check reads status during admission and is therefore best-effort against concurrent status writes, which is fine — the controllers re-check the actual state at execution time, so a stale admission decision can only delay the discard, never corrupt it.
 
 The CRD enables the `status` subresource, so `metadata.generation` increments only on spec changes. Every status writer (Reconciler and ClusterManager) stamps `status.observedGeneration` and per-condition `observedGeneration` with the generation of the object it read, so kstatus-style tooling can tell whether the status reflects the latest spec.
 
@@ -286,7 +286,7 @@ The CRD enables the `status` subresource, so `metadata.generation` increments on
 | `Succeeded` | The full cycle completed. The controller deletes the CR after the TTL. | yes |
 | `Failed` | An unrecoverable inconsistency was detected (see [Failure Handling](#failure-handling)). The CR stays until the operator deletes it. | yes |
 
-The phase is persisted, not derived: whichever component performs a transition writes the new phase **in the same status update** as the conditions it changes, so a single read never sees the two disagree. The two writers protect their writes in different ways, matched to how long they hold a stale read. ClusterManager does long DB work between reading the CR and writing it, so it uses `retry.RetryOnConflict` with a fresh `Get`; after every fresh `Get` (including the first), it re-verifies the CR's **UID** and the transition's precondition, and aborts if either no longer holds — a retry must never apply a transition to a CR that was recreated under the same name, or to a phase that has already changed. The Reconciler writes with the plain optimistic concurrency of the object it read: a conflict fails the reconcile, and the automatic retry starts over from a fresh read, which re-establishes the same guarantees.
+The phase is persisted, not derived: whichever component performs a transition writes the new phase **in the same status update** as the conditions it changes, so a single read never sees the two disagree. The two writers protect their writes in different ways, matched to how long they hold a stale read. ClusterManager does long DB work between reading the CR and writing it, so it uses `retry.RetryOnConflict` with a fresh `Get`; after every fresh `Get` (including the first), it re-verifies the CR's **UID** and the transition's precondition, and aborts if either no longer holds — a retry must never apply a transition to a CR that was recreated under the same name, or after the phase has already changed. The Reconciler writes with the plain optimistic concurrency of the object it read: a conflict fails the reconcile, and the automatic retry starts over from a fresh read, which re-establishes the same guarantees.
 
 ### Conditions
 
@@ -425,14 +425,14 @@ Before anything else — **including every status write below** — the handler 
 
 Triggered on a ClusterManager tick when the phase is `ApplyingRetain`. Pre-checks, in order:
 
-1. The controller Secret must hold this cycle's `*_PENDING` keys. The seed handler stages them before it sets `ApplyingRetain`, so a **clean** Secret (read uncached) means the staged passwords were lost — after ruling out a stale cached CR with an uncached re-read, set phase `Failed` with a message and emit `RotationFailed` on the CR. **Already promoted for this rotationID** → the Secret and the phase contradict each other (manual tampering): `Failed` in the same way.
+1. The controller Secret must hold this cycle's `*_PENDING` keys. The seed handler stages them before it sets `ApplyingRetain`, so a **clean** Secret (read uncached) means the staged passwords were lost — after an uncached re-read of the CR rules out a stale cache, set phase `Failed` with a message and emit `RotationFailed` on the CR. **Already promoted for this rotationID** → the Secret and the phase contradict each other (manual tampering): `Failed` in the same way, including the stale-CR rule-out — the same Secret state also appears benignly when the cached CR lags a live phase that has already advanced past promotion.
 2. If the cluster runs no mysqld instances (0 replicas or offline): emit a `RotationBlocked` Warning Event on the MySQLCluster and set phase `Blocked` — see [Clusters Without Running Instances](#clusters-without-running-instances-replicas0-or-offline).
 
 | # | Action | Persistence |
 |---|---|---|
 | 1 | Pre-check: every instance is scanned for pre-existing dual passwords. Steps 1 and 2 are both skipped when the `RETAIN_STARTED` marker already holds this cycle's rotationID (crash recovery). | — |
 | 2 | Set `RETAIN_STARTED` marker (rotationID) in the controller Secret. | Secret.Update |
-| 3 | For each instance, connect with the current password. If the instance is a replica, or the intermediate primary when `spec.replicationSourceSecretName` is set, temporarily disable `super_read_only` (these instances run with it enabled) and re-enable it after the updates. Run `ALTER USER ... RETAIN CURRENT PASSWORD` for each user. A user that already has a dual password is **verified before it is skipped**: the handler confirms that the pending password authenticates for that user (a short per-user connection). If it does, this cycle's RETAIN already ran (crash retry) and the user is skipped; if it does not, the dual password came from outside the cycle — re-running RETAIN would drop the still-needed current password from the secondary slot, so the handler reports the error and names the recovery procedure instead. After each pass, the live replica count is re-read; instances added by a scale-up meanwhile are retained in another pass (bounded per tick), so the transition to `Promoting` is never written while an instance misses the pending passwords. | MySQL |
+| 3 | For each instance, connect with the current password. If the instance is a replica, or the intermediate primary when `spec.replicationSourceSecretName` is set, temporarily disable `super_read_only` (these instances run with it enabled) and re-enable it after the updates. Run `ALTER USER ... RETAIN CURRENT PASSWORD` for each user. A user that already has a dual password is **verified before it is skipped**: the handler confirms that the pending password authenticates for that user (a short per-user connection). If it does, this cycle's RETAIN already ran (crash retry) and the user is skipped; if it does not, the dual password came from outside the cycle — re-running RETAIN would drop the still-needed current password from the secondary slot, so the handler reports the error and names the recovery procedure instead. After each pass, the live replica count is re-read; instances added by a scale-up in the meantime get RETAIN applied in another pass (bounded per tick), so the transition to `Promoting` is never written while any instance still lacks the pending passwords. | MySQL |
 | 4 | Set `DualPassword=True` (`reason=Retained`) and phase `Promoting` in one status update. Emit `RetainApplied` Event on the MySQLCluster. | Status.Update |
 
 An unreachable instance aborts the loop for this tick; the flow retries on later ticks with no retry limit, and the failure is reported as a `PasswordRotationError` Warning Event on the MySQLCluster and mirrored into the CR's `status.message`.
@@ -500,7 +500,7 @@ Triggered when `spec.discard` is `true` and the phase is `AwaitingDiscard`, or `
 
 Triggered on a ClusterManager tick when the phase is `ApplyingDiscard`. (The atomic phase+condition write above guarantees the `DiscardStarted` Event and `DiscardReady=False` are already recorded — no extra handshake is needed.) Pre-checks, in order:
 
-1. The controller Secret must be in the **promoted** state for this rotationID (the `*_OLD` group with a matching `ROTATION_ID`, which stays in the Secret until `Finalizing`). Any other state — pending keys still present, or a Secret without bookkeeping keys (e.g. restored from a pre-rotation backup) — cannot prove that the current keys hold the promoted passwords. Running DISCARD would risk the core invariant, so: set phase `Failed` with a message and emit `RotationFailed` on the CR.
+1. The controller Secret must be in the **promoted** state for this rotationID (the `*_OLD` group with a matching `ROTATION_ID`, which stays in the Secret until `Finalizing`). With any other state — pending keys still present, or a Secret without bookkeeping keys (e.g. restored from a pre-rotation backup) — the controller cannot prove that the current keys hold the promoted passwords. Running DISCARD would risk the core invariant, so after an uncached re-read of the CR rules out a stale cache (a clean Secret also appears benignly when the cached CR lags a live phase that has already reached `Finalizing`, whose key cleanup ran in between): set phase `Failed` with a message and emit `RotationFailed` on the CR.
 2. If the cluster runs no mysqld instances (0 replicas or offline): emit a `DiscardBlocked` Warning Event on the MySQLCluster and set phase `Blocked` and `DiscardReady=False` (`reason=Blocked`); the discard resumes when the cluster runs again.
 
 | # | Action | Persistence |
@@ -587,7 +587,7 @@ A cluster without running instances stops rotation at three points:
 
 A cluster taken down after promotion does not corrupt the cycle in `AwaitingRollout`: a 0-Pod StatefulSet would pass the rollout checks trivially, so the handler holds the phase (step 2 of its table) instead of opening the verification window, and the webhook keeps rejecting the discard flip while nothing runs. In all of these paused states the cluster keeps working with the canonical current passwords.
 
-A scale-**up** mid-cycle is also safe: a new instance clones an existing instance's data, including its password and dual-password state (see [Assumptions](#assumptions)). Both MySQL-side flows additionally re-read the live replica count instead of trusting their tick's snapshot — RETAIN retains instances added mid-pass before it declares success (RETAIN step 3), and the discard flow re-verifies all instances before finishing (DISCARD step 3) — so an instance whose clone predates its donor's RETAIN or DISCARD cannot slip through.
+A scale-**up** mid-cycle is also safe: a new instance clones an existing instance's data, including its password and dual-password state (see [Assumptions](#assumptions)). Both MySQL-side flows additionally re-read the live replica count instead of trusting their tick's snapshot — the RETAIN flow covers instances added mid-pass before it declares success (RETAIN step 3), and the discard flow re-verifies all instances before finishing (DISCARD step 3) — so an instance whose clone predates its donor's RETAIN or DISCARD cannot slip through.
 
 ## Clusters with a Replication Source
 
@@ -599,7 +599,7 @@ Cross-cluster replication (see [usage.md](../usage.md)) interacts with rotation 
 
 ## Stopped Clustering or Reconciliation
 
-The [stop clustering / stop reconciliation feature](../usage.md#stop-clustering-and-reconciliation) also pauses a rotation in flight. A pause keeps the current phase (it is not `Blocked`); the Reconciler emits a `RotationPaused` Warning Event and sets `status.message` to name the blocking annotation, so the pause stays visible after the Event expires.
+The [stop clustering / stop reconciliation feature](../usage.md#stop-clustering-and-reconciliation) also pauses a rotation in flight. A pause keeps the current phase (the phase does not change to `Blocked`); the Reconciler emits a `RotationPaused` Warning Event and sets `status.message` to name the blocking annotation, so the pause stays visible after the Event expires.
 
 - With **reconciliation stopped**, `MySQLClusterReconciler` does not distribute the promoted passwords, so the cycle pauses in `AwaitingRollout` — but only while distribution has not finished yet. If the annotation is added after the promoted passwords were already distributed, the rest of the rollout continues and the cycle completes normally.
 - With **clustering stopped**, the ClusterManager loop is paused, so `ApplyingRetain` and `ApplyingDiscard` cannot run their SQL. In addition, stopping clustering sets the cluster's `Healthy` condition to `Unknown`, and the partition controller only advances a rolling restart while the cluster is `Healthy` — so a cycle in `AwaitingRollout` freezes too. The `RotationPaused` Event and `status.message` cover all three affected phases (`ApplyingRetain`, `AwaitingRollout`, and `ApplyingDiscard`).
@@ -755,13 +755,13 @@ If a `MySQLCluster` is deleted and another is recreated under the same name befo
 - the CR has **no** MySQLCluster ownerReference but its status is not empty — an orphan from `kubectl delete --cascade=orphan`, which strips ownerReferences, or
 - the CR has **no** MySQLCluster ownerReference and is **older than the live cluster** — it was created for a previous incarnation and never reconciled (controller downtime or backlog through a delete-and-recreate). A genuinely fresh CR is always younger than its cluster, because the create webhook requires the cluster to exist.
 
-A CR with no ownerReference, an empty status, and a creation time not before the cluster's is genuinely new and is treated as fresh.
+A CR with no ownerReference, an empty status, and a creation time no earlier than the cluster's is genuinely new and is treated as fresh.
 
 Behavior on a stale CR:
 
 | Component | Behavior |
 |---|---|
-| `CredentialRotationReconciler` | Set phase `Failed` with `Finished=True` (`reason=Failed`) and message "leftover from a previous cluster; delete this CR", emit `StaleCredentialRotation` Warning Event, and take no other action. (Writing the terminal status is not adoption — no ownerReference is added and no rotation action runs. It makes the situation visible in `kubectl get` and terminates waiting scripts.) A stale CR that is already `Succeeded` is still TTL-deleted — deleting a terminal CR is always safe. |
+| `CredentialRotationReconciler` | Set phase `Failed` with `Finished=True` (`reason=Failed`) and message "this CredentialRotation is a leftover from a previous MySQLCluster; delete it", emit `StaleCredentialRotation` Warning Event, and take no other action. (Writing the terminal status is not adoption — no ownerReference is added and no rotation action runs. It makes the situation visible in `kubectl get` and terminates waiting scripts.) A stale CR that is already `Succeeded` is still TTL-deleted — deleting a terminal CR is always safe. |
 | `ClusterManager` | Return early; do not run RETAIN / DISCARD |
 | Validation webhook | Reject spec updates (the discard flip) on a stale CR |
 | `MySQLClusterReconciler` | (does not read the CR at all) |
@@ -917,7 +917,7 @@ $ kubectl moco rotate-credential <cluster-name>
 
 **Symptom:** Warning Event `DualPasswordExists` on the MySQLCluster (mirrored into the CR's `status.message`), repeated on every ClusterManager tick while a rotation cycle waits in `ApplyingRetain`.
 
-**Cause:** A system user already had `additional_password` set when the cycle's pre-check ran. Either a previous recovery did not fully clear MySQL state, or someone ran `ALTER USER ... RETAIN CURRENT PASSWORD` manually. The cycle waits; MySQL has not been changed (the pending passwords are already staged in the controller Secret).
+**Cause:** A system user already had `additional_password` set when the cycle's pre-check ran. Either a previous recovery did not fully clear MySQL state, or someone ran `ALTER USER ... RETAIN CURRENT PASSWORD` manually. The cycle waits; it has not modified MySQL (the pending passwords are only staged in the controller Secret).
 
 **Why DISCARD is unsafe here:** After a manual RETAIN, the primary password is the new (unknown) value and the secondary is the old (known) value. DISCARD would remove the secondary, leaving only the unknown primary — breaking connectivity.
 

@@ -854,7 +854,7 @@ This creates a single-use CredentialRotation resource with the same name as the 
 MOCO then generates new passwords, applies them to every instance while keeping the old ones as secondary passwords, distributes the new passwords to the Secrets, and restarts the Pods.
 The command refuses to run in two cases.
 First, when another rotation already occupies the name — in flight, waiting for automatic deletion, or failed; the error message explains what to do.
-Second, when the cluster is offline or unhealthy, or when clustering or reconciliation is stopped.
+Second, when the cluster is offline, unhealthy, or has 0 replicas, or when clustering or reconciliation is stopped.
 
 Wait until the first (rotate) phase finishes:
 
@@ -876,8 +876,8 @@ $ kubectl wait --for=condition=Finished credentialrotation/<CLUSTER_NAME> --time
 The command checks that the cluster is `Healthy`.
 Right after the rolling restart, the cluster may need a short time to become `Healthy` again; if the command refuses for that reason, wait a moment and retry.
 
-`Finished` becomes `True` whether the rotation succeeded or failed, so check that `status.phase` says `Succeeded`.
-The cycle is then complete, only the new passwords are accepted, and the CredentialRotation deletes itself automatically after a while (controller flag `--credential-rotation-ttl`, default 1h).
+`Finished` becomes `True` whether the rotation succeeded or failed, so check that `status.phase` is `Succeeded`.
+The cycle is then complete, only the new passwords are accepted, and the controller deletes the CredentialRotation automatically after a TTL (flag `--credential-rotation-ttl`, default 1h).
 A failed rotation stays as a `Failed` object instead: its `status.message` names the recovery procedure, and the next rotation cannot start until you delete it.
 
 You can check the progress at any time:
