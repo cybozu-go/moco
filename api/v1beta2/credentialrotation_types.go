@@ -19,6 +19,7 @@ type CredentialRotationSpec struct {
 	// purpose: the spec has exactly one legal transition, and a one-way
 	// flag cannot express an invalid request.
 	// +optional
+	// +kubebuilder:default=false
 	Discard bool `json:"discard,omitempty"`
 }
 
