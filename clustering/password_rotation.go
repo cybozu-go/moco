@@ -79,6 +79,22 @@ func (p *managerProcess) handlePasswordRotation(ctx context.Context, ss *StatusS
 	return redo, err
 }
 
+// staleCachedCR re-reads the CR uncached and reports whether the cached
+// object this tick works on is stale: the live CR is a different object
+// (UID) or its phase has already moved on. The RETAIN and DISCARD handlers
+// diagnose "Secret state contradicts the phase" from a cached CR plus an
+// uncached Secret read; when the Reconciler advanced the live phase and
+// rewrote the Secret in between, that contradiction is an artifact of the
+// lag, not an inconsistency — so they rule it out before failing the
+// rotation.
+func (p *managerProcess) staleCachedCR(ctx context.Context, cr *mocov1beta2.CredentialRotation, phase mocov1beta2.RotationPhase) (bool, error) {
+	freshCR := &mocov1beta2.CredentialRotation{}
+	if err := p.reader.Get(ctx, client.ObjectKeyFromObject(cr), freshCR); err != nil {
+		return false, fmt.Errorf("failed to re-read the CredentialRotation: %w", err)
+	}
+	return freshCR.UID != cr.UID || freshCR.Status.Phase != phase, nil
+}
+
 // crBelongsToCluster reports whether cr carries an ownerReference whose UID
 // matches the given MySQLCluster.
 func crBelongsToCluster(cr *mocov1beta2.CredentialRotation, cluster *mocov1beta2.MySQLCluster) bool {
@@ -129,11 +145,11 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 		// backup), and waiting can never make progress. Rule out the one
 		// benign explanation — a stale cached CR whose live phase has
 		// already moved past Finalizing's key cleanup — before failing.
-		freshCR := &mocov1beta2.CredentialRotation{}
-		if err := p.reader.Get(ctx, client.ObjectKeyFromObject(cr), freshCR); err != nil {
-			return false, fmt.Errorf("failed to re-read the CredentialRotation: %w", err)
+		stale, err := p.staleCachedCR(ctx, cr, mocov1beta2.PhaseApplyingRetain)
+		if err != nil {
+			return false, err
 		}
-		if freshCR.UID != cr.UID || freshCR.Status.Phase != mocov1beta2.PhaseApplyingRetain {
+		if stale {
 			log.Info("cached CredentialRotation was stale; skipping this tick")
 			return false, nil
 		}
@@ -142,7 +158,17 @@ func (p *managerProcess) handleApplyingRetain(ctx context.Context, ss *StatusSet
 	case password.RotationSecretPromoted:
 		// Promotion already happened for this rotationID, yet the phase is
 		// still ApplyingRetain. This combination is inconsistent — the
-		// Reconciler only promotes from the Promoting phase.
+		// Reconciler only promotes from the Promoting phase — unless the
+		// cached CR is stale and the live phase has already advanced to
+		// Promoting or beyond; rule that out before failing.
+		stale, err := p.staleCachedCR(ctx, cr, mocov1beta2.PhaseApplyingRetain)
+		if err != nil {
+			return false, err
+		}
+		if stale {
+			log.Info("cached CredentialRotation was stale; skipping this tick")
+			return false, nil
+		}
 		return false, p.failRotation(ctx, cr, fmt.Sprintf(
 			"the controller Secret is already promoted for rotationID %s but the phase is still ApplyingRetain; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", cr.Status.RotationID))
 	}
@@ -316,6 +342,17 @@ func (p *managerProcess) handleApplyingDiscard(ctx context.Context, ss *StatusSe
 			"inconsistent controller Secret during DISCARD: %v; follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", err))
 	}
 	if state != password.RotationSecretPromoted {
+		// A clean Secret also appears when the cached CR is stale and the
+		// live phase has already reached Finalizing, whose key cleanup ran
+		// between our two reads; rule that out before failing.
+		stale, err := p.staleCachedCR(ctx, cr, mocov1beta2.PhaseApplyingDiscard)
+		if err != nil {
+			return false, err
+		}
+		if stale {
+			log.Info("cached CredentialRotation was stale; skipping this tick")
+			return false, nil
+		}
 		return false, p.failRotation(ctx, cr, fmt.Sprintf(
 			"the controller Secret is not in the promoted state for rotationID %s (state=%v); it cannot be proven that the current keys hold the promoted passwords. Follow the 'Inconsistent Controller Secret' recovery procedure, then delete this CR and create a new one", cr.Status.RotationID, state))
 	}
