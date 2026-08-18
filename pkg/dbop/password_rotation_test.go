@@ -1,8 +1,6 @@
 package dbop
 
 import (
-	"context"
-
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/password"
@@ -11,9 +9,7 @@ import (
 )
 
 var _ = Describe("password rotation", func() {
-	ctx := context.Background()
-
-	It("should rotate, verify, discard, and migrate system user passwords", func() {
+	It("should rotate, verify, discard, and migrate system user passwords", func(ctx SpecContext) {
 		By("preparing a 1 node cluster")
 		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
