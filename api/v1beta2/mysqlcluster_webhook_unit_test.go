@@ -70,7 +70,10 @@ func TestValidateAgainstActiveRotation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			reader := fake.NewClientBuilder().WithScheme(scheme).WithObjects(activeCR).Build()
+			// DeepCopy per subtest: the fake tracker mutates the object it
+			// is given (SetResourceVersion), and the subtests run in
+			// parallel.
+			reader := fake.NewClientBuilder().WithScheme(scheme).WithObjects(activeCR.DeepCopy()).Build()
 			a := &mySQLClusterAdmission{client: reader}
 			errs := a.validateAgainstActiveRotation(context.Background(), tt.old, tt.new)
 			if denied := len(errs) > 0; denied != tt.wantDenied {
