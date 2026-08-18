@@ -21,7 +21,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type BackupManager struct {
@@ -56,7 +55,7 @@ type BackupManager struct {
 }
 
 func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, password string, threads int) (*BackupManager, error) {
-	log := zap.New(zap.WriteTo(os.Stderr), zap.StacktraceLevel(zapcore.DPanicLevel))
+	log := crlog.Log.WithName("backup")
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
