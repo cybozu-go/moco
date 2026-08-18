@@ -10,6 +10,7 @@ import (
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/dbop"
+	mocolog "github.com/cybozu-go/moco/pkg/log"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -56,7 +56,7 @@ func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta2.MySQLCluster
 }
 
 func subMain(ns, addr string, port int) error {
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&config.zapOpts)))
+	mocolog.Setup(&config.zapOpts)
 	setupLog := ctrl.Log.WithName("setup")
 	clusterLog := ctrl.Log.WithName("cluster-manager")
 	clustering.SetDefaultLogger(clusterLog)
