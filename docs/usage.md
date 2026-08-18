@@ -675,6 +675,8 @@ $ kubectl logs moco-test-0 slow-log
 
 ### Increasing the number of instances in the cluster
 
+You cannot change `spec.replicas` while a [credential rotation](#rotating-system-user-passwords) is in progress; wait for it to finish, or delete the CredentialRotation to abandon it.
+
 Edit `spec.replicas` field of MySQLCluster:
 
 ```yaml
@@ -890,6 +892,10 @@ test   AwaitingDiscard   false     5m
 
 The CredentialRotation resource is an operation object driven by the CLI.
 Do not manage it with GitOps tools: the controller deletes the object when the rotation succeeds, and a GitOps sync would recreate it — and every recreation starts a new, unrequested rotation.
+
+While a rotation is in progress, changing the cluster's `spec.replicas` and setting `spec.offline: true` are rejected by the MySQLCluster webhook, because every rotation step depends on the set of running instances staying stable.
+Wait for the rotation to finish, or delete the CredentialRotation to abandon it, before making such a change.
+Setting `spec.offline` back to `false` is always allowed.
 
 Do not [stop clustering or reconciliation](#stop-clustering-and-reconciliation) while a rotation is in progress.
 A rotation in flight pauses while they are stopped — the CredentialRotation reports this with a `RotationPaused` Warning Event — and resumes automatically after you start them again.

@@ -577,4 +577,105 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		err = k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 	})
+
+	Context("with a CredentialRotation targeting the cluster", func() {
+		BeforeEach(func() {
+			Expect(deleteCredentialRotation("test")).To(Succeed())
+		})
+
+		// createClusterAndCR creates the cluster and an adopted CR, then
+		// drives the CR's status to the given phase. An empty phase leaves
+		// the CR as freshly created (adopted, no status).
+		createClusterAndCR := func(phase mocov1beta2.RotationPhase) (*mocov1beta2.MySQLCluster, *mocov1beta2.CredentialRotation) {
+			cluster := makeMySQLCluster()
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+			cr := makeCredentialRotation("test")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+			Expect(adoptCR(cr, cluster)).To(Succeed())
+			if phase != "" {
+				cr.SetPhase(phase, "test")
+				Expect(k8sClient.Status().Update(ctx, cr)).To(Succeed())
+			}
+			return cluster, cr
+		}
+
+		It("should deny changing replicas while a rotation is active", func() {
+			cluster, _ := createClusterAndCR(mocov1beta2.PhaseApplyingRetain)
+			cluster.Spec.Replicas = 3
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("CredentialRotation"))
+		})
+
+		It("should deny taking the cluster offline while a rotation is active", func() {
+			cluster, _ := createClusterAndCR(mocov1beta2.PhaseAwaitingRollout)
+			cluster.Spec.Offline = true
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("CredentialRotation"))
+		})
+
+		It("should deny the change even before the CR's first reconcile", func() {
+			cluster := makeMySQLCluster()
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+			cr := makeCredentialRotation("test")
+			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
+
+			cluster.Spec.Replicas = 3
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("CredentialRotation"))
+		})
+
+		It("should allow other spec changes while a rotation is active", func() {
+			cluster, _ := createClusterAndCR(mocov1beta2.PhaseApplyingRetain)
+			name := "mycnf"
+			cluster.Spec.MySQLConfigMapName = &name
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		})
+
+		It("should allow replicas and offline changes when the rotation is terminal", func() {
+			cluster, _ := createClusterAndCR(mocov1beta2.PhaseSucceeded)
+			cluster.Spec.Replicas = 3
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+			cluster.Spec.Offline = true
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		})
+
+		It("should allow the resume changes when the rotation is Blocked", func() {
+			cluster, _ := createClusterAndCR(mocov1beta2.PhaseBlocked)
+			cluster.Spec.Offline = true
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+			cluster.Spec.Replicas = 3
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		})
+
+		It("should always allow bringing the cluster back online", func() {
+			cluster, cr := createClusterAndCR(mocov1beta2.PhaseBlocked)
+			cluster.Spec.Offline = true
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+
+			// Even with the rotation active again (the freeze's race window
+			// can leave an offline cluster with a non-Blocked phase),
+			// clearing spec.offline must not be rejected: it is the only
+			// way back to a running cluster short of deleting the CR.
+			cr.SetPhase(mocov1beta2.PhaseApplyingRetain, "test")
+			Expect(k8sClient.Status().Update(ctx, cr)).To(Succeed())
+			cluster.Spec.Offline = false
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		})
+
+		It("should ignore a CredentialRotation left over from a previous cluster", func() {
+			_, _ = createClusterAndCR(mocov1beta2.PhaseApplyingRetain)
+			// Recreate the cluster under the same name: the CR's
+			// ownerReference now carries the old UID, so it is stale.
+			// (envtest runs no garbage collector, so the CR survives.)
+			Expect(deleteMySQLCluster()).To(Succeed())
+			cluster := makeMySQLCluster()
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			cluster.Spec.Replicas = 3
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
+		})
+	})
 })

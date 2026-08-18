@@ -190,13 +190,20 @@ var _ = Describe("CredentialRotation Webhook", func() {
 			cr := makeCredentialRotation("test")
 			Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 			Expect(adoptCR(cr, cluster)).To(Succeed())
+
+			// The MySQLCluster webhook freezes spec.offline while a
+			// rotation is active, so take the cluster offline through the
+			// Blocked exemption before opening the window — the same state
+			// the freeze's admission race window can produce.
+			cr.SetPhase(mocov1beta2.PhaseBlocked, "test")
+			Expect(k8sClient.Status().Update(ctx, cr)).To(Succeed())
+			cluster.Spec.Offline = true
+			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
 			Expect(openVerificationWindow(cr)).To(Succeed())
 
 			// The one-way flag must not be admitted while no mysqld runs:
 			// it would execute the discard automatically when the cluster
 			// comes back, without another operator confirmation.
-			cluster.Spec.Offline = true
-			Expect(k8sClient.Update(ctx, cluster)).To(Succeed())
 
 			cr.Spec.Discard = true
 			err := k8sClient.Update(ctx, cr)

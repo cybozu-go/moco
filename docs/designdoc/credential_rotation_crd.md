@@ -360,6 +360,21 @@ The core invariant makes CR deletion non-destructive: the per-namespace Secrets 
 
 None of these affect a running cluster. `*_PENDING` residue does not even block the next cycle: the next CR's seed handler reuses the leftover `ROTATION_ID` and pending passwords — they are random values that were never promoted, so adopting them is equivalent to generating fresh ones — and RETAIN resumes where the abandoned cycle stopped. `*_OLD` residue **does** block the next cycle: the next CR goes `Failed` at seed time, until the residue is cleaned up with the [Recovery Procedures](#recovery-procedures). Garbage collection is never blocked by a webhook.
 
+### Freezing replicas and offline during a rotation
+
+The **MySQLCluster** webhook protects the rotation from the other side. The checks above validate the CR against the cluster's state; this check validates cluster updates against an active CR: while an active CredentialRotation targets the cluster, `ValidateUpdate` rejects changes to `spec.replicas` and rejects setting `spec.offline` to `true`. Every rotation flow depends on the set of running mysqld instances staying stable — a scale-up forces the RETAIN/DISCARD catch-up passes, and taking the cluster offline parks the cycle in `Blocked` (or holds `AwaitingRollout`) — so rejecting the change at admission turns a mid-cycle surprise into an explicit error with a clear message.
+
+The rule has deliberate exemptions:
+
+- Setting `spec.offline` back to **false** is always allowed. It only returns mysqld instances to the rotation, and it is the recovery path out of any offline state; rejecting it could deadlock a cluster that went offline through this check's race window.
+- Scaling up from **0 replicas** is always allowed, for the same reason: it is the only API path out of the 0-replica `AwaitingRollout` hold. Reaching 0 replicas needs a bypassed webhook, but the way back must not.
+- A **stale** CR never blocks: it is a leftover waiting for deletion.
+- A **terminal** CR (`Succeeded` / `Failed`) never blocks: nothing runs anymore, and recovering from `Failed` may require these very changes.
+- A **Blocked** CR never blocks: its resume path *is* a replicas/offline change.
+- When the CredentialRotation CRD itself is not installed (an upgrade rolling out the controller before the CRD), the check passes: there can be no rotation to protect.
+
+This is an admission-time convenience, not the safety mechanism. The webhook's read of the CR races against concurrent CR creation — no webhook configuration can order the two admissions, so each request can pass its webhook before the other's write is visible. All runtime handling — the seed handler's `Blocked`, the mid-cycle `Blocked` transitions, the `AwaitingRollout` hold, and the scale-up catch-up passes — therefore stays in place as the authority. What the freeze changes is reachability: those paths now trigger only through the race window, a bypassed webhook, or changes made while the CR was exempt (`Blocked`, terminal, or stale), and the operator normally sees an immediate, explanatory rejection instead of a paused rotation.
+
 ## User Interface
 
 | Command | Behavior |
@@ -577,11 +592,12 @@ Recovery is always the same shape: follow the named [Recovery Procedure](#recove
 
 Two spec settings leave a MySQLCluster with no running mysqld instance: `spec.replicas: 0` and `spec.offline: true`. Rotation must treat them the same. `spec.offline` scales the StatefulSet down to zero Pods while `spec.replicas` keeps its positive value, so **every check in this section looks at both fields**.
 
-> In practice a 0-replica MySQLCluster cannot be created through the normal API today: the CRD schema defaults `replicas` to 1, and the MySQLCluster webhook accepts only positive odd values and rejects decreases. The replicas half of the handling below is defense in depth (a bypassed webhook, a raw patch with an explicit 0) and future-proofing for scale-down support. The offline case can occur through the normal API at any time.
+> In practice a 0-replica MySQLCluster cannot be created through the normal API today: the CRD schema defaults `replicas` to 1, and the MySQLCluster webhook accepts only positive odd values and rejects decreases. The replicas half of the handling below is defense in depth (a bypassed webhook, a raw patch with an explicit 0) and future-proofing for scale-down support. The offline case can occur through the normal API whenever no rotation is active; during one, the [freeze rule](#freezing-replicas-and-offline-during-a-rotation) rejects it, and only the rule's admission race window remains.
 
-A cluster without running instances stops rotation at three points:
+A cluster without running instances stops rotation at four points:
 
-- At admission: the webhook rejects CR creation when `spec.replicas` is 0 or `spec.offline` is `true`.
+- At admission of the CR: the webhook rejects CR creation when `spec.replicas` is 0 or `spec.offline` is `true`.
+- At admission of the MySQLCluster: while an active CR exists, the MySQLCluster webhook rejects changes to `spec.replicas` and rejects setting `spec.offline` to `true` (see [Freezing replicas and offline during a rotation](#freezing-replicas-and-offline-during-a-rotation)). Under this rule the mid-cycle cases below are reachable only through the admission race window, a bypassed webhook, or changes made while the CR was exempt from the freeze.
 - At reconcile time, before any mutation: if the cluster stopped running after admission, the seed handler sets phase `Blocked`. Nothing has been mutated; the cycle starts when the cluster runs again.
 - Mid-cycle: the handlers set phase `Blocked` (with a `RotationBlocked` / `DiscardBlocked` Warning Event) and the Reconciler resumes the cycle when the cluster runs again.
 
