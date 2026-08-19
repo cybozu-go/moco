@@ -61,6 +61,51 @@ type Operator interface {
 	// KillConnections kills all connections except for ones from `localhost`
 	// and ones for MOCO.
 	KillConnections(context.Context) error
+
+	// SetSuperReadOnly sets or unsets super_read_only on the instance.
+	// Unlike SetReadOnly, this does NOT stop replication or reset replica state.
+	SetSuperReadOnly(ctx context.Context, on bool) error
+
+	// GetAuthPlugin returns the default authentication plugin for the first factor
+	// by parsing @@global.authentication_policy. If the first element is '*' (any
+	// plugin allowed) or empty, "caching_sha2_password" is returned as the default.
+	GetAuthPlugin(ctx context.Context) (string, error)
+
+	// RotateUserPassword executes ALTER USER ... IDENTIFIED BY '<new>'
+	// RETAIN CURRENT PASSWORD with sql_log_bin=0 to prevent binlog propagation to
+	// cross-cluster replicas.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	RotateUserPassword(ctx context.Context, user, newPassword string) error
+
+	// MigrateUserAuthPlugin executes ALTER USER ... IDENTIFIED WITH <authPlugin> BY '<password>'
+	// with sql_log_bin=0 to migrate the user to the target authentication plugin.
+	// This is called after DISCARD OLD PASSWORD in the discard operation, so the user has only
+	// a single password at this point. The password is re-hashed under the new plugin.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	MigrateUserAuthPlugin(ctx context.Context, user, password, authPlugin string) error
+
+	// DiscardOldPassword executes ALTER USER ... DISCARD OLD PASSWORD
+	// with sql_log_bin=0 to prevent binlog propagation to cross-cluster replicas.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	DiscardOldPassword(ctx context.Context, user string) error
+
+	// GetUserAuthPlugin returns the authentication plugin currently used by the
+	// given user from mysql.user.plugin.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	GetUserAuthPlugin(ctx context.Context, user string) (string, error)
+
+	// HasDualPassword checks whether the given user currently has a dual password
+	// (i.e., User_attributes contains additional_password in mysql.user).
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	HasDualPassword(ctx context.Context, user string) (bool, error)
+
+	// VerifyUserPassword reports whether the given password currently
+	// authenticates the given user on this instance (as either the primary
+	// or the retained secondary password). It opens a short-lived
+	// connection over the normal MySQL port as that user; "false, nil" means
+	// the server refused the credentials, any other failure returns an error.
+	// user must be one of the fixed system user names from pkg/constants/users.go.
+	VerifyUserPassword(ctx context.Context, user, password string) (bool, error)
 }
 
 // OperatorFactory represents the factory for Operators.
@@ -113,6 +158,10 @@ func (f defaultFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 		passwd:    pwd,
 		index:     index,
 		db:        db,
+		// VerifyUserPassword connects as arbitrary system users, which may
+		// lack the SERVICE_CONNECTION_ADMIN privilege the admin port
+		// requires, so it must use the normal port.
+		verifyAddr: net.JoinHostPort(addr, strconv.Itoa(constants.MySQLPort)),
 	}, nil
 }
 
@@ -124,6 +173,9 @@ type operator struct {
 	passwd    *password.MySQLPassword
 	index     int
 	db        *sqlx.DB
+	// verifyAddr is the instance's normal MySQL port address, used by
+	// VerifyUserPassword to open per-user verification connections.
+	verifyAddr string
 }
 
 var _ Operator = &operator{}

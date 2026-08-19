@@ -100,6 +100,26 @@ rules:
 - apiGroups:
   - moco.cybozu.com
   resources:
+  - credentialrotations
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - moco.cybozu.com
+  resources:
+  - credentialrotations/status
+  - mysqlclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - moco.cybozu.com
+  resources:
   - mysqlclusters
   verbs:
   - get
@@ -112,14 +132,6 @@ rules:
   resources:
   - mysqlclusters/finalizers
   verbs:
-  - update
-- apiGroups:
-  - moco.cybozu.com
-  resources:
-  - mysqlclusters/status
-  verbs:
-  - get
-  - patch
   - update
 - apiGroups:
   - policy

@@ -340,24 +340,35 @@ func (r *MySQLClusterReconciler) reconcileV1Secret(ctx context.Context, cluster 
 		return err
 	}
 
-	if err := r.reconcileUserSecret(ctx, cluster, secret); err != nil {
+	// Always distribute the controller Secret's current passwords.
+	//
+	// Credential rotation needs no special handling here: the
+	// CredentialRotationReconciler promotes the new passwords to current
+	// in the controller Secret only after ALTER USER ... RETAIN succeeded
+	// on every instance, so whatever this function distributes —
+	// pre-promotion old values or post-promotion new values —
+	// authenticates on every instance (the core invariant of the rotation
+	// design). This reconciler is the only writer of the per-namespace
+	// user/my.cnf Secrets; apply() below is a no-op when content matches.
+	passwd, err := password.NewMySQLPasswordFromSecret(secret)
+	if err != nil {
+		return fmt.Errorf("failed to derive password for distribution: %w", err)
+	}
+
+	if err := r.reconcileUserSecret(ctx, cluster, passwd); err != nil {
 		return err
 	}
 
-	if err := r.reconcileMyCnfSecret(ctx, cluster, secret); err != nil {
+	if err := r.reconcileMyCnfSecret(ctx, cluster, passwd); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword) error {
 	log := crlog.FromContext(ctx)
 
-	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
-	if err != nil {
-		return fmt.Errorf("failed to create password from secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
-	}
 	newSecret := passwd.ToSecret()
 
 	name := cluster.UserSecretName()
@@ -387,13 +398,9 @@ func (r *MySQLClusterReconciler) reconcileUserSecret(ctx context.Context, cluste
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, controllerSecret *corev1.Secret) error {
+func (r *MySQLClusterReconciler) reconcileMyCnfSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster, passwd *password.MySQLPassword) error {
 	log := crlog.FromContext(ctx)
 
-	passwd, err := password.NewMySQLPasswordFromSecret(controllerSecret)
-	if err != nil {
-		return fmt.Errorf("failed to create password from Secret %s/%s: %w", controllerSecret.Namespace, controllerSecret.Name, err)
-	}
 	mycnfSecret := passwd.ToMyCnfSecret()
 
 	name := cluster.MyCnfSecretName()
@@ -1744,6 +1751,12 @@ func (r *MySQLClusterReconciler) finalizeV1(ctx context.Context, cluster *mocov1
 	metrics.CurrentReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 	metrics.UpdatedReplicasVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
 	metrics.LastPartitionUpdatedVec.DeleteLabelValues(cluster.Name, cluster.Namespace)
+	// The rotation completed-timestamp metric survives CredentialRotation
+	// deletion by design (it records the last successful rotation), so its
+	// lifetime is the cluster's: delete it here, where the cluster's
+	// deletion is certain, rather than from a cache-based guess in the
+	// CredentialRotation reconciler.
+	deleteRotationCompletedMetric(cluster.Name, cluster.Namespace)
 
 	return nil
 }
@@ -2011,6 +2024,32 @@ func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.
 		return requestsForIndexedClusters(ctx, a.GetNamespace(), "spec.backupPolicyName", a.GetName())
 	})
 
+	// The controller Secret lives in the system namespace and is not owned by
+	// the MySQLCluster, so Owns(&corev1.Secret{}) does not cover it. This
+	// watch makes reconcileV1Secret redistribute promptly after the
+	// CredentialRotationReconciler promotes rotated passwords to current —
+	// a promptness concern, not a correctness one (the current passwords
+	// always authenticate). The Secret name is formatted as
+	// "mysql-<cluster.Namespace>.<cluster.Name>" (ControllerSecretName);
+	// splitting at the first "." is unambiguous because namespace names
+	// are RFC 1123 DNS labels and can never contain a dot.
+	controllerSecretHandler := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+		if a.GetNamespace() != r.SystemNamespace {
+			return nil
+		}
+		name := a.GetName()
+		if !strings.HasPrefix(name, "mysql-") {
+			return nil
+		}
+		fields := strings.SplitN(name[len("mysql-"):], ".", 2)
+		if len(fields) != 2 {
+			return nil
+		}
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{Namespace: fields[0], Name: fields[1]}},
+		}
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mocov1beta2.MySQLCluster{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -2026,6 +2065,7 @@ func (r *MySQLClusterReconciler) SetupWithManager(ctx context.Context, mgr ctrl.
 		Watches(certificateObj, certHandler).
 		Watches(&corev1.ConfigMap{}, configMapHandler).
 		Watches(&mocov1beta2.BackupPolicy{}, backupPolicyHandler).
+		Watches(&corev1.Secret{}, controllerSecretHandler).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).

@@ -103,3 +103,83 @@ var (
 		Message: "Successfully restored data from backup",
 	}
 )
+
+// Events emitted during credential rotation. RotationBlocked and
+// DiscardBlocked appear on both objects: the CredentialRotationReconciler
+// emits them on the CredentialRotation when it blocks at seed or
+// discard-start, and the clustering manager emits them on the MySQLCluster
+// when its pre-checks block. All other rotation events have a single
+// involved object: the CredentialRotation for the reconciler's events, the
+// MySQLCluster for the clustering manager's.
+var (
+	StaleCredentialRotation = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "StaleCredentialRotation",
+		Message: "CredentialRotation is a leftover from a previous MySQLCluster; delete this CR before starting a new rotation",
+	}
+	RotationStarted = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "RotationStarted",
+		Message: "Started rotation cycle (rotationID: %s)",
+	}
+	PasswordsPromoted = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "PasswordsPromoted",
+		Message: "Promoted the new passwords to canonical current in the controller Secret (rotationID: %s)",
+	}
+	AwaitingDiscard = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "AwaitingDiscard",
+		Message: "Post-promotion StatefulSet rollout settled; verification window open (rotationID: %s)",
+	}
+	DiscardStarted = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "DiscardStarted",
+		Message: "Discard requested; ClusterManager will run DISCARD OLD PASSWORD on all instances (rotationID: %s)",
+	}
+	RotationCompleted = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "RotationCompleted",
+		Message: "Rotation completed (rotationID: %s)",
+	}
+	RotationFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "RotationFailed",
+		Message: "Rotation failed: %s",
+	}
+	RotationBlocked = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "RotationBlocked",
+		Message: "Cannot proceed with RETAIN: the cluster has 0 replicas or is offline. Bring the cluster back first.",
+	}
+	DualPasswordExists = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "DualPasswordExists",
+		Message: "Cannot proceed with RETAIN: instance %d user %s already has a dual password. See MOCO documentation for recovery procedures.",
+	}
+	RetainApplied = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "RetainApplied",
+		Message: "Applied ALTER USER RETAIN for all %d instances (rotationID: %s)",
+	}
+	DiscardBlocked = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "DiscardBlocked",
+		Message: "Cannot proceed with DISCARD: the cluster has 0 replicas or is offline. Bring the cluster back first.",
+	}
+	DiscardApplied = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "DiscardApplied",
+		Message: "Applied DISCARD OLD PASSWORD and migrated auth plugin to %s for all %d instances (rotationID: %s)",
+	}
+	PasswordRotationError = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "PasswordRotationError",
+		Message: "Password rotation encountered an error: %v",
+	}
+	RotationPaused = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "RotationPaused",
+		Message: "Credential rotation cannot progress: %s. The cluster keeps working with the current passwords; the rotation resumes automatically afterwards",
+	}
+)

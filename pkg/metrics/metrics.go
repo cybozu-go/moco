@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	metricsNamespace    = "moco"
-	clusteringSubsystem = "cluster"
-	backupSubsystem     = "backup"
+	metricsNamespace            = "moco"
+	clusteringSubsystem         = "cluster"
+	backupSubsystem             = "backup"
+	credentialRotationSubsystem = "credential_rotation"
 )
 
 // Clustering related metrics
@@ -35,6 +36,12 @@ var (
 	UpdatedReplicasVec             *prometheus.GaugeVec
 	LastPartitionUpdatedVec        *prometheus.GaugeVec
 	PartitionUpdateRetriesTotalVec *prometheus.CounterVec
+)
+
+// Credential rotation related metrics
+var (
+	CredentialRotationPhaseVec              *prometheus.GaugeVec
+	CredentialRotationCompletedTimestampVec *prometheus.GaugeVec
 )
 
 // Backup related metrics
@@ -257,4 +264,20 @@ func Register(registry prometheus.Registerer) {
 		Help:      "The number of retries for partition updates",
 	}, []string{"namespace"})
 	registry.MustRegister(PartitionUpdateRetriesTotalVec)
+
+	CredentialRotationPhaseVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: credentialRotationSubsystem,
+		Name:      "phase",
+		Help:      "1 for the CredentialRotation's current phase, 0 otherwise",
+	}, []string{"name", "namespace", "phase"})
+	registry.MustRegister(CredentialRotationPhaseVec)
+
+	CredentialRotationCompletedTimestampVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: credentialRotationSubsystem,
+		Name:      "completed_timestamp_seconds",
+		Help:      "The completion time of the last succeeded credential rotation as a Unix timestamp",
+	}, []string{"name", "namespace"})
+	registry.MustRegister(CredentialRotationCompletedTimestampVec)
 }

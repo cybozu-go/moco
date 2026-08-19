@@ -86,18 +86,56 @@ var _ = Describe("PodWatcher", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
+		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
+			defer close(done)
 			err := mgr.Start(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
+		// Stop synchronously: wait until Start returns, so this spec's
+		// manager can never keep reconciling into the next spec and fight
+		// the next manager over the same objects.
+		stopFunc = func() {
+			cancel()
+			<-done
+		}
 		time.Sleep(100 * time.Millisecond)
 	})
 
 	AfterEach(func() {
 		stopFunc()
-		time.Sleep(100 * time.Millisecond)
+
+		// Clean up eagerly, not only in the next BeforeEach: a live
+		// MySQLCluster and this suite's hand-crafted StatefulSet must not
+		// leak into other Describes — their managers run the full
+		// MySQLClusterReconciler, which would fight the hand-crafted
+		// StatefulSet (immutable-field conflicts and delete/recreate
+		// polls) and starve their reconciles.
+		cs := &mocov1beta2.MySQLClusterList{}
+		err := k8sClient.List(ctx, cs, client.InNamespace("default"))
+		Expect(err).NotTo(HaveOccurred())
+		for i := range cs.Items {
+			cluster := &cs.Items[i]
+			cluster.Finalizers = nil
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+		}
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("default"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("default"))
+		Expect(err).NotTo(HaveOccurred())
+		pods := &corev1.PodList{}
+		err = k8sClient.List(ctx, pods, client.InNamespace("default"))
+		Expect(err).NotTo(HaveOccurred())
+		for i := range pods.Items {
+			pod := &pods.Items[i]
+			pod.Finalizers = nil
+			err = k8sClient.Update(ctx, pod)
+			Expect(err).NotTo(HaveOccurred())
+		}
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("default"))
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("should notify cluster manager", func() {

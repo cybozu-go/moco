@@ -212,12 +212,19 @@ func setupNewManager(ctx context.Context, updateInterval time.Duration) context.
 	Expect(err).ToNot(HaveOccurred())
 
 	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
 	go func() {
 		defer GinkgoRecover()
+		defer close(done)
 		err := mgr.Start(ctx)
 		Expect(err).NotTo(HaveOccurred())
 	}()
-	return cancel
+	// Stop synchronously: wait until Start returns, so this manager can
+	// never keep reconciling into the next spec.
+	return func() {
+		cancel()
+		<-done
+	}
 }
 
 func testUpdatePartition(ctx context.Context, updateInterval time.Duration) {
@@ -343,7 +350,27 @@ var _ = Describe("StatefulSet reconciler", func() {
 		if stopFunc != nil {
 			stopFunc()
 		}
-		time.Sleep(100 * time.Millisecond)
+
+		// Clean up eagerly, not only in the next BeforeEach: a live
+		// MySQLCluster and this suite's hand-crafted StatefulSet must not
+		// leak into other Describes — their managers run the full
+		// MySQLClusterReconciler, which would fight the hand-crafted
+		// StatefulSet (immutable-field conflicts and delete/recreate
+		// polls) and starve their reconciles.
+		cs := &mocov1beta2.MySQLClusterList{}
+		err := k8sClient.List(ctx, cs, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
+		for _, cluster := range cs.Items {
+			cluster.Finalizers = nil
+			err := k8sClient.Update(ctx, &cluster)
+			Expect(err).NotTo(HaveOccurred())
+		}
+		err = k8sClient.DeleteAllOf(ctx, &mocov1beta2.MySQLCluster{}, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &appsv1.StatefulSet{}, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &corev1.Pod{}, client.InNamespace("partition"))
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("with different update intervals", func() {
