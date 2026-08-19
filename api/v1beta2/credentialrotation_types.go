@@ -78,7 +78,7 @@ type CredentialRotationStatus struct {
 	// +kubebuilder:default=0
 	// +kubebuilder:validation:Minimum=0
 	// +optional
-	ObservedGeneration int64 `json:"observedGeneration"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
 	// Phase is the workflow position. Empty until the first reconcile.
 	// The value set is open: clients must tolerate unknown values.

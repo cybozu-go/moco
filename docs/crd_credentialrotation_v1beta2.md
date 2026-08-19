@@ -48,7 +48,7 @@ CredentialRotationStatus defines the observed state of CredentialRotation.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| observedGeneration | ObservedGeneration reflects the .metadata.generation that the controller has most recently reconciled. | int64 | true |
+| observedGeneration | ObservedGeneration reflects the .metadata.generation that the controller has most recently reconciled. | int64 | false |
 | phase | Phase is the workflow position. Empty until the first reconcile. The value set is open: clients must tolerate unknown values. | RotationPhase | false |
 | message | Message is a human-readable detail for the current phase. On Failed it explains what went wrong and names the matching recovery procedure; on Blocked or a pause it names the obstacle; on Succeeded it shows the scheduled TTL deletion time. | string | false |
 | rotationID | RotationID is the UUID for this cycle. Set when the pending passwords are seeded. The value, if non-empty, is a canonical 36-character UUID. | string | false |
