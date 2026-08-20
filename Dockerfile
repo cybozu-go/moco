@@ -26,6 +26,7 @@ FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.8.1 as mysql
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:24.04
 LABEL org.opencontainers.image.source=https://github.com/cybozu-go/moco
 
+# https://bugs.mysql.com/bug.php?id=121027
 ARG MYSQLSH_VERSION=8.4.8
 ARG MYSQLSH_GLIBC_VERSION=2.28
 ARG TARGETARCH
