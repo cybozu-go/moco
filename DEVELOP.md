@@ -70,7 +70,7 @@ Edit the following lines in `Dockerfile`:
 FROM ghcr.io/cybozu-go/moco/mysql:8.4.10.1 as mysql
 
 # See the below description for how to get the version string.
-ARG MYSQLSH_VERSION=8.4.10-1
+ARG MYSQLSH_VERSION=8.4.8-1
 ```
 
 The MySQL shell debian package can be found in https://dev.mysql.com/downloads/shell/ .
