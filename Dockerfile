@@ -42,7 +42,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && if [ "${TARGETARCH}" = 'amd64' ]; then MYSQLSH_ARCH='x86-64'; fi \
   && if [ "${TARGETARCH}" = 'arm64' ]; then MYSQLSH_ARCH='arm-64'; fi \
-  && curl -o /tmp/mysqlsh.tar.gz -fsL "https://cdn.mysql.com/Downloads/MySQL-Shell/mysql-shell-${MYSQLSH_VERSION}-linux-glibc${MYSQLSH_GLIBC_VERSION}-${MYSQLSH_ARCH:-unknown}bit.tar.gz" \
+  && MYSQLSH_TARBALL="mysql-shell-${MYSQLSH_VERSION}-linux-glibc${MYSQLSH_GLIBC_VERSION}-${MYSQLSH_ARCH:-unknown}bit.tar.gz" \
+  # MySQL removes a version from the download site once a newer one is released,
+  # so fall back to the archive site.
+  && (curl -o /tmp/mysqlsh.tar.gz -fsL "https://cdn.mysql.com/Downloads/MySQL-Shell/${MYSQLSH_TARBALL}" \
+      || curl -o /tmp/mysqlsh.tar.gz -fsL "https://cdn.mysql.com/archives/mysql-shell/${MYSQLSH_TARBALL}") \
   && mkdir /usr/local/mysql-shell \
   && tar -xf /tmp/mysqlsh.tar.gz -C /usr/local/mysql-shell --strip-components=1 \
   && rm -f /tmp/mysqlsh.tar.gz
