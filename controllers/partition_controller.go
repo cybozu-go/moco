@@ -168,7 +168,7 @@ func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, clu
 	// Even if the MySQLCluster is not healthy, the rollout continues if the rollout target Pod is not ready.
 	// This is because there is an expectation that restarting the Not Ready Pod might improve its state.
 	if podutils.IsPodReady(&podList.Items[nextRolloutTarget]) && !r.isMySQLClusterHealthy(cluster) {
-		log.Info("MySQLCluster is not healthy", "name", cluster.Name, "namespace", cluster.Namespace)
+		log.Info("MySQLCluster is not healthy", "mysqlCluster", cluster.Name)
 		return false, nil
 	}
 
