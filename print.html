@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-efe260bb.js";
+            window.path_to_searchindex_js = "searchindex-cf804a43.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e21aac66.js"></script>
@@ -2119,8 +2119,11 @@ This document describes how and when MOCO updates them.</p>
 <li><a href="#the-update-policy-of-moco-agent-container">The update policy of moco-agent container</a></li>
 <li><a href="#clustering-related-resources">Clustering related resources</a>
 <ul>
-<li><a href="#statefulset">StatefulSet</a></li>
-<li><a href="#when-the-statefulset-is-not-updated">When the StatefulSet is <em>not</em> updated</a></li>
+<li><a href="#statefulset">StatefulSet</a>
+<ul>
+<li><a href="#the-conditions-for-statefulset-update">The conditions for StatefulSet update</a></li>
+</ul>
+</li>
 <li><a href="#status-about-statefulset">Status about StatefulSet</a></li>
 <li><a href="#secrets">Secrets</a></li>
 <li><a href="#certificate">Certificate</a></li>
@@ -2161,16 +2164,12 @@ It updates the StatefulSet only when the update is a must.</p>
 <li>the version of the reconciler used to reconcile the StatefulSet is obsoleted.</li>
 <li>the image of moco-agent given to the controller is updated.</li>
 <li>the image of mysqld_exporter given to the controller is updated.</li>
+<li>the image of fluent-bit given to the controller is updated.</li>
 </ul>
-<h3 id="when-the-statefulset-is-not-updated"><a class="header" href="#when-the-statefulset-is-not-updated">When the StatefulSet is <em>not</em> updated</a></h3>
-<ul>
-<li>the image of fluent-bit given to the controller is changed.
-<ul>
-<li>because the controller does not depend on fluent-bit.</li>
-</ul>
-</li>
-</ul>
-<p>The fluent-bit sidecar container is updated only when some fields under <code>spec</code> of MySQLCluster are modified.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>Changing the controller image or its sidecar image configuration can roll out all MySQLClusters.</p>
+</blockquote>
 <h3 id="status-about-statefulset"><a class="header" href="#status-about-statefulset">Status about StatefulSet</a></h3>
 <ul>
 <li>In <code>MySQLCluster.Status.Condition</code>, there is a condition named <code>StatefulSetReady</code>.</li>
