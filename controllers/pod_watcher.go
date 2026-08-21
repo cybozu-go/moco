@@ -75,9 +75,9 @@ func (r *PodWatcher) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if pod.DeletionTimestamp != nil {
-		log.Info("detected mysql pod deletion", "name", pod.Name)
+		log.Info("detected mysql pod deletion")
 	} else {
-		log.Info("detected demote annotation", "name", pod.Name)
+		log.Info("detected demote annotation")
 	}
 	r.ClusterManager.UpdateNoStart(types.NamespacedName{Namespace: pod.Namespace, Name: ref.Name}, string(controller.ReconcileIDFromContext(ctx)))
 	return ctrl.Result{}, nil

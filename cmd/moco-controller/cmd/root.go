@@ -121,7 +121,29 @@ func init() {
 
 	goflags := flag.NewFlagSet("klog", flag.ExitOnError)
 	klog.InitFlags(goflags)
-	config.zapOpts.BindFlags(goflags)
 
+	// The other klog flags configure the output of klog itself, which is unused
+	// because the entries from klog are encoded by zap. See pkg/log.
+	effective := map[string]bool{"v": true, "vmodule": true, "log_backtrace_at": true}
+	var obsolete []string
+	goflags.VisitAll(func(f *flag.Flag) {
+		if !effective[f.Name] {
+			obsolete = append(obsolete, f.Name)
+			return
+		}
+		f.Usage += " (only for klog entries, e.g. from client-go)"
+		if f.Name == "v" {
+			f.Usage += ". --zap-log-level needs to be raised as well to see them"
+		}
+	})
+
+	config.zapOpts.BindFlags(goflags)
 	fs.AddGoFlagSet(goflags)
+
+	for _, name := range obsolete {
+		// MarkDeprecated hides the flag as well.
+		if err := fs.MarkDeprecated(name, "this flag has no effect and may be removed in the future"); err != nil {
+			panic(err)
+		}
+	}
 }

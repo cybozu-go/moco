@@ -20,12 +20,13 @@ USER 10000:10000
 ENTRYPOINT ["/moco-controller"]
 
 # For MySQL binaries
-FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.8.1 as mysql
+FROM --platform=$TARGETPLATFORM ghcr.io/cybozu-go/moco/mysql:8.4.10.1 as mysql
 
 # the backup image
 FROM --platform=$TARGETPLATFORM ghcr.io/cybozu/ubuntu:24.04
 LABEL org.opencontainers.image.source=https://github.com/cybozu-go/moco
 
+# https://bugs.mysql.com/bug.php?id=121027
 ARG MYSQLSH_VERSION=8.4.8
 ARG MYSQLSH_GLIBC_VERSION=2.28
 ARG TARGETARCH
@@ -41,7 +42,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && if [ "${TARGETARCH}" = 'amd64' ]; then MYSQLSH_ARCH='x86-64'; fi \
   && if [ "${TARGETARCH}" = 'arm64' ]; then MYSQLSH_ARCH='arm-64'; fi \
-  && curl -o /tmp/mysqlsh.tar.gz -fsSL --retry 2 "https://cdn.mysql.com/Downloads/MySQL-Shell/mysql-shell-${MYSQLSH_VERSION}-linux-glibc${MYSQLSH_GLIBC_VERSION}-${MYSQLSH_ARCH:-unknown}bit.tar.gz" \
+  && MYSQLSH_TARBALL="mysql-shell-${MYSQLSH_VERSION}-linux-glibc${MYSQLSH_GLIBC_VERSION}-${MYSQLSH_ARCH:-unknown}bit.tar.gz" \
+  # MySQL removes a version from the download site once a newer one is released,
+  # so fall back to the archive site.
+  && (curl -o /tmp/mysqlsh.tar.gz -fsSL --retry 2 "https://cdn.mysql.com/Downloads/MySQL-Shell/${MYSQLSH_TARBALL}" \
+      || curl -o /tmp/mysqlsh.tar.gz -fsSL --retry 2 "https://cdn.mysql.com/archives/mysql-shell/${MYSQLSH_TARBALL}") \
   && mkdir /usr/local/mysql-shell \
   && tar -xf /tmp/mysqlsh.tar.gz -C /usr/local/mysql-shell --strip-components=1 \
   && rm -f /tmp/mysqlsh.tar.gz

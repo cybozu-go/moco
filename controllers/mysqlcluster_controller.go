@@ -1757,11 +1757,11 @@ func (r *MySQLClusterReconciler) updateStatus(ctx context.Context, cluster *moco
 	if err != nil && apierrors.IsNotFound(err) {
 		reason = "StatefulSetNotFound"
 		message = "StatefulSet not found"
-		log.Error(err, "StatefulSet not found", "namespace", cluster.Namespace, "name", cluster.PrefixedName())
+		log.Error(err, "StatefulSet not found", "statefulSet", cluster.PrefixedName())
 	} else if err != nil {
 		reason = "FaildToGetStatefulSet"
 		message = "failed to get StatefulSet"
-		log.Error(err, "failed to get StatefulSet", "namespace", cluster.Namespace, "name", cluster.PrefixedName())
+		log.Error(err, "failed to get StatefulSet", "statefulSet", cluster.PrefixedName())
 	} else if sts.Spec.Replicas != nil && sts.Status.AvailableReplicas == *sts.Spec.Replicas && sts.Status.CurrentRevision == sts.Status.UpdateRevision && sts.Generation == sts.Status.ObservedGeneration {
 		stsReady = metav1.ConditionTrue
 		reason = "StatefulSetReady"
