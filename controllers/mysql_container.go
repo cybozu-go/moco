@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -192,17 +191,7 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta2.MySQLCluster, sts *appsv1ac.StatefulSetApplyConfiguration, force bool) *corev1ac.ContainerApplyConfiguration {
-	stsINotNil := (sts != nil && sts.Spec != nil && sts.Spec.Template != nil && sts.Spec.Template.Spec != nil)
-
-	if !force && stsINotNil {
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			if *c.Name == constants.SlowQueryLogAgentContainerName {
-				return &c
-			}
-		}
-	}
-
+func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta2.MySQLCluster) *corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.SlowQueryLogAgentContainerName).
 		WithImage(r.FluentBitImage).

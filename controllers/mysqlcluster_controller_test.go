@@ -37,6 +37,7 @@ const (
 	testAgentImage          = "foobar:123"
 	testBackupImage         = "backup:123"
 	testFluentBitImage      = "fluent-hoge:134"
+	testFluentBitImageV2    = "fluent-hoge:135"
 	testExporterImage       = "mysqld_exporter:111"
 )
 
@@ -63,6 +64,15 @@ func testNewMySQLCluster(ns string) *mocov1beta2.MySQLCluster {
 		},
 	}
 	return cluster
+}
+
+func findContainer(containers []corev1.Container, name string) *corev1.Container {
+	for i := range containers {
+		if containers[i].Name == name {
+			return &containers[i]
+		}
+	}
+	return nil
 }
 
 func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
@@ -192,11 +202,16 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
 
-		ctx, cancel := context.WithCancel(ctx)
-		stopFunc = cancel
+		mgrCtx, cancel := context.WithCancel(ctx)
+		managerDone := make(chan struct{})
+		stopFunc = func() {
+			cancel()
+			<-managerDone
+		}
 		go func() {
+			defer close(managerDone)
 			defer GinkgoRecover()
-			err := mgr.Start(ctx)
+			err := mgr.Start(mgrCtx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(100 * time.Millisecond)
@@ -204,7 +219,6 @@ var _ = Describe("MySQLCluster reconciler", func() {
 
 	AfterEach(func() {
 		stopFunc()
-		time.Sleep(100 * time.Millisecond)
 	})
 
 	It("should create password secrets", func() {
@@ -977,44 +991,34 @@ dummyKey: dummyValue
 		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
 
 		Expect(sts.Spec.Template.Spec.Containers).To(HaveLen(3))
-		foundMysqld := false
-		foundAgent := false
-		foundSlowLogAgent := false
-		foundExporter := false
 		for _, c := range sts.Spec.Template.Spec.Containers {
 			Expect(c.SecurityContext).NotTo(BeNil())
-			Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-			Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-			Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerGID)))
-			switch c.Name {
-			case constants.MysqldContainerName:
-				foundMysqld = true
-				Expect(c.Image).To(Equal("moco-mysql:latest"))
-				Expect(c.StartupProbe).NotTo(BeNil())
-				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(360)))
-				Expect(c.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
-			case constants.AgentContainerName:
-				foundAgent = true
-				Expect(c.Image).To(Equal(testAgentImage))
-				Expect(c.Args).To(Equal([]string{"--max-delay", "60s"}))
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
-			case constants.SlowQueryLogAgentContainerName:
-				foundSlowLogAgent = true
-				Expect(c.Image).To(Equal(testFluentBitImage))
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
-			case constants.ExporterContainerName:
-				foundExporter = true
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
-			}
+			Expect(c.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+			Expect(c.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
 		}
-		Expect(foundMysqld).To(BeTrue())
-		Expect(foundAgent).To(BeTrue())
-		Expect(foundSlowLogAgent).To(BeTrue())
-		Expect(foundExporter).To(BeFalse())
+
+		mysqldContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.MysqldContainerName)
+		Expect(mysqldContainer).NotTo(BeNil())
+		Expect(mysqldContainer.Image).To(Equal("moco-mysql:latest"))
+		Expect(mysqldContainer.StartupProbe).NotTo(BeNil())
+		Expect(mysqldContainer.StartupProbe.FailureThreshold).To(Equal(int32(360)))
+		Expect(mysqldContainer.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
+
+		agentContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.AgentContainerName)
+		Expect(agentContainer).NotTo(BeNil())
+		Expect(agentContainer.Image).To(Equal(testAgentImage))
+		Expect(agentContainer.Args).To(Equal([]string{"--max-delay", "60s"}))
+		Expect(agentContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
+		Expect(agentContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("100Mi")}))
+
+		slowLogAgentContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.SlowQueryLogAgentContainerName)
+		Expect(slowLogAgentContainer).NotTo(BeNil())
+		Expect(slowLogAgentContainer.Image).To(Equal(testFluentBitImage))
+		Expect(slowLogAgentContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
+		Expect(slowLogAgentContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("20Mi")}))
+
+		exporterContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.ExporterContainerName)
+		Expect(exporterContainer).To(BeNil())
 
 		Expect(sts.Spec.Template.Spec.InitContainers).To(HaveLen(2))
 
@@ -1059,42 +1063,6 @@ dummyKey: dummyValue
 		Expect(foundUserSecret).To(BeTrue())
 		Expect(foundMyCnfConfig).To(BeTrue())
 		Expect(foundSlowLogConfig).To(BeTrue())
-
-		By("editing statefulset")
-		// Sleep before editing statefulset to avoid slow query agent container from being restored by the controller
-		time.Sleep(1 * time.Second)
-
-		for i, c := range sts.Spec.Template.Spec.Containers {
-			switch c.Name {
-			case constants.AgentContainerName, constants.SlowQueryLogAgentContainerName:
-				sts.Spec.Template.Spec.Containers[i].Image = "invalid"
-			}
-		}
-		err = k8sClient.Update(ctx, sts)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() error {
-			sts = &appsv1.StatefulSet{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
-			if err != nil {
-				return err
-			}
-			for _, c := range sts.Spec.Template.Spec.Containers {
-				if c.Name != constants.AgentContainerName {
-					continue
-				}
-				if c.Image != testAgentImage {
-					return errors.New("c.Image is not reconciled yet")
-				}
-			}
-			return nil
-		}).Should(Succeed())
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			switch c.Name {
-			case constants.SlowQueryLogAgentContainerName:
-				Expect(c.Image).To(Equal("invalid"), c.Name)
-			}
-		}
 
 		By("updating MySQLCluster")
 		cluster = &mocov1beta2.MySQLCluster{}
@@ -1232,83 +1200,77 @@ dummyKey: dummyValue
 		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
 		Expect(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution).To(BeNil())
 
-		foundDummyContainer := false
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			Expect(c.Name).NotTo(Equal(constants.SlowQueryLogAgentContainerName))
-			Expect(c.SecurityContext).NotTo(BeNil())
-			switch c.Name {
-			case constants.MysqldContainerName:
-				Expect(c.StartupProbe).NotTo(BeNil())
-				Expect(c.StartupProbe.FailureThreshold).To(Equal(int32(1)))
-				Expect(c.LivenessProbe).NotTo(BeNil())
-				Expect(c.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(new(int64(200))))
-				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
-				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
-				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
-			case constants.AgentContainerName:
-				Expect(c.Args).To(ContainElement("20s"))
-				Expect(c.Args).To(ContainElement("0 * * * *"))
-				Expect(c.Args).To(ContainElement("1024"))
-				Expect(c.Args).To(ContainElements("--mysqld-localhost", "true"))
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
-				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
-				Expect(c.SecurityContext.RunAsUser).To(BeNil())
-				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
-			case constants.ExporterContainerName:
-				foundExporter = true
-				Expect(c.Image).To(Equal(testExporterImage))
-				Expect(c.Args).To(HaveLen(3))
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
-				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
-				Expect(c.SecurityContext.RunAsUser).To(BeNil())
-				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
-			case "dummy":
-				foundDummyContainer = true
-				Expect(c.Image).To(Equal("dummy:latest"))
-				Expect(c.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
-				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(constants.ContainerUID)))
-				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(constants.ContainerUID)))
-			}
-		}
-		Expect(foundExporter).To(BeTrue())
-		Expect(foundDummyContainer).To(BeTrue())
+		Expect(findContainer(sts.Spec.Template.Spec.Containers, constants.SlowQueryLogAgentContainerName)).To(BeNil())
 
-		foundInitDummyContainer := false
-		for _, c := range sts.Spec.Template.Spec.InitContainers {
-			Expect(c.SecurityContext).NotTo(BeNil())
-			switch c.Name {
-			case constants.CopyInitContainerName:
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
-				Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
-				Expect(c.SecurityContext.RunAsUser).To(BeNil())
-				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
-			case constants.InitContainerName:
-				Expect(c.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
-				Expect(c.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
-				Expect(c.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
-				Expect(c.SecurityContext.Capabilities.Add).To(ContainElement(corev1.Capability("SYS_NICE")))
-				Expect(c.SecurityContext.RunAsUser).To(BeNil())
-				Expect(c.SecurityContext.RunAsGroup).To(BeNil())
-			case "init-dummy":
-				foundInitDummyContainer = true
-				Expect(c.Image).To(Equal("init-dummy:latest"))
-				Expect(c.SecurityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
-				Expect(*c.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
-				Expect(c.SecurityContext.RunAsUser).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsUser).To(Equal(int64(0)))
-				Expect(c.SecurityContext.RunAsGroup).NotTo(BeNil())
-				Expect(*c.SecurityContext.RunAsGroup).To(Equal(int64(0)))
-			}
-		}
-		Expect(foundInitDummyContainer).To(BeTrue())
+		mysqldContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.MysqldContainerName)
+		Expect(mysqldContainer).NotTo(BeNil())
+		Expect(mysqldContainer.StartupProbe).NotTo(BeNil())
+		Expect(mysqldContainer.StartupProbe.FailureThreshold).To(Equal(int32(1)))
+		Expect(mysqldContainer.LivenessProbe).NotTo(BeNil())
+		Expect(mysqldContainer.LivenessProbe.TerminationGracePeriodSeconds).To(Equal(new(int64(200))))
+		Expect(mysqldContainer.SecurityContext).NotTo(BeNil())
+		Expect(mysqldContainer.SecurityContext.ReadOnlyRootFilesystem).To(HaveValue(BeTrue()))
+		Expect(mysqldContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+		Expect(mysqldContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
+
+		agentContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.AgentContainerName)
+		Expect(agentContainer).NotTo(BeNil())
+		Expect(agentContainer.Args).To(ContainElement("20s"))
+		Expect(agentContainer.Args).To(ContainElement("0 * * * *"))
+		Expect(agentContainer.Args).To(ContainElement("1024"))
+		Expect(agentContainer.Args).To(ContainElements("--mysqld-localhost", "true"))
+		Expect(agentContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
+		Expect(agentContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m")}))
+		Expect(agentContainer.SecurityContext).NotTo(BeNil())
+		Expect(agentContainer.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+		Expect(agentContainer.SecurityContext.RunAsUser).To(BeNil())
+		Expect(agentContainer.SecurityContext.RunAsGroup).To(BeNil())
+
+		exporterContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.ExporterContainerName)
+		Expect(exporterContainer).NotTo(BeNil())
+		Expect(exporterContainer.Image).To(Equal(testExporterImage))
+		Expect(exporterContainer.Args).To(HaveLen(3))
+		Expect(exporterContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
+		Expect(exporterContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m")}))
+		Expect(exporterContainer.SecurityContext).NotTo(BeNil())
+		Expect(exporterContainer.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+		Expect(exporterContainer.SecurityContext.RunAsUser).To(BeNil())
+		Expect(exporterContainer.SecurityContext.RunAsGroup).To(BeNil())
+
+		dummyContainer := findContainer(sts.Spec.Template.Spec.Containers, "dummy")
+		Expect(dummyContainer).NotTo(BeNil())
+		Expect(dummyContainer.Image).To(Equal("dummy:latest"))
+		Expect(dummyContainer.SecurityContext).NotTo(BeNil())
+		Expect(dummyContainer.SecurityContext.ReadOnlyRootFilesystem).To(BeNil())
+		Expect(dummyContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(constants.ContainerUID))))
+		Expect(dummyContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(constants.ContainerGID))))
+
+		cpInitContainer = findContainer(sts.Spec.Template.Spec.InitContainers, constants.CopyInitContainerName)
+		Expect(cpInitContainer).NotTo(BeNil())
+		Expect(cpInitContainer.SecurityContext).NotTo(BeNil())
+		Expect(cpInitContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
+		Expect(cpInitContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("150m")}))
+		Expect(cpInitContainer.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+		Expect(cpInitContainer.SecurityContext.RunAsUser).To(BeNil())
+		Expect(cpInitContainer.SecurityContext.RunAsGroup).To(BeNil())
+
+		initContainer = findContainer(sts.Spec.Template.Spec.InitContainers, constants.InitContainerName)
+		Expect(initContainer).NotTo(BeNil())
+		Expect(initContainer.SecurityContext).NotTo(BeNil())
+		Expect(initContainer.Args).To(ContainElement(fmt.Sprintf("%s=1", constants.MocoInitLowerCaseTableNamesFlag)))
+		Expect(initContainer.Resources.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
+		Expect(initContainer.Resources.Limits).To(Equal(corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("300m")}))
+		Expect(initContainer.SecurityContext.Capabilities.Add).To(ContainElement(corev1.Capability("SYS_NICE")))
+		Expect(initContainer.SecurityContext.RunAsUser).To(BeNil())
+		Expect(initContainer.SecurityContext.RunAsGroup).To(BeNil())
+
+		initDummyContainer := findContainer(sts.Spec.Template.Spec.InitContainers, "init-dummy")
+		Expect(initDummyContainer).NotTo(BeNil())
+		Expect(initDummyContainer.SecurityContext).NotTo(BeNil())
+		Expect(initDummyContainer.Image).To(Equal("init-dummy:latest"))
+		Expect(initDummyContainer.SecurityContext.ReadOnlyRootFilesystem).To(HaveValue(BeTrue()))
+		Expect(initDummyContainer.SecurityContext.RunAsUser).To(HaveValue(Equal(int64(0))))
+		Expect(initDummyContainer.SecurityContext.RunAsGroup).To(HaveValue(Equal(int64(0))))
 
 		foundDummyVolume := false
 		for _, v := range sts.Spec.Template.Spec.Volumes {
@@ -1344,12 +1306,66 @@ dummyKey: dummyValue
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
 		Expect(err).NotTo(HaveOccurred())
 
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			switch c.Name {
-			case constants.AgentContainerName:
-				Expect(c.Args).To(ContainElement("0s"))
-			}
+		agentContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.AgentContainerName)
+		Expect(agentContainer).NotTo(BeNil())
+		Expect(agentContainer.Args).To(ContainElement("0s"))
+	})
+
+	It("should update fluent-bit image without MySQLCluster spec changes", func() {
+		stopFunc()
+		// This spec stops the manager. With the manager stopped, no automatic
+		// reconcile runs, so this spec must call Reconcile explicitly
+		// both to create the initial StatefulSet and to apply the new Fluent Bit
+		// image. Stopping the manager also prevents its old reconciler from racing
+		// with the new configuration and restoring the old image.
+
+		mysqlr := &MySQLClusterReconciler{
+			Client:                     k8sClient,
+			Scheme:                     scheme,
+			SystemNamespace:            testMocoSystemNamespace,
+			ClusterManager:             mockMgr,
+			AgentImage:                 testAgentImage,
+			BackupImage:                testBackupImage,
+			FluentBitImage:             testFluentBitImage,
+			ExporterImage:              testExporterImage,
+			MySQLConfigMapHistoryLimit: 2,
 		}
+
+		cluster := testNewMySQLCluster("test")
+		err := k8sClient.Create(ctx, cluster)
+		Expect(err).NotTo(HaveOccurred())
+
+		req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(cluster)}
+		_, err = mysqlr.Reconcile(ctx, req)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		initialGeneration := cluster.Generation
+
+		sts := &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+		fluentBitContainer := findContainer(sts.Spec.Template.Spec.Containers, constants.SlowQueryLogAgentContainerName)
+		Expect(fluentBitContainer).NotTo(BeNil())
+		Expect(fluentBitContainer.Image).To(Equal(testFluentBitImage))
+
+		mysqlr.FluentBitImage = testFluentBitImageV2
+		_, err = mysqlr.Reconcile(ctx, req)
+		Expect(err).NotTo(HaveOccurred())
+
+		cluster = &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cluster.Generation).To(Equal(initialGeneration))
+
+		sts = &appsv1.StatefulSet{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "moco-test"}, sts)
+		Expect(err).NotTo(HaveOccurred())
+		fluentBitContainer = findContainer(sts.Spec.Template.Spec.Containers, constants.SlowQueryLogAgentContainerName)
+		Expect(fluentBitContainer).NotTo(BeNil())
+		Expect(fluentBitContainer.Image).To(Equal(testFluentBitImageV2))
 	})
 
 	It("should reconcile a pod disruption budget", func() {

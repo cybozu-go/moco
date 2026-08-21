@@ -882,13 +882,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, clu
 	containers = append(containers, r.makeV1AgentContainer(cluster))
 
 	if !cluster.Spec.DisableSlowQueryLogContainer {
-		force := cluster.Status.ReconcileInfo.Generation != cluster.Generation
-		sts, err := appsv1ac.ExtractStatefulSet(&orig, fieldManager)
-		if err != nil {
-			return fmt.Errorf("failed to extract StatefulSet: %w", err)
-		}
-
-		containers = append(containers, r.makeV1SlowQueryLogContainer(cluster, sts, force))
+		containers = append(containers, r.makeV1SlowQueryLogContainer(cluster))
 	}
 	if len(cluster.Spec.Collectors) > 0 {
 		containers = append(containers, r.makeV1ExporterContainer(cluster, cluster.Spec.Collectors))
