@@ -97,7 +97,7 @@ MySQL versions appear twice:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.45", "8.0.46", "8.4.4", "8.4.9", "8.4.10"]
+        mysql-version: ["8.0.28", "8.0.46", "8.4.4", "8.4.9", "8.4.10"]
 ...
   # Matrix tests for the latest MySQL version on different Kubernetes versions.
   e2e:
