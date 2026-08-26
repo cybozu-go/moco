@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/pinact/refs/heads/main/json-schema/pinact.json
+# pinact - https://github.com/suzuki-shunsuke/pinact
+version: 3
+files:
+  - pattern: .github/workflows/*.yml
+  - pattern: .github/workflows/*.yaml
+  - pattern: .github/actions/*/action.yml
+  - pattern: .github/actions/*/action.yaml
+
+rules:
+  # The stray tag v0.036-1 (a 2020 commit) sorts highest in semver order,
+  # so -update would wrongly pick it up.
+  - ignore: true
+    conditions:
+      - expr: |
+          ActionName == "rajatjindal/krew-release-bot"
