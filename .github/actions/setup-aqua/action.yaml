@@ -4,7 +4,7 @@ runs:
   using: composite
   steps:
     - name: Restore aqua cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local/share/aquaproj-aqua
         key: v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('aqua.yaml') }}
@@ -12,7 +12,7 @@ runs:
           v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Install aqua
-      uses: aquaproj/aqua-installer@11dd79b4e498d471a9385aa9fb7f62bb5f52a73c # v4.0.4
+      uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
       with:
         aqua_version: v2.53.11
         working_directory: ${{ inputs.working_directory }}
@@ -21,7 +21,7 @@ runs:
 
     - name: Save aqua cache
       if: github.ref_name == 'main'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local/share/aquaproj-aqua
         key: v1-aqua-installer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('aqua.yaml') }}

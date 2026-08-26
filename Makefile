@@ -173,3 +173,7 @@ lint-ci:
 	ghalint run
 	ghalint act
 	actionlint
+
+.PHONY: pinact
+pinact:
+	pinact run -update -min-age 7 -verify
