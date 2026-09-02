@@ -5,6 +5,30 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-09-02
+
+### ⚠️ Notice
+
+- We plan to end support for the MySQL 8.0 series in the next release.
+
+### Breaking Changes
+
+- Unify the log format of moco-controller and moco-backup, and stop dropping log entries [#939](https://github.com/cybozu-go/moco/pull/939)
+- Disable delayed update for fluent-bit so that it is updated in the same way as mysqld_exporter [#937](https://github.com/cybozu-go/moco/pull/937)
+
+### Changed
+
+- Support MySQL 8.0.46/8.4.9/8.4.10 [#931](https://github.com/cybozu-go/moco/pull/931), [#932](https://github.com/cybozu-go/moco/pull/932)
+- Update the int32 loops to use Go's range-over-integer syntax [#934](https://github.com/cybozu-go/moco/pull/934)
+- Fall back to the archive site when downloading MySQL Shell [#941](https://github.com/cybozu-go/moco/pull/941)
+- Update test matrix and fix documents [#932](https://github.com/cybozu-go/moco/pull/932)
+- Pin GitHub Actions to full-length commit SHAs [#943](https://github.com/cybozu-go/moco/pull/943)
+- Update golang.org/x/crypto [#930](https://github.com/cybozu-go/moco/pull/930)
+
+### Fixed
+
+- PVC resize reconciliation no longer fails when an external controller expands the PVC beyond the StatefulSet template size [#934](https://github.com/cybozu-go/moco/pull/934)
+
 ## [0.36.0] - 2026-07-01
 
 ### Added
@@ -836,7 +860,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/cybozu-go/moco/compare/v0.36.0...v0.36.0
 [0.36.0]: https://github.com/cybozu-go/moco/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/cybozu-go/moco/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/cybozu-go/moco/compare/v0.33.0...v0.34.0
