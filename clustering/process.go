@@ -185,6 +185,15 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("failed to update status fields in MySQLCluster: %w", err)
 	}
 
+	// An offline cluster has no mysqld Pods. GatherStatus skips the Pod count
+	// check when spec.offline is true, so ss.Pods is a slice of nil pointers.
+	// Handling the prevent-delete annotation would dereference them, and the
+	// StateOffline branch below does nothing anyway, so return here.
+	if ss.State == StateOffline {
+		logFromContext(ctx).Info("cluster state is " + ss.State.String())
+		return false, nil
+	}
+
 	if ss.PreventPodDeletion {
 		err := p.addAnnPreventDelete(ctx, ss)
 		if err != nil {
