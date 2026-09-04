@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scaleup-single
+---
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: scaleup-single
+  name: single
+spec:
+  # The point of this test: start at ONE instance. The existing scale-out test
+  # in replication_test.go starts at 3, so the 1 -> N growth path is uncovered.
+  replicas: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: mysqld
+        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
