@@ -62,9 +62,7 @@ func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
 		WithObjects(cluster, secret).
 		Build()
 
-	if metrics.AvailableVec == nil {
-		metrics.Register(prometheus.NewRegistry())
-	}
+	metrics.Register(prometheus.NewRegistry())
 
 	name := types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name}
 	p := newManagerProcess(c, c, record.NewFakeRecorder(10), nopOperatorFactory{}, nil, name, func() {})
