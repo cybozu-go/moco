@@ -260,7 +260,7 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 	}
 	si.mu.Lock()
 	defer si.mu.Unlock()
-	if semisync && !si.status.GlobalVariables.SemiSyncMasterEnabled {
+	if semisync && !si.status.GlobalVariables.SemiSyncSourceEnabled {
 		return fmt.Errorf("configureReplica: semi-sync master is not enabled for %s", source.Host)
 	}
 
@@ -298,7 +298,7 @@ func (o *mockOperator) ConfigureReplica(ctx context.Context, source dbop.AccessI
 		ReplicaIORunning:  "Yes",
 		ReplicaSQLRunning: "Yes",
 	}
-	o.mysql.status.GlobalVariables.SemiSyncSlaveEnabled = semisync
+	o.mysql.status.GlobalVariables.SemiSyncReplicaEnabled = semisync
 	return setPodReadiness(ctx, o.cluster.PodName(o.index), true)
 }
 
@@ -311,8 +311,8 @@ func (o *mockOperator) ConfigurePrimary(ctx context.Context, waitForCount int) e
 	o.mysql.mu.Lock()
 	defer o.mysql.mu.Unlock()
 
-	o.mysql.status.GlobalVariables.WaitForSlaveCount = waitForCount
-	o.mysql.status.GlobalVariables.SemiSyncMasterEnabled = true
+	o.mysql.status.GlobalVariables.WaitForReplicaCount = waitForCount
+	o.mysql.status.GlobalVariables.SemiSyncSourceEnabled = true
 	return nil
 }
 
@@ -486,7 +486,7 @@ func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 		m.status.GlobalVariables.ReadOnly = true
 		m.status.GlobalVariables.SuperReadOnly = true
 		m.status.GlobalStatus = &dbop.GlobalStatus{
-			SemiSyncMasterWaitSessions: 0,
+			SemiSyncSourceWaitSessions: 0,
 		}
 		f.mysqls[hostname] = m
 	}
