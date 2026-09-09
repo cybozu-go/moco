@@ -1262,7 +1262,6 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 							WithImagePullSecrets(func() []*corev1ac.LocalObjectReferenceApplyConfiguration {
 								imagePullSecrets := make([]*corev1ac.LocalObjectReferenceApplyConfiguration, 0, len(jc.ImagePullSecrets))
 								for _, s := range jc.ImagePullSecrets {
-									s := s
 									imagePullSecrets = append(imagePullSecrets, (*corev1ac.LocalObjectReferenceApplyConfiguration)(&s))
 								}
 								return imagePullSecrets
@@ -1572,7 +1571,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 						WithImagePullSecrets(func() []*corev1ac.LocalObjectReferenceApplyConfiguration {
 							imagePullSecrets := make([]*corev1ac.LocalObjectReferenceApplyConfiguration, 0, len(jc.ImagePullSecrets))
 							for _, s := range jc.ImagePullSecrets {
-								s := s
 								imagePullSecrets = append(imagePullSecrets, (*corev1ac.LocalObjectReferenceApplyConfiguration)(&s))
 							}
 							return imagePullSecrets

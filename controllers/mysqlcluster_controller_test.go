@@ -122,7 +122,7 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 		},
 	}
 	jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
-		{Name: ptr.To[string]("my-registry-secret")},
+		{Name: new("my-registry-secret")},
 	}
 	jc.BucketConfig.BucketName = "mybucket"
 	jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
@@ -1662,7 +1662,7 @@ dummyKey: dummyValue
 			},
 		}
 		jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
-			{Name: ptr.To[string]("my-registry-secret")},
+			{Name: new("my-registry-secret")},
 		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"

@@ -672,6 +672,7 @@ spec:
                         description: LocalObjectReferenceApplyConfiguration is the...
                         properties:
                           name:
+                            description: Name of the referent.
                             type: string
                         type: object
                       type: array
@@ -8246,6 +8247,7 @@ spec:
                             description: LocalObjectReferenceApplyConfiguration is the...
                             properties:
                               name:
+                                description: Name of the referent.
                                 type: string
                             type: object
                           type: array
