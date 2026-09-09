@@ -1,6 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 resources:
 - config/default
 
 images:
 - name: ghcr.io/cybozu-go/moco
-  newTag: 0.34.0
+  newTag: 0.37.0

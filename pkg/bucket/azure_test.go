@@ -49,7 +49,7 @@ var _ = Describe("AzureBucket", func() {
 			"-p", "10000:10000",
 			"-v", fmt.Sprintf("%s:/data", dir),
 			"mcr.microsoft.com/azure-storage/azurite",
-			"azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000", "--location", "/data").Run()
+			"azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000", "--location", "/data", "--skipApiVersionCheck").Run()
 		Expect(err).NotTo(HaveOccurred())
 
 		// Wait for Azurite to be ready
@@ -112,7 +112,7 @@ var _ = Describe("AzureBucket", func() {
 
 		Expect(data).To(Equal([]byte("01234567890123456789")))
 
-		for i := 0; i < 1100; i++ {
+		for i := range 1100 {
 			err = b.Put(ctx, fmt.Sprintf("foo/baz%d", i), strings.NewReader("01234567890123456789"), 128<<20)
 			Expect(err).NotTo(HaveOccurred())
 		}

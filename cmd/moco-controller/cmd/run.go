@@ -10,6 +10,7 @@ import (
 	"github.com/cybozu-go/moco/controllers"
 	"github.com/cybozu-go/moco/pkg/cert"
 	"github.com/cybozu-go/moco/pkg/dbop"
+	mocolog "github.com/cybozu-go/moco/pkg/log"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -56,7 +56,7 @@ func (r resolver) Resolve(ctx context.Context, cluster *mocov1beta2.MySQLCluster
 }
 
 func subMain(ns, addr string, port int) error {
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&config.zapOpts)))
+	mocolog.Setup(&config.zapOpts)
 	setupLog := ctrl.Log.WithName("setup")
 	clusterLog := ctrl.Log.WithName("cluster-manager")
 	clustering.SetDefaultLogger(clusterLog)
@@ -102,21 +102,24 @@ func subMain(ns, addr string, port int) error {
 	clusterMgr := clustering.NewClusterManager(config.interval, mgr, opf, af, clusterLog)
 	defer clusterMgr.StopAll()
 
+	ctx := ctrl.SetupSignalHandler()
+
 	if err = (&controllers.MySQLClusterReconciler{
-		Client:                     mgr.GetClient(),
-		Scheme:                     mgr.GetScheme(),
-		Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
-		AgentImage:                 config.agentImage,
-		BackupImage:                config.backupImage,
-		FluentBitImage:             config.fluentBitImage,
-		ExporterImage:              config.exporterImage,
-		SystemNamespace:            ns,
-		PVCSyncAnnotationKeys:      config.pvcSyncAnnotationKeys,
-		PVCSyncLabelKeys:           config.pvcSyncLabelKeys,
-		ClusterManager:             clusterMgr,
-		MaxConcurrentReconciles:    config.maxConcurrentReconciles,
-		MySQLConfigMapHistoryLimit: config.mySQLConfigMapHistoryLimit,
-	}).SetupWithManager(mgr); err != nil {
+		Client:                        mgr.GetClient(),
+		Scheme:                        mgr.GetScheme(),
+		Recorder:                      mgr.GetEventRecorderFor("moco-controller"),
+		AgentImage:                    config.agentImage,
+		BackupImage:                   config.backupImage,
+		FluentBitImage:                config.fluentBitImage,
+		ExporterImage:                 config.exporterImage,
+		SystemNamespace:               ns,
+		PVCSyncAnnotationKeys:         config.pvcSyncAnnotationKeys,
+		PVCSyncLabelKeys:              config.pvcSyncLabelKeys,
+		ClusterManager:                clusterMgr,
+		MaxConcurrentReconciles:       config.maxConcurrentReconciles,
+		MySQLConfigMapHistoryLimit:    config.mySQLConfigMapHistoryLimit,
+		DisableDefaultSecurityContext: config.disableDefaultSecurityContext,
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MySQLCluster")
 		return err
 	}
@@ -168,7 +171,6 @@ func subMain(ns, addr string, port int) error {
 	metrics.Register(k8smetrics.Registry)
 
 	setupLog.Info("starting manager")
-	ctx := ctrl.SetupSignalHandler()
 	go reloader.Run(ctx, 1*time.Hour)
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")

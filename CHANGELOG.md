@@ -5,6 +5,78 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-09-02
+
+### ⚠️ Notice
+
+- We plan to end support for the MySQL 8.0 series in the next release.
+
+### Breaking Changes
+
+- Unify the log format of moco-controller and moco-backup, and stop dropping log entries [#939](https://github.com/cybozu-go/moco/pull/939)
+- Disable delayed update for fluent-bit so that it is updated in the same way as mysqld_exporter [#937](https://github.com/cybozu-go/moco/pull/937)
+
+### Changed
+
+- Support MySQL 8.0.46/8.4.9/8.4.10 [#931](https://github.com/cybozu-go/moco/pull/931), [#932](https://github.com/cybozu-go/moco/pull/932)
+- Update the int32 loops to use Go's range-over-integer syntax [#934](https://github.com/cybozu-go/moco/pull/934)
+- Fall back to the archive site when downloading MySQL Shell [#941](https://github.com/cybozu-go/moco/pull/941)
+- Update test matrix and fix documents [#932](https://github.com/cybozu-go/moco/pull/932)
+- Pin GitHub Actions to full-length commit SHAs [#943](https://github.com/cybozu-go/moco/pull/943)
+- Update golang.org/x/crypto [#930](https://github.com/cybozu-go/moco/pull/930)
+
+### Fixed
+
+- PVC resize reconciliation no longer fails when an external controller expands the PVC beyond the StatefulSet template size [#934](https://github.com/cybozu-go/moco/pull/934)
+
+## [0.36.0] - 2026-07-01
+
+### Added
+
+- Add a `--disable-default-security-context` flag to moco-controller that, when enabled, disables default injection of `runAsUser`/`runAsGroup`/`fsGroup` (default: `false`, existing behavior unchanged). [#872](https://github.com/cybozu-go/moco/pull/872)
+- Add SECURITY.md [#919](https://github.com/cybozu-go/moco/pull/919)
+
+### Fixed
+
+- Add predicates to PodWatcher for better event filtering [#925](https://github.com/cybozu-go/moco/pull/925)
+- Prevent MySQLCluster controller startup slowdown in large clusters [#924](https://github.com/cybozu-go/moco/pull/924)
+
+### Contributors
+- @wnevis-cmyk
+
+## [0.35.0] - 2026-05-12
+
+### Added
+- Support for Azure Blob Storage backups [#866](https://github.com/cybozu-go/moco/pull/866)
+- Add timezone support to BackupPolicy [#886](https://github.com/cybozu-go/moco/pull/886)
+- Add instructions for cluster consistency invariants [#893](https://github.com/cybozu-go/moco/pull/893)
+- Add note about lexicographic pod sort limitation for 10+ replicas [#895](https://github.com/cybozu-go/moco/pull/895)
+- Introduce golangci-lint and apply lint cleanups [#902](https://github.com/cybozu-go/moco/pull/902)
+- Add copy-moco-init container to documentation [#906](https://github.com/cybozu-go/moco/pull/906)
+- Add linters for GitHub Actions workflows and fix issues found by them [#907](https://github.com/cybozu-go/moco/pull/907)
+- Support for Kubernetes v1.33, v1.34, v1.35 with related dependency, CRD, and tooling updates [#911](https://github.com/cybozu-go/moco/pull/911)
+
+### Changed
+- Update reference link in change-pvc-template.md [#885](https://github.com/cybozu-go/moco/pull/885)
+- Bump chart version to v0.24.0 [#890](https://github.com/cybozu-go/moco/pull/890)
+- Refactor kustomization.yaml files to use `patches` instead of legacy `patchesStrategicMerge` and apply `kustomize edit fix` [#901](https://github.com/cybozu-go/moco/pull/901)
+- Update fluent-bit and mysqld_exporter container images [#910](https://github.com/cybozu-go/moco/pull/910)
+
+### Fixed
+- Fix `CLSUTER_NAME` typo in documentation [#894](https://github.com/cybozu-go/moco/pull/894)
+- Add `objectSelector` to the StatefulSet mutating webhook configuration and confirm StatefulSet revision in partition controller [#882](https://github.com/cybozu-go/moco/pull/882)
+- Mount `/tmp` in moco-init container [#896](https://github.com/cybozu-go/moco/pull/896)
+- Use helper functions for client Options [#897](https://github.com/cybozu-go/moco/pull/897)
+- Fix flaky test for "should reconcile a pod disruption budget" [#898](https://github.com/cybozu-go/moco/pull/898)
+- Fix "the object has been modified" error in kubectl-moco switchover [#899](https://github.com/cybozu-go/moco/pull/899)
+- Increase timeout for `kubectl wait` to 180s [#900](https://github.com/cybozu-go/moco/pull/900)
+- Fix "the object has been modified" flaky failure [#908](https://github.com/cybozu-go/moco/pull/908)
+- Update validation enum for `OverwriteableContainerName` [#905](https://github.com/cybozu-go/moco/pull/905)
+
+### Contributors
+- @idebeijer
+- @kdambekalns
+
 ## [0.34.0] - 2026/02/18
 
 ### Added
@@ -788,7 +860,10 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.34.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/cybozu-go/moco/compare/v0.36.0...v0.36.0
+[0.36.0]: https://github.com/cybozu-go/moco/compare/v0.35.0...v0.36.0
+[0.35.0]: https://github.com/cybozu-go/moco/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/cybozu-go/moco/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/cybozu-go/moco/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/cybozu-go/moco/compare/v0.31.0...v0.32.0

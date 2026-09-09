@@ -20,7 +20,7 @@ func MetricsIs(op string, val float64) *opMetrics {
 
 var _ types.GomegaMatcher = &opMetrics{}
 
-func (m *opMetrics) Match(actual interface{}) (success bool, err error) {
+func (m *opMetrics) Match(actual any) (success bool, err error) {
 	c, ok := actual.(prometheus.Collector)
 	if !ok {
 		return false, errors.New("not a collector")
@@ -41,10 +41,10 @@ func (m *opMetrics) Match(actual interface{}) (success bool, err error) {
 	return false, fmt.Errorf("unsupported operator %s", m.op)
 }
 
-func (m *opMetrics) FailureMessage(actual interface{}) (message string) {
+func (m *opMetrics) FailureMessage(actual any) (message string) {
 	return fmt.Sprintf("given metrics is not %s %f", m.op, m.val)
 }
 
-func (m *opMetrics) NegatedFailureMessage(actual interface{}) (message string) {
+func (m *opMetrics) NegatedFailureMessage(actual any) (message string) {
 	return fmt.Sprintf("given metrics is %s %f", m.op, m.val)
 }

@@ -16,11 +16,12 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 		return fmt.Errorf("failed to get version: %w", err)
 	}
 	var cmd string
-	if version == "8.4" {
+	switch version {
+	case "8.4":
 		cmd = `CHANGE REPLICATION SOURCE TO SOURCE_HOST = :Host, SOURCE_PORT = :Port, SOURCE_USER = :User, SOURCE_PASSWORD = :Password, SOURCE_AUTO_POSITION = 1, GET_SOURCE_PUBLIC_KEY = 1`
-	} else if version == "8.0" {
+	case "8.0":
 		cmd = `CHANGE MASTER TO MASTER_HOST = :Host, MASTER_PORT = :Port, MASTER_USER = :User, MASTER_PASSWORD = :Password, MASTER_AUTO_POSITION = 1, GET_MASTER_PUBLIC_KEY = 1`
-	} else {
+	default:
 		return fmt.Errorf("unsupported version: %s", version)
 	}
 	if _, err := o.db.NamedExecContext(ctx, cmd, primary); err != nil {

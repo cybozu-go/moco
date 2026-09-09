@@ -3,7 +3,7 @@
 # Stage1: build from source
 FROM ghcr.io/cybozu/ubuntu-dev:24.04 AS builder
 
-ARG FLUENT_BIT_VERSION=4.1.1
+ARG FLUENT_BIT_VERSION=5.0.2
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -71,6 +71,8 @@ FROM ghcr.io/cybozu/ubuntu:24.04
 COPY --from=builder /fluent-bit /fluent-bit
 
 EXPOSE 2020
+
+USER 10000:10000
 
 ENTRYPOINT ["/fluent-bit/bin/fluent-bit"]
 CMD ["-q", "-c", "/fluent-bit/etc/fluent-bit.conf"]

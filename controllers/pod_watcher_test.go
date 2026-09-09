@@ -5,13 +5,13 @@ import (
 	"time"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -21,7 +21,7 @@ func testNewSts(ns string) *appsv1.StatefulSet {
 	sts := &appsv1.StatefulSet{}
 	sts.Namespace = ns
 	sts.Name = "moco-test"
-	sts.Spec.Replicas = ptr.To[int32](3)
+	sts.Spec.Replicas = new(int32(3))
 	sts.Spec.ServiceName = "moco-test"
 	sts.Spec.Selector = &v1.LabelSelector{
 		MatchLabels: map[string]string{"foo": "bar"},
@@ -33,6 +33,10 @@ func testNewSts(ns string) *appsv1.StatefulSet {
 
 func testNewPod(ns string, name string) *corev1.Pod {
 	pod := &corev1.Pod{}
+	pod.SetLabels(map[string]string{
+		constants.LabelAppName:      constants.AppNameMySQL,
+		constants.LabelAppCreatedBy: constants.AppCreator,
+	})
 	pod.Namespace = ns
 	pod.Name = name
 	pod.Spec.Containers = []corev1.Container{{Name: "mysqld", Image: "moco-mysql:latest"}}
@@ -84,10 +88,9 @@ var _ = Describe("PodWatcher", func() {
 		ctx, cancel := context.WithCancel(ctx)
 		stopFunc = cancel
 		go func() {
+			defer GinkgoRecover()
 			err := mgr.Start(ctx)
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(100 * time.Millisecond)
 	})

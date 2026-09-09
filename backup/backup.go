@@ -21,7 +21,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,7 +29,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type BackupManager struct {
@@ -56,7 +55,7 @@ type BackupManager struct {
 }
 
 func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, password string, threads int) (*BackupManager, error) {
-	log := zap.New(zap.WriteTo(os.Stderr), zap.StacktraceLevel(zapcore.DPanicLevel))
+	log := crlog.Log.WithName("backup")
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
@@ -234,7 +233,7 @@ func (bm *BackupManager) GetUUIDSet(ctx context.Context, pods []*corev1.Pod) (ma
 // ChoosePod chooses a pod to take a backup from.
 // It returns the index of the chosen pod and whether backupBinlog should be called.
 func (bm *BackupManager) ChoosePod(ctx context.Context, pods []*corev1.Pod) (int, bool, error) {
-	currentPrimaryIndex := int(bm.cluster.Status.CurrentPrimaryIndex)
+	currentPrimaryIndex := bm.cluster.Status.CurrentPrimaryIndex
 	lastBackup := &bm.cluster.Status.Backup
 	// if this is the first time
 	if lastBackup.Time.IsZero() {
@@ -303,7 +302,7 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 	if err := os.MkdirAll(dumpDir, 0755); err != nil {
 		return fmt.Errorf("failed to make dump directory: %w", err)
 	}
-	defer os.RemoveAll(dumpDir)
+	defer func() { _ = os.RemoveAll(dumpDir) }()
 
 	if err := op.DumpFull(ctx, dumpDir); err != nil {
 		return fmt.Errorf("failed to take a full dump: %w", err)
@@ -329,10 +328,10 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 	}
 	defer func() {
 		if pr != nil {
-			pr.Close()
+			_ = pr.Close()
 		}
 		if pw != nil {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 	tarCmd.Stdout = pw
@@ -341,7 +340,7 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 	if err := tarCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start tar process: %w", err)
 	}
-	pw.Close()
+	_ = pw.Close()
 	pw = nil
 
 	bw := &ByteCountWriter{}
@@ -363,7 +362,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	if err := os.MkdirAll(binlogDir, 0755); err != nil {
 		return fmt.Errorf("failed to make binlog dump directory: %w", err)
 	}
-	defer os.RemoveAll(binlogDir)
+	defer func() { _ = os.RemoveAll(binlogDir) }()
 
 	lastBackup := &bm.cluster.Status.Backup
 	binlogName := lastBackup.BinlogFilename
@@ -399,10 +398,10 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	}
 	defer func() {
 		if pr != nil {
-			pr.Close()
+			_ = pr.Close()
 		}
 		if pw != nil {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 	tarCmd.Stdout = pw
@@ -411,7 +410,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	if err := tarCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start tar process: %w", err)
 	}
-	pw.Close()
+	_ = pw.Close()
 	pw = nil
 
 	zstdCmd := exec.Command("zstd", "--no-progress", "-T"+fmt.Sprint(bm.threads))
@@ -422,10 +421,10 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	}
 	defer func() {
 		if pr2 != nil {
-			pr2.Close()
+			_ = pr2.Close()
 		}
 		if pw2 != nil {
-			pw2.Close()
+			_ = pw2.Close()
 		}
 	}()
 	zstdCmd.Stdout = pw2
@@ -434,7 +433,7 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	if err := zstdCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start zstd process: %w", err)
 	}
-	pw2.Close()
+	_ = pw2.Close()
 	pw2 = nil
 
 	bw := &ByteCountWriter{}

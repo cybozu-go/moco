@@ -59,7 +59,7 @@ func cleanupMySQL() {
 	cluster, err := getCluster("prevent-delete", "test")
 	Expect(err).NotTo(HaveOccurred())
 	primary := cluster.Status.CurrentPrimaryIndex
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if i == primary {
 			continue
 		}
@@ -99,7 +99,7 @@ var _ = Context("PreventDelete", Serial, func() {
 		primary := cluster.Status.CurrentPrimaryIndex
 
 		// add prevent-delete annotation and wait for it to be removed
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			kubectlSafe(nil, "annotate", "pod", "-n", "prevent-delete", cluster.PodName(i), "moco.cybozu.com/prevent-delete=true")
 			Eventually(func() error {
 				out, err := kubectl(nil, "get", "pod", "-n", "prevent-delete", cluster.PodName(i), "-o", "json")

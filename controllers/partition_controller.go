@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -21,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -107,42 +105,28 @@ func (r *StatefulSetPartitionReconciler) Reconcile(ctx context.Context, req reco
 }
 
 func (r *StatefulSetPartitionReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	stsPrct := partitionControllerPredicate()
-	podPrct := partitionControllerPredicate()
+	pred := partitionControllerPredicate()
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.StatefulSet{}, builder.WithPredicates(stsPrct)).
-		Owns(&corev1.Pod{}, builder.WithPredicates(podPrct)).
+		For(&appsv1.StatefulSet{}, builder.WithPredicates(pred)).
+		Owns(&corev1.Pod{}, builder.WithPredicates(pred)).
 		WithOptions(
 			controller.Options{MaxConcurrentReconciles: r.MaxConcurrentReconciles},
 		).
 		Complete(r)
 }
 
-// partitionControllerPredicate filters StatefulSets and Pods managed by MOCO.
-func partitionControllerPredicate() predicate.Funcs {
-	// Predicate function for StatefulSets and Pods. They have a prefixed name and specific labels.
-	prctFunc := func(o client.Object) bool {
-		if !strings.HasPrefix(o.GetName(), "moco-") {
-			return false
-		}
-
-		labels := o.GetLabels()
-		if labels[constants.LabelAppName] != constants.AppNameMySQL {
-			return false
-		}
-		if labels[constants.LabelAppCreatedBy] != constants.AppCreator {
-			return false
-		}
-		return true
+func partitionControllerPredicate() predicate.Predicate {
+	pred, err := predicate.LabelSelectorPredicate(metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			constants.LabelAppName:      constants.AppNameMySQL,
+			constants.LabelAppCreatedBy: constants.AppCreator,
+		},
+	})
+	if err != nil {
+		panic(err)
 	}
-
-	return predicate.Funcs{
-		UpdateFunc:  func(e event.UpdateEvent) bool { return prctFunc(e.ObjectNew) },
-		CreateFunc:  func(e event.CreateEvent) bool { return prctFunc(e.Object) },
-		DeleteFunc:  func(e event.DeleteEvent) bool { return prctFunc(e.Object) },
-		GenericFunc: func(e event.GenericEvent) bool { return prctFunc(e.Object) },
-	}
+	return pred
 }
 
 // isRolloutReady returns true if the StatefulSet is ready for rolling update.
@@ -184,7 +168,7 @@ func (r *StatefulSetPartitionReconciler) isRolloutReady(ctx context.Context, clu
 	// Even if the MySQLCluster is not healthy, the rollout continues if the rollout target Pod is not ready.
 	// This is because there is an expectation that restarting the Not Ready Pod might improve its state.
 	if podutils.IsPodReady(&podList.Items[nextRolloutTarget]) && !r.isMySQLClusterHealthy(cluster) {
-		log.Info("MySQLCluster is not healthy", "name", cluster.Name, "namespace", cluster.Namespace)
+		log.Info("MySQLCluster is not healthy", "mysqlCluster", cluster.Name)
 		return false, nil
 	}
 
@@ -202,11 +186,15 @@ func (r *StatefulSetPartitionReconciler) getSortedPodList(ctx context.Context, s
 		client.MatchingLabels(sts.Spec.Selector.MatchLabels),
 	}
 
-	err := r.Client.List(ctx, podList, listOpts...)
+	err := r.List(ctx, podList, listOpts...)
 	if err != nil {
 		return nil, err
 	}
 
+	// NOTE: This sorts lexicographically by pod name, which works correctly
+	// as long as the number of replicas is less than 10. For 10+ replicas,
+	// the sort order would be incorrect (e.g. "-10" < "-2").
+	// If 10+ replicas are needed, this should be changed to sort by numeric ordinal.
 	sort.Slice(podList.Items, func(i, j int) bool {
 		return podList.Items[i].Name < podList.Items[j].Name
 	})
@@ -226,6 +214,12 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 		if i == nextRolloutTarget {
 			continue
 		}
+		if i >= int(ptr.Deref(sts.Spec.UpdateStrategy.RollingUpdate.Partition, 0)) {
+			if pod.Labels[appsv1.ControllerRevisionHashLabelKey] != sts.Status.UpdateRevision {
+				log.Info("Pod is not yet updated", "pod", pod.Name, "expected", sts.Status.UpdateRevision, "actual", pod.Labels[appsv1.ControllerRevisionHashLabelKey])
+				return false
+			}
+		}
 		if pod.DeletionTimestamp != nil {
 			log.Info("Pod is in the process of being terminated", "pod", pod.Name)
 			return false
@@ -235,14 +229,14 @@ func (r *StatefulSetPartitionReconciler) areAllChildPodsRolloutReady(ctx context
 			return false
 		}
 		for _, c := range pod.Status.InitContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}
 		for _, c := range pod.Status.ContainerStatuses {
-			log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 			if !c.Ready {
+				log.Info("Container is not ready", "pod", pod.Name, "container", c.Name)
 				return false
 			}
 		}
@@ -311,7 +305,7 @@ func (r *StatefulSetPartitionReconciler) patchNewPartition(ctx context.Context, 
 	patch := client.MergeFrom(sts.DeepCopy())
 	sts.Spec.UpdateStrategy.RollingUpdate.Partition = &newPartition
 
-	if err := r.Client.Patch(ctx, sts, patch); err != nil {
+	if err := r.Patch(ctx, sts, patch); err != nil {
 		return fmt.Errorf("failed to patch new partition to StatefulSet %s/%s: %w", sts.Namespace, sts.Name, err)
 	}
 

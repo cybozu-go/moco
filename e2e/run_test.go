@@ -120,7 +120,7 @@ func verifyPVCTemplates(ns string, clusterName string) {
 
 	wantLabels := make(map[string]map[string]string)
 	for _, pvc := range cluster.Spec.VolumeClaimTemplates {
-		wantLabels[pvc.Name] = pvc.ObjectMeta.Labels
+		wantLabels[pvc.Name] = pvc.Labels
 	}
 
 	wantSizes := make(map[string]*resource.Quantity)

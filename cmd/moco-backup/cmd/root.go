@@ -15,7 +15,10 @@ import (
 	"github.com/cybozu-go/moco"
 	"github.com/cybozu-go/moco/pkg/bucket"
 	"github.com/cybozu-go/moco/pkg/constants"
+	mocolog "github.com/cybozu-go/moco/pkg/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var commonArgs struct {
@@ -117,6 +120,8 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
+		mocolog.Setup(&zap.Options{StacktraceLevel: zapcore.DPanicLevel})
+
 		if len(mysqlPassword) == 0 {
 			return errors.New("no MYSQL_PASSWORD environment variable")
 		}
@@ -128,8 +133,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		// mysqlsh command creates some files in $HOME.
-		os.Setenv("HOME", commonArgs.workDir)
-		return nil
+		err := os.Setenv("HOME", commonArgs.workDir)
+		return err
 	},
 }
 

@@ -93,6 +93,7 @@ type BackupPolicySpec struct {
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 }
 
+//nolint:unparam
 func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")

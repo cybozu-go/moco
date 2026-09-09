@@ -14,7 +14,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-go@v6
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: go.mod
         cache: true
@@ -28,17 +28,22 @@ runs:
     - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
       shell: bash
     - name: Setup test cluster
-      run: make start KUBERNETES_VERSION=${{ inputs.k8s-version }} MYSQL_VERSION=${{ inputs.mysql-version }} KIND_CONFIG=kind-config_actions.yaml
       working-directory: e2e
+      env:
+        KUBERNETES_VERSION: ${{ inputs.k8s-version }}
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make start KUBERNETES_VERSION="$KUBERNETES_VERSION" MYSQL_VERSION="$MYSQL_VERSION" KIND_CONFIG=kind-config_actions.yaml
       shell: bash
-    - run: make test MYSQL_VERSION=${{ inputs.mysql-version }}
+    - env:
+        MYSQL_VERSION: ${{ inputs.mysql-version }}
+      run: make test MYSQL_VERSION="$MYSQL_VERSION"
       working-directory: e2e
       shell: bash
     - run: make logs
       working-directory: e2e
       if: always()
       shell: bash
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always()
       with:
         name: logs-${{inputs.name}}-${{ inputs.k8s-version }}-${{ inputs.mysql-version }}.tar.gz

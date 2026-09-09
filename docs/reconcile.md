@@ -7,7 +7,7 @@ This document describes how and when MOCO updates them.
 - [The update policy of moco-agent container](#the-update-policy-of-moco-agent-container)
 - [Clustering related resources](#clustering-related-resources)
   - [StatefulSet](#statefulset)
-  - [When the StatefulSet is _not_ updated](#when-the-statefulset-is-not-updated)
+    - [The conditions for StatefulSet update](#the-conditions-for-statefulset-update)
   - [Status about StatefulSet](#status-about-statefulset)
   - [Secrets](#secrets)
   - [Certificate](#certificate)
@@ -56,14 +56,10 @@ The StatefulSet will be updated when:
 - the version of the reconciler used to reconcile the StatefulSet is obsoleted.
 - the image of moco-agent given to the controller is updated.
 - the image of mysqld_exporter given to the controller is updated.
+- the image of fluent-bit given to the controller is updated.
 
-### When the StatefulSet is _not_ updated
-
-- the image of fluent-bit given to the controller is changed.
-    - because the controller does not depend on fluent-bit.
-
-The fluent-bit sidecar container is updated only when some fields under `spec` of MySQLCluster are modified.
-
+> [!NOTE]
+> Changing the controller image or its sidecar image configuration can roll out all MySQLClusters.
 
 ### Status about StatefulSet
 

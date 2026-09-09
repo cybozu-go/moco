@@ -12,7 +12,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -147,7 +146,7 @@ var _ = Context("partition_test", Ordered, func() {
 		out, err = runInPod("curl", "-sf", fmt.Sprintf("http://%s:8080/metrics", addr))
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 
 		stsOut, err := kubectl(nil, "get", "-n", "partition", "statefulset", "moco-test", "-o", "json")

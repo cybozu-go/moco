@@ -43,13 +43,13 @@ type certTmplVal struct {
 	TargetNamespace string
 }
 
-func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	obj := certificateObj.DeepCopy()
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, obj)
 	if err == nil {
 		return nil
 	}
-	if err != nil && !apierrors.IsNotFound(err) {
+	if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to get certificate %s: %w", cluster.CertificateName(), err)
 	}
 
@@ -70,17 +70,17 @@ func (r *MySQLClusterReconciler) reconcileV1Certificate(ctx context.Context, req
 	}
 	obj.SetLabels(labelSet(cluster, true))
 
-	if err := r.Client.Create(ctx, obj); err != nil {
+	if err := r.Create(ctx, obj); err != nil {
 		return fmt.Errorf("failed to create certificate: %w", err)
 	}
 	return nil
 }
 
-func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, req ctrl.Request, cluster *mocov1beta2.MySQLCluster) error {
+func (r *MySQLClusterReconciler) reconcileV1GRPCSecret(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
 	controllerSecret := &corev1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, controllerSecret)
+	err := r.Get(ctx, client.ObjectKey{Namespace: r.SystemNamespace, Name: cluster.CertificateName()}, controllerSecret)
 	if err != nil {
 		return client.IgnoreNotFound(err)
 	}

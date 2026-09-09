@@ -39,7 +39,7 @@ func getPassword(ctx context.Context, clusterName, user string) (string, error) 
 	return "", fmt.Errorf("invalid user: %s", user)
 }
 
-func getPodName(ctx context.Context, cluster *mocov1beta2.MySQLCluster, index int) (string, error) {
+func getPodName(cluster *mocov1beta2.MySQLCluster, index int) (string, error) {
 	if index >= int(cluster.Spec.Replicas) {
 		return "", errors.New("index should be smaller than replicas")
 	}

@@ -58,9 +58,7 @@ var _ = Context("failure", Ordered, func() {
 		By("keeping writing data to the cluster")
 		ctx, cancel := context.WithCancel(context.Background())
 		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -70,7 +68,7 @@ var _ = Context("failure", Ordered, func() {
 						"-D", "test", "-e", "INSERT INTO t VALUE ('foo'); COMMIT")
 				}
 			}
-		}()
+		})
 
 		By("deleting a replica pod")
 		kubectlSafe(nil, "delete", "-n", "failure", "pod", "moco-test-2")

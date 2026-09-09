@@ -7,7 +7,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 )
+
+func newTextParser() *expfmt.TextParser {
+	p := expfmt.NewTextParser(model.LegacyValidation)
+	return &p
+}
 
 func TestE2e(t *testing.T) {
 	if !runE2E {

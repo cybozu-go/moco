@@ -28,7 +28,7 @@ USERS:             The target users to restore.  If USERS is empty, all users ar
 	Args: cobra.ExactArgs(8),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		maxRetry := 3
-		for i := 0; i < maxRetry; i++ {
+		for range maxRetry {
 			if err := runRestore(cmd, args); err != backup.ErrBadConnection {
 				return err
 			}

@@ -82,7 +82,7 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		mt = "application/zstd"
 	}
 
-	uploader := manager.NewUploader(b.client, func(u *manager.Uploader) {
+	uploader := manager.NewUploader(b.client, func(u *manager.Uploader) { //nolint:staticcheck // TODO: migrate to feature/s3/transfermanager
 		u.Concurrency = 1
 		u.LeavePartsOnError = false
 		u.PartSize = decidePartSize(objectSize)
@@ -93,7 +93,7 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		Body:        data,
 		ContentType: &mt,
 	}
-	_, err := uploader.Upload(ctx, pi)
+	_, err := uploader.Upload(ctx, pi) //nolint:staticcheck
 	return err
 }
 

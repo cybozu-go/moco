@@ -116,7 +116,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	if err != nil {
 		return false, fmt.Errorf("failed to connect to moco-agent for instance %d: %w", ss.Primary, err)
 	}
-	defer ag.Close()
+	defer func() { _ = ag.Close() }()
 
 	log := logFromContext(ctx)
 	log.Info("begin cloning data", "source", req.Host)
@@ -130,7 +130,7 @@ func (p *managerProcess) clone(ctx context.Context, ss *StatusSet) (bool, error)
 	// wait until the instance restarts after clone
 	op := ss.DBOps[ss.Primary]
 	time.Sleep(waitForCloneRestartDuration)
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -501,7 +501,7 @@ func (p *managerProcess) configureIntermediatePrimary(ctx context.Context, ss *S
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }
 
 func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (redo bool, e error) {
@@ -527,7 +527,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 	}
 
 	if ss.Cluster.Spec.Replicas == 1 {
-		return
+		return redo, e
 	}
 
 	waitFor := int(ss.Cluster.Spec.Replicas / 2)
@@ -538,7 +538,7 @@ func (p *managerProcess) configurePrimary(ctx context.Context, ss *StatusSet) (r
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }
 
 func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, index int) (redo bool, e error) {
@@ -549,10 +549,10 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 	// for an errant replica, stop replication
 	if st.IsErrant {
 		if st.ReplicaStatus == nil {
-			return
+			return redo, e
 		}
 		if st.ReplicaStatus.ReplicaIORunning != "Yes" {
-			return
+			return redo, e
 		}
 		log.Info("stop replica IO thread due to an errant transaction", "instance", index)
 		if err := op.StopReplicaIOThread(ctx); err != nil {
@@ -600,7 +600,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 		if err != nil {
 			return false, fmt.Errorf("failed to connect moco-agent of instance %d: %w", index, err)
 		}
-		defer ag.Close()
+		defer func() { _ = ag.Close() }()
 
 		log.Info("begin cloning data", "instance", index)
 		if _, err := ag.Clone(ctx, req); err != nil {
@@ -613,7 +613,7 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 
 		// wait until the instance restarts after clone
 		time.Sleep(waitForCloneRestartDuration)
-		for i := 0; i < 60; i++ {
+		for range 60 {
 			select {
 			case <-time.After(1 * time.Second):
 			case <-ctx.Done():
@@ -649,5 +649,5 @@ func (p *managerProcess) configureReplica(ctx context.Context, ss *StatusSet, in
 			return false, err
 		}
 	}
-	return
+	return redo, e
 }

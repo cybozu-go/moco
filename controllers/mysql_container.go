@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	appsv1ac "k8s.io/client-go/applyconfigurations/apps/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -54,10 +53,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithProtocol(corev1.ProtocolTCP),
 	)
 
-	failureThreshold := cluster.Spec.StartupWaitSeconds / 10
-	if failureThreshold < 1 {
-		failureThreshold = 1
-	}
+	failureThreshold := max(cluster.Spec.StartupWaitSeconds/10, 1)
 
 	if source.StartupProbe == nil {
 		source.WithStartupProbe(corev1ac.Probe())
@@ -118,7 +114,7 @@ func (r *MySQLClusterReconciler) makeV1MySQLDContainer(cluster *mocov1beta2.MySQ
 			WithMountPath(constants.MySQLDataPath),
 	)
 
-	updateContainerWithSecurityContext(source)
+	r.updateContainerWithSecurityContext(source)
 
 	return source, nil
 }
@@ -189,23 +185,13 @@ func (r *MySQLClusterReconciler) makeV1AgentContainer(cluster *mocov1beta2.MySQL
 			}),
 	)
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
 }
 
-func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta2.MySQLCluster, sts *appsv1ac.StatefulSetApplyConfiguration, force bool) *corev1ac.ContainerApplyConfiguration {
-	stsINotNil := (sts != nil && sts.Spec != nil && sts.Spec.Template != nil && sts.Spec.Template.Spec != nil)
-
-	if !force && stsINotNil {
-		for _, c := range sts.Spec.Template.Spec.Containers {
-			if *c.Name == constants.SlowQueryLogAgentContainerName {
-				return &c
-			}
-		}
-	}
-
+func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta2.MySQLCluster) *corev1ac.ContainerApplyConfiguration {
 	c := corev1ac.Container().
 		WithName(constants.SlowQueryLogAgentContainerName).
 		WithImage(r.FluentBitImage).
@@ -230,7 +216,7 @@ func (r *MySQLClusterReconciler) makeV1SlowQueryLogContainer(cluster *mocov1beta
 				}),
 		)
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -271,7 +257,7 @@ func (r *MySQLClusterReconciler) makeV1ExporterContainer(cluster *mocov1beta2.My
 		c.WithArgs("--collect." + cl)
 	}
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -282,13 +268,12 @@ func (r *MySQLClusterReconciler) makeV1OptionalContainers(cluster *mocov1beta2.M
 
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, c := range spec.Containers {
-		c := c
 
 		if c.Name == nil {
 			continue
 		}
 
-		updateContainerWithSecurityContext(&c)
+		r.updateContainerWithSecurityContext(&c)
 
 		switch *c.Name {
 		case constants.MysqldContainerName:
@@ -321,7 +306,7 @@ func (r *MySQLClusterReconciler) makeV1InitContainer(ctx context.Context, cluste
 	spec := cluster.Spec.PodTemplate.Spec.DeepCopy()
 	for _, given := range spec.InitContainers {
 		ic := given
-		updateContainerWithSecurityContext(&ic)
+		r.updateContainerWithSecurityContext(&ic)
 		initContainers = append(initContainers, &ic)
 	}
 	return initContainers, nil
@@ -387,7 +372,7 @@ func (r *MySQLClusterReconciler) makeMocoInitContainer(ctx context.Context, clus
 		c.WithArgs(fmt.Sprintf("%s=%s", constants.MocoInitLowerCaseTableNamesFlag, v))
 	}
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c, nil
@@ -415,7 +400,7 @@ func (r *MySQLClusterReconciler) makeInitContainerWithCopyMocoInitBin(cluster *m
 			WithName(constants.SharedVolumeName).
 			WithMountPath(constants.SharedPath))
 
-	updateContainerWithSecurityContext(c)
+	r.updateContainerWithSecurityContext(c)
 	updateContainerWithOverwriteContainers(cluster, c)
 
 	return c
@@ -435,9 +420,13 @@ func (r *MySQLClusterReconciler) getEnableLowerCaseTableNamesFromConf(ctx contex
 	return v, ok, nil
 }
 
-func updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
+func (r *MySQLClusterReconciler) updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
 	if container.SecurityContext == nil {
 		container.WithSecurityContext(corev1ac.SecurityContext())
+	}
+
+	if r.DisableDefaultSecurityContext {
+		return
 	}
 
 	if container.SecurityContext.RunAsUser == nil {
@@ -454,7 +443,7 @@ func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, c
 	}
 
 	for _, overwrite := range cluster.Spec.PodTemplate.OverwriteContainers {
-		overwrite := overwrite
+
 		if container.Name != nil && *container.Name == overwrite.Name.String() {
 			if overwrite.Resources != nil {
 				container.WithResources((*corev1ac.ResourceRequirementsApplyConfiguration)(overwrite.Resources))

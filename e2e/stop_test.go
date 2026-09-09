@@ -12,7 +12,6 @@ import (
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/common/expfmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -262,7 +261,7 @@ var _ = Context("stop reconciliation and clustering", Ordered, func() {
 		out, err = runInPod("curl", "-sf", fmt.Sprintf("http://%s:8080/metrics", addr))
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 
 		clusteringMf := mfs["moco_cluster_clustering_stopped"]
@@ -307,7 +306,7 @@ var _ = Context("stop reconciliation and clustering", Ordered, func() {
 		out, err = runInPod("curl", "-sf", fmt.Sprintf("http://%s:8080/metrics", addr))
 		Expect(err).NotTo(HaveOccurred())
 
-		mfs, err := (&expfmt.TextParser{}).TextToMetricFamilies(bytes.NewReader(out))
+		mfs, err := newTextParser().TextToMetricFamilies(bytes.NewReader(out))
 		Expect(err).NotTo(HaveOccurred())
 
 		clusteringMf := mfs["moco_cluster_clustering_stopped"]

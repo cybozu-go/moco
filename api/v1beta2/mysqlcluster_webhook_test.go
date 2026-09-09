@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -76,7 +75,7 @@ func createStorageClass() error {
 			},
 		},
 		Provisioner:          "dummy",
-		AllowVolumeExpansion: ptr.To[bool](true),
+		AllowVolumeExpansion: new(true),
 	}
 
 	if err := k8sClient.Create(ctx, &defaultSC); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -88,7 +87,7 @@ func createStorageClass() error {
 			Name: "not-support-volume-expansion",
 		},
 		Provisioner:          "dummy",
-		AllowVolumeExpansion: ptr.To[bool](false),
+		AllowVolumeExpansion: new(false),
 	}
 
 	if err := k8sClient.Create(ctx, &notSupportVolumeExpansionSC); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -322,18 +321,18 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
-		r.Spec.ReplicationSourceSecretName = ptr.To[string]("fuga")
+		r.Spec.ReplicationSourceSecretName = new("fuga")
 		err = k8sClient.Update(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should deny changing replication source secret name", func() {
 		r := makeMySQLCluster()
-		r.Spec.ReplicationSourceSecretName = ptr.To[string]("foo")
+		r.Spec.ReplicationSourceSecretName = new("foo")
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
 
-		r.Spec.ReplicationSourceSecretName = ptr.To[string]("bar")
+		r.Spec.ReplicationSourceSecretName = new("bar")
 		err = k8sClient.Update(ctx, r)
 		Expect(err).To(HaveOccurred())
 	})

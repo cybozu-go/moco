@@ -18,7 +18,7 @@ func TestByteCountWriter(t *testing.T) {
 	}
 
 	written := bcw.Written()
-	if written != int64(n) {
+	if written != n {
 		t.Errorf("unexpected written bytes: %d (n=%d)", written, n)
 	}
 }

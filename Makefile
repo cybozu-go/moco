@@ -1,4 +1,4 @@
-KUBERNETES_VERSION = 1.34.0
+KUBERNETES_VERSION = 1.35.4
 
 # Tool versions
 MYSQLSH_VERSION = 8.4.8-1
@@ -128,15 +128,15 @@ test-bkop:
 	TEST_MYSQL=1 MYSQL_VERSION=$(MYSQL_VERSION) go test -v -count 1 -race ./pkg/bkop -ginkgo.v -ginkgo.randomize-all
 
 .PHONY: test
-test: test-tools aqua-install
+test: aqua-install
 	go test -v -count 1 -race ./pkg/...
 	go install ./...
 	go vet ./...
 	test -z $$(gofmt -s -l . | tee /dev/stderr)
-	$(STATICCHECK) ./...
-	# Disabled temporary due to a false positive with nilerr 0.1.1 built with Go 1.17
-	# https://github.com/cybozu-go/moco/runs/4221024784?check_suite_focus=true
-	# $(NILERR) ./...
+
+.PHONY: lint
+lint: aqua-install
+	@golangci-lint run --timeout 5m
 
 ##@ Build
 
@@ -159,18 +159,6 @@ release-manifests-build: aqua-install
 aqua-install: ## Install tools managed by aqua
 	aqua install
 
-.PHONY: test-tools
-test-tools: $(NILERR) $(STATICCHECK)
-
-$(NILERR):
-	mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install github.com/gostaticanalysis/nilerr/cmd/nilerr@latest
-
-.PHONY: $(STATICCHECK)
-$(STATICCHECK):
-	mkdir -p $(BIN_DIR)
-	GOBIN=$(BIN_DIR) go install honnef.co/go/tools/cmd/staticcheck@latest
-
 .PHONY: setup
 setup:
 	$(SUDO) apt-get update
@@ -178,3 +166,14 @@ setup:
 	curl -o /tmp/mysqlsh.deb -fsL https://dev.mysql.com/get/Downloads/MySQL-Shell/mysql-shell_$(MYSQLSH_VERSION)ubuntu$(OS_VERSION)_amd64.deb
 	$(SUDO) dpkg -i /tmp/mysqlsh.deb
 	rm -f /tmp/mysqlsh.deb
+
+.PHONY: lint-ci
+lint-ci:
+	zizmor --offline .github
+	ghalint run
+	ghalint act
+	actionlint
+
+.PHONY: pinact
+pinact:
+	pinact run -update -min-age 7 -verify

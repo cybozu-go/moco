@@ -155,6 +155,7 @@ type MySQLClusterSpec struct {
 	Offline bool `json:"offline,omitempty"`
 }
 
+//nolint:gocyclo,unparam
 func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
@@ -191,7 +192,7 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 
 	pp = p.Child("logRotationSize")
 	if s.LogRotationSize < 0 {
-		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positve integer or zero"))
+		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positive integer or zero"))
 	}
 
 	pp = p.Child("replicas")
@@ -277,6 +278,7 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 	return nil, allErrs
 }
 
+//nolint:unparam
 func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")
@@ -310,14 +312,14 @@ func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.R
 			newSize := pvc.StorageSize()
 			oldSize := old.StorageSize()
 
-			switch cmp := newSize.Cmp(oldSize); {
-			case cmp == -1:
+			switch cmp := newSize.Cmp(oldSize); cmp {
+			case -1:
 				// noop
 				// Allow users to reduce the volume size by operating.
 				// ref: docs/designdoc/support_reduce_volume_size.md
-			case cmp == 1:
+			case 1:
 				volumeExpansionTargetIndices = append(volumeExpansionTargetIndices, i)
-			case cmp == 0:
+			case 0:
 				// noop
 			}
 		}
@@ -452,7 +454,7 @@ type PodTemplateSpec struct {
 }
 
 // OverwriteableContainerName is the name of the container.
-// +kubebuilder:validation:Enum=agent;moco-init;slow-log;mysqld-exporter
+// +kubebuilder:validation:Enum=agent;copy-moco-init;moco-init;slow-log;mysqld-exporter
 type OverwriteableContainerName string
 
 // String implements the fmt.Stringer interface.
@@ -462,6 +464,7 @@ func (c OverwriteableContainerName) String() string {
 
 const (
 	AgentContainerName             OverwriteableContainerName = constants.AgentContainerName
+	CopyInitContainerName          OverwriteableContainerName = constants.CopyInitContainerName
 	InitContainerName              OverwriteableContainerName = constants.InitContainerName
 	SlowQueryLogAgentContainerName OverwriteableContainerName = constants.SlowQueryLogAgentContainerName
 	ExporterContainerName          OverwriteableContainerName = constants.ExporterContainerName

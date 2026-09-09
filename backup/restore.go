@@ -18,7 +18,6 @@ import (
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/event"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,7 +26,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type RestoreManager struct {
@@ -49,7 +48,7 @@ type RestoreManager struct {
 var ErrBadConnection = errors.New("the connection hasn't reflected the latest user's privileges")
 
 func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time, schema, users string) (*RestoreManager, error) {
-	log := zap.New(zap.WriteTo(os.Stderr), zap.StacktraceLevel(zapcore.DPanicLevel))
+	log := crlog.Log.WithName("restore")
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		return nil, err
@@ -89,7 +88,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	rm.log.Info("waiting for a pod to become ready", "name", podName)
 	var pod *corev1.Pod
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -114,7 +113,7 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	// ping the database until it becomes ready
 	rm.log.Info("waiting for the mysqld to become ready", "name", podName)
-	for i := 0; i < 600; i++ {
+	for range 600 {
 		select {
 		case <-time.After(1 * time.Second):
 		case <-ctx.Done():
@@ -243,11 +242,11 @@ func (rm *RestoreManager) loadDump(ctx context.Context, op bkop.Operator, key st
 	if err != nil {
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	dumpDir := filepath.Join(rm.workDir, "dump")
 	defer func() {
-		os.RemoveAll(dumpDir)
+		_ = os.RemoveAll(dumpDir)
 	}()
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-C", rm.workDir, "-x", "-f", "-")
@@ -266,11 +265,11 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	if err != nil {
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	binlogDir := filepath.Join(rm.workDir, "binlog")
 	defer func() {
-		os.RemoveAll(binlogDir)
+		_ = os.RemoveAll(binlogDir)
 	}()
 
 	pr, pw, err := os.Pipe()
@@ -279,10 +278,10 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	}
 	defer func() {
 		if pr != nil {
-			pr.Close()
+			_ = pr.Close()
 		}
 		if pw != nil {
-			pw.Close()
+			_ = pw.Close()
 		}
 	}()
 
@@ -297,7 +296,7 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	if err := zstdCmd.Start(); err != nil {
 		return fmt.Errorf("failed to start zstd: %w", err)
 	}
-	pw.Close()
+	_ = pw.Close()
 	pw = nil
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-C", rm.workDir, "-x", "-f", "-")
@@ -318,7 +317,7 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 		return fmt.Errorf("failed to create %s: %w", tmpDir, err)
 	}
 	defer func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	}()
 
 	return op.LoadBinlog(ctx, binlogDir, tmpDir, rm.restorePoint, rm.schema)
