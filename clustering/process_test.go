@@ -5,15 +5,18 @@ import (
 	"testing"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/metrics"
 	"github.com/cybozu-go/moco/pkg/password"
 	"github.com/prometheus/client_golang/prometheus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -28,10 +31,9 @@ func (nopOperatorFactory) New(context.Context, *mocov1beta2.MySQLCluster, *passw
 
 func (nopOperatorFactory) Cleanup() {}
 
-// An offline MySQLCluster has no mysqld Pods. GatherStatus skips the Pod count
-// check when spec.offline is true, so StatusSet.Pods is left as a slice of nil
-// pointers. do() must not dereference them.
-func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
+func newOfflineTestProcess(t *testing.T, replicas int32, objs ...client.Object) (*managerProcess, client.Client) {
+	t.Helper()
+
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("failed to add scheme: %v", err)
@@ -43,7 +45,7 @@ func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
 	cluster := &mocov1beta2.MySQLCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
 		Spec: mocov1beta2.MySQLClusterSpec{
-			Replicas: 1,
+			Replicas: replicas,
 			Offline:  true,
 		},
 	}
@@ -59,13 +61,20 @@ func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithStatusSubresource(&mocov1beta2.MySQLCluster{}).
-		WithObjects(cluster, secret).
+		WithObjects(append([]client.Object{cluster, secret}, objs...)...).
 		Build()
 
 	metrics.Register(prometheus.NewRegistry())
 
 	name := types.NamespacedName{Namespace: cluster.Namespace, Name: cluster.Name}
-	p := newManagerProcess(c, c, record.NewFakeRecorder(10), nopOperatorFactory{}, nil, name, func() {})
+	return newManagerProcess(c, c, record.NewFakeRecorder(10), nopOperatorFactory{}, nil, name, func() {}), c
+}
+
+// An offline MySQLCluster has no mysqld Pods. GatherStatus skips the Pod count
+// check when spec.offline is true, so StatusSet.Pods is left as a slice of nil
+// pointers. do() must not dereference them.
+func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
+	p, _ := newOfflineTestProcess(t, 1)
 	ctx := context.Background()
 
 	ss, err := p.GatherStatus(ctx)
@@ -88,5 +97,43 @@ func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
 	}
 	if redo {
 		t.Error("do returned redo=true for an offline cluster")
+	}
+
+	// addAnnPreventDelete must not dereference a missing primary Pod either.
+	if err := p.addAnnPreventDelete(ctx, ss); err != nil {
+		t.Errorf("addAnnPreventDelete returned an error: %v", err)
+	}
+}
+
+// While an offline cluster is being scaled down, the remaining Pods may still
+// have the prevent-delete annotation. It must be removed; otherwise the Pod
+// deletion is denied and the scale-down never completes.
+func TestDoRemovesPreventDeleteFromOfflineClusterPods(t *testing.T) {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "moco-test-0",
+			Namespace: "default",
+			Labels: map[string]string{
+				constants.LabelAppName:     constants.AppNameMySQL,
+				constants.LabelAppInstance: "test",
+			},
+			Annotations: map[string]string{
+				constants.AnnPreventDelete: "true",
+			},
+		},
+	}
+	p, c := newOfflineTestProcess(t, 3, pod)
+	ctx := context.Background()
+
+	if _, err := p.do(ctx); err != nil {
+		t.Fatalf("do returned an error: %v", err)
+	}
+
+	updated := &corev1.Pod{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(pod), updated); err != nil {
+		t.Fatalf("failed to get pod: %v", err)
+	}
+	if _, exists := updated.Annotations[constants.AnnPreventDelete]; exists {
+		t.Errorf("%s annotation was not removed", constants.AnnPreventDelete)
 	}
 }
