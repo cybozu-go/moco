@@ -666,6 +666,16 @@ spec:
                             type: object
                         type: object
                       type: array
+                    imagePullSecrets:
+                      description: ImagePullSecrets is a list of references to...
+                      items:
+                        description: LocalObjectReferenceApplyConfiguration is the...
+                        properties:
+                          name:
+                            description: Name of the referent.
+                            type: string
+                        type: object
+                      type: array
                     maxCpu:
                       anyOf:
                         - type: integer
@@ -8229,6 +8239,16 @@ spec:
                                     description: Specify whether the Secret must be defined
                                     type: boolean
                                 type: object
+                            type: object
+                          type: array
+                        imagePullSecrets:
+                          description: ImagePullSecrets is a list of references to...
+                          items:
+                            description: LocalObjectReferenceApplyConfiguration is the...
+                            properties:
+                              name:
+                                description: Name of the referent.
+                                type: string
                             type: object
                           type: array
                         maxCpu:
