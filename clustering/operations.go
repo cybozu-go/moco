@@ -354,6 +354,9 @@ func (p *managerProcess) addRoleLabel(ctx context.Context, ss *StatusSet, alive 
 func (p *managerProcess) removeAnnPreventDelete(ctx context.Context, ss *StatusSet) error {
 	log := logFromContext(ctx)
 	for _, pod := range ss.Pods {
+		if pod == nil { // Pods of an offline cluster may not exist
+			continue
+		}
 		if _, exists := pod.Annotations[constants.AnnPreventDelete]; exists {
 			newPod := pod.DeepCopy()
 			delete(newPod.Annotations, constants.AnnPreventDelete)
@@ -369,6 +372,9 @@ func (p *managerProcess) removeAnnPreventDelete(ctx context.Context, ss *StatusS
 func (p *managerProcess) addAnnPreventDelete(ctx context.Context, ss *StatusSet) error {
 	log := logFromContext(ctx)
 	ppod := ss.Pods[ss.Primary]
+	if ppod == nil {
+		return nil
+	}
 	newPod := ppod.DeepCopy()
 	if newPod.Annotations == nil {
 		newPod.Annotations = make(map[string]string)
