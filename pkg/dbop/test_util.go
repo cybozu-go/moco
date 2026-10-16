@@ -89,8 +89,8 @@ func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
 	db.MustExec(`GRANT PROCESS, REPLICATION CLIENT, REPLICATION SLAVE, SELECT, SHOW DATABASES, SHOW VIEW ON *.* TO ?@'%'`, constants.ReadOnlyUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.WritableUser, pwd.Writable())
 	db.MustExec(`GRANT ALL ON *.* TO ?@'%' WITH GRANT OPTION`, constants.WritableUser)
-	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'`)
-	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'`)
+	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_source SONAME 'semisync_source.so'`)
+	db.MustExec(`INSTALL PLUGIN rpl_semi_sync_replica SONAME 'semisync_replica.so'`)
 	db.MustExec(`INSTALL PLUGIN clone SONAME 'mysql_clone.so'`)
 
 	for k, v := range dynamicMycnf {
@@ -194,12 +194,21 @@ func newTestOperator(cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassw
 	udb.SetMaxIdleConns(1)
 	udb.SetConnMaxIdleTime(30 * time.Second)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	ss, err := DetectSemiSyncNames(ctx, udb)
+	if err != nil {
+		udb.Close()
+		return nil, fmt.Errorf("failed to detect semi-sync plugin for test: %w", err)
+	}
+
 	return &operator{
 		namespace: cluster.Namespace,
 		name:      cluster.PodName(index),
 		passwd:    pwd,
 		index:     index,
 		db:        udb,
+		semisync:  ss,
 	}, nil
 }
 
