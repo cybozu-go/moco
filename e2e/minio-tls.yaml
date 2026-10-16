@@ -44,9 +44,11 @@ metadata:
 spec:
   containers:
     - name: minio
-      image: minio/minio
+      image: pgsty/silo
       args:
         - server
+        - --certs-dir
+        - /certs
         - /data
       ports:
         - name: minio
@@ -56,7 +58,7 @@ spec:
         - name: data
           mountPath: /data
         - name: secret-volume
-          mountPath: /root/.minio/certs
+          mountPath: /certs
   volumes:
     - name: data
       emptyDir: {}
