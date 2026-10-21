@@ -7,6 +7,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Add a PodDisruptionBudget for moco-controller. It can be configured with the `podDisruptionBudget.(enabled,maxUnavailable)` values.
 
+### Changed
+- Require Kubernetes 1.30 or later for the ValidatingAdmissionPolicy v1 API.
+
+### Fixed
+- Remove the unused MySQLCluster CRD conversion webhook configuration to match the raw manifests.
+
 ## [0.27.0] - 2026-09-03
 ### Changed
 - Bump version to v0.37.0 [#944](https://github.com/cybozu-go/moco/pull/944)
