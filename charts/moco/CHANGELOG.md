@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add a PodDisruptionBudget for moco-controller. It can be configured with the `podDisruptionBudget.(enabled,maxUnavailable)` values.
 
 ## [0.27.0] - 2026-09-03
 ### Changed

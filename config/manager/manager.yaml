@@ -69,3 +69,16 @@ spec:
           secretName: moco-controller-grpc
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: controller
+  namespace: system
+  labels:
+    app.kubernetes.io/component: moco-controller
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: moco-controller
