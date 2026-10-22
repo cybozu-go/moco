@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add a PodDisruptionBudget for moco-controller. It can be configured with the `podDisruptionBudget.(enabled,maxUnavailable)` values.
+
+### Changed
+- Require Kubernetes 1.30 or later for the ValidatingAdmissionPolicy v1 API.
+
+### Fixed
+- Remove the unused MySQLCluster CRD conversion webhook configuration to match the raw manifests.
 
 ## [0.27.0] - 2026-09-03
 ### Changed

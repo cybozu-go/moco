@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep ValidatingAdmissionPolicy and ValidatingAdmissionPolicyBinding cluster-scoped in Kustomize output.
+
 ## [0.37.0] - 2026-09-02
 
 ### ⚠️ Notice

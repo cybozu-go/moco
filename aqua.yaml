@@ -9,11 +9,11 @@ checksum:
 #   - all
 registries:
 - type: standard
-  ref: v4.554.0 # renovate: depName=aquaproj/aqua-registry
+  ref: v4.575.0 # renovate: depName=aquaproj/aqua-registry
 packages:
 - name: kubernetes-sigs/kind@v0.31.0
 - name: kubernetes/kubectl@v1.35.3
-- name: kubernetes-sigs/kustomize@kustomize/v5.8.1
+- name: kubernetes-sigs/kustomize@kustomize/v5.8.3
 - name: helm/helm@v4.1.3
 - name: goreleaser/goreleaser@v2.15.2
 - name: mikefarah/yq@v4.52.5
