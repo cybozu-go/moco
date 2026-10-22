@@ -176,4 +176,4 @@ lint-ci:
 
 .PHONY: pinact
 pinact:
-	pinact run -update -min-age 7 -verify
+	pinact run --update --min-age 7 --verify
