@@ -124,7 +124,3 @@ type BackupPolicyList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BackupPolicy `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&BackupPolicy{}, &BackupPolicyList{})
-}

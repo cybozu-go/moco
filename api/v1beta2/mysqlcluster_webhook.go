@@ -70,7 +70,7 @@ func (a *mySQLClusterAdmission) ValidateCreate(ctx context.Context, cluster *MyS
 		return warns, nil
 	}
 
-	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, cluster.Name, errs)
+	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: MySQLClusterKind}, cluster.Name, errs)
 }
 
 func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldCluster, newCluster *MySQLCluster) (admission.Warnings, error) {
@@ -79,7 +79,7 @@ func (a *mySQLClusterAdmission) ValidateUpdate(ctx context.Context, oldCluster, 
 		return warns, nil
 	}
 
-	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: "MySQLCluster"}, newCluster.Name, errs)
+	return warns, apierrors.NewInvalid(schema.GroupKind{Group: GroupVersion.Group, Kind: MySQLClusterKind}, newCluster.Name, errs)
 }
 
 func (a *mySQLClusterAdmission) ValidateDelete(ctx context.Context, _ *MySQLCluster) (admission.Warnings, error) {
