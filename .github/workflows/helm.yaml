@@ -41,7 +41,7 @@ jobs:
         uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         if: steps.list-changed.outputs.changed == 'true'
         with:
-          version: v0.31.0
+          version: v0.33.0
           node_image: kindest/node:v1.36.4
           kubectl_version: v1.36.4
           config: e2e/kind-config.yaml

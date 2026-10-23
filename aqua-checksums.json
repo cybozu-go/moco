@@ -1101,6 +1101,36 @@
       "algorithm": "sha256"
     },
     {
+      "id": "http/dl.k8s.io/v1.36.4/bin/darwin/amd64/kubectl",
+      "checksum": "71A3AA7C2EE2C974D9FBB462CBA0C5C04A4DF2E8D85EEE94714FD819EA3C4E63",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "http/dl.k8s.io/v1.36.4/bin/darwin/arm64/kubectl",
+      "checksum": "C9E4F713D6FEE0043A3D835CCA13077CDA2BC0973840EB9779360DF0B5BDFC69",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "http/dl.k8s.io/v1.36.4/bin/linux/amd64/kubectl",
+      "checksum": "8B8F088DA2DAB964F853B38464033B1BE15EDE2839ECA751482357C45ABDD05A",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "http/dl.k8s.io/v1.36.4/bin/linux/arm64/kubectl",
+      "checksum": "0ECF44450EE6063BF19DD166A103EE6DF4A9034455C2ABCE626E6EEA657D73FB",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "http/dl.k8s.io/v1.36.4/bin/windows/amd64/kubectl.exe",
+      "checksum": "31947857BE7583F3E4E6D889A3FB781CA813A45C20F11CCB3EF309714D01A9F3",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "http/dl.k8s.io/v1.36.4/bin/windows/arm64/kubectl.exe",
+      "checksum": "70ABAC518CDCFC3657D5E997EAFB5E27B9B08BB206AF54BF75D7848CDAA7730D",
+      "algorithm": "sha256"
+    },
+    {
       "id": "http/dl.k8s.io/v1.37.1/bin/darwin/amd64/kubectl",
       "checksum": "6851381C486FF6EDD691623E3D65C87CB9A5B02887FF8FBBB38D8A031B748387",
       "algorithm": "sha256"
