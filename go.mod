@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.15
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.4
 	// Do not update moco-agent until changes that will cause StatefulSet to restart are made.
-	github.com/cybozu-go/moco-agent v0.16.0
+	github.com/cybozu-go/moco-agent v0.17.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-logr/zapr v1.3.0
@@ -89,7 +89,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
