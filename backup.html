@@ -15,8 +15,8 @@
         <link rel="icon" href="favicon-de23e50b.svg">
         <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-2459343d.css">
-        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2ec1403e.js";
+            window.path_to_searchindex_js = "searchindex-52298f3c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-e21aac66.js"></script>
+        <script src="toc-4528d509.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -210,7 +210,7 @@ The CronJob creates a Job to take a full backup periodically.
 The Job also takes a backup of binary logs for <a href="https://dev.mysql.com/doc/refman/8.0/en/point-in-time-recovery.html">Point-in-Time Recovery (PiTR)</a>.
 The backups are stored in a S3-compatible object storage bucket.</p>
 <p>This figure illustrates how MOCO takes a backup of a MySQLCluster.</p>
-<p><img src="https://www.plantuml.com/plantuml/svg/VP9DRzim38Rl-XM4xpOIfzkXXw1hRiE-Sonwa6N6LIUBdZu614FwsoTHTkjjM4yct-SbOPAwyK6w44SZ5DdWo40rag9wpWow2gI7h0bn8jEZW-gJ7D5FKY6SY9YdB_mI001t7y_7hnyE9lg0xfvhp_w7AUnMgkzn-a96gpEpYKE6R8DwFsjm3GvFwD0gBCK7H_OzTLodKbpKHNcaZeLCe6dsMKWzsYOfACFSuuZkfrRuJYcADd2XbuoolSv9CNuZWunT2bwaMsrxROTdqfMS3QiyZS7fUeX_FSdavH-MYn3AKEoXEkxWGECaW-uCmkVk4LM0Oo0d1wpcLI_dA5k5TjDkwqrRRwxu91shxUnblpO8LH_7YGqvQ1bUNcstMxNRljvk-nTCeneQ69VmnS1sgEyUTD-ZlNTwU0ZrVkswv7NaXyVdvBjUmtQvvpFXdVwNBDjUy_BIdfwMDx9h-6z4obZbnIJzge4fXaLU9aZWpGhiWTibzMq3SUfbGF11XkZ53ThKolm6" alt="Backup"></p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="https://www.plantuml.com/plantuml/svg/VP9DRzim38Rl-XM4xpOIfzkXXw1hRiE-Sonwa6N6LIUBdZu614FwsoTHTkjjM4yct-SbOPAwyK6w44SZ5DdWo40rag9wpWow2gI7h0bn8jEZW-gJ7D5FKY6SY9YdB_mI001t7y_7hnyE9lg0xfvhp_w7AUnMgkzn-a96gpEpYKE6R8DwFsjm3GvFwD0gBCK7H_OzTLodKbpKHNcaZeLCe6dsMKWzsYOfACFSuuZkfrRuJYcADd2XbuoolSv9CNuZWunT2bwaMsrxROTdqfMS3QiyZS7fUeX_FSdavH-MYn3AKEoXEkxWGECaW-uCmkVk4LM0Oo0d1wpcLI_dA5k5TjDkwqrRRwxu91shxUnblpO8LH_7YGqvQ1bUNcstMxNRljvk-nTCeneQ69VmnS1sgEyUTD-ZlNTwU0ZrVkswv7NaXyVdvBjUmtQvvpFXdVwNBDjUy_BIdfwMDx9h-6z4obZbnIJzge4fXaLU9aZWpGhiWTibzMq3SUfbGF11XkZ53ThKolm6" alt="Backup"><span class="img-wrapper"><img src="https://www.plantuml.com/plantuml/svg/VP9DRzim38Rl-XM4xpOIfzkXXw1hRiE-Sonwa6N6LIUBdZu614FwsoTHTkjjM4yct-SbOPAwyK6w44SZ5DdWo40rag9wpWow2gI7h0bn8jEZW-gJ7D5FKY6SY9YdB_mI001t7y_7hnyE9lg0xfvhp_w7AUnMgkzn-a96gpEpYKE6R8DwFsjm3GvFwD0gBCK7H_OzTLodKbpKHNcaZeLCe6dsMKWzsYOfACFSuuZkfrRuJYcADd2XbuoolSv9CNuZWunT2bwaMsrxROTdqfMS3QiyZS7fUeX_FSdavH-MYn3AKEoXEkxWGECaW-uCmkVk4LM0Oo0d1wpcLI_dA5k5TjDkwqrRRwxu91shxUnblpO8LH_7YGqvQ1bUNcstMxNRljvk-nTCeneQ69VmnS1sgEyUTD-ZlNTwU0ZrVkswv7NaXyVdvBjUmtQvvpFXdVwNBDjUy_BIdfwMDx9h-6z4obZbnIJzge4fXaLU9aZWpGhiWTibzMq3SUfbGF11XkZ53ThKolm6" alt="Backup"></span></label></p>
 <ol>
 <li><code>moco-controller</code> creates a CronJob and Role/RoleBinding to allow access to MySQLCluster for the Job Pod.</li>
 <li>At each configured interval, CronJob creates a Job.</li>
@@ -221,7 +221,7 @@ The backups are stored in a S3-compatible object storage bucket.</p>
 </ol>
 <p>To restore from a backup, users need to create a new MySQLCluster with <code>spec.restore</code> filled with necessary information such as the bucket name of the object storage, the object key, and so on.</p>
 <p>The next figure illustrates how MOCO restores MySQL cluster from a backup.</p>
-<p><img src="https://www.plantuml.com/plantuml/svg/TPA_xzCm4CLt_nMdx8xwJM3f49LsG_me3LlLmR6lgOlZYnm7X53xjuFj6WAeItBtFiydvrqsanVEpuDXPp8A7HGVn83JA2H29rm1OWfl-C4008xllxUVtktCF7bqfy1agXFTauhYI2e86K9PDa63DKY7mcDolwKkkg_K9U501hVQActx2Dollalz7yDlagGMtLSjyOsKD5iVuIG22cE16pnxdfN5FE2yYJsimU4P7Lg9_viQcCHVZXjZqj2ie6XhsD4m2gyxW_2nkwBqq7foeiUOsbG_Gil1ReNyCezGhQeNlghugaxX9ZLPerqRX4BDmnXvAFvXdRQ6-aXJcNaq0pzUj59eJqxt5y-RXUSMFu2iTsIW64WIVtG6qww3nbXuXgt54DVmKkR5PH1ZUavoW4j3lDlzdcTM9IZwPWq9nO8IIFf7wXAYckwzEFBgwP7N9UprvmFRe5NpO7u2" alt="Restore"></p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="https://www.plantuml.com/plantuml/svg/TPA_xzCm4CLt_nMdx8xwJM3f49LsG_me3LlLmR6lgOlZYnm7X53xjuFj6WAeItBtFiydvrqsanVEpuDXPp8A7HGVn83JA2H29rm1OWfl-C4008xllxUVtktCF7bqfy1agXFTauhYI2e86K9PDa63DKY7mcDolwKkkg_K9U501hVQActx2Dollalz7yDlagGMtLSjyOsKD5iVuIG22cE16pnxdfN5FE2yYJsimU4P7Lg9_viQcCHVZXjZqj2ie6XhsD4m2gyxW_2nkwBqq7foeiUOsbG_Gil1ReNyCezGhQeNlghugaxX9ZLPerqRX4BDmnXvAFvXdRQ6-aXJcNaq0pzUj59eJqxt5y-RXUSMFu2iTsIW64WIVtG6qww3nbXuXgt54DVmKkR5PH1ZUavoW4j3lDlzdcTM9IZwPWq9nO8IIFf7wXAYckwzEFBgwP7N9UprvmFRe5NpO7u2" alt="Restore"><span class="img-wrapper"><img src="https://www.plantuml.com/plantuml/svg/TPA_xzCm4CLt_nMdx8xwJM3f49LsG_me3LlLmR6lgOlZYnm7X53xjuFj6WAeItBtFiydvrqsanVEpuDXPp8A7HGVn83JA2H29rm1OWfl-C4008xllxUVtktCF7bqfy1agXFTauhYI2e86K9PDa63DKY7mcDolwKkkg_K9U501hVQActx2Dollalz7yDlagGMtLSjyOsKD5iVuIG22cE16pnxdfN5FE2yYJsimU4P7Lg9_viQcCHVZXjZqj2ie6XhsD4m2gyxW_2nkwBqq7foeiUOsbG_Gil1ReNyCezGhQeNlghugaxX9ZLPerqRX4BDmnXvAFvXdRQ6-aXJcNaq0pzUj59eJqxt5y-RXUSMFu2iTsIW64WIVtG6qww3nbXuXgt54DVmKkR5PH1ZUavoW4j3lDlzdcTM9IZwPWq9nO8IIFf7wXAYckwzEFBgwP7N9UprvmFRe5NpO7u2" alt="Restore"></span></label></p>
 <ol>
 <li><code>moco-controller</code> creates a Job and Role/RoleBinding for restoration.</li>
 <li>The Job downloads a tarball of dumped files of the specified backup.</li>
@@ -506,11 +506,11 @@ If we do so, the entire backup process should be a persistent workload, not a (C
 
         <script src="elasticlunr-ef4e11c1.min.js"></script>
         <script src="mark-09e88c2c.min.js"></script>
-        <script src="searcher-c2a407aa.js"></script>
+        <script src="searcher-09f2665d.js"></script>
 
         <script src="clipboard-1626706a.min.js"></script>
         <script src="highlight-abc7f01d.js"></script>
-        <script src="book-a0b12cfe.js"></script>
+        <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
 
