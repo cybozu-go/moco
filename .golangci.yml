@@ -26,6 +26,7 @@ linters:
       enable-all: true
     modernize:
       disable:
+        - embedlit
         - omitzero
     goconst:
       ignore-string-values:
@@ -33,6 +34,8 @@ linters:
         - '0.0.0.0'
         - 'Yes'
         - 'tcp'
+        - 'ON'
+        - 'OFF'
   exclusions:
     rules:
       - path: (.+)(_test\.go|test_(.+)\.go)

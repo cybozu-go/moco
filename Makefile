@@ -1,4 +1,4 @@
-KUBERNETES_VERSION = 1.35.4
+KUBERNETES_VERSION = 1.36.4
 
 # Tool versions
 MYSQLSH_VERSION = 8.4.8-1
@@ -176,4 +176,4 @@ lint-ci:
 
 .PHONY: pinact
 pinact:
-	pinact run -update -min-age 7 -verify
+	pinact run --update --min-age 7 --verify

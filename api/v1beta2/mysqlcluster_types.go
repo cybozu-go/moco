@@ -869,7 +869,3 @@ type MySQLClusterList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MySQLCluster `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&MySQLCluster{}, &MySQLClusterList{})
-}
