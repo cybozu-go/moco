@@ -30,10 +30,17 @@ var _ = Describe("FindTopRunner", func() {
 		set0 := `8e349184-bc14-11e3-8d4c-0800272864ba:1-29`
 		set1 := `8e349184-bc14-11e3-8d4c-0800272864ba:1-30`
 		set2 := `8e349184-bc14-11e3-8d4c-0800272864ba:1-31`
+		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{ExecutedGtidSet: set0}}
+		statuses[1] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{ExecutedGtidSet: set1}}
+		statuses[2] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{ExecutedGtidSet: set2}}
+		top, err := FindTopRunner(context.Background(), op, statuses)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(top).To(Equal(2))
+
 		statuses[0] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set0}}
 		statuses[1] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set1}}
 		statuses[2] = &MySQLInstanceStatus{ReplicaStatus: &ReplicaStatus{RetrievedGtidSet: set2}}
-		top, err := FindTopRunner(context.Background(), op, statuses)
+		top, err = FindTopRunner(context.Background(), op, statuses)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(top).To(Equal(2))
 
