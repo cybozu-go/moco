@@ -63,7 +63,7 @@ A replica is counted as healthy only when all conditions are true:
 - Replication points to the current primary host.
 - Replica is not errant.
 
-Also, if `SemiSyncMasterWaitSessions > 0`, treat the replica as unavailable (hangup protection).
+Also, if `SemiSyncSourceWaitSessions > 0`, treat the replica as unavailable (hangup protection).
 
 Why this matters: Pod readiness alone is not enough for safe replication.
 
@@ -72,8 +72,9 @@ Why this matters: Pod readiness alone is not enough for safe replication.
 - `Failed`: more than half of non-primary replicas are reachable, non-errant, have replication status, and have GTID data.
 - `Lost`: this majority condition is not met.
 - In normal mode, this is used together with lossless semi-sync settings:
-  - primary: `rpl_semi_sync_master_enabled=ON`, `rpl_semi_sync_master_wait_for_slave_count=floor(spec.replicas/2)`
-  - replicas: `rpl_semi_sync_slave_enabled=ON`
+  - primary: `rpl_semi_sync_source_enabled=ON`, `rpl_semi_sync_source_wait_for_replica_count=floor(spec.replicas/2)`
+  - replicas: `rpl_semi_sync_replica_enabled=ON`
+  - instances with the deprecated `rpl_semi_sync_master` / `rpl_semi_sync_slave` plugins use the corresponding `master` / `slave` variable names
 
 Why this matters: this combination helps ensure the surviving replicas include at least one non-errant replica with the latest acknowledged transactions.
 
