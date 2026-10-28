@@ -10,8 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// SemiSyncNames holds plugin names and variable names for the installed semi-sync plugin variant.
-type SemiSyncNames struct {
+// semiSyncNames holds plugin names and variable names for the installed semi-sync plugin variant.
+type semiSyncNames struct {
 	// Plugin names
 	SourcePluginName  string
 	ReplicaPluginName string
@@ -28,8 +28,8 @@ type SemiSyncNames struct {
 	SourceWaitSessions string
 }
 
-// NewSemiSyncNames is the name set for the new semi-sync plugins (rpl_semi_sync_source/replica).
-var NewSemiSyncNames = SemiSyncNames{
+// sourceReplicaNames is the name set for the new semi-sync plugins (rpl_semi_sync_source/replica).
+var sourceReplicaNames = semiSyncNames{
 	SourcePluginName:    "rpl_semi_sync_source",
 	ReplicaPluginName:   "rpl_semi_sync_replica",
 	SourceEnabled:       "rpl_semi_sync_source_enabled",
@@ -39,8 +39,8 @@ var NewSemiSyncNames = SemiSyncNames{
 	SourceWaitSessions:  "Rpl_semi_sync_source_wait_sessions",
 }
 
-// LegacySemiSyncNames is the name set for the deprecated semi-sync plugins (rpl_semi_sync_master/slave).
-var LegacySemiSyncNames = SemiSyncNames{
+// masterSlaveNames is the name set for the deprecated semi-sync plugins (rpl_semi_sync_master/slave).
+var masterSlaveNames = semiSyncNames{
 	SourcePluginName:    "rpl_semi_sync_master",
 	ReplicaPluginName:   "rpl_semi_sync_slave",
 	SourceEnabled:       "rpl_semi_sync_master_enabled",
@@ -50,42 +50,42 @@ var LegacySemiSyncNames = SemiSyncNames{
 	SourceWaitSessions:  "Rpl_semi_sync_master_wait_sessions",
 }
 
-// DetectSemiSyncNames detects which semi-sync plugin is installed and returns the appropriate name set.
+// detectSemiSyncNames detects which semi-sync plugin is installed and returns the appropriate name set.
 //
 // The new plugin (rpl_semi_sync_source) is preferred when ACTIVE; the legacy plugin
 // (rpl_semi_sync_master) is used only when it is the sole ACTIVE one. If neither
 // plugin is ACTIVE — for example on a fresh instance whose moco-agent has not yet
-// installed the plugins — NewSemiSyncNames is returned so subsequent operations
+// installed the plugins — sourceReplicaNames is returned so subsequent operations
 // target the modern variable names.
 //
 // When a plugin row exists but is not ACTIVE (DISABLED / INACTIVE / DELETED), a
 // warning is logged because subsequent SET/SELECT against the plugin's system
 // variables will fail — system variables are not exposed for non-ACTIVE plugins.
-func DetectSemiSyncNames(ctx context.Context, db *sqlx.DB) (SemiSyncNames, error) {
-	newStatus, err := getPluginStatus(ctx, db, NewSemiSyncNames.SourcePluginName)
+func detectSemiSyncNames(ctx context.Context, db *sqlx.DB) (semiSyncNames, error) {
+	newStatus, err := getPluginStatus(ctx, db, sourceReplicaNames.SourcePluginName)
 	if err != nil {
-		return SemiSyncNames{}, fmt.Errorf("failed to check semi-sync source plugin: %w", err)
+		return semiSyncNames{}, fmt.Errorf("failed to check semi-sync source plugin: %w", err)
 	}
 	if newStatus == "ACTIVE" {
-		return NewSemiSyncNames, nil
+		return sourceReplicaNames, nil
 	}
 
-	legacyStatus, err := getPluginStatus(ctx, db, LegacySemiSyncNames.SourcePluginName)
+	legacyStatus, err := getPluginStatus(ctx, db, masterSlaveNames.SourcePluginName)
 	if err != nil {
-		return SemiSyncNames{}, fmt.Errorf("failed to check semi-sync master plugin: %w", err)
+		return semiSyncNames{}, fmt.Errorf("failed to check semi-sync master plugin: %w", err)
 	}
 	if legacyStatus == "ACTIVE" {
-		return LegacySemiSyncNames, nil
+		return masterSlaveNames, nil
 	}
 
 	if newStatus != "" || legacyStatus != "" {
 		logr.FromContextOrDiscard(ctx).Info(
 			"semi-sync plugin is registered but not ACTIVE; semi-sync operations may fail",
-			"newPlugin", NewSemiSyncNames.SourcePluginName, "newStatus", newStatus,
-			"legacyPlugin", LegacySemiSyncNames.SourcePluginName, "legacyStatus", legacyStatus,
+			"newPlugin", sourceReplicaNames.SourcePluginName, "newStatus", newStatus,
+			"legacyPlugin", masterSlaveNames.SourcePluginName, "legacyStatus", legacyStatus,
 		)
 	}
-	return NewSemiSyncNames, nil
+	return sourceReplicaNames, nil
 }
 
 // getPluginStatus returns the PLUGIN_STATUS for the given plugin name.

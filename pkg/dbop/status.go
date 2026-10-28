@@ -12,7 +12,7 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 
 	status := &MySQLInstanceStatus{}
 
-	names, err := DetectSemiSyncNames(ctx, o.db)
+	names, err := detectSemiSyncNames(ctx, o.db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to detect semi-sync plugin: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
@@ -48,7 +48,7 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 	return status, nil
 }
 
-func (o *operator) getGlobalVariablesStatus(ctx context.Context, names SemiSyncNames) (*GlobalVariables, error) {
+func (o *operator) getGlobalVariablesStatus(ctx context.Context, names semiSyncNames) (*GlobalVariables, error) {
 	status := &GlobalVariables{}
 	query := fmt.Sprintf(
 		"SELECT @@server_uuid, @@gtid_executed, @@gtid_purged, @@read_only, @@super_read_only, @@%s AS wait_for_replica_count, @@%s AS source_enabled, @@%s AS replica_enabled",
@@ -63,7 +63,7 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context, names SemiSyncN
 	return status, nil
 }
 
-func (o *operator) getGlobalStatus(ctx context.Context, names SemiSyncNames) (*GlobalStatus, error) {
+func (o *operator) getGlobalStatus(ctx context.Context, names semiSyncNames) (*GlobalStatus, error) {
 	var value sql.NullString
 
 	semiSyncSourceWaitSessions := 0

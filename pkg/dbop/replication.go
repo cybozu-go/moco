@@ -8,7 +8,7 @@ import (
 const semiSyncSourceTimeout = 24 * 60 * 60 * 1000
 
 func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, semisync bool) error {
-	names, err := DetectSemiSyncNames(ctx, o.db)
+	names, err := detectSemiSyncNames(ctx, o.db)
 	if err != nil {
 		return fmt.Errorf("failed to detect semi-sync plugin: %w", err)
 	}
@@ -44,7 +44,7 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 }
 
 func (o *operator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
-	names, err := DetectSemiSyncNames(ctx, o.db)
+	names, err := detectSemiSyncNames(ctx, o.db)
 	if err != nil {
 		return fmt.Errorf("failed to detect semi-sync plugin: %w", err)
 	}
