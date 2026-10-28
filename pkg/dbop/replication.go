@@ -8,6 +8,10 @@ import (
 const semiSyncSourceTimeout = 24 * 60 * 60 * 1000
 
 func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, semisync bool) error {
+	names, err := DetectSemiSyncNames(ctx, o.db)
+	if err != nil {
+		return fmt.Errorf("failed to detect semi-sync plugin: %w", err)
+	}
 	if _, err := o.db.ExecContext(ctx, `STOP REPLICA`); err != nil {
 		return fmt.Errorf("failed to stop replica: %w", err)
 	}
@@ -27,11 +31,11 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 	if _, err := o.db.NamedExecContext(ctx, cmd, primary); err != nil {
 		return fmt.Errorf("failed to change primary: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", o.semisync.ReplicaEnabled), semisync); err != nil {
-		return fmt.Errorf("failed to set %s: %w", o.semisync.ReplicaEnabled, err)
+	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", names.ReplicaEnabled), semisync); err != nil {
+		return fmt.Errorf("failed to set %s: %w", names.ReplicaEnabled, err)
 	}
-	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=OFF", o.semisync.SourceEnabled)); err != nil {
-		return fmt.Errorf("failed to disable %s: %w", o.semisync.SourceEnabled, err)
+	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=OFF", names.SourceEnabled)); err != nil {
+		return fmt.Errorf("failed to disable %s: %w", names.SourceEnabled, err)
 	}
 	if _, err := o.db.ExecContext(ctx, `START REPLICA`); err != nil {
 		return fmt.Errorf("failed to start replica: %w", err)
@@ -40,13 +44,17 @@ func (o *operator) ConfigureReplica(ctx context.Context, primary AccessInfo, sem
 }
 
 func (o *operator) ConfigurePrimary(ctx context.Context, waitForCount int) error {
-	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", o.semisync.SourceTimeout), semiSyncSourceTimeout); err != nil {
-		return fmt.Errorf("failed to set %s: %w", o.semisync.SourceTimeout, err)
+	names, err := DetectSemiSyncNames(ctx, o.db)
+	if err != nil {
+		return fmt.Errorf("failed to detect semi-sync plugin: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", o.semisync.WaitForReplicaCount), waitForCount); err != nil {
-		return fmt.Errorf("failed to set %s: %w", o.semisync.WaitForReplicaCount, err)
+	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", names.SourceTimeout), semiSyncSourceTimeout); err != nil {
+		return fmt.Errorf("failed to set %s: %w", names.SourceTimeout, err)
 	}
-	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=ON", o.semisync.SourceEnabled)); err != nil {
+	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=?", names.WaitForReplicaCount), waitForCount); err != nil {
+		return fmt.Errorf("failed to set %s: %w", names.WaitForReplicaCount, err)
+	}
+	if _, err := o.db.ExecContext(ctx, fmt.Sprintf("SET GLOBAL %s=ON", names.SourceEnabled)); err != nil {
 		return fmt.Errorf("failed to enable semi-sync primary: %w", err)
 	}
 	return nil

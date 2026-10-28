@@ -194,21 +194,12 @@ func newTestOperator(cluster *mocov1beta2.MySQLCluster, pwd *password.MySQLPassw
 	udb.SetMaxIdleConns(1)
 	udb.SetConnMaxIdleTime(30 * time.Second)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	ss, err := DetectSemiSyncNames(ctx, udb)
-	if err != nil {
-		udb.Close()
-		return nil, fmt.Errorf("failed to detect semi-sync plugin for test: %w", err)
-	}
-
 	return &operator{
 		namespace: cluster.Namespace,
 		name:      cluster.PodName(index),
 		passwd:    pwd,
 		index:     index,
 		db:        udb,
-		semisync:  ss,
 	}, nil
 }
 

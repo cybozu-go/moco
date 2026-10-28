@@ -12,13 +12,18 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 
 	status := &MySQLInstanceStatus{}
 
-	globalVariablesStatus, err := o.getGlobalVariablesStatus(ctx)
+	names, err := DetectSemiSyncNames(ctx, o.db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect semi-sync plugin: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
+	}
+
+	globalVariablesStatus, err := o.getGlobalVariablesStatus(ctx, names)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get global variables: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
 	status.GlobalVariables = *globalVariablesStatus
 
-	globalStatus, err := o.getGlobalStatus(ctx)
+	globalStatus, err := o.getGlobalStatus(ctx, names)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get global status: pod=%s, namespace=%s: %w", o.name, o.namespace, err)
 	}
@@ -43,13 +48,13 @@ func (o *operator) GetStatus(ctx context.Context) (*MySQLInstanceStatus, error) 
 	return status, nil
 }
 
-func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariables, error) {
+func (o *operator) getGlobalVariablesStatus(ctx context.Context, names SemiSyncNames) (*GlobalVariables, error) {
 	status := &GlobalVariables{}
 	query := fmt.Sprintf(
 		"SELECT @@server_uuid, @@gtid_executed, @@gtid_purged, @@read_only, @@super_read_only, @@%s AS wait_for_replica_count, @@%s AS source_enabled, @@%s AS replica_enabled",
-		o.semisync.WaitForReplicaCount,
-		o.semisync.SourceEnabled,
-		o.semisync.ReplicaEnabled,
+		names.WaitForReplicaCount,
+		names.SourceEnabled,
+		names.ReplicaEnabled,
 	)
 	err := o.db.GetContext(ctx, status, query)
 	if err != nil {
@@ -58,18 +63,18 @@ func (o *operator) getGlobalVariablesStatus(ctx context.Context) (*GlobalVariabl
 	return status, nil
 }
 
-func (o *operator) getGlobalStatus(ctx context.Context) (*GlobalStatus, error) {
+func (o *operator) getGlobalStatus(ctx context.Context, names SemiSyncNames) (*GlobalStatus, error) {
 	var value sql.NullString
 
 	semiSyncSourceWaitSessions := 0
-	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = ?", o.semisync.SourceWaitSessions)
+	err := o.db.GetContext(ctx, &value, "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = ?", names.SourceWaitSessions)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("failed to get %s: %w", o.semisync.SourceWaitSessions, err)
+		return nil, fmt.Errorf("failed to get %s: %w", names.SourceWaitSessions, err)
 	}
 	if value.Valid {
 		semiSyncSourceWaitSessions, err = strconv.Atoi(value.String)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", o.semisync.SourceWaitSessions, err)
+			return nil, fmt.Errorf("failed to parse %s: %w", names.SourceWaitSessions, err)
 		}
 	}
 
