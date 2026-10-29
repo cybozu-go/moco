@@ -108,32 +108,40 @@ func TestDoWithOfflineClusterHavingNoPods(t *testing.T) {
 // While an offline cluster is being scaled down, the remaining Pods may still
 // have the prevent-delete annotation. It must be removed; otherwise the Pod
 // deletion is denied and the scale-down never completes.
+//
+// Pods are deleted in parallel, so the sole survivor can have any ordinal;
+// e.g. the annotated primary moco-test-2 remains after moco-test-0 and
+// moco-test-1 are deleted.
 func TestDoRemovesPreventDeleteFromOfflineClusterPods(t *testing.T) {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "moco-test-0",
-			Namespace: "default",
-			Labels: map[string]string{
-				constants.LabelAppName:     constants.AppNameMySQL,
-				constants.LabelAppInstance: "test",
-			},
-			Annotations: map[string]string{
-				constants.AnnPreventDelete: "true",
-			},
-		},
-	}
-	p, c := newOfflineTestProcess(t, 3, pod)
-	ctx := context.Background()
+	for _, podName := range []string{"moco-test-0", "moco-test-2"} {
+		t.Run(podName, func(t *testing.T) {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      podName,
+					Namespace: "default",
+					Labels: map[string]string{
+						constants.LabelAppName:     constants.AppNameMySQL,
+						constants.LabelAppInstance: "test",
+					},
+					Annotations: map[string]string{
+						constants.AnnPreventDelete: "true",
+					},
+				},
+			}
+			p, c := newOfflineTestProcess(t, 3, pod)
+			ctx := context.Background()
 
-	if _, err := p.do(ctx); err != nil {
-		t.Fatalf("do returned an error: %v", err)
-	}
+			if _, err := p.do(ctx); err != nil {
+				t.Fatalf("do returned an error: %v", err)
+			}
 
-	updated := &corev1.Pod{}
-	if err := c.Get(ctx, client.ObjectKeyFromObject(pod), updated); err != nil {
-		t.Fatalf("failed to get pod: %v", err)
-	}
-	if _, exists := updated.Annotations[constants.AnnPreventDelete]; exists {
-		t.Errorf("%s annotation was not removed", constants.AnnPreventDelete)
+			updated := &corev1.Pod{}
+			if err := c.Get(ctx, client.ObjectKeyFromObject(pod), updated); err != nil {
+				t.Fatalf("failed to get pod: %v", err)
+			}
+			if _, exists := updated.Annotations[constants.AnnPreventDelete]; exists {
+				t.Errorf("%s annotation was not removed", constants.AnnPreventDelete)
+			}
+		})
 	}
 }

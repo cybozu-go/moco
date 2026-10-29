@@ -180,7 +180,7 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 			return nil, fmt.Errorf("bad pod name: %s", pod.Name)
 		}
 
-		if index < 0 || index >= len(pods.Items) {
+		if index < 0 || index >= len(ss.Pods) {
 			return nil, fmt.Errorf("index out of range: %d", index)
 		}
 		ss.Pods[index] = &pods.Items[i]
