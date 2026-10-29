@@ -10,6 +10,8 @@ const (
 	backupSubsystem     = "backup"
 )
 
+var metricLabels = []string{"name", "namespace"}
+
 // Clustering related metrics
 var (
 	CheckCountVec      *prometheus.CounterVec
@@ -54,7 +56,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "checks_total",
 		Help:      "The number of times MOCO has checked the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(CheckCountVec)
 
 	ErrorCountVec = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -62,7 +64,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "errors_total",
 		Help:      "The number of times MOCO has got errors from the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ErrorCountVec)
 
 	AvailableVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -70,7 +72,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "available",
 		Help:      "The cluster status about available condition",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(AvailableVec)
 
 	HealthyVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -78,7 +80,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "healthy",
 		Help:      "The cluster status about healthy condition",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(HealthyVec)
 
 	SwitchoverCountVec = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -86,7 +88,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "switchover_total",
 		Help:      "The total count of switchover in the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(SwitchoverCountVec)
 
 	FailoverCountVec = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -94,7 +96,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "failover_total",
 		Help:      "The total count of failover in the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(FailoverCountVec)
 
 	TotalReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -102,7 +104,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "replicas",
 		Help:      "The number of instances in the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(TotalReplicasVec)
 
 	ReadyReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -110,7 +112,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "ready_replicas",
 		Help:      "The number of ready Pods in the cluster",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ReadyReplicasVec)
 
 	ErrantReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -118,7 +120,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "errant_replicas",
 		Help:      "The number of instances that have errant transactions",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ErrantReplicasVec)
 
 	ProcessingTimeVec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -127,7 +129,7 @@ func Register(registry prometheus.Registerer) {
 		Name:      "processing_time_seconds",
 		Help:      "The length of time in seconds processing the cluster",
 		Buckets:   []float64{0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10, 20, 30},
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ProcessingTimeVec)
 
 	BackupTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -135,7 +137,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "timestamp",
 		Help:      "The timestamp of the last successful backup",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupTimestamp)
 
 	BackupElapsed = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -143,7 +145,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "elapsed_seconds",
 		Help:      "The time taken for the backup",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupElapsed)
 
 	BackupDumpSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -151,7 +153,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "dump_bytes",
 		Help:      "The size of compressed full backup data",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupDumpSize)
 
 	BackupBinlogSize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -159,7 +161,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "binlog_bytes",
 		Help:      "The size of compressed binlog files",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupBinlogSize)
 
 	BackupWorkDirUsage = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -167,7 +169,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "workdir_usage_bytes",
 		Help:      "The maximum usage of the working directory",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupWorkDirUsage)
 
 	BackupWarnings = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -175,7 +177,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: backupSubsystem,
 		Name:      "warnings",
 		Help:      "The number of warnings in the last successful backup",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(BackupWarnings)
 
 	VolumeResizedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -183,7 +185,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "volume_resized_total",
 		Help:      "The number of successful volume resizes",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(VolumeResizedTotal)
 
 	VolumeResizedErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -191,7 +193,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "volume_resized_errors_total",
 		Help:      "The number of failed volume resizes",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(VolumeResizedErrorTotal)
 
 	StatefulSetRecreateTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -199,7 +201,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "statefulset_recreate_total",
 		Help:      "The number of successful StatefulSet recreates",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(StatefulSetRecreateTotal)
 
 	StatefulSetRecreateErrorTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -207,7 +209,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "statefulset_recreate_errors_total",
 		Help:      "The number of failed StatefulSet recreates",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(StatefulSetRecreateErrorTotal)
 
 	ClusteringStoppedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -215,7 +217,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "clustering_stopped",
 		Help:      "Indicates if clustering has stopped",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ClusteringStoppedVec)
 
 	ReconciliationStoppedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -223,7 +225,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "reconciliation_stopped",
 		Help:      "Indicates if reconciliation has stopped",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(ReconciliationStoppedVec)
 
 	CurrentReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -231,7 +233,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "current_replicas",
 		Help:      "The number of current replicas",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(CurrentReplicasVec)
 
 	UpdatedReplicasVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -239,7 +241,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "updated_replicas",
 		Help:      "The number of updated replicas",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(UpdatedReplicasVec)
 
 	LastPartitionUpdatedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -247,7 +249,7 @@ func Register(registry prometheus.Registerer) {
 		Subsystem: clusteringSubsystem,
 		Name:      "last_partition_updated",
 		Help:      "The timestamp of the last successful partition update",
-	}, []string{"name", "namespace"})
+	}, metricLabels)
 	registry.MustRegister(LastPartitionUpdatedVec)
 
 	PartitionUpdateRetriesTotalVec = prometheus.NewCounterVec(prometheus.CounterOpts{

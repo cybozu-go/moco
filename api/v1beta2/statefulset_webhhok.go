@@ -40,7 +40,7 @@ func (*StatefulSetDefaulter) Default(ctx context.Context, sts *appsv1.StatefulSe
 		return nil
 	}
 
-	if sts.OwnerReferences[0].Kind != "MySQLCluster" && sts.OwnerReferences[0].APIVersion != GroupVersion.String() {
+	if sts.OwnerReferences[0].Kind != MySQLClusterKind && sts.OwnerReferences[0].APIVersion != GroupVersion.String() {
 		return nil
 	}
 

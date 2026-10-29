@@ -28,7 +28,7 @@ var _ = Describe("S3Bucket", func() {
 		dataDir = dir
 		err = exec.Command("docker", "run", "--rm", "--name=moco-minio", "-d", "-p", "9000:9000",
 			"-v", fmt.Sprintf("%s:/data", dir),
-			"minio/minio", "server", "/data").Run()
+			"pgsty/silo", "server", "/data").Run()
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() error {
