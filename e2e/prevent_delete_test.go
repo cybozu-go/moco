@@ -178,6 +178,21 @@ var _ = Context("PreventDelete", Serial, func() {
 
 		// never finish rollout restart
 		kubectlSafe(nil, "rollout", "restart", "sts", "-n", "prevent-delete", "moco-test")
+
+		// wait for the StatefulSet controller to observe the restart;
+		// until then, the status still looks finished (UpdatedReplicas == Replicas)
+		Eventually(func() error {
+			out, err := kubectl(nil, "get", "sts", "-n", "prevent-delete", "moco-test", "-o", "json")
+			Expect(err).NotTo(HaveOccurred())
+			sts := &appsv1.StatefulSet{}
+			err = json.Unmarshal(out, sts)
+			Expect(err).NotTo(HaveOccurred())
+			if sts.Status.UpdateRevision == sts.Status.CurrentRevision {
+				return errors.New("rollout restart is not observed yet")
+			}
+			return nil
+		}).Should(Succeed())
+
 		Consistently(func() error {
 			out, err := kubectl(nil, "get", "sts", "-n", "prevent-delete", "moco-test", "-o", "json")
 			Expect(err).NotTo(HaveOccurred())
