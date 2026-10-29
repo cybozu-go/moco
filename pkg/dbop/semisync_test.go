@@ -94,6 +94,30 @@ var _ = Describe("semisync", func() {
 		Expect(names).To(Equal(sourceReplicaNames))
 		_, err = ops[1].GetStatus(ctx)
 		Expect(err).To(HaveOccurred())
+
+		By("detecting the new source plugin and the legacy replica plugin")
+		execWritable(ops[1],
+			`INSTALL PLUGIN rpl_semi_sync_source SONAME 'semisync_source.so'`,
+			`INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so'`,
+		)
+		names, err = detectSemiSyncNames(ctx, ops[1].db)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(names.SourceEnabled).To(Equal(sourceReplicaNames.SourceEnabled))
+		Expect(names.WaitForReplicaCount).To(Equal(sourceReplicaNames.WaitForReplicaCount))
+		Expect(names.ReplicaEnabled).To(Equal(masterSlaveNames.ReplicaEnabled))
+
+		By("configuring semi-sync replication with the mixed plugins")
+		err = ops[1].ConfigureReplica(ctx, AccessInfo{
+			Host:     testContainerName(cluster, 0),
+			Port:     3306,
+			User:     constants.ReplicationUser,
+			Password: passwd.Replicator(),
+		}, true)
+		Expect(err).NotTo(HaveOccurred())
+		st1, err = ops[1].GetStatus(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(st1.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncReplicaEnabled).To(BeTrue())
 	})
 })
 
