@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-52298f3c.js";
+            window.path_to_searchindex_js = "searchindex-52c61403.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4528d509.js"></script>
@@ -222,6 +222,8 @@ To install the chart with the release name <code>moco</code> using a dedicated n
 <tr><td>tolerations</td><td>list</td><td><code>[]</code></td><td>tolerations used by moco-controller.</td></tr>
 <tr><td>topologySpreadConstraints</td><td>list</td><td><code>[]</code></td><td>topologySpreadConstraints used by moco-controller.</td></tr>
 <tr><td>priorityClassName</td><td>string</td><td><code>""</code></td><td>PriorityClass used by moco-controller.</td></tr>
+<tr><td>podDisruptionBudget.enabled</td><td>bool</td><td><code>true</code></td><td>Create a PodDisruptionBudget for moco-controller.</td></tr>
+<tr><td>podDisruptionBudget.maxUnavailable</td><td>number</td><td><code>1</code></td><td>Maximum number of moco-controller Pods that can be unavailable due to voluntary disruptions.</td></tr>
 <tr><td>monitoring.enabled</td><td>bool</td><td><code>false</code></td><td>Enable monitoring configuration. Requires Prometheus (CRDs) to be installed.</td></tr>
 <tr><td>monitoring.podMonitors.enabled</td><td>bool</td><td><code>true</code></td><td>Create Prometheus pod monitors.</td></tr>
 <tr><td>monitoring.podMonitors.interval</td><td>string</td><td><code>""</code></td><td>Custom Prometheus scrape interval.</td></tr>
