@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-10-30
+### Changed
+- Bump version to v0.38.0 [#960](https://github.com/cybozu-go/moco/pull/960)
+
 ## [0.27.0] - 2026-09-03
 ### Changed
 - Bump version to v0.37.0 [#944](https://github.com/cybozu-go/moco/pull/944)
