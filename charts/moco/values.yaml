@@ -43,6 +43,13 @@ topologySpreadConstraints: []
 # priorityClassName -- PriorityClass used by moco-controller.
 priorityClassName: ""
 
+podDisruptionBudget:
+  # podDisruptionBudget.enabled -- Create a PodDisruptionBudget for moco-controller.
+  enabled: true
+
+  # podDisruptionBudget.maxUnavailable -- Maximum number of moco-controller Pods that can be unavailable due to voluntary disruptions.
+  maxUnavailable: 1
+
 monitoring:
   # monitoring.enabled -- Enable monitoring configuration. Requires Prometheus (CRDs) to be installed.
   enabled: false
