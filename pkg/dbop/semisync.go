@@ -1,0 +1,131 @@
+package dbop
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/go-logr/logr"
+	"github.com/jmoiron/sqlx"
+)
+
+// semiSyncNames holds plugin names and variable names for the installed semi-sync plugin variant.
+type semiSyncNames struct {
+	// Plugin names
+	SourcePluginName  string
+	ReplicaPluginName string
+
+	// System variables (source side)
+	SourceEnabled       string
+	SourceTimeout       string
+	WaitForReplicaCount string
+
+	// System variables (replica side)
+	ReplicaEnabled string
+
+	// Status variables
+	SourceWaitSessions string
+}
+
+// sourceReplicaNames is the name set for the new semi-sync plugins (rpl_semi_sync_source/replica).
+var sourceReplicaNames = semiSyncNames{
+	SourcePluginName:    "rpl_semi_sync_source",
+	ReplicaPluginName:   "rpl_semi_sync_replica",
+	SourceEnabled:       "rpl_semi_sync_source_enabled",
+	SourceTimeout:       "rpl_semi_sync_source_timeout",
+	WaitForReplicaCount: "rpl_semi_sync_source_wait_for_replica_count",
+	ReplicaEnabled:      "rpl_semi_sync_replica_enabled",
+	SourceWaitSessions:  "Rpl_semi_sync_source_wait_sessions",
+}
+
+// masterSlaveNames is the name set for the deprecated semi-sync plugins (rpl_semi_sync_master/slave).
+var masterSlaveNames = semiSyncNames{
+	SourcePluginName:    "rpl_semi_sync_master",
+	ReplicaPluginName:   "rpl_semi_sync_slave",
+	SourceEnabled:       "rpl_semi_sync_master_enabled",
+	SourceTimeout:       "rpl_semi_sync_master_timeout",
+	WaitForReplicaCount: "rpl_semi_sync_master_wait_for_slave_count",
+	ReplicaEnabled:      "rpl_semi_sync_slave_enabled",
+	SourceWaitSessions:  "Rpl_semi_sync_master_wait_sessions",
+}
+
+// detectSemiSyncNames detects which semi-sync plugins are installed and returns the appropriate name set.
+//
+// The source side and the replica side are detected separately because a migration
+// in moco-agent that stopped halfway can leave one new plugin and one legacy plugin.
+// For each side, the new plugin is preferred when ACTIVE; the legacy plugin is used
+// only when it is the sole ACTIVE one. If neither is ACTIVE — for example on a fresh
+// instance whose moco-agent has not yet installed the plugins — the new names are used.
+//
+// When a plugin row exists but is not ACTIVE (DISABLED / INACTIVE / DELETED), a
+// warning is logged because subsequent SET/SELECT against the plugin's system
+// variables will fail — system variables are not exposed for non-ACTIVE plugins.
+func detectSemiSyncNames(ctx context.Context, db *sqlx.DB) (semiSyncNames, error) {
+	names := sourceReplicaNames
+
+	legacySource, err := isLegacySemiSyncPlugin(ctx, db, sourceReplicaNames.SourcePluginName, masterSlaveNames.SourcePluginName)
+	if err != nil {
+		return semiSyncNames{}, err
+	}
+	if legacySource {
+		names.SourcePluginName = masterSlaveNames.SourcePluginName
+		names.SourceEnabled = masterSlaveNames.SourceEnabled
+		names.SourceTimeout = masterSlaveNames.SourceTimeout
+		names.WaitForReplicaCount = masterSlaveNames.WaitForReplicaCount
+		names.SourceWaitSessions = masterSlaveNames.SourceWaitSessions
+	}
+
+	legacyReplica, err := isLegacySemiSyncPlugin(ctx, db, sourceReplicaNames.ReplicaPluginName, masterSlaveNames.ReplicaPluginName)
+	if err != nil {
+		return semiSyncNames{}, err
+	}
+	if legacyReplica {
+		names.ReplicaPluginName = masterSlaveNames.ReplicaPluginName
+		names.ReplicaEnabled = masterSlaveNames.ReplicaEnabled
+	}
+	return names, nil
+}
+
+// isLegacySemiSyncPlugin returns true if only the legacy plugin is ACTIVE.
+func isLegacySemiSyncPlugin(ctx context.Context, db *sqlx.DB, newName, legacyName string) (bool, error) {
+	newStatus, err := getPluginStatus(ctx, db, newName)
+	if err != nil {
+		return false, err
+	}
+	if newStatus == "ACTIVE" {
+		return false, nil
+	}
+
+	legacyStatus, err := getPluginStatus(ctx, db, legacyName)
+	if err != nil {
+		return false, err
+	}
+	if legacyStatus == "ACTIVE" {
+		return true, nil
+	}
+
+	if newStatus != "" || legacyStatus != "" {
+		logr.FromContextOrDiscard(ctx).Info(
+			"semi-sync plugin is registered but not ACTIVE; semi-sync operations may fail",
+			"newPlugin", newName, "newStatus", newStatus,
+			"legacyPlugin", legacyName, "legacyStatus", legacyStatus,
+		)
+	}
+	return false, nil
+}
+
+// getPluginStatus returns the PLUGIN_STATUS for the given plugin name.
+// Returns "" if the plugin is not installed, or the status string ("ACTIVE", "INACTIVE", "DISABLED", etc.).
+func getPluginStatus(ctx context.Context, db *sqlx.DB, name string) (string, error) {
+	var status string
+	err := db.GetContext(ctx, &status,
+		"SELECT PLUGIN_STATUS FROM information_schema.plugins WHERE PLUGIN_NAME=?", name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to check plugin %s: %w", name, err)
+	}
+	return status, nil
+}
