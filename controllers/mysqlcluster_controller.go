@@ -1232,6 +1232,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 		WithResources(resources)
 
 	r.updateContainerWithSecurityContext(container)
+	hardenJobContainerSecurityContext(container)
 
 	cronJobName := cluster.BackupCronJobName()
 	cronJob := batchv1ac.CronJob(cronJobName, cluster.Namespace).
@@ -1547,6 +1548,8 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 			WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
 			WithResources(resources)
 
+		hardenJobContainerSecurityContext(container)
+
 		jobName := cluster.RestoreJobName()
 		job := batchv1ac.Job(jobName, cluster.Namespace).
 			WithLabels(labelSetForJob(cluster)).
@@ -1621,16 +1624,36 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 }
 
 // defaultPodSecurityContext returns the PodSecurityContext applied to MOCO-managed
-// pods. FSGroupChangePolicy is always set to OnRootMismatch. FSGroup is defaulted to
-// constants.ContainerGID unless DisableDefaultSecurityContext is enabled, in which case
-// the platform (e.g. OpenShift SCC) assigns the fsGroup.
+// job pods. FSGroupChangePolicy is always set to OnRootMismatch. RunAsNonRoot and a
+// RuntimeDefault seccomp profile let the pods run in a namespace that enforces the
+// restricted Pod Security Standard. FSGroup is defaulted to constants.ContainerGID
+// unless DisableDefaultSecurityContext is enabled, in which case the platform
+// (e.g. OpenShift SCC) assigns the fsGroup.
 func (r *MySQLClusterReconciler) defaultPodSecurityContext() *corev1ac.PodSecurityContextApplyConfiguration {
 	psc := corev1ac.PodSecurityContext().
-		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
+		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch).
+		WithRunAsNonRoot(true).
+		WithSeccompProfile(corev1ac.SeccompProfile().WithType(corev1.SeccompProfileTypeRuntimeDefault))
 	if !r.DisableDefaultSecurityContext {
 		psc.WithFSGroup(constants.ContainerGID)
 	}
 	return psc
+}
+
+// hardenJobContainerSecurityContext fills in the container-level fields required by the
+// restricted Pod Security Standard. Values already set on the container are kept.
+func hardenJobContainerSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
+	if container.SecurityContext == nil {
+		container.WithSecurityContext(corev1ac.SecurityContext())
+	}
+	if container.SecurityContext.AllowPrivilegeEscalation == nil {
+		container.SecurityContext.WithAllowPrivilegeEscalation(false)
+	}
+	if container.SecurityContext.Capabilities == nil {
+		container.SecurityContext.WithCapabilities(
+			corev1ac.Capabilities().WithDrop(corev1.Capability("ALL")),
+		)
+	}
 }
 
 func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {

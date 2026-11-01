@@ -1491,6 +1491,14 @@ dummyKey: dummyValue
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
 
+		Expect(js.Template.Spec.SecurityContext).NotTo(BeNil())
+		Expect(js.Template.Spec.SecurityContext.RunAsNonRoot).To(HaveValue(BeTrue()))
+		Expect(js.Template.Spec.SecurityContext.SeccompProfile).NotTo(BeNil())
+		Expect(js.Template.Spec.SecurityContext.SeccompProfile.Type).To(Equal(corev1.SeccompProfileTypeRuntimeDefault))
+		Expect(c.SecurityContext.AllowPrivilegeEscalation).To(HaveValue(BeFalse()))
+		Expect(c.SecurityContext.Capabilities).NotTo(BeNil())
+		Expect(c.SecurityContext.Capabilities.Drop).To(ConsistOf(corev1.Capability("ALL")))
+
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
 		Expect(role.Rules).NotTo(BeEmpty())
@@ -1733,6 +1741,14 @@ dummyKey: dummyValue
 		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
+
+		Expect(js.Template.Spec.SecurityContext).NotTo(BeNil())
+		Expect(js.Template.Spec.SecurityContext.RunAsNonRoot).To(HaveValue(BeTrue()))
+		Expect(js.Template.Spec.SecurityContext.SeccompProfile).NotTo(BeNil())
+		Expect(js.Template.Spec.SecurityContext.SeccompProfile.Type).To(Equal(corev1.SeccompProfileTypeRuntimeDefault))
+		Expect(c.SecurityContext.AllowPrivilegeEscalation).To(HaveValue(BeFalse()))
+		Expect(c.SecurityContext.Capabilities).NotTo(BeNil())
+		Expect(c.SecurityContext.Capabilities.Drop).To(ConsistOf(corev1.Capability("ALL")))
 
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
