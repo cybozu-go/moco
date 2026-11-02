@@ -83,8 +83,12 @@ func (o *operator) SetReadOnly(ctx context.Context, readOnly bool) error {
 	if _, err := o.db.ExecContext(ctx, "STOP REPLICA"); err != nil {
 		return fmt.Errorf("failed to stop replica: %w", err)
 	}
-	if _, err := o.db.ExecContext(ctx, "RESET REPLICA"); err != nil {
-		return fmt.Errorf("failed to stop replica: %w", err)
+	// RESET REPLICA ALL clears the replication connection metadata (source host,
+	// port, user, etc.) in addition to the replication position. Plain
+	// RESET REPLICA leaves that metadata behind, so a promoted primary would
+	// keep returning a stale row from SHOW REPLICA STATUS.
+	if _, err := o.db.ExecContext(ctx, "RESET REPLICA ALL"); err != nil {
+		return fmt.Errorf("failed to reset replica: %w", err)
 	}
 	if _, err := o.db.ExecContext(ctx, "SET GLOBAL read_only=0"); err != nil {
 		return fmt.Errorf("failed to set read_only=0: %w", err)
