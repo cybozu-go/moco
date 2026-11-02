@@ -14,11 +14,12 @@ spec:
       app.kubernetes.io/name: {{ include "moco.name" . }}
   template:
     metadata:
+      {{- $podAnnotations := merge (dict "kubectl.kubernetes.io/default-container" "moco-controller") (.Values.podAnnotations | default dict) }}
       annotations:
-        kubectl.kubernetes.io/default-container: moco-controller
+        {{- toYaml $podAnnotations | nindent 8 }}
+      {{- $podLabels := merge (dict "app.kubernetes.io/component" "moco-controller" "app.kubernetes.io/name" (include "moco.name" .)) (.Values.podLabels | default dict) }}
       labels:
-        app.kubernetes.io/component: moco-controller
-        app.kubernetes.io/name: {{ include "moco.name" . }}
+        {{- toYaml $podLabels | nindent 8 }}
     spec:
       containers:
         - env:
