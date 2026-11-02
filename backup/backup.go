@@ -157,6 +157,11 @@ func (bm *BackupManager) Backup(ctx context.Context) error {
 		return fmt.Errorf("failed to take a full dump: %w", err)
 	}
 
+	if err := bm.backupMetadata(ctx); err != nil {
+		bm.log.Error(err, "failed to upload dump metadata")
+		bm.warnings = append(bm.warnings, fmt.Sprintf("failed to upload dump metadata: %v", err))
+	}
+
 	// dump and upload binlog for the second or later backups
 	if doBackupBinlog {
 		if err := bm.backupBinlog(ctx, op); err != nil {
