@@ -44,10 +44,10 @@ var _ = Describe("status", func() {
 		Expect(status.GlobalVariables.PurgedGTID).To(BeEmpty())
 		Expect(status.GlobalVariables.ReadOnly).To(BeTrue())
 		Expect(status.GlobalVariables.SuperReadOnly).To(BeTrue())
-		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(1))
-		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
-		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
-		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
+		Expect(status.GlobalVariables.WaitForReplicaCount).To(Equal(1))
+		Expect(status.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(status.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncSourceWaitSessions).To(Equal(0))
 
 		By("writing data and checking gtid_executed")
 		_, err = ops[0].db.Exec("SET GLOBAL read_only=0")
@@ -65,10 +65,10 @@ var _ = Describe("status", func() {
 		Expect(status.GlobalVariables.PurgedGTID).To(BeEmpty())
 		Expect(status.GlobalVariables.ReadOnly).To(BeFalse())
 		Expect(status.GlobalVariables.SuperReadOnly).To(BeFalse())
-		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(1))
-		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
-		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
-		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
+		Expect(status.GlobalVariables.WaitForReplicaCount).To(Equal(1))
+		Expect(status.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(status.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncSourceWaitSessions).To(Equal(0))
 
 		By("enabling semi-sync master")
 		err = ops[0].ConfigurePrimary(ctx, 1)
@@ -76,10 +76,10 @@ var _ = Describe("status", func() {
 		status, err = ops[0].GetStatus(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(status).NotTo(BeNil())
-		Expect(status.GlobalVariables.WaitForSlaveCount).To(Equal(1))
-		Expect(status.GlobalVariables.SemiSyncMasterEnabled).To(BeTrue())
-		Expect(status.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
-		Expect(status.GlobalStatus.SemiSyncMasterWaitSessions).To(Equal(0))
+		Expect(status.GlobalVariables.WaitForReplicaCount).To(Equal(1))
+		Expect(status.GlobalVariables.SemiSyncSourceEnabled).To(BeTrue())
+		Expect(status.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
+		Expect(status.GlobalStatus.SemiSyncSourceWaitSessions).To(Equal(0))
 
 		By("enabling semi-sync replica")
 		err = ops[1].ConfigureReplica(ctx, AccessInfo{
@@ -105,8 +105,8 @@ var _ = Describe("status", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st1.GlobalVariables.ExecutedGTID).To(Equal(st0.GlobalVariables.ExecutedGTID))
 		Expect(st1.GlobalVariables.SuperReadOnly).To(BeTrue())
-		Expect(st1.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
-		Expect(st1.GlobalVariables.SemiSyncSlaveEnabled).To(BeTrue())
+		Expect(st1.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncReplicaEnabled).To(BeTrue())
 
 		By("create hangup transaction")
 		err = ops[1].StopReplicaIOThread(ctx)
@@ -134,7 +134,7 @@ var _ = Describe("status", func() {
 			if err != nil {
 				return 0
 			}
-			return st0.GlobalStatus.SemiSyncMasterWaitSessions
+			return st0.GlobalStatus.SemiSyncSourceWaitSessions
 		}).ShouldNot(Equal(0))
 		cancelTrx()
 	})
