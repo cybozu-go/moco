@@ -1,3 +1,4 @@
 /.kubeconfig
 /logs
 /logs.tar.gz
+/report.json
