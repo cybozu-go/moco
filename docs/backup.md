@@ -6,6 +6,7 @@ This document describes how MOCO takes a backup of MySQLCluster data and restore
 - [Design goals](#design-goals)
 - [Implementation](#implementation)
   - [Backup file keys](#backup-file-keys)
+  - [Dump metadata](#dump-metadata)
   - [Timestamps](#timestamps)
   - [Backup](#backup)
   - [Restore](#restore)
@@ -31,7 +32,8 @@ This figure illustrates how MOCO takes a backup of a MySQLCluster.
 1. `moco-controller` creates a CronJob and Role/RoleBinding to allow access to MySQLCluster for the Job Pod.
 2. At each configured interval, CronJob creates a Job.
 3. The Job dumps all data from a `mysqld` using [MySQL shell's dump instance utility][dump].
-4. The Job creates a tarball of the dumped data and put it in a bucket of S3 compatible object storage.
+4. The Job creates a tarball of the dumped data and puts it in a bucket of S3 compatible object storage.
+   It also puts a small metadata file containing the MySQL version of the dump in the same bucket directory.
 5. The Job also dumps binlogs since the last backup and put it in the same bucket (with a different name, of course).
 6. The Job finally updates MySQLCluster status to record the last successful backup.
 
@@ -72,6 +74,7 @@ These "should's" are mostly in terms of money or performance.
 Backup files are stored in an object storage bucket with the following keys.
 
 - Key for a tarball of a fully dumped MySQL: `moco/<namespace>/<name>/YYYYMMDD-hhmmss/dump.tar`
+- Key for the metadata of a fully dumped MySQL: `moco/<namespace>/<name>/YYYYMMDD-hhmmss/dump-metadata.json`
 - Key for a compressed tarball of binlog files: `moco/<namespace>/<name>/YYYYMMDD-hhmmss/binlog.tar.zst`
 
 `<namespace>` is the namespace of MySQLCluster, and `<name>` is the name of MySQLCluster.
@@ -80,6 +83,18 @@ Backup files are stored in an object storage bucket with the following keys.
 Example: `moco/foo/bar/20210515-230003/dump.tar`
 
 This allows multiple MySQLClusters to share the same bucket.
+
+### Dump metadata
+
+For each full dump, MOCO stores a small JSON file in the same directory as the dump tarball:
+
+```json
+{"mysqlVersion":"8.0.36"}
+```
+
+`mysqlVersion` is the MySQL server version (`@@version`) of the instance that produced the dump.
+Because it is stored as a separate object, users can identify the version of a backup without downloading `dump.tar`.
+Backups created by older versions of MOCO do not have this file.
 
 ### Timestamps
 
@@ -124,6 +139,7 @@ It performs [significantly faster][faster] than `mysqldump` or `mysqlpump`.
 The dump is compressed with [zstd compression algorithm][zstd].
 
 MOCO then creates a tarball of the dump and puts it to an object storage bucket.
+It also puts `dump-metadata.json`, which records the MySQL server version of the dump, in the same bucket directory.
 
 To retrieve transactions since the last backup until now, `mysqlbinlog` is used with these flags:
 

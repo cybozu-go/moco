@@ -67,6 +67,7 @@ func executeDumpAndRestoreTest(ctx context.Context, opBk, opRe Operator, bkDB *s
 	Expect(err).NotTo(HaveOccurred())
 	Expect(st1.CurrentBinlog).NotTo(BeEmpty())
 	Expect(st1.UUID).NotTo(BeEmpty())
+	Expect(st1.Version).NotTo(BeEmpty())
 	Expect(st1.SuperReadOnly).To(BeFalse())
 
 	dumpDir := filepath.Join(baseDir, "dump")
@@ -114,6 +115,7 @@ func executeDumpAndRestoreTest(ctx context.Context, opBk, opRe Operator, bkDB *s
 	Expect(err).NotTo(HaveOccurred())
 	Expect(st2.CurrentBinlog).NotTo(BeEmpty())
 	Expect(st2.UUID).NotTo(BeEmpty())
+	Expect(st2.Version).NotTo(BeEmpty())
 	Expect(st2.SuperReadOnly).To(BeTrue())
 
 	err = opRe.PrepareRestore(ctx)
