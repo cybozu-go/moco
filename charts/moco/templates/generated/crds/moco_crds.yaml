@@ -701,6 +701,11 @@ spec:
                       nullable: true
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
+                    nodeSelector:
+                      additionalProperties:
+                        type: string
+                      description: NodeSelector is a selector which must be true for...
+                      type: object
                     serviceAccountName:
                       description: ServiceAccountName specifies the ServiceAccount...
                       minLength: 1
@@ -710,6 +715,29 @@ spec:
                       description: Threads is the number of threads used for backup...
                       minimum: 1
                       type: integer
+                    tolerations:
+                      description: If specified, the pod's tolerations.
+                      items:
+                        description: TolerationApplyConfiguration is the type defined...
+                        properties:
+                          effect:
+                            description: Effect indicates the taint effect to match.
+                            type: string
+                          key:
+                            description: Key is the taint key that the toleration applies...
+                            type: string
+                          operator:
+                            description: Operator represents a key's relationship to the...
+                            type: string
+                          tolerationSeconds:
+                            description: TolerationSeconds represents the period of time...
+                            format: int64
+                            type: integer
+                          value:
+                            description: Value is the taint value the toleration matches...
+                            type: string
+                        type: object
+                      type: array
                     volumeMounts:
                       description: VolumeMounts describes a list of volume mounts...
                       items:
@@ -8270,6 +8298,11 @@ spec:
                           nullable: true
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
+                        nodeSelector:
+                          additionalProperties:
+                            type: string
+                          description: NodeSelector is a selector which must be true for...
+                          type: object
                         serviceAccountName:
                           description: ServiceAccountName specifies the ServiceAccount...
                           minLength: 1
@@ -8279,6 +8312,29 @@ spec:
                           description: Threads is the number of threads used for backup...
                           minimum: 1
                           type: integer
+                        tolerations:
+                          description: If specified, the pod's tolerations.
+                          items:
+                            description: TolerationApplyConfiguration is the type defined...
+                            properties:
+                              effect:
+                                description: Effect indicates the taint effect to match.
+                                type: string
+                              key:
+                                description: Key is the taint key that the toleration applies...
+                                type: string
+                              operator:
+                                description: Operator represents a key's relationship to the...
+                                type: string
+                              tolerationSeconds:
+                                description: TolerationSeconds represents the period of time...
+                                format: int64
+                                type: integer
+                              value:
+                                description: Value is the taint value the toleration matches...
+                                type: string
+                            type: object
+                          type: array
                         volumeMounts:
                           description: VolumeMounts describes a list of volume mounts...
                           items:
