@@ -5,7 +5,7 @@ resources:
 - ../../../crd
 
 patches:
-- path: conversion-patch.yaml
+- path: cainjection-patch.yaml
 
 labels:
 - pairs:
