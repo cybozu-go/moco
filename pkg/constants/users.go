@@ -23,6 +23,9 @@ var MocoSystemUsers = map[string]bool{
 	BackupUser:      true,
 }
 
+// AuthenticationPluginPattern is the validation pattern for MySQL authentication plugin names.
+const AuthenticationPluginPattern = `^[A-Za-z0-9_]{1,64}$`
+
 // MocoUsers is a list of all users created for MOCO.
 var MocoUsers = []string{
 	AdminUser,

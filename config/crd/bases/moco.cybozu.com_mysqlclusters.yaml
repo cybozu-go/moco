@@ -8994,6 +8994,10 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              systemUserAuthenticationPlugin:
+                description: SystemUserAuthenticationPlugin is the...
+                pattern: ^[A-Za-z0-9_]{1,64}$
+                type: string
               volumeClaimTemplates:
                 description: VolumeClaimTemplates is a list of...
                 items:

@@ -356,6 +356,26 @@ $ kubectl moco mysql -u moco-writable test -- -e "CREATE DATABASE db1"
 $ kubectl moco mysql -u moco-writable test -- -e "GRANT ALL ON db1.* TO 'foo'@'%'"
 ```
 
+#### Changing the authentication plugin of system users
+
+MOCO creates its system users with the MySQL server's default authentication plugin when each instance is first bootstrapped. If an existing cluster's users use `mysql_native_password`, migrate them to `caching_sha2_password` before upgrading to MySQL 8.4 or later, where `mysql_native_password` is disabled by default. The configured plugin must be installed on every MySQL instance.
+
+Set `spec.systemUserAuthenticationPlugin` on the MySQLCluster:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: foo
+  name: test
+spec:
+  systemUserAuthenticationPlugin: caching_sha2_password
+```
+
+While the cluster is Healthy, the clustering manager reads the current plugins from `mysql.user` and changes only the system users whose plugin differs. The passwords stored in the user Secret are kept unchanged, so no Secret update or Pod restart is required. The operation uses `sql_log_bin=0` and temporarily clears `super_read_only` on instances where it is enabled, restoring it afterwards.
+
+If the field is unset, MOCO does not manage the authentication plugin and leaves it unchanged.
+
 ### Connecting to `mysqld` over network
 
 MOCO prepares two Services for each MySQLCluster.

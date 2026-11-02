@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/robfig/cron/v3"
@@ -153,7 +154,17 @@ type MySQLClusterSpec struct {
 	// Offline sets the cluster offline, releasing compute resources. Data is not removed.
 	// +optional
 	Offline bool `json:"offline,omitempty"`
+
+	// SystemUserAuthenticationPlugin is the authentication plugin to use for
+	// MOCO system users. When set, the clustering manager changes the plugin
+	// of system users on every instance to this value while the cluster is
+	// Healthy. When unset, MOCO does not manage the authentication plugin.
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9_]{1,64}$`
+	// +optional
+	SystemUserAuthenticationPlugin string `json:"systemUserAuthenticationPlugin,omitempty"`
 }
+
+var authenticationPluginPattern = regexp.MustCompile(constants.AuthenticationPluginPattern)
 
 //nolint:gocyclo,unparam
 func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList) {
@@ -193,6 +204,11 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 	pp = p.Child("logRotationSize")
 	if s.LogRotationSize < 0 {
 		allErrs = append(allErrs, field.Invalid(pp, s.LogRotationSize, "logRotationSize must be a positive integer or zero"))
+	}
+
+	pp = p.Child("systemUserAuthenticationPlugin")
+	if s.SystemUserAuthenticationPlugin != "" && !authenticationPluginPattern.MatchString(s.SystemUserAuthenticationPlugin) {
+		allErrs = append(allErrs, field.Invalid(pp, s.SystemUserAuthenticationPlugin, "must contain only letters, digits, and underscores, and be at most 64 characters"))
 	}
 
 	pp = p.Child("replicas")

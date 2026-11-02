@@ -12,6 +12,7 @@ import (
 
 	agent "github.com/cybozu-go/moco-agent/proto"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
 	"google.golang.org/grpc"
@@ -416,9 +417,38 @@ func (o *mockOperator) KillConnections(ctx context.Context) error {
 	return nil
 }
 
+func (o *mockOperator) SetSystemUserAuthenticationPlugin(ctx context.Context, plugin string) ([]string, error) {
+	if o.failing {
+		return nil, errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+
+	o.mysql.authPluginCalls++
+	if o.mysql.authPluginErr != nil {
+		return nil, o.mysql.authPluginErr
+	}
+	if o.mysql.systemUserPlugins == nil {
+		o.mysql.systemUserPlugins = make(map[string]string)
+	}
+	var changed []string
+	for _, user := range constants.MocoUsers {
+		if o.mysql.systemUserPlugins[user] == plugin {
+			continue
+		}
+		o.mysql.systemUserPlugins[user] = plugin
+		changed = append(changed, user)
+	}
+	return changed, nil
+}
+
 type mockMySQL struct {
 	mu     sync.Mutex
 	status dbop.MySQLInstanceStatus
+
+	systemUserPlugins map[string]string
+	authPluginCalls   int
+	authPluginErr     error
 }
 
 func (m *mockMySQL) getStatus() *dbop.MySQLInstanceStatus {
@@ -481,7 +511,12 @@ func (f *mockOpFactory) New(ctx context.Context, cluster *mocov1beta2.MySQLClust
 	hostname := cluster.PodHostname(index)
 	m, ok := f.mysqls[hostname]
 	if !ok {
-		m = &mockMySQL{}
+		m = &mockMySQL{
+			systemUserPlugins: make(map[string]string),
+		}
+		for _, user := range constants.MocoUsers {
+			m.systemUserPlugins[user] = "mysql_native_password"
+		}
 		m.status.GlobalVariables.UUID = fmt.Sprintf("p%d", index)
 		m.status.GlobalVariables.ReadOnly = true
 		m.status.GlobalVariables.SuperReadOnly = true

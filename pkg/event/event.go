@@ -102,4 +102,14 @@ var (
 		Reason:  "Restored",
 		Message: "Successfully restored data from backup",
 	}
+	SystemUserAuthenticationPluginChanged = MOCOEvent{
+		Type:    corev1.EventTypeNormal,
+		Reason:  "SystemUserAuthenticationPluginChanged",
+		Message: "Changed authentication plugin of MOCO system users on instance %d to %s: %v",
+	}
+	SystemUserAuthenticationPluginFailed = MOCOEvent{
+		Type:    corev1.EventTypeWarning,
+		Reason:  "SystemUserAuthenticationPluginFailed",
+		Message: "Failed to change authentication plugin of MOCO system users on instance %d to %s: %v",
+	}
 )

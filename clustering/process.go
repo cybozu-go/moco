@@ -230,7 +230,7 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		if ss.State == StateDegraded {
 			return p.configure(ctx, ss)
 		}
-		return false, nil
+		return false, p.configureSystemUserAuthenticationPlugin(ctx, ss)
 
 	case StateFailed:
 		// in this case, only applicable operation is a failover.

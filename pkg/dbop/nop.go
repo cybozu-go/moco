@@ -58,3 +58,7 @@ func (o NopOperator) SetReadOnly(context.Context, bool) error {
 func (o NopOperator) KillConnections(context.Context) error {
 	return ErrNop
 }
+
+func (o NopOperator) SetSystemUserAuthenticationPlugin(context.Context, string) ([]string, error) {
+	return nil, ErrNop
+}

@@ -89,6 +89,7 @@ MySQLClusterSpec defines the desired state of MySQLCluster
 | agentUseLocalhost | AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name. During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also communicate with mysqld over localhost when acting as a sidecar. | bool | false |
 | initializeTimezoneData | InitializeTimezoneData controls whether the init container should populate the timezone data. If set to true, the init container will load timezone data into MySQL. The default is false. | bool | false |
 | offline | Offline sets the cluster offline, releasing compute resources. Data is not removed. | bool | false |
+| systemUserAuthenticationPlugin | SystemUserAuthenticationPlugin is the authentication plugin to use for MOCO system users. When set, the clustering manager changes the plugin of system users on every instance to this value while the cluster is Healthy. When unset, MOCO does not manage the authentication plugin. | string | false |
 
 [Back to Custom Resources](#custom-resources)
 

@@ -61,6 +61,11 @@ type Operator interface {
 	// KillConnections kills all connections except for ones from `localhost`
 	// and ones for MOCO.
 	KillConnections(context.Context) error
+
+	// SetSystemUserAuthenticationPlugin changes the authentication plugin of
+	// MOCO system users while keeping their passwords unchanged.
+	// It returns the names of users whose plugin was changed.
+	SetSystemUserAuthenticationPlugin(context.Context, string) ([]string, error)
 }
 
 // OperatorFactory represents the factory for Operators.
