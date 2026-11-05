@@ -330,17 +330,24 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 	It("should not start rollout when mysql cluster is unhealthy", func() {
 		ctx := context.Background()
 		ctx, cancel := context.WithTimeout(ctx, time.Minute*10)
-		defer cancel()
 
 		// Keep killing mysqld on pod 0 so that the cluster stays unhealthy
 		// during this spec. Errors are ignored because the pod may be
 		// restarting when kill is attempted.
+		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
+			defer close(done)
 			_ = wait.PollUntilContextCancel(ctx, time.Second*5, true, func(ctx context.Context) (bool, error) {
 				_, _ = kubectl(nil, "exec", "-n", ns, "moco-test-0", "-c", "mysqld", "--", "kill", "1")
 				return false, nil
 			})
+		}()
+		// Stop the loop and wait for the last kill to finish, so that the
+		// kills cannot leak into the next spec.
+		defer func() {
+			cancel()
+			<-done
 		}()
 
 		Eventually(func() error {
