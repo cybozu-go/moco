@@ -22,7 +22,7 @@ var donorYAML string
 //go:embed testdata/replication.yaml
 var replYAML string
 
-var _ = Context("replication", Ordered, func() {
+var _ = Context("replication", Ordered, SpecPriority(90), func() {
 	if doUpgrade {
 		return
 	}
