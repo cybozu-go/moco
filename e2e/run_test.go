@@ -167,7 +167,9 @@ func recreateInstance(ns, name string, index int) {
 // deleteNamespace deletes all MySQLClusters in the namespace and then the namespace itself.
 func deleteNamespace(ns string) {
 	GinkgoHelper()
-	if _, err := kubectl(nil, "get", "namespace", ns); err != nil {
+	out, err := kubectl(nil, "get", "namespace", ns, "--ignore-not-found", "-o", "name")
+	Expect(err).NotTo(HaveOccurred())
+	if len(bytes.TrimSpace(out)) == 0 {
 		return
 	}
 	kubectlSafe(nil, "delete", "-n", ns, "mysqlclusters", "--all")

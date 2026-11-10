@@ -147,6 +147,7 @@ var _ = Describe("MySQLCluster replicating from an external donor", Label(replic
 				stopReplicaSQLThread(replNS, laggingReplica)
 				insertIntoDonor(table, "eee")
 
+				waitForRows(replNS, currentPrimary(replNS), table, 1)
 				recreateInstance(replNS, replClusterName, reinitializedReplica)
 				waitForRows(replNS, reinitializedReplica, table, 1)
 				// The lagging replica is not ready while its SQL thread is stopped,
