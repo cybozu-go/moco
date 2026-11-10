@@ -2,6 +2,7 @@ package e2e
 
 import (
 	_ "embed"
+	"slices"
 	"testing"
 	"time"
 
@@ -26,9 +27,29 @@ func TestE2e(t *testing.T) {
 	RunSpecs(t, "E2e Suite")
 }
 
+// Spec priorities reduce the wall-clock time of the parallel suite.
+// Higher priority specs are scheduled first when running with --randomize-all.
+const (
+	priorityReplicationDedicated = 60
+	priorityReplicationShared    = 50
+)
+
 //go:embed testdata/client.yaml
 var clientYAML string
 
 var _ = SynchronizedBeforeSuite(func() {
 	kubectlSafe(fillTemplate(clientYAML), "apply", "-f", "-")
 }, func() {})
+
+// Shared replication clusters are not needed by specs without the replication label.
+// Delete them before such a spec runs to free the memory they use.
+var _ = BeforeEach(func() {
+	if slices.Contains(CurrentSpecReport().Labels(), replicationLabel) {
+		return
+	}
+	cleanupSharedClusters()
+})
+
+var _ = AfterSuite(func() {
+	cleanupSharedClusters()
+})
