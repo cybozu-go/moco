@@ -134,7 +134,7 @@ func rolloutPods(ctx context.Context, sts *appsv1.StatefulSet, rev1 int, rev2 in
 	pods := &corev1.PodList{}
 	err := k8sClient.List(ctx, pods, client.InNamespace("partition"), client.MatchingLabels(sts.Spec.Template.Labels))
 	Expect(err).NotTo(HaveOccurred())
-	Expect(len(pods.Items)).To(Equal(rev1 + rev2))
+	Expect(pods.Items).To(HaveLen(rev1 + rev2))
 
 	sort.Slice(pods.Items, func(i, j int) bool {
 		return pods.Items[i].Name < pods.Items[j].Name

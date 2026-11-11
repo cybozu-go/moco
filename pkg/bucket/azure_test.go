@@ -244,7 +244,7 @@ var _ = Describe("AzureBucket", func() {
 
 		data, err := io.ReadAll(r)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(len(data)).To(Equal(10 * 1024 * 1024))
+		Expect(data).To(HaveLen(10 * 1024 * 1024))
 	})
 
 	It("should return error for non-existent blob", func() {
@@ -262,6 +262,6 @@ var _ = Describe("AzureBucket", func() {
 
 		keys, err := b.List(ctx, "baz/")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(keys).To(HaveLen(0))
+		Expect(keys).To(BeEmpty())
 	})
 })

@@ -99,7 +99,7 @@ var _ = Context("failover", Ordered, func() {
 		//
 		//
 		// SHOW REPLICA STATUS\G
-		//*************************** 1. row ***************************
+		// *************************** 1. row ***************************
 		//...
 		//           Retrieved_Gtid_Set: <empty>
 		//            Executed_Gtid_Set: 09a2bf6a-960c-11ec-bf89-9ee9543e8238:1,
