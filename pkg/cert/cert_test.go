@@ -16,7 +16,8 @@ import (
 	"github.com/go-logr/logr"
 )
 
-func writeCerts(t *testing.T, dir string, caPEM []byte) {
+// newSelfSignedCert returns a self-signed CA certificate and its private key in PEM.
+func newSelfSignedCert(t *testing.T) (certPEM, keyPEM []byte) {
 	t.Helper()
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -40,15 +41,19 @@ func writeCerts(t *testing.T, dir string, caPEM []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	if caPEM == nil {
-		caPEM = certPEM
-	}
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+	return certPEM, keyPEM
+}
+
+// writeCertDir writes ca.crt, tls.crt and tls.key into dir.
+func writeCertDir(t *testing.T, dir string, caPEM, certPEM, keyPEM []byte) {
+	t.Helper()
 
 	files := map[string][]byte{
 		"ca.crt":  caPEM,
 		"tls.crt": certPEM,
-		"tls.key": pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}),
+		"tls.key": keyPEM,
 	}
 	for name, data := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
@@ -64,7 +69,8 @@ func TestNewReloaderInvalidCA(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			writeCerts(t, dir, ca)
+			certPEM, keyPEM := newSelfSignedCert(t)
+			writeCertDir(t, dir, ca, certPEM, keyPEM)
 
 			if _, err := NewReloader(dir, logr.Discard()); err == nil {
 				t.Fatal("NewReloader succeeded with an invalid ca.crt")
@@ -75,7 +81,8 @@ func TestNewReloaderInvalidCA(t *testing.T) {
 
 func TestReloaderKeepsCertificatesOnInvalidCA(t *testing.T) {
 	dir := t.TempDir()
-	writeCerts(t, dir, nil)
+	certPEM, keyPEM := newSelfSignedCert(t)
+	writeCertDir(t, dir, certPEM, certPEM, keyPEM)
 
 	r, err := NewReloader(dir, logr.Discard())
 	if err != nil {
@@ -83,9 +90,7 @@ func TestReloaderKeepsCertificatesOnInvalidCA(t *testing.T) {
 	}
 	before := r.TLSClientConfig()
 
-	if err := os.WriteFile(filepath.Join(dir, "ca.crt"), nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeCertDir(t, dir, nil, certPEM, keyPEM)
 	if err := r.check(); err == nil {
 		t.Fatal("check succeeded with an empty ca.crt")
 	}
