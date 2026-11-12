@@ -43,6 +43,12 @@ topologySpreadConstraints: []
 # priorityClassName -- PriorityClass used by moco-controller.
 priorityClassName: ""
 
+# podLabels -- Labels to add to the moco-controller Pods. Labels managed by the chart take precedence.
+podLabels: {}
+
+# podAnnotations -- Annotations to add to the moco-controller Pods. Annotations managed by the chart take precedence.
+podAnnotations: {}
+
 podDisruptionBudget:
   # podDisruptionBudget.enabled -- Create a PodDisruptionBudget for moco-controller.
   enabled: true
