@@ -65,7 +65,11 @@ func (r *Reloader) check() error {
 		return fmt.Errorf("failed to load ca.crt: %w", err)
 	}
 	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(data)
+	if !pool.AppendCertsFromPEM(data) {
+		// Keep the current certificates instead of replacing them with an empty pool,
+		// which would make every TLS handshake fail with an unknown authority.
+		return errors.New("failed to load ca.crt: no valid PEM certificate found")
+	}
 
 	cert, err := tls.LoadX509KeyPair(filepath.Join(r.dir, "tls.crt"), filepath.Join(r.dir, "tls.key"))
 	if err != nil {

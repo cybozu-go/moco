@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Added
 - Add a PodDisruptionBudget for moco-controller. It can be configured with the `podDisruptionBudget.(enabled,maxUnavailable)` values.
+- Add `podLabels` and `podAnnotations` values to set custom labels and annotations on moco-controller Pods. [#743](https://github.com/cybozu-go/moco/issues/743)
 
 ## [0.28.0] - 2026-10-30
 ### Changed

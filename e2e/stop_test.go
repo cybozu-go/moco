@@ -24,7 +24,7 @@ var stopYAML string
 //go:embed testdata/stop_changed.yaml
 var stopChangedYAML string
 
-var _ = Context("stop reconciliation and clustering", Ordered, func() {
+var _ = Context("stop reconciliation and clustering", Ordered, SpecPriority(90), func() {
 	if doUpgrade {
 		return
 	}

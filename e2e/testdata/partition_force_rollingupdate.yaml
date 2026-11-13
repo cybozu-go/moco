@@ -1,7 +1,7 @@
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
-  namespace: partition
+  namespace: {{ .Namespace }}
   name: test
   annotations:
     moco.cybozu.com/force-rolling-update: "true"
@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:{{ . }}
+        image: ghcr.io/cybozu-go/moco/mysql:{{ .MySQLVersion }}
         resources:
           requests:
             cpu: 3m

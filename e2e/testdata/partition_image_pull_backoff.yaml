@@ -1,7 +1,7 @@
 apiVersion: moco.cybozu.com/v1beta2
 kind: MySQLCluster
 metadata:
-  namespace: partition
+  namespace: {{ .Namespace }}
   name: test
 spec:
   replicas: 3
