@@ -24,6 +24,13 @@ Therefore, we include the following tests in the e2e suite.
 ## How to run e2e tests
 
 1. Prepare a Linux with Docker.
+    The tests run many mysqld instances in parallel, so raise the AIO limit of the host kernel.
+    Otherwise, InnoDB may fail to start with `io_setup() failed with EAGAIN`.
+
+    ```console
+    $ sudo sysctl -w fs.aio-max-nr=1048576
+    ```
+
 2. Install aqua by following the instructions at https://aquaproj.github.io/docs/install/.
 3. Run the following commands in this directory.
 
