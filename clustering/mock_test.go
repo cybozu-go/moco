@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	agent "github.com/cybozu-go/moco-agent/proto"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	"github.com/cybozu-go/moco/pkg/constants"
 	"github.com/cybozu-go/moco/pkg/dbop"
 	"github.com/cybozu-go/moco/pkg/password"
 	"google.golang.org/grpc"
@@ -416,9 +418,84 @@ func (o *mockOperator) KillConnections(ctx context.Context) error {
 	return nil
 }
 
+func (o *mockOperator) GetUserAuthPlugins(ctx context.Context) (map[string]string, error) {
+	if o.failing {
+		return nil, errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+	o.mysql.ensureAuthPlugins()
+	return maps.Clone(o.mysql.authPlugins), nil
+}
+
+func (o *mockOperator) IsAuthPluginActive(ctx context.Context, plugin string) (bool, error) {
+	if o.failing {
+		return false, errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+	return !o.mysql.inactivePlugins[plugin], nil
+}
+
+func (o *mockOperator) AlterUserAuthPlugin(ctx context.Context, user, plugin string) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+	if o.mysql.status.GlobalVariables.SuperReadOnly {
+		return errors.New("the MySQL server is running with the --super-read-only option")
+	}
+	if o.mysql.inactivePlugins[plugin] {
+		return fmt.Errorf("Plugin '%s' is not loaded", plugin)
+	}
+	if o.mysql.failAlterOnce {
+		o.mysql.failAlterOnce = false
+		return errors.New("Deadlock found when trying to get lock")
+	}
+	o.mysql.ensureAuthPlugins()
+	if _, ok := o.mysql.authPlugins[user]; !ok {
+		return fmt.Errorf("unknown user: %s", user)
+	}
+	o.mysql.authPlugins[user] = plugin
+	return nil
+}
+
+func (o *mockOperator) SetSuperReadOnly(ctx context.Context, on bool) error {
+	if o.failing {
+		return errors.New("mysqld is down")
+	}
+	o.mysql.mu.Lock()
+	defer o.mysql.mu.Unlock()
+	if on {
+		o.mysql.status.GlobalVariables.ReadOnly = true
+		o.mysql.status.GlobalVariables.SuperReadOnly = true
+		return nil
+	}
+	o.mysql.status.GlobalVariables.SuperReadOnly = false
+	return nil
+}
+
 type mockMySQL struct {
-	mu     sync.Mutex
-	status dbop.MySQLInstanceStatus
+	mu              sync.Mutex
+	status          dbop.MySQLInstanceStatus
+	authPlugins     map[string]string
+	inactivePlugins map[string]bool
+	failAlterOnce   bool
+}
+
+// ensureAuthPlugins lazily initializes the per-user authentication plugin
+// map. The default simulates a cluster created with
+// default_authentication_plugin=mysql_native_password.
+// The caller must hold m.mu.
+func (m *mockMySQL) ensureAuthPlugins() {
+	if m.authPlugins != nil {
+		return
+	}
+	m.authPlugins = make(map[string]string)
+	for _, u := range constants.MocoUsers {
+		m.authPlugins[u] = "mysql_native_password"
+	}
 }
 
 func (m *mockMySQL) getStatus() *dbop.MySQLInstanceStatus {
@@ -525,6 +602,93 @@ func (f *mockOpFactory) getInstanceStatus(name string) *dbop.MySQLInstanceStatus
 	}
 
 	return m.getStatus()
+}
+
+// setFailAlterOnce makes the next AlterUserAuthPlugin call on the instance
+// fail once, simulating a transient error.
+func (f *mockOpFactory) setFailAlterOnce(name string) {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		panic("no such instance: " + name)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failAlterOnce = true
+}
+
+// setSuperReadOnly mutates the instance state directly, simulating
+// super_read_only drift left behind by a crashed manager process.
+func (f *mockOpFactory) setSuperReadOnly(name string, on bool) {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		panic("no such instance: " + name)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.status.GlobalVariables.SuperReadOnly = on
+}
+
+// deleteAuthPluginUser removes a user from the instance, simulating a MOCO
+// user that does not exist in mysql.user.
+func (f *mockOpFactory) deleteAuthPluginUser(name, user string) {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		panic("no such instance: " + name)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ensureAuthPlugins()
+	delete(m.authPlugins, user)
+}
+
+// disablePlugin simulates a plugin that is disabled or not installed on
+// the instance, such as mysql_native_password on MySQL 8.4.
+func (f *mockOpFactory) disablePlugin(name, plugin string) {
+	f.setPluginDisabled(name, plugin, true)
+}
+
+// enablePlugin reverts disablePlugin.
+func (f *mockOpFactory) enablePlugin(name, plugin string) {
+	f.setPluginDisabled(name, plugin, false)
+}
+
+func (f *mockOpFactory) setPluginDisabled(name, plugin string, disabled bool) {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		panic("no such instance: " + name)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inactivePlugins == nil {
+		m.inactivePlugins = make(map[string]bool)
+	}
+	m.inactivePlugins[plugin] = disabled
+}
+
+func (f *mockOpFactory) getAuthPlugins(name string) map[string]string {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		return nil
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ensureAuthPlugins()
+	return maps.Clone(m.authPlugins)
 }
 
 func (f *mockOpFactory) allClosed() bool {

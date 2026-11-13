@@ -171,6 +171,22 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should allow a valid systemUserAuthPlugin", func() {
+		r := makeMySQLCluster()
+		plugin := mocov1beta2.AuthPluginCachingSHA2Password
+		r.Spec.SystemUserAuthPlugin = &plugin
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should deny a plugin outside the enum for systemUserAuthPlugin", func() {
+		r := makeMySQLCluster()
+		plugin := mocov1beta2.SystemUserAuthPlugin("sha256_password")
+		r.Spec.SystemUserAuthPlugin = &plugin
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should deny without mysqld container", func() {
 		r := makeMySQLCluster()
 		r.Spec.PodTemplate.Spec.Containers = nil
