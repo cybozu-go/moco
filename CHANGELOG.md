@@ -5,6 +5,30 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-10-29
+
+### ⚠️ Notice
+
+The end of support for MySQL 8.0 in this version has been postponed until the next release.
+
+### Added
+
+- Support Kubernetes 1.36 [#957](https://github.com/cybozu-go/moco/pull/957)
+
+### Changed
+
+- Replace minio/minio container image with pgsty/silo [#951](https://github.com/cybozu-go/moco/pull/951)
+- Update fluent-bit, mysqld_exporter image [#953](https://github.com/cybozu-go/moco/pull/953)
+
+### Fixed
+
+- Fix nil pointer dereference for an offline MySQLCluster [#946](https://github.com/cybozu-go/moco/pull/946)
+- Fix Pod index bound in GatherStatus for offline clusters [#959](https://github.com/cybozu-go/moco/pull/959)
+
+### Contributors
+
+- @kuenishi
+
 ## [0.37.0] - 2026-09-02
 
 ### ⚠️ Notice
@@ -860,7 +884,8 @@ The `MySQLCluster` created by MOCO `< v0.5.0` has no compatibility with `>= v0.5
 
 - Bootstrap a vanilla MySQL cluster with no replicas (#2).
 
-[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.37.0...HEAD
+[Unreleased]: https://github.com/cybozu-go/moco/compare/v0.38.0...HEAD
+[0.38.0]: https://github.com/cybozu-go/moco/compare/v0.37.0...v0.37.0
 [0.37.0]: https://github.com/cybozu-go/moco/compare/v0.36.0...v0.36.0
 [0.36.0]: https://github.com/cybozu-go/moco/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/cybozu-go/moco/compare/v0.34.0...v0.35.0

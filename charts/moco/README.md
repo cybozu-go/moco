@@ -53,6 +53,10 @@ $ helm install --create-namespace --namespace moco-system moco -f values.yaml mo
 | tolerations                           | list   | `[]`                                          | tolerations used by moco-controller.                                         |
 | topologySpreadConstraints             | list   | `[]`                                          | topologySpreadConstraints used by moco-controller.                           |
 | priorityClassName                     | string | `""`                                          | PriorityClass used by moco-controller.                                       |
+| podLabels                             | object | `{}`                                          | Labels to add to the moco-controller Pods. Labels managed by the chart take precedence. |
+| podAnnotations                        | object | `{}`                                          | Annotations to add to the moco-controller Pods. Annotations managed by the chart take precedence. |
+| podDisruptionBudget.enabled           | bool   | `true`                                        | Create a PodDisruptionBudget for moco-controller.                            |
+| podDisruptionBudget.maxUnavailable    | number | `1`                                           | Maximum number of moco-controller Pods that can be unavailable due to voluntary disruptions. |
 | monitoring.enabled                    | bool   | `false`                                       | Enable monitoring configuration. Requires Prometheus (CRDs) to be installed. |
 | monitoring.podMonitors.enabled        | bool   | `true`                                        | Create Prometheus pod monitors.                                              |
 | monitoring.podMonitors.interval       | string | `""`                                          | Custom Prometheus scrape interval.                                           |

@@ -10,7 +10,7 @@ image:
 
   # image.tag -- MOCO image tag to use.
   # @default -- `{{ .Chart.AppVersion }}`
-  tag:  # 0.37.0
+  tag:  # 0.38.0
 
 # imagePullSecrets -- Secrets for pulling MOCO image from private repository.
 imagePullSecrets: []
@@ -43,6 +43,19 @@ topologySpreadConstraints: []
 # priorityClassName -- PriorityClass used by moco-controller.
 priorityClassName: ""
 
+# podLabels -- Labels to add to the moco-controller Pods. Labels managed by the chart take precedence.
+podLabels: {}
+
+# podAnnotations -- Annotations to add to the moco-controller Pods. Annotations managed by the chart take precedence.
+podAnnotations: {}
+
+podDisruptionBudget:
+  # podDisruptionBudget.enabled -- Create a PodDisruptionBudget for moco-controller.
+  enabled: true
+
+  # podDisruptionBudget.maxUnavailable -- Maximum number of moco-controller Pods that can be unavailable due to voluntary disruptions.
+  maxUnavailable: 1
+
 monitoring:
   # monitoring.enabled -- Enable monitoring configuration. Requires Prometheus (CRDs) to be installed.
   enabled: false
@@ -63,7 +76,7 @@ agent:
     repository: ghcr.io/cybozu-go/moco-agent
 
     # agent.image.tag -- MOCO Agent image tag to use.
-    tag: 0.16.0  # agent.image.tag
+    tag: 0.17.0  # agent.image.tag
 
 fluentbit:
   image:
@@ -71,7 +84,7 @@ fluentbit:
     repository: ghcr.io/cybozu-go/moco/fluent-bit
 
     # fluentbit.image.tag -- FluentBit image tag to use.
-    tag: 5.0.2.1  # fluentbit.image.tag
+    tag: 5.1.4.1  # fluentbit.image.tag
 
 mysqldExporter:
   image:
@@ -79,4 +92,4 @@ mysqldExporter:
     repository: ghcr.io/cybozu-go/moco/mysqld_exporter
 
     # mysqldExporter.image.tag -- mysqld_exporter image tag to use.
-    tag: 0.19.0.1  # mysqldExporter.image.tag
+    tag: 0.20.0.1  # mysqldExporter.image.tag
