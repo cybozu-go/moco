@@ -72,21 +72,22 @@ var _ = Describe("kill", func() {
 		err = ops[0].KillConnections(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 
-		var procs2 []Process
-		err = ops[0].db.Select(&procs2, `SELECT ID, USER, HOST FROM information_schema.PROCESSLIST`)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(func() int {
-			return len(procs) - len(procs2)
-		}).Should(BeNumerically("==", 1))
+		// Compare by process ID instead of count because the replication
+		// connection from the replica may appear at any time.
+		Eventually(func(g Gomega) {
+			var procs2 []Process
+			err := ops[0].db.Select(&procs2, `SELECT ID, USER, HOST FROM information_schema.PROCESSLIST`)
+			g.Expect(err).NotTo(HaveOccurred())
 
-		fooFound = false
-		for _, p := range procs2 {
-			fmt.Printf("process %d for %s from %s\n", p.ID, p.User, p.Host)
-			if p.User == "foo" {
-				fooFound = true
+			ids := processIDs(procs2)
+			for _, p := range procs {
+				if p.User == "foo" {
+					g.Expect(ids).NotTo(HaveKey(p.ID), "process %d for foo should be killed", p.ID)
+				} else {
+					g.Expect(ids).To(HaveKey(p.ID), "process %d for %s should not be killed", p.ID, p.User)
+				}
 			}
-		}
-		Expect(fooFound).To(BeFalse())
+		}).Should(Succeed())
 
 		By("getting process list in replica")
 		var procs3 []Process
@@ -97,11 +98,23 @@ var _ = Describe("kill", func() {
 		err = ops[1].KillConnections(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 
-		var procs4 []Process
-		err = ops[1].db.Select(&procs4, `SELECT ID, USER, HOST FROM information_schema.PROCESSLIST`)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(func() int {
-			return len(procs3) - len(procs4)
-		}).Should(BeNumerically("==", 0))
+		Consistently(func(g Gomega) {
+			var procs4 []Process
+			err := ops[1].db.Select(&procs4, `SELECT ID, USER, HOST FROM information_schema.PROCESSLIST`)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			ids := processIDs(procs4)
+			for _, p := range procs3 {
+				g.Expect(ids).To(HaveKey(p.ID), "process %d for %s should not be killed", p.ID, p.User)
+			}
+		}).Should(Succeed())
 	})
 })
+
+func processIDs(procs []Process) map[uint64]struct{} {
+	ids := make(map[uint64]struct{}, len(procs))
+	for _, p := range procs {
+		ids[p.ID] = struct{}{}
+	}
+	return ids
+}
