@@ -22,6 +22,7 @@ All these metrics are prefixed with `moco_cluster_` and have `name` and `namespa
 | `errors_total`                      | The number of times MOCO encountered errors when managing the cluster  | Counter   |
 | `available`                         | 1 if the cluster is available, 0 otherwise                             | Gauge     |
 | `healthy`                           | 1 if the cluster is running without any problems, 0 otherwise          | Gauge     |
+| `system_user_auth_plugin_synced`    | 1 if every MOCO system user uses the plugin specified in `spec.systemUserAuthPlugin`, 0 otherwise. NaN while the field is unset | Gauge     |
 | `switchover_total`                  | The number of times MOCO changed the live primary instance             | Counter   |
 | `failover_total`                    | The number of times MOCO changed the failed primary instance           | Counter   |
 | `replicas`                          | The number of mysqld instances in the cluster                          | Gauge     |

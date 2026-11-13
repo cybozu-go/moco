@@ -92,6 +92,12 @@ type StatusSet struct {
 	Errants      []int
 	Candidates   []int
 
+	// AuthPluginStatus[i] is the authentication plugin state observed on
+	// instance i. This is collected only when `spec.systemUserAuthPlugin`
+	// is set. A nil entry means the state of the instance could not be
+	// collected.
+	AuthPluginStatus []*InstanceAuthPluginStatus
+
 	NeedSwitch         bool
 	PreventPodDeletion bool
 	Candidate          int
@@ -302,6 +308,35 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 		if ist.GlobalStatus.SemiSyncMasterWaitSessions > 0 {
 			ss.MySQLStatus[i] = nil
 			log.Info("Detected a hangup replica. rpl_semi_sync_master_wait_sessions is greater than 0.", "instance", i)
+		}
+	}
+
+	// collect the authentication plugins of MOCO users only when the cluster
+	// opts in to plugin management.
+	if cluster.Spec.SystemUserAuthPlugin != nil {
+		target := cluster.Spec.SystemUserAuthPlugin.String()
+		ss.AuthPluginStatus = make([]*InstanceAuthPluginStatus, cluster.Spec.Replicas)
+		for i, ist := range ss.MySQLStatus {
+			if ist == nil {
+				continue
+			}
+			plugins, err := ss.DBOps[i].GetUserAuthPlugins(ctx)
+			if err != nil {
+				log.Error(err, "failed to get the authentication plugins of MOCO users", "instance", i)
+				continue
+			}
+			st := &InstanceAuthPluginStatus{UserPlugins: plugins, TargetPluginActive: true}
+			if len(usersWithPluginMismatch(plugins, target)) > 0 {
+				active, err := ss.DBOps[i].IsAuthPluginActive(ctx, target)
+				if err != nil {
+					// Leave the entry nil; the instance counts as not
+					// collected and is handled on a later tick.
+					log.Error(err, "failed to check the authentication plugin availability", "instance", i, "plugin", target)
+					continue
+				}
+				st.TargetPluginActive = active
+			}
+			ss.AuthPluginStatus[i] = st
 		}
 	}
 

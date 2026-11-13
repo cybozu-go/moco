@@ -109,6 +109,17 @@ type MySQLClusterSpec struct {
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
+	// SystemUserAuthPlugin, when set, makes MOCO converge the
+	// authentication plugin of the MOCO system users (moco-admin, moco-agent,
+	// moco-repl, moco-clone-donor, moco-exporter, moco-backup, moco-readonly
+	// and moco-writable) to the specified plugin on every instance.
+	// The password values are kept unchanged.
+	// When unset, MOCO does not manage the authentication plugin of these
+	// users (the plugin remains whatever the server default was when each
+	// user was created).
+	// +optional
+	SystemUserAuthPlugin *SystemUserAuthPlugin `json:"systemUserAuthPlugin,omitempty"`
+
 	// LogRotationSize specifies the size to rotate MySQL logs
 	// If not set, size-based log rotation is disabled by default
 	// +optional
@@ -699,6 +710,33 @@ const (
 	ConditionReconcileSuccess     string = "ReconcileSuccess"
 	ConditionReconciliationActive string = "ReconciliationActive"
 	ConditionClusteringActive     string = "ClusteringActive"
+
+	// ConditionSystemUserAuthPluginSynced is removed, not set to False,
+	// while `spec.systemUserAuthPlugin` is unset.
+	ConditionSystemUserAuthPluginSynced string = "SystemUserAuthPluginSynced"
+)
+
+// Reasons for the SystemUserAuthPluginSynced condition.
+const (
+	ReasonAuthPluginSynced              string = "Synced"
+	ReasonAuthPluginApplying            string = "Applying"
+	ReasonAuthPluginUnavailable         string = "PluginUnavailable"
+	ReasonAuthPluginInstanceUnreachable string = "InstanceUnreachable"
+)
+
+// SystemUserAuthPlugin is an authentication plugin of the MOCO system users.
+//
+// +kubebuilder:validation:Enum=caching_sha2_password;mysql_native_password
+type SystemUserAuthPlugin string
+
+// String implements the fmt.Stringer interface.
+func (p SystemUserAuthPlugin) String() string {
+	return string(p)
+}
+
+const (
+	AuthPluginCachingSHA2Password SystemUserAuthPlugin = "caching_sha2_password"
+	AuthPluginMySQLNativePassword SystemUserAuthPlugin = "mysql_native_password"
 )
 
 // BackupStatus represents the status of the last successful backup.

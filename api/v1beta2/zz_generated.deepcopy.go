@@ -357,6 +357,11 @@ func (in *MySQLClusterSpec) DeepCopyInto(out *MySQLClusterSpec) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.SystemUserAuthPlugin != nil {
+		in, out := &in.SystemUserAuthPlugin, &out.SystemUserAuthPlugin
+		*out = new(SystemUserAuthPlugin)
+		**out = **in
+	}
 	if in.BackupPolicyName != nil {
 		in, out := &in.BackupPolicyName, &out.BackupPolicyName
 		*out = new(string)
