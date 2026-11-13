@@ -16,6 +16,10 @@ func newTextParser() *expfmt.TextParser {
 	return &p
 }
 
+// Long-running Ordered contexts are annotated with SpecPriority so that the
+// scheduler starts them first; otherwise --randomize-all can place them at
+// the tail and extend the suite. 100 = the longest chains (partition,
+// PreventDelete), 90 = the next tier (replication, stop).
 func TestE2e(t *testing.T) {
 	if !runE2E {
 		t.Skip("no RUN_E2E environment variable")
