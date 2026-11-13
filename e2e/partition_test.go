@@ -331,6 +331,38 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		ctx := context.Background()
 		ctx, cancel := context.WithTimeout(ctx, time.Minute*10)
 
+		getPartition := func() (int32, error) {
+			out, err := kubectl(nil, "get", "-n", ns, "statefulset", "moco-test", "-o", "json")
+			if err != nil {
+				return -1, err
+			}
+			sts := &appsv1.StatefulSet{}
+			if err := json.Unmarshal(out, sts); err != nil {
+				return -1, err
+			}
+			if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+				return -1, errors.New("partition is nil")
+			}
+			return *sts.Spec.UpdateStrategy.RollingUpdate.Partition, nil
+		}
+
+		// The partition starts at the number of replicas on StatefulSet
+		// creation. Wait for the initial rollout to settle at 0 before making
+		// the cluster unhealthy: the partition controller stops updating the
+		// partition while the cluster is unhealthy, and the partition of 3
+		// asserted below must be the result of the template change, not a
+		// leftover of the creation.
+		Eventually(func() error {
+			partition, err := getPartition()
+			if err != nil {
+				return err
+			}
+			if partition != 0 {
+				return fmt.Errorf("partition is %d, not 0", partition)
+			}
+			return nil
+		}).Should(Succeed())
+
 		// Keep killing mysqld on pod 0 so that the cluster stays unhealthy
 		// during this spec. Errors are ignored because the pod may be
 		// restarting when kill is attempted.
@@ -338,7 +370,7 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		go func() {
 			defer GinkgoRecover()
 			defer close(done)
-			_ = wait.PollUntilContextCancel(ctx, time.Second*5, true, func(ctx context.Context) (bool, error) {
+			_ = wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 				_, _ = kubectl(nil, "exec", "-n", ns, "moco-test-0", "-c", "mysqld", "--", "kill", "1")
 				return false, nil
 			})
@@ -372,20 +404,6 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		// unhealthy. The webhook resets the partition to the number of replicas
 		// when the controller applies the new template.
 		kubectlSafe(fillPartitionTemplate(partitionApplyYAML, ns), "apply", "-f", "-")
-		getPartition := func() (int32, error) {
-			out, err := kubectl(nil, "get", "-n", ns, "statefulset", "moco-test", "-o", "json")
-			if err != nil {
-				return -1, err
-			}
-			sts := &appsv1.StatefulSet{}
-			if err := json.Unmarshal(out, sts); err != nil {
-				return -1, err
-			}
-			if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
-				return -1, errors.New("partition is nil")
-			}
-			return *sts.Spec.UpdateStrategy.RollingUpdate.Partition, nil
-		}
 		Eventually(func() error {
 			partition, err := getPartition()
 			if err != nil {
@@ -407,7 +425,7 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 				return fmt.Errorf("partition is %d, not 3", partition)
 			}
 			return nil
-		}).WithTimeout(time.Minute * 1).Should(Succeed())
+		}).WithTimeout(1 * time.Minute).WithPolling(time.Second).Should(Succeed())
 	})
 
 	It("should pod template change succeed with force rolling update", func() {
@@ -416,7 +434,7 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		// recover from the repeated mysqld kills of the previous spec.
 		Eventually(func() error {
 			return partitionClusterHealthy(ns)
-		}).WithTimeout(time.Minute * 10).Should(Succeed())
+		}).WithTimeout(10 * time.Minute).Should(Succeed())
 	})
 
 	It("should partition removed", func() {
