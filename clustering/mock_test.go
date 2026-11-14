@@ -369,7 +369,8 @@ func (o *mockOperator) WaitForGTID(_ context.Context, gtidSet string, _ int) err
 }
 
 // SetReadOnly makes the instance super_read_only if `true` is passed.
-// Otherwise, this stops the replication and makes the instance writable.
+// Otherwise, this stops the replication, resets all replication metadata,
+// and makes the instance writable.
 func (o *mockOperator) SetReadOnly(ctx context.Context, readonly bool) error {
 	if o.failing {
 		return errors.New("mysqld is down")
