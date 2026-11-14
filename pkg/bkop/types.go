@@ -6,6 +6,7 @@ package bkop
 type ServerStatus struct {
 	SuperReadOnly bool   `db:"@@super_read_only"`
 	UUID          string `db:"@@server_uuid"`
+	Version       string `db:"@@version"`
 	CurrentBinlog string
 }
 
