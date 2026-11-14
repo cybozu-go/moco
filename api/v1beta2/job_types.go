@@ -77,6 +77,16 @@ type JobConfig struct {
 	// +optional
 	Affinity *AffinityApplyConfiguration `json:"affinity,omitempty"`
 
+	// If specified, the pod's tolerations.
+	//
+	// +optional
+	Tolerations []TolerationApplyConfiguration `json:"tolerations,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	//
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
 	// Volumes defines the list of volumes that can be mounted by containers in the Pod.
 	//
 	// +optional
@@ -220,6 +230,23 @@ type AffinityApplyConfiguration corev1ac.AffinityApplyConfiguration
 // DeepCopy is copying the receiver, creating a new AffinityApplyConfiguration.
 func (in *AffinityApplyConfiguration) DeepCopy() *AffinityApplyConfiguration {
 	out := new(AffinityApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// TolerationApplyConfiguration is the type defined to implement the DeepCopy method.
+type TolerationApplyConfiguration corev1ac.TolerationApplyConfiguration
+
+// DeepCopy is copying the receiver, creating a new TolerationApplyConfiguration.
+func (in *TolerationApplyConfiguration) DeepCopy() *TolerationApplyConfiguration {
+	out := new(TolerationApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")
