@@ -90,7 +90,7 @@ func (o operator) LoadBinlog(ctx context.Context, binlogDir, tmpDir string, rest
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	//mysqlbinlog --stop-datetime="2021-05-13 10:45:00" log/binlog.000001 log/binlog.000002
+	// mysqlbinlog --stop-datetime="2021-05-13 10:45:00" log/binlog.000001 log/binlog.000002
 	// | mysql --binary-mode -h moco-single-primary.bar.svc -u moco-admin -p
 	binlogArgs := append([]string{"--stop-datetime=" + restorePoint.Format("2006-01-02 15:04:05")}, binlogFiles...)
 	if schema != "" {
