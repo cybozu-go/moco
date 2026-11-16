@@ -1,0 +1,8 @@
+processor:
+  # Exclude the generated apply configuration types that are pulled in from client-go.
+  ignoreTypes:
+    - "ApplyConfiguration$"
+
+render:
+  # Kubernetes version used to link Kubernetes API types to the official API reference.
+  kubernetesVersion: 1.36
