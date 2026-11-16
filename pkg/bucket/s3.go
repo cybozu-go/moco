@@ -86,6 +86,11 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		u.Concurrency = 1
 		u.LeavePartsOnError = false
 		u.PartSize = decidePartSize(objectSize)
+		// The uploader has its own RequestChecksumCalculation (WhenSupported by default)
+		// and ignores the client option set via AWS_REQUEST_CHECKSUM_CALCULATION.
+		// Without this, every UploadPart carries an aws-chunked CRC32 trailer, which
+		// some S3-compatible services reject (XAmzContentSHA256Mismatch).
+		u.RequestChecksumCalculation = b.client.Options().RequestChecksumCalculation
 	})
 	pi := &s3.PutObjectInput{
 		Bucket:      &b.name,
