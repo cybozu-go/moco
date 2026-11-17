@@ -30,27 +30,27 @@ type BackupPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The schedule in Cron format for periodic backups.
+	// schedule is the schedule in Cron format for periodic backups.
 	// See https://en.wikipedia.org/wiki/Cron
 	Schedule string `json:"schedule"`
 
-	// The time zone name for the given schedule, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones.
+	// timeZone is the time zone name for the given schedule, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones.
 	// If not specified, this defaults to the time zone of the kube-controller-manager process (native Kubernetes CronJob behavior).
 	// More information can be found in https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones
 	// +nullable
 	// +optional
 	TimeZone *string `json:"timeZone,omitempty"`
 
-	// Specifies parameters for backup Pod.
+	// jobConfig specifies parameters for backup Pod.
 	JobConfig JobConfig `json:"jobConfig"`
 
-	// Optional deadline in seconds for starting the job if it misses scheduled
+	// startingDeadlineSeconds is an optional deadline in seconds for starting the job if it misses scheduled
 	// time for any reason.  Missed jobs executions will be counted as failed ones.
 	// +nullable
 	// +optional
 	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
 
-	// Specifies how to treat concurrent executions of a Job.
+	// concurrencyPolicy specifies how to treat concurrent executions of a Job.
 	// Valid values are:
 	// - "Allow" (default): allows CronJobs to run concurrently;
 	// - "Forbid": forbids concurrent runs, skipping next run if previous run hasn't finished yet;
@@ -60,7 +60,7 @@ type BackupPolicySpec struct {
 	// +optional
 	ConcurrencyPolicy batchv1.ConcurrencyPolicy `json:"concurrencyPolicy,omitempty"`
 
-	// Specifies the duration in seconds relative to the startTime that the job
+	// activeDeadlineSeconds specifies the duration in seconds relative to the startTime that the job
 	// may be continuously active before the system tries to terminate it; value
 	// must be positive integer. If a Job is suspended (at creation or through an
 	// update), this timer will effectively be stopped and reset when the Job is
@@ -69,24 +69,24 @@ type BackupPolicySpec struct {
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 
-	// Specifies the number of retries before marking this job failed.
-	// Defaults to 6
+	// backoffLimit specifies the number of retries before marking this job failed.
+	// If not specified, MOCO does not set the value and the Job default (6) is used.
 	// +kubebuilder:validation:Minimum=0
 	// +nullable
 	// +optional
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 
-	// The number of successful finished jobs to retain.
+	// successfulJobsHistoryLimit is the number of successful finished jobs to retain.
 	// This is a pointer to distinguish between explicit zero and not specified.
-	// Defaults to 3.
+	// If not specified, MOCO does not set the value and the CronJob default (3) is used.
 	// +kubebuilder:validation:Minimum=0
 	// +nullable
 	// +optional
 	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
 
-	// The number of failed finished jobs to retain.
+	// failedJobsHistoryLimit is the number of failed finished jobs to retain.
 	// This is a pointer to distinguish between explicit zero and not specified.
-	// Defaults to 1.
+	// If not specified, MOCO does not set the value and the CronJob default (1) is used.
 	// +kubebuilder:validation:Minimum=0
 	// +nullable
 	// +optional
@@ -105,22 +105,27 @@ func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 	return nil, allErrs
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:storageversion
+// +kubebuilder:object:root=true
+// +kubebuilder:storageversion
 
 // BackupPolicy is a namespaced resource that should be referenced from MySQLCluster.
 type BackupPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// metadata is the standard object's metadata.
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// spec defines the configuration items for MySQLCluster backup.
 	Spec BackupPolicySpec `json:"spec"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // BackupPolicyList contains a list of BackupPolicy
 type BackupPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
+	// metadata is the standard list metadata.
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BackupPolicy `json:"items"`
+
+	// items is the list of BackupPolicies.
+	Items []BackupPolicy `json:"items"`
 }
