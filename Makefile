@@ -80,7 +80,7 @@ generate: aqua-install ## Generate code containing DeepCopy, DeepCopyInto, and D
 
 .PHONY: apidoc
 apidoc: aqua-install $(wildcard api/*/*_types.go)
-	$(CRD_REF_DOCS) --config=crd-ref-docs.yaml --source-path=api/v1beta2 --renderer=markdown --output-path=docs/crd_v1beta2.md
+	$(CRD_REF_DOCS) --config=crd-ref-docs.yaml --source-path=api/v1beta2 --renderer=markdown --templates-dir=crd-ref-docs-templates --output-path=docs/crd_v1beta2.md
 
 .PHONY: book
 book: aqua-install

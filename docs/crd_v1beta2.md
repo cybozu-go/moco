@@ -158,11 +158,18 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `serviceAccountName` _string_ | ServiceAccountName specifies the ServiceAccount to run the Pod. |  | MinLength: 1 <br /> |
 | `bucketConfig` _[BucketConfig](#bucketconfig)_ | Specifies how to access an object storage bucket. |  |  |
+| `workVolume` _[VolumeSourceApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volume-v1-core)_ | WorkVolume is the volume source for the working directory.<br />Since the backup or restore task can use a lot of bytes in the working directory,<br />You should always give a volume with enough capacity.<br />The recommended volume source is a generic ephemeral volume.<br />https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes |  |  |
 | `threads` _integer_ | Threads is the number of threads used for backup or restoration. | 4 | Minimum: 1 <br />Optional: \{\} <br /> |
 | `cpu` _[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#quantity-resource-api)_ | CPU is the amount of CPU requested for the Pod. | 4 | Optional: \{\} <br /> |
 | `maxCpu` _[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#quantity-resource-api)_ | MaxCPU is the amount of maximum CPU for the Pod. |  | Optional: \{\} <br /> |
 | `memory` _[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#quantity-resource-api)_ | Memory is the amount of memory requested for the Pod. | 4Gi | Optional: \{\} <br /> |
 | `maxMemory` _[Quantity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#quantity-resource-api)_ | MaxMemory is the amount of maximum memory for the Pod. |  | Optional: \{\} <br /> |
+| `envFrom` _[EnvFromSourceApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#envfromsource-v1-core) array_ | List of sources to populate environment variables in the container.<br />The keys defined within a source must be a C_IDENTIFIER. All invalid keys<br />will be reported as an event when the container is starting. When a key exists in multiple<br />sources, the value associated with the last source will take precedence.<br />Values defined by an Env with a duplicate key will take precedence.<br />You can configure S3 bucket access parameters through environment variables.<br />See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig |  | Optional: \{\} <br /> |
+| `env` _[EnvVarApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#envvar-v1-core) array_ | List of environment variables to set in the container.<br />You can configure S3 bucket access parameters through environment variables.<br />See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig |  | Optional: \{\} <br /> |
+| `affinity` _[AffinityApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#affinity-v1-core)_ | If specified, the pod's scheduling constraints. |  | Optional: \{\} <br /> |
+| `volumes` _[VolumeApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volume-v1-core) array_ | Volumes defines the list of volumes that can be mounted by containers in the Pod. |  | Optional: \{\} <br /> |
+| `volumeMounts` _[VolumeMountApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volumemount-v1-core) array_ | VolumeMounts describes a list of volume mounts that are to be mounted in a container. |  | Optional: \{\} <br /> |
+| `imagePullSecrets` _[LocalObjectReferenceApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#localobjectreference-v1-core) array_ | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling<br />backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods.<br />To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead. |  | Optional: \{\} <br /> |
 
 
 #### MySQLCluster
@@ -304,6 +311,8 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `name` _[OverwriteableContainerName](#overwriteablecontainername)_ | Name of the container to overwrite. |  | Enum: [agent copy-moco-init moco-init slow-log mysqld-exporter] <br />Required: \{\} <br /> |
+| `resources` _[ResourceRequirementsApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#resourcerequirements-v1-core)_ | Resources is the container resource to be overwritten. |  | Optional: \{\} <br /> |
+| `securityContext` _[SecurityContextApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#securitycontext-v1-core)_ | SecurityContext is the container SecurityContext to be overwritten. |  | Optional: \{\} <br /> |
 
 
 #### OverwriteableContainerName
@@ -335,6 +344,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `metadata` _[ObjectMeta](#objectmeta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[PersistentVolumeClaimSpecApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#persistentvolumeclaimspec-v1-core)_ | Spec defines the desired characteristics of a volume requested by a pod author. |  |  |
 
 
 #### PodTemplateSpec
@@ -352,6 +362,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `metadata` _[ObjectMeta](#objectmeta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  | Optional: \{\} <br /> |
+| `spec` _[PodSpecApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podspec-v1-core)_ | Specification of the desired behavior of the pod.<br />The name of the MySQL server container in this spec must be `mysqld`. |  |  |
 | `overwriteContainers` _[OverwriteContainer](#overwritecontainer) array_ | OverwriteContainers overwrites the container definitions provided by default by the system. |  | Optional: \{\} <br /> |
 
 
@@ -407,6 +418,7 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `metadata` _[ObjectMeta](#objectmeta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  | Optional: \{\} <br /> |
+| `spec` _[ServiceSpecApplyConfiguration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#servicespec-v1-core)_ | Spec is the ServiceSpec |  | Optional: \{\} <br /> |
 
 
 

@@ -1,0 +1,12 @@
+--- a/gv_details.tpl
++++ b/gv_details.tpl
+@@ -13,7 +13,9 @@
+ {{ end }}
+ 
+ {{ range $gv.SortedTypes }}
++{{- if not (hasSuffix "ApplyConfiguration" .Name) }}
+ {{ template "type" . }}
++{{ end -}}
+ {{ end }}
+ 
+ {{- end -}}
