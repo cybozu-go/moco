@@ -278,7 +278,6 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 	return nil, allErrs
 }
 
-//nolint:unparam
 func (s MySQLClusterSpec) validateUpdate(ctx context.Context, apiReader client.Reader, old MySQLClusterSpec) (admission.Warnings, field.ErrorList) {
 	var allErrs field.ErrorList
 	p := field.NewPath("spec")

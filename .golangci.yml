@@ -2,22 +2,27 @@ version: "2"
 run:
   allow-parallel-runners: true
 linters:
-  default: none
+  default: standard
   enable:
+    - bodyclose
     - copyloopvar
     - errcheck
+    - ginkgolinter
     - goconst
     - gocyclo
     - govet
     - ineffassign
-    - modernize
+    - mirror
     - misspell
+    - modernize
     - nakedret
+    - nilerr
+    - nolintlint
     - staticcheck
     - unconvert
     - unparam
     - unused
-    - nilerr
+    - usestdlibvars
   settings:
     govet:
       disable:

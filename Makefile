@@ -6,8 +6,6 @@ OS_VERSION := $(shell . /etc/os-release; echo $$VERSION_ID)
 
 # Test tools
 BIN_DIR := $(shell pwd)/bin
-NILERR := $(BIN_DIR)/nilerr
-STATICCHECK := $(BIN_DIR)/staticcheck
 SUDO = sudo
 
 # for envtest
