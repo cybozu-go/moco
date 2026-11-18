@@ -11,6 +11,7 @@ import (
 type JobConfig struct {
 	// serviceAccountName specifies the ServiceAccount to run the Pod.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	ServiceAccountName string `json:"serviceAccountName"`
 
 	// bucketConfig specifies how to access an object storage bucket.

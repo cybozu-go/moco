@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -115,6 +116,25 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 		Expect(r.Finalizers).To(ContainElement(constants.MySQLClusterFinalizer))
 	})
+
+	DescribeTable("should deny empty object name references",
+		func(fieldName string) {
+			r := makeMySQLCluster()
+			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
+			Expect(err).NotTo(HaveOccurred())
+			raw := &unstructured.Unstructured{Object: obj}
+			raw.SetGroupVersionKind(mocov1beta2.GroupVersion.WithKind("MySQLCluster"))
+			Expect(unstructured.SetNestedField(raw.Object, "", "spec", fieldName)).To(Succeed())
+
+			err = k8sClient.Create(ctx, raw)
+
+			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+			Expect(err).To(MatchError(ContainSubstring("spec." + fieldName)))
+		},
+		Entry(nil, "mysqlConfigMapName"),
+		Entry(nil, "replicationSourceSecretName"),
+		Entry(nil, "backupPolicyName"),
+	)
 
 	It("should deny without mysqld-data volume claim template", func() {
 		r := makeMySQLCluster()

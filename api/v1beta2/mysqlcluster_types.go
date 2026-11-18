@@ -52,6 +52,8 @@ type MySQLClusterSpec struct {
 
 	// mysqlConfigMapName is a `ConfigMap` name of MySQL config.
 	// +nullable
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
@@ -60,6 +62,8 @@ type MySQLClusterSpec struct {
 	// It cannot be added to an existing cluster or changed to another value.
 	// Setting it to null stops the replication.
 	// +nullable
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
@@ -120,6 +124,8 @@ type MySQLClusterSpec struct {
 	// backupPolicyName is the name of BackupPolicy custom resource in the same namespace.
 	// If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.
 	// +nullable
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	BackupPolicyName *string `json:"backupPolicyName,omitempty"`
 
@@ -618,6 +624,7 @@ type ServiceTemplate struct {
 type RestoreSpec struct {
 	// sourceName is the name of the source `MySQLCluster`.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	SourceName string `json:"sourceName"`
 
 	// sourceNamespace is the namespace of the source `MySQLCluster`.
