@@ -3,13 +3,12 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os/exec"
-	"reflect"
 	"text/template"
 
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,8 +35,9 @@ func kubectl(input []byte, args ...string) ([]byte, error) {
 }
 
 func kubectlSafe(input []byte, args ...string) []byte {
+	GinkgoHelper()
 	out, err := kubectl(input, args...)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return out
 }
 
@@ -84,13 +84,97 @@ func fillTemplate(tmpl string) []byte {
 }
 
 func fillTemplateWithVersion(tmpl, version string) []byte {
+	return fillTemplateWithParams(tmpl, version)
+}
+
+func fillTemplateWithParams(tmpl string, params any) []byte {
 	t := template.Must(template.New("").Parse(tmpl))
 	buf := new(bytes.Buffer)
-	err := t.Execute(buf, version)
+	err := t.Execute(buf, params)
 	if err != nil {
 		panic(err)
 	}
 	return buf.Bytes()
+}
+
+// checkClusterCondition returns nil if the condition of the MySQLCluster has the given status.
+func checkClusterCondition(ns, name, condType string, status metav1.ConditionStatus) error {
+	cluster, err := getCluster(ns, name)
+	if err != nil {
+		return err
+	}
+	cond, err := getClusterCondition(cluster, condType)
+	if err != nil {
+		return err
+	}
+	if cond.Status != status {
+		return fmt.Errorf("%s condition of %s/%s is %s, not %s", condType, ns, name, cond.Status, status)
+	}
+	return nil
+}
+
+// waitForClusterCondition waits until the condition of the MySQLCluster has the given status.
+func waitForClusterCondition(ns, name, condType string, status metav1.ConditionStatus) {
+	GinkgoHelper()
+	Eventually(func() error {
+		return checkClusterCondition(ns, name, condType, status)
+	}).Should(Succeed())
+}
+
+// recreateInstance deletes the PVC and the Pod of the instance so that the instance loses its data.
+// It returns after a new Pod is scheduled.
+func recreateInstance(ns, name string, index int) {
+	GinkgoHelper()
+	podName := fmt.Sprintf("moco-%s-%d", name, index)
+	out := kubectlSafe(nil, "-n", ns, "get", "pod", podName, "-o", "json")
+	oldPod := &corev1.Pod{}
+	Expect(json.Unmarshal(out, oldPod)).To(Succeed())
+
+	kubectlSafe(nil, "-n", ns, "delete", "--wait=false", "pvc", fmt.Sprintf("mysql-data-%s", podName))
+	kubectlSafe(nil, "-n", ns, "delete", "--grace-period=1", "pod", podName)
+
+	Eventually(func() error {
+		out, err := kubectl(nil, "-n", ns, "get", "pod", podName, "-o", "json")
+		if err != nil {
+			return err
+		}
+		pod := &corev1.Pod{}
+		if err := json.Unmarshal(out, pod); err != nil {
+			return err
+		}
+		if pod.UID == oldPod.UID {
+			return fmt.Errorf("pod %s is not recreated yet", podName)
+		}
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type != corev1.PodScheduled {
+				continue
+			}
+			// The Pod can be unschedulable if it is created before the old PVC is deleted.
+			if cond.Reason == corev1.PodReasonUnschedulable {
+				if _, err := kubectl(nil, "-n", ns, "delete", "--grace-period=1", "pod", podName); err != nil {
+					return fmt.Errorf("failed to delete pod %s: %w", podName, err)
+				}
+				return fmt.Errorf("pod %s is unschedulable", podName)
+			}
+			if cond.Status == corev1.ConditionTrue {
+				return nil
+			}
+		}
+		return fmt.Errorf("pod %s is not scheduled yet", podName)
+	}).Should(Succeed())
+}
+
+// deleteNamespace deletes all MySQLClusters in the namespace and then the namespace itself.
+func deleteNamespace(ns string) {
+	GinkgoHelper()
+	out, err := kubectl(nil, "get", "namespace", ns, "--ignore-not-found", "-o", "name")
+	Expect(err).NotTo(HaveOccurred())
+	if len(bytes.TrimSpace(out)) == 0 {
+		return
+	}
+	kubectlSafe(nil, "delete", "-n", ns, "mysqlclusters", "--all")
+	verifyAllPodsDeleted(ns)
+	kubectlSafe(nil, "delete", "namespace", ns)
 }
 
 func findMetric(mf *dto.MetricFamily, labels map[string]string) *dto.Metric {
@@ -115,6 +199,7 @@ OUTER:
 // Retrieves a StatefulSet using Kubernetes API and compares its PVC templates' labels and sizes
 // with the anticipated ones.
 func verifyPVCTemplates(ns string, clusterName string) {
+	GinkgoHelper()
 	cluster, err := getCluster(ns, clusterName)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -128,43 +213,28 @@ func verifyPVCTemplates(ns string, clusterName string) {
 		wantSizes[pvc.Name] = pvc.Spec.Resources.Requests.Storage()
 	}
 
-	Eventually(func() error {
+	Eventually(func(g Gomega) {
 		out, err := kubectl(nil,
 			"get", "sts",
 			"-n", ns,
 			fmt.Sprintf("moco-%s", clusterName),
 			"-o", "json",
 		)
-		if err != nil {
-			return err
-		}
+		g.Expect(err).NotTo(HaveOccurred())
 
 		var sts appsv1.StatefulSet
-		if err := json.Unmarshal(out, &sts); err != nil {
-			return err
-		}
+		g.Expect(json.Unmarshal(out, &sts)).To(Succeed())
 
 		for _, pvc := range sts.Spec.VolumeClaimTemplates {
-			labels, ok := wantLabels[pvc.Name]
-			if !ok {
-				return fmt.Errorf("pvc %s is not expected", pvc.Name)
-			}
+			g.Expect(wantLabels).To(HaveKey(pvc.Name), "pvc %s is not expected", pvc.Name)
+			labels := wantLabels[pvc.Name]
+			g.Expect(pvc.ObjectMeta.Labels).To(Equal(labels), "pvc %s labels are not expected", pvc.Name)
 
-			if !reflect.DeepEqual(pvc.ObjectMeta.Labels, labels) {
-				return fmt.Errorf("pvc %s labels are not expected", pvc.Name)
-			}
-
-			want, ok := wantSizes[pvc.Name]
-			if !ok {
-				return fmt.Errorf("pvc %s is not expected", pvc.Name)
-			}
-
-			if pvc.Spec.Resources.Requests.Storage().Cmp(*want) != 0 {
-				return fmt.Errorf("pvc %s is not expected size: %s", pvc.Name, pvc.Spec.Resources.Requests.Storage())
-			}
+			g.Expect(wantSizes).To(HaveKey(pvc.Name), "pvc %s is not expected", pvc.Name)
+			want := wantSizes[pvc.Name]
+			size := pvc.Spec.Resources.Requests.Storage()
+			g.Expect(size.Cmp(*want)).To(BeZero(), "pvc %s: expected size %s, got %s", pvc.Name, want, size)
 		}
-
-		return nil
 	}).Should(Succeed())
 }
 
@@ -172,6 +242,7 @@ func verifyPVCTemplates(ns string, clusterName string) {
 // It builds a map of anticipated PVC sizes, retrieves the current state of PVCs from the Kubernetes API,
 // and assesses if the actual PVC sizes coincide with the predicted sizes.
 func verifyPVCSize(ns string, clusterName string) {
+	GinkgoHelper()
 	cluster, err := getCluster(ns, clusterName)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -183,58 +254,37 @@ func verifyPVCSize(ns string, clusterName string) {
 		}
 	}
 
-	Eventually(func() error {
+	Eventually(func(g Gomega) {
 		out, err := kubectl(nil,
 			"get", "pvc",
 			"-n", ns,
 			"-l", fmt.Sprintf("app.kubernetes.io/instance=%s", clusterName),
 			"-o", "json",
 		)
-		if err != nil {
-			return err
-		}
+		g.Expect(err).NotTo(HaveOccurred())
 
 		var pvcList corev1.PersistentVolumeClaimList
-		if err := json.Unmarshal(out, &pvcList); err != nil {
-			return err
-		}
-		if len(pvcList.Items) < 1 {
-			return errors.New("not found pvcs")
-		}
-
-		if len(pvcList.Items) != len(wantSizes) {
-			return fmt.Errorf("pvc count is not expected: %d", len(pvcList.Items))
-		}
+		g.Expect(json.Unmarshal(out, &pvcList)).To(Succeed())
+		g.Expect(pvcList.Items).NotTo(BeEmpty(), "no PVCs found")
+		g.Expect(pvcList.Items).To(HaveLen(len(wantSizes)), "pvc count is not expected")
 
 		for _, pvc := range pvcList.Items {
-			want, ok := wantSizes[pvc.Name]
-			if !ok {
-				return fmt.Errorf("pvc %s is not expected", pvc.Name)
-			}
-
-			if pvc.Spec.Resources.Requests.Storage().Cmp(*want) != 0 {
-				return fmt.Errorf("pvc %s is not expected size: %s", pvc.Name, pvc.Spec.Resources.Requests.Storage())
-			}
+			g.Expect(wantSizes).To(HaveKey(pvc.Name), "pvc %s is not expected", pvc.Name)
+			want := wantSizes[pvc.Name]
+			size := pvc.Spec.Resources.Requests.Storage()
+			g.Expect(size.Cmp(*want)).To(BeZero(), "pvc %s: expected size %s, got %s", pvc.Name, want, size)
 		}
-
-		return nil
 	}).Should(Succeed())
 }
 
 // verifyAllPodsDeleted validates that the namespace has no pods.
 func verifyAllPodsDeleted(namespace string) {
-	Eventually(func() error {
+	GinkgoHelper()
+	Eventually(func(g Gomega) {
 		out, err := kubectl(nil, "get", "-n", namespace, "pod", "-o", "json")
-		if err != nil {
-			return err
-		}
+		g.Expect(err).NotTo(HaveOccurred())
 		pods := &corev1.PodList{}
-		if err := json.Unmarshal(out, pods); err != nil {
-			return err
-		}
-		if len(pods.Items) > 0 {
-			return errors.New("wait until all Pods are deleted")
-		}
-		return nil
+		g.Expect(json.Unmarshal(out, pods)).To(Succeed())
+		g.Expect(pods.Items).To(BeEmpty(), "namespace %s still has pods", namespace)
 	}).Should(Succeed())
 }

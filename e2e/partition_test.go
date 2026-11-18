@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"text/template"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -41,49 +40,23 @@ var volumeTemplateApplyYAML string
 // run on different ginkgo processes.
 
 func fillPartitionTemplate(tmpl, ns string) []byte {
-	t := template.Must(template.New("").Parse(tmpl))
-	buf := new(bytes.Buffer)
-	err := t.Execute(buf, struct {
+	return fillTemplateWithParams(tmpl, struct {
 		Namespace    string
 		MySQLVersion string
 	}{Namespace: ns, MySQLVersion: mysqlVersion})
-	if err != nil {
-		panic(err)
-	}
-	return buf.Bytes()
-}
-
-func partitionClusterHealthy(ns string) error {
-	cluster, err := getCluster(ns, "test")
-	if err != nil {
-		return err
-	}
-	for _, cond := range cluster.Status.Conditions {
-		if cond.Type != mocov1beta2.ConditionHealthy {
-			continue
-		}
-		if cond.Status == metav1.ConditionTrue {
-			return nil
-		}
-		return fmt.Errorf("cluster is not healthy: %s", cond.Status)
-	}
-	return errors.New("no health condition")
 }
 
 func setupPartitionCluster(ns string) {
 	GinkgoWriter.Println("should construct a cluster")
 	kubectlSafe(fillPartitionTemplate(partitionTestYAML, ns), "apply", "-f", "-")
-	Eventually(func() error {
-		return partitionClusterHealthy(ns)
-	}).Should(Succeed())
+	waitForClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionTrue)
 
 	kubectlSafe(nil, "moco", "-n", ns, "mysql", "-u", "moco-writable", "test", "--",
 		"-e", "CREATE DATABASE test")
 
 	DeferCleanup(func() {
 		GinkgoWriter.Println("should delete clusters")
-		kubectlSafe(nil, "delete", "-n", ns, "mysqlclusters", "--all")
-		verifyAllPodsDeleted(ns)
+		deleteNamespace(ns)
 	})
 }
 
@@ -121,7 +94,7 @@ var _ = Context("partition_test: pod template change", Ordered, SpecPriority(100
 				}
 			}
 
-			return partitionClusterHealthy(ns)
+			return checkClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionTrue)
 		}).WithTimeout(time.Minute * 10).Should(Succeed())
 	})
 
@@ -223,7 +196,7 @@ var _ = Context("partition_test: volume template change", Ordered, SpecPriority(
 				}
 			}
 
-			return partitionClusterHealthy(ns)
+			return checkClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionTrue)
 		}).WithTimeout(time.Minute * 10).Should(Succeed())
 	})
 
@@ -291,9 +264,7 @@ var _ = Context("partition_test: image pull backoff", Ordered, SpecPriority(100)
 
 	It("should rollback succeed", func() {
 		kubectlSafe(fillPartitionTemplate(partitionApplyYAML, ns), "apply", "-f", "-")
-		Eventually(func() error {
-			return partitionClusterHealthy(ns)
-		}).Should(Succeed())
+		waitForClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionTrue)
 	})
 
 	It("should partition updates succeed", func() {
@@ -383,21 +354,7 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		}()
 
 		Eventually(func() error {
-			cluster, err := getCluster(ns, "test")
-			if err != nil {
-				return err
-			}
-			for _, cond := range cluster.Status.Conditions {
-				if cond.Type != mocov1beta2.ConditionHealthy {
-					continue
-				}
-				// Confirming that the cluster becomes unhealthy
-				if cond.Status == metav1.ConditionFalse {
-					return nil
-				}
-				return fmt.Errorf("cluster is healthy: %s", cond.Status)
-			}
-			return errors.New("no health condition")
+			return checkClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionFalse)
 		}).Should(Succeed())
 
 		// Change the pod template (cpu request 1m -> 2m) while the cluster is
@@ -433,7 +390,7 @@ var _ = Context("partition_test: force rolling update", Ordered, SpecPriority(10
 		// The timeout is longer than the default because the cluster has to
 		// recover from the repeated mysqld kills of the previous spec.
 		Eventually(func() error {
-			return partitionClusterHealthy(ns)
+			return checkClusterCondition(ns, "test", mocov1beta2.ConditionHealthy, metav1.ConditionTrue)
 		}).WithTimeout(10 * time.Minute).Should(Succeed())
 	})
 

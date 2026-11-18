@@ -17,6 +17,10 @@ runs:
       shell: bash
     - run: sudo mkdir /mnt/local-path-provisioner0 /mnt/local-path-provisioner1 /mnt/local-path-provisioner2
       shell: bash
+    # All kind nodes share the host kernel's AIO limit. Many mysqld instances running
+    # in parallel exceed the default and InnoDB fails to start with io_setup() EAGAIN.
+    - run: sudo sysctl -w fs.aio-max-nr=1048576
+      shell: bash
     - run: make start KIND_CONFIG=kind-config_actions.yaml
       working-directory: e2e
       shell: bash
