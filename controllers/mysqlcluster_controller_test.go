@@ -1373,6 +1373,7 @@ dummyKey: dummyValue
 
 	It("should reconcile a pod disruption budget", func() {
 		cluster := testNewMySQLCluster("test")
+		cluster.Spec.Replicas = 1
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1387,7 +1388,20 @@ dummyKey: dummyValue
 			return nil
 		}).Should(Succeed())
 
-		var pdb *policyv1.PodDisruptionBudget
+		pdb := &policyv1.PodDisruptionBudget{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
+		Expect(apierrors.IsNotFound(err)).To(BeTrue())
+
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			cluster = &mocov1beta2.MySQLCluster{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
+				return err
+			}
+			cluster.Spec.Replicas = 3
+			return k8sClient.Update(ctx, cluster)
+		})
+		Expect(err).NotTo(HaveOccurred())
+
 		Eventually(func() error {
 			pdb = &policyv1.PodDisruptionBudget{}
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
@@ -1395,22 +1409,6 @@ dummyKey: dummyValue
 
 		Expect(pdb.Spec.MaxUnavailable).NotTo(BeNil())
 		Expect(pdb.Spec.MaxUnavailable.IntVal).To(Equal(int32(1)))
-
-		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			cluster = &mocov1beta2.MySQLCluster{}
-			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test"}, cluster); err != nil {
-				return err
-			}
-			cluster.Spec.Replicas = 1
-			return k8sClient.Update(ctx, cluster)
-		})
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(func() bool {
-			pdb = &policyv1.PodDisruptionBudget{}
-			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.PrefixedName()}, pdb)
-			return apierrors.IsNotFound(err)
-		}).Should(BeTrue())
 	})
 
 	It("should reconcile backup related resources", func() {
