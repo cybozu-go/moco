@@ -117,6 +117,20 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(r.Finalizers).To(ContainElement(constants.MySQLClusterFinalizer))
 	})
 
+	It("should deny zero startupWaitSeconds", func() {
+		r := makeMySQLCluster()
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
+		Expect(err).NotTo(HaveOccurred())
+		raw := &unstructured.Unstructured{Object: obj}
+		raw.SetGroupVersionKind(mocov1beta2.GroupVersion.WithKind("MySQLCluster"))
+		Expect(unstructured.SetNestedField(raw.Object, int64(0), "spec", "startupWaitSeconds")).To(Succeed())
+
+		err = k8sClient.Create(ctx, raw)
+
+		Expect(apierrors.IsInvalid(err)).To(BeTrue())
+		Expect(err).To(MatchError(ContainSubstring("startupWaitSeconds")))
+	})
+
 	DescribeTable("should deny empty object name references",
 		func(fieldName string) {
 			r := makeMySQLCluster()
