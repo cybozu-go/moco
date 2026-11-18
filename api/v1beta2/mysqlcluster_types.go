@@ -779,6 +779,7 @@ type ReconcileInfo struct {
 type MySQLCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// metadata is the standard object's metadata.
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// spec defines the desired state of MySQLCluster.
@@ -881,6 +882,7 @@ func (r *MySQLCluster) RestoreRoleName() string {
 type MySQLClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	// metadata is the standard list metadata.
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	// items is the list of MySQLClusters.

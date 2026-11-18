@@ -112,6 +112,7 @@ func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 type BackupPolicy struct {
 	metav1.TypeMeta `json:",inline"`
 	// metadata is the standard object's metadata.
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// spec defines the configuration items for MySQLCluster backup.
@@ -124,6 +125,7 @@ type BackupPolicy struct {
 type BackupPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	// metadata is the standard list metadata.
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	// items is the list of BackupPolicies.
