@@ -665,6 +665,8 @@ type MySQLClusterStatus struct {
 
 	// conditions is an array of conditions.
 	// +optional
+	// +listType=map
+	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// currentPrimaryIndex is the index of the current primary Pod in StatefulSet.
