@@ -483,7 +483,7 @@ const (
 // https://cybozu-go.github.io/moco/customize-system-container.html
 type OverwriteContainer struct {
 	// name is the name of the container to overwrite.
-	// +kubebuilder:validation:Required
+	// +required
 	Name OverwriteableContainerName `json:"name"`
 
 	// resources is the container resource to be overwritten.
