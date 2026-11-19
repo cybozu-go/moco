@@ -1491,6 +1491,17 @@ dummyKey: dummyValue
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
 
+		By("checking the default security contexts")
+		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+			FSGroup:             new(int64(constants.ContainerGID)),
+			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+		}))
+		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
+			ReadOnlyRootFilesystem: new(true),
+			RunAsUser:              new(int64(constants.ContainerUID)),
+			RunAsGroup:             new(int64(constants.ContainerGID)),
+		}))
+
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
 		Expect(role.Rules).NotTo(BeEmpty())
@@ -1525,6 +1536,17 @@ dummyKey: dummyValue
 			HostPath: &corev1ac.HostPathVolumeSourceApplyConfiguration{
 				Path: new("/host"),
 			},
+		}
+		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+			FSGroup:      new(int64(2000)),
+			RunAsNonRoot: new(true),
+			SeccompProfile: corev1ac.SeccompProfile().
+				WithType(corev1.SeccompProfileTypeRuntimeDefault),
+		}
+		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+			ReadOnlyRootFilesystem:   new(false),
+			AllowPrivilegeEscalation: new(false),
+			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
 		}
 		jc.BucketConfig.BucketName = "mybucket2"
 		jc.BucketConfig.EndpointURL = ""
@@ -1574,6 +1596,21 @@ dummyKey: dummyValue
 		memReq = c.Resources.Requests[corev1.ResourceMemory]
 		Expect(memReq.Value()).To(BeNumerically("==", 4<<30))
 		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceMemory))
+
+		By("checking user-specified security contexts are merged with the defaults")
+		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+			FSGroup:             new(int64(2000)),
+			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+			RunAsNonRoot:        new(true),
+			SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		}))
+		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
+			ReadOnlyRootFilesystem:   new(false),
+			AllowPrivilegeEscalation: new(false),
+			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+			RunAsUser:                new(int64(constants.ContainerUID)),
+			RunAsGroup:               new(int64(constants.ContainerGID)),
+		}))
 
 		Eventually(func() error {
 			roleBinding = &rbacv1.RoleBinding{}
@@ -1664,6 +1701,15 @@ dummyKey: dummyValue
 		jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
 			{Name: new("my-registry-secret")},
 		}
+		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+			RunAsNonRoot: new(true),
+			SeccompProfile: corev1ac.SeccompProfile().
+				WithType(corev1.SeccompProfileTypeRuntimeDefault),
+		}
+		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+			AllowPrivilegeEscalation: new(false),
+			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
@@ -1734,6 +1780,19 @@ dummyKey: dummyValue
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
 
+		By("checking user-specified security contexts are merged with the defaults")
+		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+			FSGroup:             new(int64(constants.ContainerGID)),
+			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+			RunAsNonRoot:        new(true),
+			SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+		}))
+		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
+			ReadOnlyRootFilesystem:   new(true),
+			AllowPrivilegeEscalation: new(false),
+			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		}))
+
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
 		Expect(role.Rules).NotTo(BeEmpty())
@@ -1784,6 +1843,45 @@ dummyKey: dummyValue
 			}
 			return true
 		}, 5).Should(BeTrue())
+	})
+
+	It("should apply the default security contexts to the restore job when none are specified", func() {
+		cluster := testNewMySQLCluster("test")
+		// Use a dedicated name: envtest has no garbage collector, so a restore Job left by
+		// another spec would make the controller skip creating a new one.
+		cluster.Name = "restore-defaults"
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "single",
+			SourceNamespace: "ns",
+			RestorePoint:    metav1.Now(),
+		}
+		jc := &cluster.Spec.Restore.JobConfig
+		jc.ServiceAccountName = "foo"
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+		}
+		jc.BucketConfig.BucketName = "mybucket"
+		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+		DeferCleanup(func(ctx context.Context) error {
+			job := &batchv1.Job{}
+			job.Namespace = cluster.Namespace
+			job.Name = cluster.RestoreJobName()
+			return client.IgnoreNotFound(k8sClient.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)))
+		})
+
+		Eventually(func(g Gomega) {
+			job := &batchv1.Job{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+			podSpec := job.Spec.Template.Spec
+			g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+				FSGroup:             new(int64(constants.ContainerGID)),
+				FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+			}))
+			g.Expect(podSpec.Containers).To(HaveLen(1))
+			g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+				ReadOnlyRootFilesystem: new(true),
+			}))
+		}).Should(Succeed())
 	})
 
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {
