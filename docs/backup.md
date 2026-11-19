@@ -80,6 +80,9 @@ Backup files are stored in an object storage bucket with the following keys.
 
 Example: `moco/foo/bar/20210515-230003/dump.tar`
 
+Files encrypted with age have the additional suffix `.age`, for example `dump.tar.age`.
+See [Encryption](#encryption).
+
 This allows multiple MySQLClusters to share the same bucket.
 
 ### Timestamps
@@ -219,6 +222,15 @@ Users can safely delete a successful Job.
 
 ### Encryption
 
+MOCO supports two kinds of encryption for backup files:
+
+- Server-side encryption: the object storage encrypts the files.
+- Client-side encryption with [age][age]: `moco-backup` encrypts the files before it uploads them.
+
+Use one of them for a BackupPolicy. They cannot be combined.
+
+#### Server-side encryption
+
 Server-side encryption with keys managed by the object storage, such as SSE-S3 or SSE-KMS on Amazon S3, needs no MOCO setting.
 Configure [default encryption][default-encryption] for the bucket, and the storage encrypts every backup file.
 
@@ -266,6 +278,79 @@ Notes:
     - `azure`: when the download with the key fails, but the blob properties can be read without it.
 - Amazon S3, MinIO and Azure Blob Storage accept customer-provided keys only over HTTPS.
 - The emulators used for local testing, fake-gcs-server and Azurite, accept the key but do not encrypt with it.
+
+#### Client-side encryption with age
+
+With age, the backup files are encrypted before they leave the backup Job.
+This works with every backend type and does not depend on features of the object storage.
+
+age uses a pair of keys:
+
+- A recipient is a public key, for example `age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p`.
+  Backup Jobs need only the recipients. They are not secret.
+- An identity is the matching private key, starting with `AGE-SECRET-KEY-1`.
+  Only restore Jobs need it.
+
+So a backup Job cannot read the backups that it writes.
+
+1. Generate a key pair with [`age-keygen`][age]:
+
+    ```console
+    $ age-keygen -o key.txt
+    Public key: age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+    ```
+
+    Store `key.txt` in a safe place.
+    The post-quantum keys made by `age-keygen -pq` are supported, too.
+
+2. Put the recipients in `bucketConfig.age.recipients` of the BackupPolicy:
+
+    ```yaml
+    apiVersion: moco.cybozu.com/v1beta2
+    kind: BackupPolicy
+    ...
+    spec:
+      jobConfig:
+        bucketConfig:
+          bucketName: moco
+          age:
+            recipients:
+            - age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+    ```
+
+    If you list more than one recipient, each of the matching identities can decrypt the backups.
+    For example, add a second key that you keep offline for emergencies.
+
+3. To restore, store the identity in a Secret in the namespace of the MySQLCluster being restored:
+
+    ```console
+    $ kubectl -n <namespace> create secret generic backup-identity --from-file=identity=key.txt
+    ```
+
+    Then reference it in `MySQLCluster.spec.restore.jobConfig.bucketConfig.age.identitySecret`:
+
+    ```yaml
+    spec:
+      restore:
+        jobConfig:
+          bucketConfig:
+            bucketName: moco
+            age:
+              identitySecret:
+                name: backup-identity
+                key: identity
+    ```
+
+    The Secret value may hold several identities, one per line. Lines starting with `#` are ignored, so a file made by `age-keygen` works as it is.
+
+Notes:
+
+- Keep the identity safe. Backups cannot be restored without it.
+- Encrypted files are stored with the suffix `.age`.
+  The restore Job decrypts only these files, so backups taken before age was enabled can still be restored.
+- To restore a backup taken around the switch from server-side encryption to age, set both `customerKeySecret` and `age.identitySecret` in the restore spec.
+- To change keys, add the new recipient, and keep the old identities in the restore Secret for as long as you keep backups encrypted to them.
+- You can also decrypt a backup file by hand: `age -d -i key.txt dump.tar.age > dump.tar`.
 
 ### Caveats
 
@@ -399,3 +484,4 @@ MOCO does not adopt this technique for the following reasons:
 [sse-c]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerSideEncryptionCustomerKeys.html
 [csek]: https://cloud.google.com/storage/docs/encryption/customer-supplied-keys
 [cpk]: https://learn.microsoft.com/azure/storage/blobs/encryption-customer-provided-keys
+[age]: https://age-encryption.org

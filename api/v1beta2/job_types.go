@@ -2,8 +2,13 @@ package v1beta2
 
 import (
 	"encoding/json"
+	"errors"
+	"strings"
+
+	"filippo.io/age"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
@@ -222,6 +227,81 @@ type BucketConfig struct {
 	// The Secret must exist in the namespace of the backup or restore Job.
 	// +optional
 	CustomerKeySecret *SecretKeyRef `json:"customerKeySecret,omitempty"`
+
+	// Age configures client-side encryption of backup files with age (https://age-encryption.org).
+	// moco-backup encrypts the files before uploading them, so this works with every backend type.
+	// Encrypted files get the suffix `.age`.
+	// In a BackupPolicy, `recipients` is required and cannot be combined with `customerKeySecret`.
+	// In a MySQLCluster restore spec, `identitySecret` is required.
+	// +optional
+	Age *AgeConfig `json:"age,omitempty"`
+}
+
+// AgeConfig is a set of parameters for encrypting backup files with age.
+type AgeConfig struct {
+	// Recipients are the age public keys (`age1...`) to encrypt backup files to.
+	// Any of the matching private keys can decrypt the files.
+	// This is used by backup Jobs only.
+	// +optional
+	Recipients []string `json:"recipients,omitempty"`
+
+	// IdentitySecret references a key in a Secret that holds age identities
+	// (private keys, `AGE-SECRET-KEY-1...`), one per line, to decrypt backup files.
+	// This is used by restore Jobs only.
+	// The Secret must exist in the namespace of the restore Job.
+	// +optional
+	IdentitySecret *SecretKeyRef `json:"identitySecret,omitempty"`
+}
+
+// validateForBackup validates BucketConfig of a BackupPolicy. The path p points to the BucketConfig.
+func (bc BucketConfig) validateForBackup(p *field.Path) field.ErrorList {
+	if bc.Age == nil {
+		return nil
+	}
+
+	var allErrs field.ErrorList
+	pp := p.Child("age", "recipients")
+	if len(bc.Age.Recipients) == 0 {
+		allErrs = append(allErrs, field.Required(pp, "at least one recipient is required to encrypt backups with age"))
+	}
+	for i, r := range bc.Age.Recipients {
+		if err := validateAgeRecipient(r); err != nil {
+			// Do not show the value: it might be a private key put here by mistake.
+			allErrs = append(allErrs, field.Invalid(pp.Index(i), field.OmitValueType{}, err.Error()))
+		}
+	}
+	if bc.CustomerKeySecret != nil {
+		allErrs = append(allErrs, field.Forbidden(p.Child("age"), "age cannot be combined with customerKeySecret"))
+	}
+	return allErrs
+}
+
+// validateForRestore validates BucketConfig of a restore spec. The path p points to the BucketConfig.
+func (bc BucketConfig) validateForRestore(p *field.Path) field.ErrorList {
+	if bc.Age == nil {
+		return nil
+	}
+	if bc.Age.IdentitySecret == nil {
+		return field.ErrorList{field.Required(p.Child("age", "identitySecret"), "an identity is required to restore backups encrypted with age")}
+	}
+	return nil
+}
+
+func validateAgeRecipient(r string) error {
+	if strings.HasPrefix(strings.ToUpper(r), "AGE-SECRET-KEY-") {
+		return errors.New("must be a public key (age1...), not a private key")
+	}
+	if strings.ContainsAny(r, "\r\n") {
+		return errors.New("must be a single recipient")
+	}
+	recipients, err := age.ParseRecipients(strings.NewReader(r))
+	if err != nil {
+		return err
+	}
+	if len(recipients) != 1 {
+		return errors.New("must be a single recipient")
+	}
+	return nil
 }
 
 // SecretKeyRef references a key in a Secret in the same namespace.

@@ -275,6 +275,10 @@ func (s MySQLClusterSpec) validateCreate() (admission.Warnings, field.ErrorList)
 		}
 	}
 
+	if s.Restore != nil {
+		allErrs = append(allErrs, s.Restore.BucketConfig.validateForRestore(p.Child("restore", "jobConfig", "bucketConfig"))...)
+	}
+
 	return nil, allErrs
 }
 

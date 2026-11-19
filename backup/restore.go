@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"filippo.io/age"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/bucket"
@@ -43,11 +44,13 @@ type RestoreManager struct {
 	workDir      string
 	schema       string
 	users        string
+
+	ageIdentities []age.Identity
 }
 
 var ErrBadConnection = errors.New("the connection hasn't reflected the latest user's privileges")
 
-func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time, schema, users string) (*RestoreManager, error) {
+func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, ns, name, password string, threads int, restorePoint time.Time, schema, users string, opts ...RestoreOption) (*RestoreManager, error) {
 	log := crlog.Log.WithName("restore")
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -63,7 +66,7 @@ func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, 
 	}
 
 	prefix := calcPrefix(srcNS, srcName)
-	return &RestoreManager{
+	rm := &RestoreManager{
 		log:          log,
 		client:       k8sClient,
 		scheme:       scheme,
@@ -77,7 +80,11 @@ func NewRestoreManager(cfg *rest.Config, bc bucket.Bucket, dir, srcNS, srcName, 
 		workDir:      dir,
 		schema:       schema,
 		users:        users,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(rm)
+	}
+	return rm, nil
 }
 
 func (rm *RestoreManager) Restore(ctx context.Context) error {
@@ -149,6 +156,14 @@ func (rm *RestoreManager) Restore(ctx context.Context) error {
 
 	rm.log.Info("restoring from a backup", "dump", dumpKey, "binlog", binlogKey)
 
+	if len(rm.ageIdentities) == 0 {
+		for _, key := range []string{dumpKey, binlogKey} {
+			if strings.HasSuffix(key, constants.AgeSuffix) {
+				return fmt.Errorf("%s is encrypted with age, but no age identity is configured", key)
+			}
+		}
+	}
+
 	if err := op.PrepareRestore(ctx); err != nil {
 		return fmt.Errorf("failed to prepare instance for restoration: %w", err)
 	}
@@ -206,8 +221,9 @@ func (rm *RestoreManager) FindNearestDump(keys []string) (string, string, time.T
 	var nearestDump, nearestBinlog string
 
 	for _, key := range keys {
-		isBinlog := strings.HasSuffix(key, constants.BinlogFilename)
-		isDump := strings.HasSuffix(key, constants.DumpFilename)
+		name := strings.TrimSuffix(key, constants.AgeSuffix)
+		isBinlog := strings.HasSuffix(name, constants.BinlogFilename)
+		isDump := strings.HasSuffix(name, constants.DumpFilename)
 		if !isBinlog && !isDump {
 			rm.log.Info("skipping garbage", "key", key)
 			continue
@@ -243,6 +259,10 @@ func (rm *RestoreManager) loadDump(ctx context.Context, op bkop.Operator, key st
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
 	defer func() { _ = r.Close() }()
+	data, err := rm.decrypt(key, r)
+	if err != nil {
+		return err
+	}
 
 	dumpDir := filepath.Join(rm.workDir, "dump")
 	defer func() {
@@ -250,7 +270,7 @@ func (rm *RestoreManager) loadDump(ctx context.Context, op bkop.Operator, key st
 	}()
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-C", rm.workDir, "-x", "-f", "-")
-	tarCmd.Stdin = r
+	tarCmd.Stdin = data
 	tarCmd.Stdout = os.Stdout
 	tarCmd.Stderr = os.Stderr
 	if err := tarCmd.Run(); err != nil {
@@ -266,6 +286,10 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 		return fmt.Errorf("failed to get object %s: %w", key, err)
 	}
 	defer func() { _ = r.Close() }()
+	data, err := rm.decrypt(key, r)
+	if err != nil {
+		return err
+	}
 
 	binlogDir := filepath.Join(rm.workDir, "binlog")
 	defer func() {
@@ -289,7 +313,7 @@ func (rm *RestoreManager) applyBinlog(ctx context.Context, op bkop.Operator, key
 	defer cancel()
 
 	zstdCmd := exec.CommandContext(ctx, "zstd", "-d", "--no-progress")
-	zstdCmd.Stdin = r
+	zstdCmd.Stdin = data
 	zstdCmd.Stdout = pw
 	zstdCmd.Stderr = os.Stderr
 

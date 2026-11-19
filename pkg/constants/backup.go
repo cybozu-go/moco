@@ -19,3 +19,17 @@ const (
 // CustomerKeyEnv is the name of the environment variable that passes
 // the base64-encoded customer-provided encryption key to moco-backup.
 const CustomerKeyEnv = "MOCO_CUSTOMER_KEY"
+
+// Constants for client-side encryption of backup files with age.
+const (
+	// AgeSuffix is appended to the names of backup files encrypted with age.
+	AgeSuffix = ".age"
+
+	// AgeRecipientsEnv is the name of the environment variable that passes
+	// the age recipients (public keys), one per line, to moco-backup.
+	AgeRecipientsEnv = "MOCO_AGE_RECIPIENTS"
+
+	// AgeIdentityEnv is the name of the environment variable that passes
+	// the age identities (private keys), one per line, to moco-backup.
+	AgeIdentityEnv = "MOCO_AGE_IDENTITY"
+)
