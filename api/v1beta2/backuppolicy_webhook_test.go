@@ -95,6 +95,29 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should create BackupPolicy with an SSE-C key for s3", func() {
+		r := makeBackupPolicy()
+		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should deny BackupPolicy with an SSE-C key for a non-s3 backend", func() {
+		r := makeBackupPolicy()
+		r.Spec.JobConfig.BucketConfig.BackendType = "gcs"
+		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("customerKeySecret"))
+	})
+
+	It("should deny BackupPolicy with an incomplete SSE-C key reference", func() {
+		r := makeBackupPolicy()
+		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key"}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+	})
+
 	It("should delete BackupPolicy", func() {
 		cluster := makeMySQLCluster()
 		cluster.Spec.BackupPolicyName = new("no-test")

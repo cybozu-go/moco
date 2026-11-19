@@ -9,6 +9,7 @@ This document describes how MOCO takes a backup of MySQLCluster data and restore
   - [Timestamps](#timestamps)
   - [Backup](#backup)
   - [Restore](#restore)
+  - [Encryption](#encryption)
   - [Caveats](#caveats)
 - [Considered options](#considered-options)
   - [Why do we use S3-compatible object storage to store backups?](#why-do-we-use-s3-compatible-object-storage-to-store-backups)
@@ -216,6 +217,46 @@ If some of the data have been restored, they can be read from the cluster.
 If a failed Job is deleted, `moco-controller` will create a new Job to give it another chance.
 Users can safely delete a successful Job.
 
+### Encryption
+
+Server-side encryption with keys managed by the object storage, such as SSE-S3 or SSE-KMS on Amazon S3, needs no MOCO setting.
+Configure [default encryption][default-encryption] for the bucket, and the storage encrypts every backup file.
+
+For Amazon S3 and S3-compatible storage, MOCO can also use [server-side encryption with customer-provided keys (SSE-C)][sse-c].
+The storage then encrypts the backup files with a key that MOCO sends with each request, and does not keep the key.
+
+1. Generate a 256-bit key and store it base64-encoded in a Secret:
+
+    ```console
+    $ kubectl -n <namespace> create secret generic backup-key --from-literal=customer-key="$(openssl rand -base64 32)"
+    ```
+
+2. Reference the Secret in `bucketConfig.customerKeySecret`:
+
+    ```yaml
+    apiVersion: moco.cybozu.com/v1beta2
+    kind: BackupPolicy
+    ...
+    spec:
+      jobConfig:
+        bucketConfig:
+          bucketName: moco
+          customerKeySecret:
+            name: backup-key
+            key: customer-key
+    ```
+
+To restore an encrypted backup, set the same `customerKeySecret` in `MySQLCluster.spec.restore.jobConfig.bucketConfig`.
+The Secret must exist in the namespace of the MySQLCluster being restored.
+
+Notes:
+
+- Keep the key safe. Backups cannot be restored without it.
+- MOCO uses one key. Changing the key makes older backups unreadable for restore Jobs that use the new key.
+- Backup files that were uploaded before SSE-C was enabled can still be restored: if the storage rejects the key for a file that is not encrypted with SSE-C, MOCO reads it without the key.
+- SSE-C is only supported with `backendType: s3`.
+- Amazon S3 and MinIO accept SSE-C only over HTTPS.
+
 ### Caveats
 
 - No automatic deletion of backup files
@@ -344,3 +385,5 @@ MOCO does not adopt this technique for the following reasons:
 [faster]: https://mysqlserverteam.com/mysql-shell-dump-load-part-2-benchmarks/
 [zstd]: https://facebook.github.io/zstd/
 [lifecycle]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
+[default-encryption]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html
+[sse-c]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerSideEncryptionCustomerKeys.html

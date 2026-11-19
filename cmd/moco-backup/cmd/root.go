@@ -32,19 +32,33 @@ var commonArgs struct {
 }
 
 func makeBucket(bucketName string) (bucket.Bucket, error) {
+	sseKey := os.Getenv(constants.CustomerKeyEnv)
+	if sseKey != "" && commonArgs.backendType != constants.BackendTypeS3 {
+		return nil, fmt.Errorf("%s is set, but SSE-C is only supported with backend type %s", constants.CustomerKeyEnv, constants.BackendTypeS3)
+	}
+
 	switch commonArgs.backendType {
 	case constants.BackendTypeS3:
-		return makeS3Bucket(bucketName)
+		return makeS3Bucket(bucketName, sseKey)
 	case constants.BackendTypeGCS:
 		return makeGCSBucket(bucketName)
 	case constants.BackendTypeAzure:
 		return makeAzureBucket(bucketName)
 	default:
-		return makeS3Bucket(bucketName)
+		return makeS3Bucket(bucketName, sseKey)
 	}
 }
 
-func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
+func makeS3Bucket(bucketName, sseKey string) (bucket.Bucket, error) {
+	var sse *bucket.SSECustomerKey
+	if sseKey != "" {
+		k, err := bucket.ParseSSECustomerKey(sseKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", constants.CustomerKeyEnv, err)
+		}
+		sse = k
+	}
+
 	var opts []func(*s3.Options)
 	if len(commonArgs.region) > 0 {
 		opts = append(opts, bucket.WithRegion(commonArgs.region))
@@ -76,7 +90,7 @@ func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 			Transport: transport,
 		}))
 	}
-	return bucket.NewS3Bucket(bucketName, opts...)
+	return bucket.NewS3Bucket(bucketName, sse, opts...)
 }
 
 func makeGCSBucket(bucketName string) (bucket.Bucket, error) {

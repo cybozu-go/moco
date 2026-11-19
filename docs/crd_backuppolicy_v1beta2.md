@@ -9,6 +9,7 @@
 * [BackupPolicySpec](#backuppolicyspec)
 * [BucketConfig](#bucketconfig)
 * [JobConfig](#jobconfig)
+* [SecretKeyRef](#secretkeyref)
 
 #### BackupPolicy
 
@@ -62,6 +63,7 @@ BucketConfig is a set of parameter to access an object storage bucket.
 | usePathStyle | Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY). | bool | false |
 | backendType | BackendType is an identifier for the object storage to be used. | string | false |
 | caCert | Path to SSL CA certificate file used in addition to system default. | string | false |
+| customerKeySecret | CustomerKeySecret references a key in a Secret that holds a base64-encoded 256-bit key for server-side encryption with customer-provided keys (SSE-C). When set, backup files are uploaded with this key, and the same key is used to download them for restoration. This is only supported with backendType `s3`. The Secret must exist in the namespace of the backup or restore Job. | *[SecretKeyRef](#secretkeyref) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -85,5 +87,16 @@ JobConfig is a set of parameters for backup and restore job Pods.
 | volumes | Volumes defines the list of volumes that can be mounted by containers in the Pod. | []VolumeApplyConfiguration | false |
 | volumeMounts | VolumeMounts describes a list of volume mounts that are to be mounted in a container. | []VolumeMountApplyConfiguration | false |
 | imagePullSecrets | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods. To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead. | []LocalObjectReferenceApplyConfiguration | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SecretKeyRef
+
+SecretKeyRef references a key in a Secret in the same namespace.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name is the name of the Secret. | string | true |
+| key | Key is the key in the Secret. | string | true |
 
 [Back to Custom Resources](#custom-resources)

@@ -1114,6 +1114,24 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	return append(args, bc.BucketName)
 }
 
+// bucketEnv returns the environment variables for the backup and restore
+// container that are derived from BucketConfig.
+func bucketEnv(bc mocov1beta2.BucketConfig) []*corev1ac.EnvVarApplyConfiguration {
+	var env []*corev1ac.EnvVarApplyConfiguration
+	if ref := bc.CustomerKeySecret; ref != nil {
+		env = append(env, corev1ac.EnvVar().
+			WithName(constants.CustomerKeyEnv).
+			WithValueFrom(corev1ac.EnvVarSource().
+				WithSecretKeyRef(corev1ac.SecretKeySelector().
+					WithName(ref.Name).
+					WithKey(ref.Key),
+				),
+			),
+		)
+	}
+	return env
+}
+
 //nolint:gocyclo
 func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
@@ -1203,6 +1221,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 				),
 			),
 		).
+		WithEnv(bucketEnv(jc.BucketConfig)...).
 		WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 			for _, e := range jc.Env {
@@ -1520,6 +1539,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 					),
 				),
 			).
+			WithEnv(bucketEnv(jc.BucketConfig)...).
 			WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 				for _, e := range jc.Env {

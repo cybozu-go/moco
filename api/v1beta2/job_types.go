@@ -3,7 +3,9 @@ package v1beta2
 import (
 	"encoding/json"
 
+	"github.com/cybozu-go/moco/pkg/constants"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
@@ -212,6 +214,35 @@ type BucketConfig struct {
 	// Path to SSL CA certificate file used in addition to system default.
 	// +optional
 	CaCert string `json:"caCert,omitempty"`
+
+	// CustomerKeySecret references a key in a Secret that holds a base64-encoded
+	// 256-bit key for server-side encryption with customer-provided keys (SSE-C).
+	// When set, backup files are uploaded with this key, and the same key is used
+	// to download them for restoration.
+	// This is only supported with backendType `s3`.
+	// The Secret must exist in the namespace of the backup or restore Job.
+	// +optional
+	CustomerKeySecret *SecretKeyRef `json:"customerKeySecret,omitempty"`
+}
+
+// validate validates BucketConfig. The path p points to the BucketConfig.
+func (bc BucketConfig) validate(p *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+	if bc.CustomerKeySecret != nil && bc.BackendType != "" && bc.BackendType != constants.BackendTypeS3 {
+		allErrs = append(allErrs, field.Forbidden(p.Child("customerKeySecret"), "SSE-C is only supported with backendType s3"))
+	}
+	return allErrs
+}
+
+// SecretKeyRef references a key in a Secret in the same namespace.
+type SecretKeyRef struct {
+	// Name is the name of the Secret.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// Key is the key in the Secret.
+	// +kubebuilder:validation:MinLength=1
+	Key string `json:"key"`
 }
 
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.

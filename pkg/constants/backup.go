@@ -15,3 +15,7 @@ const (
 	BackendTypeGCS   = "gcs"
 	BackendTypeAzure = "azure"
 )
+
+// CustomerKeyEnv is the name of the environment variable that passes
+// the base64-encoded SSE-C key to moco-backup.
+const CustomerKeyEnv = "MOCO_CUSTOMER_KEY"
