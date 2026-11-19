@@ -312,7 +312,8 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 	}
 
 	// collect the authentication plugins of MOCO users only when the cluster
-	// opts in to plugin management.
+	// opts in to plugin management. The instances are queried in parallel so
+	// that one stalled instance cannot stack up delays before DecideState.
 	if cluster.Spec.SystemUserAuthPlugin != nil {
 		target := cluster.Spec.SystemUserAuthPlugin.String()
 		ss.AuthPluginStatus = make([]*InstanceAuthPluginStatus, cluster.Spec.Replicas)
@@ -320,24 +321,30 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 			if ist == nil {
 				continue
 			}
-			plugins, err := ss.DBOps[i].GetUserAuthPlugins(ctx)
-			if err != nil {
-				log.Error(err, "failed to get the authentication plugins of MOCO users", "instance", i)
-				continue
-			}
-			st := &InstanceAuthPluginStatus{UserPlugins: plugins, TargetPluginActive: true}
-			if len(usersWithPluginMismatch(plugins, target)) > 0 {
-				active, err := ss.DBOps[i].IsAuthPluginActive(ctx, target)
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+
+				plugins, err := ss.DBOps[index].GetUserAuthPlugins(ctx)
 				if err != nil {
-					// Leave the entry nil; the instance counts as not
-					// collected and is handled on a later tick.
-					log.Error(err, "failed to check the authentication plugin availability", "instance", i, "plugin", target)
-					continue
+					log.Error(err, "failed to get the authentication plugins of MOCO users", "instance", index)
+					return
 				}
-				st.TargetPluginActive = active
-			}
-			ss.AuthPluginStatus[i] = st
+				st := &InstanceAuthPluginStatus{UserPlugins: plugins, TargetPluginActive: true}
+				if len(usersWithPluginMismatch(plugins, target)) > 0 {
+					active, err := ss.DBOps[index].IsAuthPluginActive(ctx, target)
+					if err != nil {
+						// Leave the entry nil; the instance counts as not
+						// collected and is handled on a later tick.
+						log.Error(err, "failed to check the authentication plugin availability", "instance", index, "plugin", target)
+						return
+					}
+					st.TargetPluginActive = active
+				}
+				ss.AuthPluginStatus[index] = st
+			}(i)
 		}
+		wg.Wait()
 	}
 
 	ss.DecideState()

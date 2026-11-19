@@ -76,7 +76,10 @@ func (p *managerProcess) convergeInstanceAuthPlugin(ctx context.Context, ss *Sta
 			return fmt.Errorf("failed to clear super_read_only: %w", err)
 		}
 		defer func() {
-			if err := op.SetSuperReadOnly(ctx, true); err != nil {
+			// Restore even after ctx is cancelled. Cancellation can mean
+			// Pause, and nothing else restores super_read_only while the
+			// clustering is paused.
+			if err := op.SetSuperReadOnly(context.WithoutCancel(ctx), true); err != nil {
 				e = errors.Join(e, fmt.Errorf("failed to restore super_read_only: %w", err))
 			}
 		}()

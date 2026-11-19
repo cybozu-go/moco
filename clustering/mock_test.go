@@ -443,6 +443,13 @@ func (o *mockOperator) AlterUserAuthPlugin(ctx context.Context, user, plugin str
 	}
 	o.mysql.mu.Lock()
 	defer o.mysql.mu.Unlock()
+	if o.mysql.alterHook != nil {
+		o.mysql.alterHook()
+		o.mysql.alterHook = nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if o.mysql.status.GlobalVariables.SuperReadOnly {
 		return errors.New("the MySQL server is running with the --super-read-only option")
 	}
@@ -465,6 +472,9 @@ func (o *mockOperator) SetSuperReadOnly(ctx context.Context, on bool) error {
 	if o.failing {
 		return errors.New("mysqld is down")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	o.mysql.mu.Lock()
 	defer o.mysql.mu.Unlock()
 	if on {
@@ -482,6 +492,7 @@ type mockMySQL struct {
 	authPlugins     map[string]string
 	inactivePlugins map[string]bool
 	failAlterOnce   bool
+	alterHook       func()
 }
 
 // ensureAuthPlugins lazily initializes the per-user authentication plugin
@@ -602,6 +613,22 @@ func (f *mockOpFactory) getInstanceStatus(name string) *dbop.MySQLInstanceStatus
 	}
 
 	return m.getStatus()
+}
+
+// setAlterHook runs hook at the beginning of the next AlterUserAuthPlugin
+// call on the instance, before the context is checked. A hook that cancels
+// the context simulates Pause() interrupting a convergence.
+func (f *mockOpFactory) setAlterHook(name string, hook func()) {
+	f.mu.Lock()
+	m := f.mysqls[name]
+	f.mu.Unlock()
+	if m == nil {
+		panic("no such instance: " + name)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.alterHook = hook
 }
 
 // setFailAlterOnce makes the next AlterUserAuthPlugin call on the instance

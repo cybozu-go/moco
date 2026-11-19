@@ -253,6 +253,20 @@ var _ = Describe("convergeAuthPlugin", func() {
 		Expect(eventReasons()).To(BeEmpty())
 	})
 
+	It("restores super_read_only even when the context is cancelled mid-ALTER", func() {
+		setup(3, false)
+		cctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		// cancel the context in the middle of converging instance 1, as
+		// Pause() does when the clustering is stopped
+		of.setAlterHook(cluster.PodHostname(1), cancel)
+
+		err := p.convergeAuthPlugin(cctx, ss)
+
+		Expect(err).To(MatchError(context.Canceled))
+		Expect(of.getInstanceStatus(cluster.PodHostname(1)).GlobalVariables.SuperReadOnly).To(BeTrue())
+	})
+
 	It("stops at the first failure, emits an event, and restores super_read_only", func() {
 		setup(3, false)
 		of.setFailAlterOnce(cluster.PodHostname(1))
