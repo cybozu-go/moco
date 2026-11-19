@@ -1796,11 +1796,11 @@ dummyKey: dummyValue
 		}, 5).Should(BeTrue())
 	})
 
-	It("should pass the SSE-C key secret to the restore job", func() {
+	It("should pass the customer key secret to the restore job", func() {
 		cluster := testNewMySQLCluster("test")
 		// Use a dedicated name: envtest has no garbage collector, so a restore Job left by
 		// another spec would make the controller skip creating a new one.
-		cluster.Name = "restore-ssec"
+		cluster.Name = "restore-cpk"
 		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "single",
 			SourceNamespace: "ns",

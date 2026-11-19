@@ -421,24 +421,6 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		}
 		err = k8sClient.Create(ctx, r)
 		Expect(err).To(HaveOccurred())
-
-		r = makeMySQLCluster()
-		r.Spec.Restore = &mocov1beta2.RestoreSpec{
-			SourceName:      "test",
-			SourceNamespace: "test",
-			RestorePoint:    metav1.Now(),
-			JobConfig: mocov1beta2.JobConfig{
-				ServiceAccountName: "foo",
-				BucketConfig: mocov1beta2.BucketConfig{
-					BucketName:        "mybucket",
-					BackendType:       "azure",
-					CustomerKeySecret: &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"},
-				},
-			},
-		}
-		err = k8sClient.Create(ctx, r)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("customerKeySecret"))
 	})
 
 	It("should allow valid restore spec", func() {

@@ -10,9 +10,9 @@ For details, read documentation of [`EnvConfig` in github.com/aws/aws-sdk-go-v2/
 
 It also requires `MYSQL_PASSWORD` environment variable to be set.
 
-If `MOCO_CUSTOMER_KEY` is set, `moco-backup` uploads and downloads backup files with S3 server-side encryption with customer-provided keys (SSE-C).
+If `MOCO_CUSTOMER_KEY` is set, `moco-backup` uploads and downloads backup files with server-side encryption with that customer-provided key:
+SSE-C for `s3`, CSEK for `gcs`, and CPK for `azure`.
 The value must be a base64-encoded 256-bit key.
-This is only supported with the `s3` backend type.
 `moco-controller` sets this variable from `bucketConfig.customerKeySecret`.
 
 ## Global command-line flags

@@ -102,8 +102,6 @@ func (s *BackupPolicySpec) validate() (admission.Warnings, field.ErrorList) {
 		allErrs = append(allErrs, field.Invalid(p.Child("schedule"), s.Schedule, err.Error()))
 	}
 
-	allErrs = append(allErrs, s.JobConfig.BucketConfig.validate(p.Child("jobConfig", "bucketConfig"))...)
-
 	return nil, allErrs
 }
 

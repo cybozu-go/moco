@@ -63,7 +63,7 @@ BucketConfig is a set of parameter to access an object storage bucket.
 | usePathStyle | Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY). | bool | false |
 | backendType | BackendType is an identifier for the object storage to be used. | string | false |
 | caCert | Path to SSL CA certificate file used in addition to system default. | string | false |
-| customerKeySecret | CustomerKeySecret references a key in a Secret that holds a base64-encoded 256-bit key for server-side encryption with customer-provided keys (SSE-C). When set, backup files are uploaded with this key, and the same key is used to download them for restoration. This is only supported with backendType `s3`. The Secret must exist in the namespace of the backup or restore Job. | *[SecretKeyRef](#secretkeyref) | false |
+| customerKeySecret | CustomerKeySecret references a key in a Secret that holds a base64-encoded 256-bit key for server-side encryption with a customer-provided key: SSE-C for `s3`, customer-supplied encryption keys (CSEK) for `gcs`, and customer-provided keys (CPK) for `azure`. When set, backup files are uploaded with this key, and the same key is used to download them for restoration. The Secret must exist in the namespace of the backup or restore Job. | *[SecretKeyRef](#secretkeyref) | false |
 
 [Back to Custom Resources](#custom-resources)
 

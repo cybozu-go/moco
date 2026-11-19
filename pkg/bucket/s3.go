@@ -2,8 +2,6 @@ package bucket
 
 import (
 	"context"
-	"crypto/md5" //nolint:gosec // MD5 is required by the S3 SSE-C protocol as a key checksum.
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -60,40 +58,15 @@ func WithHTTPClient(c *http.Client) func(*s3.Options) {
 	}
 }
 
-// sseCustomerAlgorithm is the only algorithm S3 supports for SSE-C.
-const sseCustomerAlgorithm = "AES256"
-
-// SSECustomerKey is a key for S3 server-side encryption with customer-provided keys (SSE-C).
-type SSECustomerKey struct {
-	keyB64 string
-	md5B64 string
-}
-
-// ParseSSECustomerKey parses a base64-encoded 256-bit SSE-C key.
-func ParseSSECustomerKey(b64 string) (*SSECustomerKey, error) {
-	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(b64))
-	if err != nil {
-		return nil, fmt.Errorf("SSE-C key is not valid base64: %w", err)
-	}
-	if len(raw) != 32 {
-		return nil, fmt.Errorf("SSE-C key must be 32 bytes (256 bits), got %d bytes", len(raw))
-	}
-	sum := md5.Sum(raw) //nolint:gosec
-	return &SSECustomerKey{
-		keyB64: base64.StdEncoding.EncodeToString(raw),
-		md5B64: base64.StdEncoding.EncodeToString(sum[:]),
-	}, nil
-}
-
 type s3Bucket struct {
 	name   string
 	client *s3.Client
-	sse    *SSECustomerKey
+	key    *CustomerKey
 }
 
 // NewS3Bucket creates a Bucket that manage object in S3.
-// If sse is not nil, objects are stored and read with SSE-C using that key.
-func NewS3Bucket(name string, sse *SSECustomerKey, optFns ...func(*s3.Options)) (Bucket, error) {
+// If key is not nil, objects are stored and read with SSE-C using that key.
+func NewS3Bucket(name string, key *CustomerKey, optFns ...func(*s3.Options)) (Bucket, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
@@ -102,7 +75,7 @@ func NewS3Bucket(name string, sse *SSECustomerKey, optFns ...func(*s3.Options)) 
 	return s3Bucket{
 		name:   name,
 		client: s3.NewFromConfig(cfg, optFns...),
-		sse:    sse,
+		key:    key,
 	}, nil
 }
 
@@ -126,11 +99,11 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		Body:        data,
 		ContentType: &mt,
 	}
-	if b.sse != nil {
+	if b.key != nil {
 		// The uploader copies these fields to CreateMultipartUpload and UploadPart.
-		pi.SSECustomerAlgorithm = aws.String(sseCustomerAlgorithm)
-		pi.SSECustomerKey = aws.String(b.sse.keyB64)
-		pi.SSECustomerKeyMD5 = aws.String(b.sse.md5B64)
+		pi.SSECustomerAlgorithm = aws.String(customerKeyAlgorithm)
+		pi.SSECustomerKey = aws.String(b.key.base64())
+		pi.SSECustomerKeyMD5 = aws.String(b.key.md5Base64())
 	}
 	_, err := uploader.Upload(ctx, pi) //nolint:staticcheck
 	return err
@@ -141,13 +114,13 @@ func (b s3Bucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 		Bucket: &b.name,
 		Key:    &key,
 	}
-	if b.sse == nil {
+	if b.key == nil {
 		return b.getObject(ctx, gi)
 	}
 
-	gi.SSECustomerAlgorithm = aws.String(sseCustomerAlgorithm)
-	gi.SSECustomerKey = aws.String(b.sse.keyB64)
-	gi.SSECustomerKeyMD5 = aws.String(b.sse.md5B64)
+	gi.SSECustomerAlgorithm = aws.String(customerKeyAlgorithm)
+	gi.SSECustomerKey = aws.String(b.key.base64())
+	gi.SSECustomerKeyMD5 = aws.String(b.key.md5Base64())
 	body, err := b.getObject(ctx, gi)
 	if err == nil {
 		return body, nil

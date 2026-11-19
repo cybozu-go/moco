@@ -3,9 +3,7 @@ package v1beta2
 import (
 	"encoding/json"
 
-	"github.com/cybozu-go/moco/pkg/constants"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
@@ -216,22 +214,14 @@ type BucketConfig struct {
 	CaCert string `json:"caCert,omitempty"`
 
 	// CustomerKeySecret references a key in a Secret that holds a base64-encoded
-	// 256-bit key for server-side encryption with customer-provided keys (SSE-C).
+	// 256-bit key for server-side encryption with a customer-provided key:
+	// SSE-C for `s3`, customer-supplied encryption keys (CSEK) for `gcs`, and
+	// customer-provided keys (CPK) for `azure`.
 	// When set, backup files are uploaded with this key, and the same key is used
 	// to download them for restoration.
-	// This is only supported with backendType `s3`.
 	// The Secret must exist in the namespace of the backup or restore Job.
 	// +optional
 	CustomerKeySecret *SecretKeyRef `json:"customerKeySecret,omitempty"`
-}
-
-// validate validates BucketConfig. The path p points to the BucketConfig.
-func (bc BucketConfig) validate(p *field.Path) field.ErrorList {
-	var allErrs field.ErrorList
-	if bc.CustomerKeySecret != nil && bc.BackendType != "" && bc.BackendType != constants.BackendTypeS3 {
-		allErrs = append(allErrs, field.Forbidden(p.Child("customerKeySecret"), "SSE-C is only supported with backendType s3"))
-	}
-	return allErrs
 }
 
 // SecretKeyRef references a key in a Secret in the same namespace.

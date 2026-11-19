@@ -222,8 +222,15 @@ Users can safely delete a successful Job.
 Server-side encryption with keys managed by the object storage, such as SSE-S3 or SSE-KMS on Amazon S3, needs no MOCO setting.
 Configure [default encryption][default-encryption] for the bucket, and the storage encrypts every backup file.
 
-For Amazon S3 and S3-compatible storage, MOCO can also use [server-side encryption with customer-provided keys (SSE-C)][sse-c].
+MOCO can also use server-side encryption with a customer-provided key.
 The storage then encrypts the backup files with a key that MOCO sends with each request, and does not keep the key.
+The same 256-bit key works with every backend type:
+
+| `backendType` | Feature                                                      |
+| ------------- | ------------------------------------------------------------ |
+| `s3`          | [Server-side encryption with customer-provided keys][sse-c] (SSE-C) |
+| `gcs`         | [Customer-supplied encryption keys][csek] (CSEK)             |
+| `azure`       | [Customer-provided keys][cpk] (CPK)                          |
 
 1. Generate a 256-bit key and store it base64-encoded in a Secret:
 
@@ -253,9 +260,12 @@ Notes:
 
 - Keep the key safe. Backups cannot be restored without it.
 - MOCO uses one key. Changing the key makes older backups unreadable for restore Jobs that use the new key.
-- Backup files that were uploaded before SSE-C was enabled can still be restored: if the storage rejects the key for a file that is not encrypted with SSE-C, MOCO reads it without the key.
-- SSE-C is only supported with `backendType: s3`.
-- Amazon S3 and MinIO accept SSE-C only over HTTPS.
+- Backup files that were uploaded before the key was configured can still be restored. MOCO reads them without the key:
+    - `s3`: when the storage rejects the key with 400 Bad Request.
+    - `gcs`: when the object metadata shows no customer-supplied key.
+    - `azure`: when the download with the key fails, but the blob properties can be read without it.
+- Amazon S3, MinIO and Azure Blob Storage accept customer-provided keys only over HTTPS.
+- The emulators used for local testing, fake-gcs-server and Azurite, accept the key but do not encrypt with it.
 
 ### Caveats
 
@@ -387,3 +397,5 @@ MOCO does not adopt this technique for the following reasons:
 [lifecycle]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
 [default-encryption]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html
 [sse-c]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerSideEncryptionCustomerKeys.html
+[csek]: https://cloud.google.com/storage/docs/encryption/customer-supplied-keys
+[cpk]: https://learn.microsoft.com/azure/storage/blobs/encryption-customer-provided-keys

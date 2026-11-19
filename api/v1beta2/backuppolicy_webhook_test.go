@@ -95,23 +95,17 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should create BackupPolicy with an SSE-C key for s3", func() {
-		r := makeBackupPolicy()
-		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"}
-		err := k8sClient.Create(ctx, r)
-		Expect(err).NotTo(HaveOccurred())
+	It("should create BackupPolicy with a customer key for each backend", func() {
+		for _, backendType := range []string{"s3", "gcs", "azure"} {
+			r := makeBackupPolicy()
+			r.Spec.JobConfig.BucketConfig.BackendType = backendType
+			r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"}
+			Expect(k8sClient.Create(ctx, r)).To(Succeed(), backendType)
+			Expect(k8sClient.Delete(ctx, r)).To(Succeed())
+		}
 	})
 
-	It("should deny BackupPolicy with an SSE-C key for a non-s3 backend", func() {
-		r := makeBackupPolicy()
-		r.Spec.JobConfig.BucketConfig.BackendType = "gcs"
-		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"}
-		err := k8sClient.Create(ctx, r)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("customerKeySecret"))
-	})
-
-	It("should deny BackupPolicy with an incomplete SSE-C key reference", func() {
+	It("should deny BackupPolicy with an incomplete customer key reference", func() {
 		r := makeBackupPolicy()
 		r.Spec.JobConfig.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "key"}
 		err := k8sClient.Create(ctx, r)

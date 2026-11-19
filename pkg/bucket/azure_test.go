@@ -83,7 +83,7 @@ var _ = Describe("AzureBucket", func() {
 		connectionString := fmt.Sprintf("DefaultEndpointsProtocol=http;AccountName=%s;AccountKey=%s;BlobEndpoint=%s;",
 			accountName, accountKey, azuriteURL)
 
-		bucket, err := NewAzureBucketFromConnectionString(ctx, connectionString, containerName)
+		bucket, err := NewAzureBucketFromConnectionString(ctx, connectionString, containerName, nil)
 		Expect(err).NotTo(HaveOccurred())
 		return bucket
 	}
@@ -91,7 +91,7 @@ var _ = Describe("AzureBucket", func() {
 	It("should create bucket using NewAzureBucket with token credential", func() {
 		// Test the NewAzureBucket constructor with mock credentials
 		// Note: Azurite doesn't support token-based auth, so we just verify the constructor works
-		_, err := NewAzureBucket(ctx, azuriteURL, containerName, &mockTokenCredential{})
+		_, err := NewAzureBucket(ctx, azuriteURL, containerName, &mockTokenCredential{}, nil)
 		// This will fail to authenticate with Azurite (which uses shared key),
 		// but we verify the constructor itself works without error
 		Expect(err).NotTo(HaveOccurred())
