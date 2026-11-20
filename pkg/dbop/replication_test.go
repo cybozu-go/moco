@@ -80,8 +80,8 @@ var _ = Describe("replication", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st1.GlobalVariables.ExecutedGTID).To(Equal(st0.GlobalVariables.ExecutedGTID))
 		Expect(st1.GlobalVariables.SuperReadOnly).To(BeTrue())
-		Expect(st1.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
-		Expect(st1.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
 
 		By("checking WaitForGTID works")
 		err = ops[1].StopReplicaIOThread(ctx)
@@ -134,9 +134,9 @@ var _ = Describe("replication", func() {
 		st2, err := ops[2].GetStatus(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(st2.GlobalVariables.ExecutedGTID).To(Equal(st1.GlobalVariables.ExecutedGTID))
-		Expect(st1.GlobalVariables.SemiSyncMasterEnabled).To(BeFalse())
-		Expect(st1.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
-		Expect(st2.GlobalVariables.SemiSyncSlaveEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncSourceEnabled).To(BeFalse())
+		Expect(st1.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
+		Expect(st2.GlobalVariables.SemiSyncReplicaEnabled).To(BeFalse())
 
 		By("promoting 2 as the new intermediate primary")
 		err = ops[2].StopReplicaIOThread(ctx)
