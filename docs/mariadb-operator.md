@@ -40,14 +40,14 @@ Install the CRDs and the operator with Helm.
 The example uses cert-manager for the webhook certificates, so install cert-manager first.
 
 ```console
-$ helm repo add mariadb-operator https://helm.mariadb.com/mariadb-operator
+$ helm repo add mariadb-operator https://mariadb-operator.github.io/mariadb-operator
 $ helm install mariadb-operator-crds mariadb-operator/mariadb-operator-crds \
     --version 26.10.2 -n mariadb-operator --create-namespace
 $ helm install mariadb-operator mariadb-operator/mariadb-operator \
     --version 26.10.2 -n mariadb-operator --wait
 ```
 
-For other installation options, see the [mariadb-operator documentation](https://github.com/mariadb-operator/mariadb-operator/blob/main/docs/quickstart.md).
+For other installation options, see the [mariadb-operator documentation](https://github.com/mariadb-operator/mariadb-operator/blob/v26.10.2/docs/quickstart.md).
 
 ## Step 2: Create an ExternalMariaDB
 
