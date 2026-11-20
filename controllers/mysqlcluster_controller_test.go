@@ -107,6 +107,18 @@ func testNewBackUpPolicy() *mocov1beta2.BackupPolicy {
 	jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
 		EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
 	}
+	jc.Affinity = (*mocov1beta2.AffinityApplyConfiguration)(corev1ac.Affinity().
+		WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+			WithRequiredDuringSchedulingIgnoredDuringExecution(corev1ac.PodAffinityTerm().
+				WithTopologyKey("kubernetes.io/hostname"))))
+	jc.Tolerations = []mocov1beta2.TolerationApplyConfiguration{
+		mocov1beta2.TolerationApplyConfiguration(*corev1ac.Toleration().
+			WithKey("dedicated").
+			WithOperator(corev1.TolerationOpEqual).
+			WithValue("moco").
+			WithEffect(corev1.TaintEffectNoSchedule)),
+	}
+	jc.NodeSelector = map[string]string{"disk": "ssd"}
 	jc.Volumes = []mocov1beta2.VolumeApplyConfiguration{
 		{
 			Name: new("test"),
@@ -1457,6 +1469,11 @@ dummyKey: dummyValue
 		Expect(js.BackoffLimit).To(Equal(new(int32(1))))
 		Expect(js.Template.Labels).NotTo(BeEmpty())
 		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
+		Expect(js.Template.Spec.Affinity.PodAntiAffinity).NotTo(BeNil())
+		Expect(js.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
+		Expect(js.Template.Spec.Tolerations).To(HaveLen(1))
+		Expect(js.Template.Spec.Tolerations[0].Key).To(Equal("dedicated"))
+		Expect(js.Template.Spec.NodeSelector).To(HaveKeyWithValue("disk", "ssd"))
 		Expect(js.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 		Expect(js.Template.Spec.ServiceAccountName).To(Equal("foo"))
 		Expect(js.Template.Spec.ImagePullSecrets).To(HaveLen(1))
@@ -1668,6 +1685,18 @@ dummyKey: dummyValue
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
 		jc.BucketConfig.Region = "us-east-1"
 		jc.BucketConfig.UsePathStyle = true
+		jc.Affinity = (*mocov1beta2.AffinityApplyConfiguration)(corev1ac.Affinity().
+			WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+				WithRequiredDuringSchedulingIgnoredDuringExecution(corev1ac.PodAffinityTerm().
+					WithTopologyKey("kubernetes.io/hostname"))))
+		jc.Tolerations = []mocov1beta2.TolerationApplyConfiguration{
+			mocov1beta2.TolerationApplyConfiguration(*corev1ac.Toleration().
+				WithKey("dedicated").
+				WithOperator(corev1.TolerationOpEqual).
+				WithValue("moco").
+				WithEffect(corev1.TaintEffectNoSchedule)),
+		}
+		jc.NodeSelector = map[string]string{"disk": "ssd"}
 		err := k8sClient.Create(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1702,6 +1731,12 @@ dummyKey: dummyValue
 		Expect(js.Template.Spec.Volumes).To(HaveLen(2))
 		Expect(js.Template.Spec.Volumes[0].EmptyDir).NotTo(BeNil())
 		Expect(js.Template.Spec.Volumes[1].EmptyDir).NotTo(BeNil())
+		Expect(js.Template.Spec.Affinity).NotTo(BeNil())
+		Expect(js.Template.Spec.Affinity.PodAntiAffinity).NotTo(BeNil())
+		Expect(js.Template.Spec.Affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution).NotTo(BeNil())
+		Expect(js.Template.Spec.Tolerations).To(HaveLen(1))
+		Expect(js.Template.Spec.Tolerations[0].Key).To(Equal("dedicated"))
+		Expect(js.Template.Spec.NodeSelector).To(HaveKeyWithValue("disk", "ssd"))
 		Expect(js.Template.Spec.Containers).To(HaveLen(1))
 		c := &js.Template.Spec.Containers[0]
 		Expect(c.Name).To(Equal("restore"))
