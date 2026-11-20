@@ -17,7 +17,7 @@ HELM := helm
 GORELEASER := goreleaser
 YQ := yq
 CONTROLLER_GEN := controller-gen
-CRD_TO_MARKDOWN := crd-to-markdown
+CRD_REF_DOCS := crd-ref-docs
 MDBOOK := mdbook
 
 PKG_LIST := zstd python3 libpython3.8
@@ -78,8 +78,7 @@ generate: aqua-install ## Generate code containing DeepCopy, DeepCopyInto, and D
 
 .PHONY: apidoc
 apidoc: aqua-install $(wildcard api/*/*_types.go)
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/mysqlcluster_types.go -f api/v1beta2/job_types.go -n MySQLCluster > docs/crd_mysqlcluster_v1beta2.md
-	$(CRD_TO_MARKDOWN) --links docs/links.csv -f api/v1beta2/backuppolicy_types.go -f api/v1beta2/job_types.go -n BackupPolicy > docs/crd_backuppolicy_v1beta2.md
+	$(CRD_REF_DOCS) --config=crd-ref-docs.yaml --source-path=api/v1beta2 --renderer=markdown --templates-dir=crd-ref-docs-templates --output-path=docs/crd_v1beta2.md
 
 .PHONY: book
 book: aqua-install

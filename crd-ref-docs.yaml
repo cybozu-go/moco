@@ -1,0 +1,47 @@
+processor:
+  # Keep local wrappers so their fields remain in the property tables.
+  ignoreTypes:
+    - "^k8s\\.io/client-go/applyconfigurations/"
+
+render:
+  # Kubernetes version used to link Kubernetes API types to the official API reference.
+  kubernetesVersion: 1.36
+  # Update these URLs together with kubernetesVersion.
+  knownTypes:
+    - name: AffinityApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#affinity-v1-core
+    - name: EnvFromSourceApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#envfromsource-v1-core
+    - name: EnvVarApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#envvar-v1-core
+    - name: LocalObjectReferenceApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#localobjectreference-v1-core
+    - name: PersistentVolumeClaimSpecApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#persistentvolumeclaimspec-v1-core
+    - name: PodSpecApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#podspec-v1-core
+    - name: ResourceRequirementsApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#resourcerequirements-v1-core
+    - name: SecurityContextApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#securitycontext-v1-core
+    - name: ServiceSpecApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#servicespec-v1-core
+    - name: VolumeApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volume-v1-core
+    - name: VolumeMountApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volumemount-v1-core
+    # VolumeSource is inlined in Volume in the Kubernetes API reference.
+    - name: VolumeSourceApplyConfiguration
+      package: github.com/cybozu-go/moco/api/v1beta2
+      link: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.36/#volume-v1-core
