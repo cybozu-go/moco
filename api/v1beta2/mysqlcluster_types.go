@@ -28,39 +28,44 @@ type MySQLClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Replicas is the number of instances. Available values are positive odd numbers.
+	// replicas is the number of instances. Available values are positive odd numbers.
+	// Decreasing this value is not supported.
 	// +kubebuilder:default=1
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
 
-	// PodTemplate is a `Pod` template for MySQL server container.
+	// podTemplate is a `Pod` template for MySQL server container.
 	PodTemplate PodTemplateSpec `json:"podTemplate"`
 
-	// VolumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container.
+	// volumeClaimTemplates is a list of `PersistentVolumeClaim` templates for MySQL server container.
 	// A claim named "mysql-data" must be included in the list.
 	// +kubebuilder:validation:MinItems=1
 	VolumeClaimTemplates []PersistentVolumeClaim `json:"volumeClaimTemplates"`
 
-	// PrimaryServiceTemplate is a `Service` template for primary.
+	// primaryServiceTemplate is a `Service` template for primary.
 	// +optional
 	PrimaryServiceTemplate *ServiceTemplate `json:"primaryServiceTemplate,omitempty"`
 
-	// ReplicaServiceTemplate is a `Service` template for replica.
+	// replicaServiceTemplate is a `Service` template for replica.
 	// +optional
 	ReplicaServiceTemplate *ServiceTemplate `json:"replicaServiceTemplate,omitempty"`
 
-	// MySQLConfigMapName is a `ConfigMap` name of MySQL config.
-	// +nullable
+	// mysqlConfigMapName is a `ConfigMap` name of MySQL config.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	MySQLConfigMapName *string `json:"mysqlConfigMapName,omitempty"`
 
-	// ReplicationSourceSecretName is a `Secret` name which contains replication source info.
+	// replicationSourceSecretName is a `Secret` name which contains replication source info.
 	// If this field is given, the `MySQLCluster` works as an intermediate primary.
-	// +nullable
+	// It cannot be added to an existing cluster or changed to another value.
+	// Setting it to null stops the replication.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	ReplicationSourceSecretName *string `json:"replicationSourceSecretName,omitempty"`
 
-	// Collectors is the list of collector flag names of mysqld_exporter.
+	// collectors is the list of collector flag names of mysqld_exporter.
 	// If this field is not empty, MOCO adds mysqld_exporter as a sidecar to collect
 	// and export mysqld metrics in Prometheus format.
 	//
@@ -70,14 +75,14 @@ type MySQLClusterSpec struct {
 	// +optional
 	Collectors []string `json:"collectors,omitempty"`
 
-	// ServerIDBase, if set, will become the base number of server-id of each MySQL
+	// serverIDBase, if set, will become the base number of server-id of each MySQL
 	// instance of this cluster.  For example, if this is 100, the server-ids will be
 	// 100, 101, 102, and so on.
 	// If the field is not given or zero, MOCO automatically sets a random positive integer.
 	// +optional
 	ServerIDBase int32 `json:"serverIDBase,omitempty"`
 
-	// MaxDelaySeconds configures the readiness probe of mysqld container.
+	// maxDelaySeconds configures the readiness probe of mysqld container.
 	// For a replica mysqld instance, if it is delayed to apply transactions over this threshold,
 	// the mysqld instance will be marked as non-ready.
 	// The default is 60 seconds.
@@ -87,7 +92,7 @@ type MySQLClusterSpec struct {
 	// +optional
 	MaxDelaySeconds *int `json:"maxDelaySeconds,omitempty"`
 
-	// MaxDelaySecondsForPodDeletion configures the maximum allowed replication delay before a Pod deletion is blocked.
+	// maxDelaySecondsForPodDeletion configures the maximum allowed replication delay before a Pod deletion is blocked.
 	// If the replication delay exceeds this threshold, deletion of the primary pod will be prevented.
 	// The default is 0 seconds.
 	// Setting this field to 0 disables the delay check for pod deletion.
@@ -96,61 +101,63 @@ type MySQLClusterSpec struct {
 	// +optional
 	MaxDelaySecondsForPodDeletion int64 `json:"maxDelaySecondsForPodDeletion,omitempty"`
 
-	// StartupWaitSeconds is the maximum duration to wait for `mysqld` container to start working.
+	// startupWaitSeconds is the maximum duration to wait for `mysqld` container to start working.
 	// The default is 3600 seconds.
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:default=3600
 	// +optional
 	StartupWaitSeconds int32 `json:"startupWaitSeconds,omitempty"`
 
-	// LogRotationSchedule specifies the schedule to rotate MySQL logs.
-	// If not set, the default is to rotate logs every 5 minutes.
+	// logRotationSchedule specifies the schedule to rotate MySQL logs.
+	// If not set, moco-agent uses its default schedule, which rotates logs every 5 minutes.
 	// See https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format for the field format.
 	// +optional
 	LogRotationSchedule string `json:"logRotationSchedule,omitempty"`
 
-	// LogRotationSize specifies the size to rotate MySQL logs
-	// If not set, size-based log rotation is disabled by default
+	// logRotationSize specifies the size in bytes to rotate MySQL logs.
+	// If not set or zero, size-based log rotation is disabled.
 	// +optional
 	LogRotationSize int `json:"logRotationSize,omitempty"`
 
-	// The name of BackupPolicy custom resource in the same namespace.
+	// backupPolicyName is the name of BackupPolicy custom resource in the same namespace.
 	// If this is set, MOCO creates a CronJob to take backup of this MySQL cluster periodically.
-	// +nullable
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	// +optional
 	BackupPolicyName *string `json:"backupPolicyName,omitempty"`
 
-	// Restore is the specification to perform Point-in-Time-Recovery from existing cluster.
+	// restore is the specification to perform Point-in-Time-Recovery from existing cluster.
 	// If this field is not null, MOCO restores the data as specified and create a new
 	// cluster with the data.  This field is not editable.
 	// +optional
 	Restore *RestoreSpec `json:"restore,omitempty"`
 
-	// DisableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log"
+	// disableSlowQueryLogContainer controls whether to add a sidecar container named "slow-log"
 	// to output slow logs as the containers output.
 	// If set to true, the sidecar container and configmap used by the sidecar container are not added. The default is false.
 	// +optional
 	DisableSlowQueryLogContainer bool `json:"disableSlowQueryLogContainer,omitempty"`
 
-	// SlowQueryLogConfigTmpl is the template for slow query log configuration file.
+	// slowQueryLogConfigTmpl is the template for slow query log configuration file.
 	// If this field is null, MOCO uses the default slow query log configuration.
 	// `{{ .Path }}` will be replaced with the path to the slow query log file.
 	// +optional
 	SlowQueryLogConfigTmpl *string `json:"slowQueryLogConfigTmpl,omitempty"`
 
-	// AgentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name.
+	// agentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name.
 	// During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also
 	// communicate with mysqld over localhost when acting as a sidecar.
+	// +optional
 	AgentUseLocalhost bool `json:"agentUseLocalhost,omitempty"`
 
-	// InitializeTimezoneData controls whether the init container should populate the timezone data.
+	// initializeTimezoneData controls whether the init container should populate the timezone data.
 	// If set to true, the init container will load timezone data into MySQL.
 	// The default is false.
 	// +kubebuilder:default=false
 	// +optional
 	InitializeTimezoneData bool `json:"initializeTimezoneData,omitempty"`
 
-	// Offline sets the cluster offline, releasing compute resources. Data is not removed.
+	// offline sets the cluster offline, releasing compute resources. Data is not removed.
 	// +optional
 	Offline bool `json:"offline,omitempty"`
 }
@@ -406,15 +413,15 @@ func isDefaultStorageClass(sc *storagev1.StorageClass) bool {
 // ObjectMeta is metadata of objects.
 // This is partially copied from metav1.ObjectMeta.
 type ObjectMeta struct {
-	// Name is the name of the object.
+	// name is the name of the object.
 	// +optional
 	Name string `json:"name,omitempty"`
 
-	// Labels is a map of string keys and values.
+	// labels is a map of string keys and values.
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// Annotations is a map of string keys and values.
+	// annotations is a map of string keys and values.
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
@@ -439,15 +446,15 @@ func (in *PodSpecApplyConfiguration) DeepCopy() *PodSpecApplyConfiguration {
 // PodTemplateSpec describes the data a pod should have when created from a template.
 // This is slightly modified from corev1.PodTemplateSpec.
 type PodTemplateSpec struct {
-	// Standard object's metadata.  The name in this metadata is ignored.
+	// metadata is the standard object's metadata.  The name in this metadata is ignored.
 	// +optional
 	ObjectMeta `json:"metadata,omitempty"`
 
-	// Specification of the desired behavior of the pod.
+	// spec is the specification of the desired behavior of the pod.
 	// The name of the MySQL server container in this spec must be `mysqld`.
 	Spec PodSpecApplyConfiguration `json:"spec"`
 
-	// OverwriteContainers overwrites the container definitions provided by default by the system.
+	// overwriteContainers overwrites the container definitions provided by default by the system.
 	// +optional
 	OverwriteContainers []OverwriteContainer `json:"overwriteContainers,omitempty"`
 }
@@ -473,15 +480,15 @@ const (
 // For more information, please read the following documentation.
 // https://cybozu-go.github.io/moco/customize-system-container.html
 type OverwriteContainer struct {
-	// Name of the container to overwrite.
-	// +kubebuilder:validation:Required
+	// name is the name of the container to overwrite.
+	// +required
 	Name OverwriteableContainerName `json:"name"`
 
-	// Resources is the container resource to be overwritten.
+	// resources is the container resource to be overwritten.
 	// +optional
 	Resources *ResourceRequirementsApplyConfiguration `json:"resources,omitempty"`
 
-	// SecurityContext is the container SecurityContext to be overwritten.
+	// securityContext is the container SecurityContext to be overwritten.
 	// +optional
 	SecurityContext *SecurityContextApplyConfiguration `json:"securityContext,omitempty"`
 }
@@ -540,10 +547,10 @@ func (in *PersistentVolumeClaimSpecApplyConfiguration) DeepCopy() *PersistentVol
 // PersistentVolumeClaim is a user's request for and claim to a persistent volume.
 // This is slightly modified from corev1.PersistentVolumeClaim.
 type PersistentVolumeClaim struct {
-	// Standard object's metadata.
+	// metadata is the standard object's metadata.
 	ObjectMeta `json:"metadata"`
 
-	// Spec defines the desired characteristics of a volume requested by a pod author.
+	// spec defines the desired characteristics of a volume requested by a pod author.
 	Spec PersistentVolumeClaimSpecApplyConfiguration `json:"spec"`
 }
 
@@ -602,33 +609,34 @@ func (in *ServiceSpecApplyConfiguration) DeepCopy() *ServiceSpecApplyConfigurati
 
 // ServiceTemplate defines the desired spec and annotations of Service
 type ServiceTemplate struct {
-	// Standard object's metadata.  Only `annotations` and `labels` are valid.
+	// metadata is the standard object's metadata.  Only `annotations` and `labels` are valid.
 	// +optional
 	ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec is the ServiceSpec
+	// spec is the ServiceSpec
 	// +optional
 	Spec *ServiceSpecApplyConfiguration `json:"spec,omitempty"`
 }
 
 // RestoreSpec represents a set of parameters for Point-in-Time Recovery.
 type RestoreSpec struct {
-	// SourceName is the name of the source `MySQLCluster`.
+	// sourceName is the name of the source `MySQLCluster`.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	SourceName string `json:"sourceName"`
 
-	// SourceNamespace is the namespace of the source `MySQLCluster`.
+	// sourceNamespace is the namespace of the source `MySQLCluster`.
 	// +kubebuilder:validation:MinLength=1
 	SourceNamespace string `json:"sourceNamespace"`
 
-	// RestorePoint is the target date and time to restore data.
+	// restorePoint is the target date and time to restore data.
 	// The format is RFC3339.  e.g. "2006-01-02T15:04:05Z"
 	RestorePoint metav1.Time `json:"restorePoint"`
 
-	// Specifies parameters for restore Pod.
+	// jobConfig specifies parameters for restore Pod.
 	JobConfig `json:"jobConfig"`
 
-	// Schema is the name of the schema to restore.
+	// schema is the name of the schema to restore.
 	// If empty, all schemas are restored.
 	// This is used for `mysqlbinlog` option `--database`.
 	// Thus, this option changes behavior depending on binlog_format.
@@ -638,7 +646,7 @@ type RestoreSpec struct {
 	// +optional
 	Schema string `json:"schema,omitempty"`
 
-	// Users is the name of the comma separated users to restore.
+	// users is the name of the comma separated users to restore.
 	// example: "user1@%,user2@host,user3"
 	// If empty, all users are restored.
 	// This is used for `mysqlsh load-dump utility` option `--includeUsers`.
@@ -653,39 +661,44 @@ type MySQLClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Conditions is an array of conditions.
+	// conditions is an array of conditions.
 	// +optional
+	// +listType=map
+	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// CurrentPrimaryIndex is the index of the current primary Pod in StatefulSet.
+	// currentPrimaryIndex is the index of the current primary Pod in StatefulSet.
 	// Initially, this is zero.
-	CurrentPrimaryIndex int `json:"currentPrimaryIndex"`
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	CurrentPrimaryIndex int `json:"currentPrimaryIndex"` // FIXME: Do not use omitempty. This should have been a pointer (*int) because zero is a valid value.
 
-	// SyncedReplicas is the number of synced instances including the primary.
+	// syncedReplicas is the number of synced instances including the primary.
 	// +optional
 	SyncedReplicas int `json:"syncedReplicas,omitempty"`
 
-	// ErrantReplicas is the number of instances that have errant transactions.
+	// errantReplicas is the number of instances that have errant transactions.
 	// +optional
 	ErrantReplicas int `json:"errantReplicas,omitempty"`
 
-	// ErrantReplicaList is the list of indices of errant replicas.
+	// errantReplicaList is the list of indices of errant replicas.
 	// +optional
 	ErrantReplicaList []int `json:"errantReplicaList,omitempty"`
 
-	// Backup is the status of the last successful backup.
+	// backup is the status of the last successful backup.
+	// This field is not set until the first backup succeeds.
 	// +optional
 	Backup BackupStatus `json:"backup"`
 
-	// RestoredTime is the time when the cluster data is restored.
+	// restoredTime is the time when the cluster data is restored.
 	// +optional
 	RestoredTime *metav1.Time `json:"restoredTime,omitempty"`
 
-	// Cloned indicates if the initial cloning from an external source has been completed.
+	// cloned indicates if the initial cloning from an external source has been completed.
 	// +optional
 	Cloned bool `json:"cloned,omitempty"`
 
-	// ReconcileInfo represents version information for reconciler.
+	// reconcileInfo represents version information for reconciler.
 	// +optional
 	ReconcileInfo ReconcileInfo `json:"reconcileInfo"`
 }
@@ -702,52 +715,52 @@ const (
 
 // BackupStatus represents the status of the last successful backup.
 type BackupStatus struct {
-	// The time of the backup.  This is used to generate object keys of backup files in a bucket.
+	// time is the time of the backup.  This is used to generate object keys of backup files in a bucket.
 	// +nullable
 	Time metav1.Time `json:"time"`
 
-	// Elapsed is the time spent on the backup.
-	Elapsed metav1.Duration `json:"elapsed"`
+	// elapsed is the time spent on the backup.
+	Elapsed metav1.Duration `json:"elapsed"` // FIXME: Do not use omitempty nor omitzero. This should have been a pointer (*metav1.Duration) because zero is a valid value.
 
-	// SourceIndex is the ordinal of the backup source instance.
+	// sourceIndex is the ordinal of the backup source instance.
 	SourceIndex int `json:"sourceIndex"`
 
-	// SourceUUID is the `server_uuid` of the backup source instance.
+	// sourceUUID is the `server_uuid` of the backup source instance.
 	SourceUUID string `json:"sourceUUID"`
 
-	// UUIDSet is the `server_uuid` set of all candidate instances for the backup source.
+	// uuidSet is the `server_uuid` set of all candidate instances for the backup source.
 	// +optional
 	UUIDSet map[string]string `json:"uuidSet"`
 
-	// BinlogFilename is the binlog filename that the backup source instance was writing to
+	// binlogFilename is the binlog filename that the backup source instance was writing to
 	// at the backup.
 	BinlogFilename string `json:"binlogFilename"`
 
-	// GTIDSet is the GTID set of the full dump of database.
+	// gtidSet is the GTID set of the full dump of database.
 	GTIDSet string `json:"gtidSet"`
 
-	// DumpSize is the size in bytes of a full dump of database stored in an object storage bucket.
+	// dumpSize is the size in bytes of a full dump of database stored in an object storage bucket.
 	DumpSize int64 `json:"dumpSize"`
 
-	// BinlogSize is the size in bytes of a tarball of binlog files stored in an object storage bucket.
+	// binlogSize is the size in bytes of a tarball of binlog files stored in an object storage bucket.
 	BinlogSize int64 `json:"binlogSize"`
 
-	// WorkDirUsage is the max usage in bytes of the woking directory.
+	// workDirUsage is the max usage in bytes of the working directory.
 	WorkDirUsage int64 `json:"workDirUsage"`
 
-	// Warnings are list of warnings from the last backup, if any.
+	// warnings are list of warnings from the last backup, if any.
 	// +nullable
 	Warnings []string `json:"warnings"`
 }
 
 // ReconcileInfo is the type to record the last reconciliation information.
 type ReconcileInfo struct {
-	// Generation is the `metadata.generation` value of the last reconciliation.
+	// generation is the `metadata.generation` value of the last reconciliation.
 	// See also https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 
-	// ReconcileVersion is the version of the operator reconciler.
+	// reconcileVersion is the version of the operator reconciler.
 	// +optional
 	ReconcileVersion int `json:"reconcileVersion"`
 }
@@ -766,10 +779,15 @@ type ReconcileInfo struct {
 
 // MySQLCluster is the Schema for the mysqlclusters API
 type MySQLCluster struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// metadata is the standard object's metadata.
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MySQLClusterSpec   `json:"spec,omitempty"`
+	// spec defines the desired state of MySQLCluster.
+	Spec MySQLClusterSpec `json:"spec,omitempty"`
+
+	// status defines the observed state of MySQLCluster.
 	Status MySQLClusterStatus `json:"status,omitempty"`
 }
 
@@ -860,11 +878,15 @@ func (r *MySQLCluster) RestoreRoleName() string {
 	return fmt.Sprintf("moco-restore-%s", r.Name)
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // MySQLClusterList contains a list of MySQLCluster
 type MySQLClusterList struct {
 	metav1.TypeMeta `json:",inline"`
+	// metadata is the standard list metadata.
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MySQLCluster `json:"items"`
+
+	// items is the list of MySQLClusters.
+	Items []MySQLCluster `json:"items"`
 }

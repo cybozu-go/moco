@@ -27,38 +27,35 @@ spec:
           metadata:
             type: object
           spec:
-            description: BackupPolicySpec defines the configuration items...
+            description: spec defines the configuration items for...
             properties:
               activeDeadlineSeconds:
-                description: Specifies the duration in seconds relative to the...
+                description: activeDeadlineSeconds specifies the duration in...
                 format: int64
-                nullable: true
                 type: integer
               backoffLimit:
-                description: Specifies the number of retries before marking...
+                description: backoffLimit specifies the number of retries...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               concurrencyPolicy:
                 default: Allow
-                description: Specifies how to treat concurrent executions of a...
+                description: concurrencyPolicy specifies how to treat...
                 enum:
                 - Allow
                 - Forbid
                 - Replace
                 type: string
               failedJobsHistoryLimit:
-                description: The number of failed finished jobs to retain.
+                description: failedJobsHistoryLimit is the number of failed...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               jobConfig:
-                description: Specifies parameters for backup Pod.
+                description: jobConfig specifies parameters for backup Pod.
                 properties:
                   affinity:
-                    description: If specified, the pod's scheduling constraints.
+                    description: affinity is the pod's scheduling constraints.
                     properties:
                       nodeAffinity:
                         description: Describes node affinity scheduling rules for
@@ -595,32 +592,33 @@ spec:
                         type: object
                     type: object
                   bucketConfig:
-                    description: Specifies how to access an object storage bucket.
+                    description: bucketConfig specifies how to access an object...
                     properties:
                       backendType:
                         default: s3
-                        description: BackendType is an identifier for the object...
+                        description: backendType is an identifier for the object...
                         enum:
                         - s3
                         - gcs
                         - azure
                         type: string
                       bucketName:
-                        description: The name of the bucket
+                        description: bucketName is the name of the bucket.
                         minLength: 1
                         type: string
                       caCert:
-                        description: Path to SSL CA certificate file used in addition...
+                        description: caCert is the path to SSL CA certificate file...
                         type: string
                       endpointURL:
-                        description: The API endpoint URL.
+                        description: endpointURL is the API endpoint URL.
                         pattern: ^https?://.*
                         type: string
                       region:
-                        description: The region of the bucket.
+                        description: region is the region of the bucket.
                         type: string
                       usePathStyle:
-                        description: Allows you to enable the client to use path-style...
+                        description: usePathStyle allows you to enable the client
+                          to...
                         type: boolean
                     required:
                     - bucketName
@@ -630,12 +628,12 @@ spec:
                     - type: integer
                     - type: string
                     default: 4
-                    description: CPU is the amount of CPU requested for the Pod.
+                    description: cpu is the amount of CPU requested for the Pod.
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   env:
-                    description: List of environment variables to set in the...
+                    description: env is a list of environment variables to set in...
                     items:
                       description: EnvVarApplyConfiguration is the type defined to...
                       properties:
@@ -731,7 +729,7 @@ spec:
                       type: object
                     type: array
                   envFrom:
-                    description: List of sources to populate environment variables...
+                    description: envFrom is a list of sources to populate...
                     items:
                       description: EnvFromSourceApplyConfiguration is the type...
                       properties:
@@ -761,7 +759,7 @@ spec:
                       type: object
                     type: array
                   imagePullSecrets:
-                    description: ImagePullSecrets is a list of references to...
+                    description: imagePullSecrets is a list of references to...
                     items:
                       description: LocalObjectReferenceApplyConfiguration is the...
                       properties:
@@ -774,16 +772,14 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: MaxCPU is the amount of maximum CPU for the Pod.
-                    nullable: true
+                    description: maxCpu is the amount of maximum CPU for the Pod.
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   maxMemory:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: MaxMemory is the amount of maximum memory for the...
-                    nullable: true
+                    description: maxMemory is the amount of maximum memory for the...
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   memory:
@@ -791,21 +787,22 @@ spec:
                     - type: integer
                     - type: string
                     default: 4Gi
-                    description: Memory is the amount of memory requested for the...
+                    description: memory is the amount of memory requested for the...
                     nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   serviceAccountName:
-                    description: ServiceAccountName specifies the ServiceAccount...
+                    description: serviceAccountName specifies the ServiceAccount...
+                    maxLength: 253
                     minLength: 1
                     type: string
                   threads:
                     default: 4
-                    description: Threads is the number of threads used for backup...
+                    description: threads is the number of threads used for backup...
                     minimum: 1
                     type: integer
                   volumeMounts:
-                    description: VolumeMounts describes a list of volume mounts...
+                    description: volumeMounts describes a list of volume mounts...
                     items:
                       description: VolumeMountApplyConfiguration is the type defined...
                       properties:
@@ -834,7 +831,7 @@ spec:
                       type: object
                     type: array
                   volumes:
-                    description: Volumes defines the list of volumes that can be...
+                    description: volumes defines the list of volumes that can be...
                     items:
                       description: VolumeApplyConfiguration is the type defined to...
                       properties:
@@ -2012,7 +2009,7 @@ spec:
                       type: object
                     type: array
                   workVolume:
-                    description: WorkVolume is the volume source for the working...
+                    description: workVolume is the volume source for the working...
                     properties:
                       awsElasticBlockStore:
                         description: awsElasticBlockStore represents an AWS Disk...
@@ -3166,25 +3163,21 @@ spec:
                 required:
                 - bucketConfig
                 - serviceAccountName
-                - workVolume
                 type: object
               schedule:
-                description: The schedule in Cron format for periodic backups.
+                description: schedule is the schedule in Cron format for...
                 type: string
               startingDeadlineSeconds:
-                description: Optional deadline in seconds for starting the job...
+                description: startingDeadlineSeconds is an optional deadline...
                 format: int64
-                nullable: true
                 type: integer
               successfulJobsHistoryLimit:
-                description: The number of successful finished jobs to retain.
+                description: successfulJobsHistoryLimit is the number of...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               timeZone:
-                description: The time zone name for the given schedule, see...
-                nullable: true
+                description: timeZone is the time zone name for the given...
                 type: string
             required:
             - jobConfig

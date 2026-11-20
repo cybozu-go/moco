@@ -9,50 +9,55 @@ import (
 
 // JobConfig is a set of parameters for backup and restore job Pods.
 type JobConfig struct {
-	// ServiceAccountName specifies the ServiceAccount to run the Pod.
+	// serviceAccountName specifies the ServiceAccount to run the Pod.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	ServiceAccountName string `json:"serviceAccountName"`
 
-	// Specifies how to access an object storage bucket.
+	// bucketConfig specifies how to access an object storage bucket.
 	BucketConfig BucketConfig `json:"bucketConfig"`
 
-	// WorkVolume is the volume source for the working directory.
+	// workVolume is the volume source for the working directory.
 	// Since the backup or restore task can use a lot of bytes in the working directory,
 	// You should always give a volume with enough capacity.
 	//
 	// The recommended volume source is a generic ephemeral volume.
 	// https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
-	WorkVolume VolumeSourceApplyConfiguration `json:"workVolume"`
+	//
+	// If omitted or empty, Kubernetes implicitly uses an emptyDir volume.
+	// This implicit default is deprecated and will be removed in a future Kubernetes version.
+	// +optional
+	WorkVolume VolumeSourceApplyConfiguration `json:"workVolume,omitempty,omitzero"`
 
-	// Threads is the number of threads used for backup or restoration.
+	// threads is the number of threads used for backup or restoration.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:default=4
 	// +optional
 	Threads int `json:"threads,omitempty"`
 
-	// CPU is the amount of CPU requested for the Pod.
+	// cpu is the amount of CPU requested for the Pod.
+	// Nullable is retained for compatibility: explicit null disables the default CPU request.
 	// +kubebuilder:default=4
 	// +nullable
 	// +optional
 	CPU *resource.Quantity `json:"cpu,omitempty"`
 
-	// MaxCPU is the amount of maximum CPU for the Pod.
-	// +nullable
+	// maxCpu is the amount of maximum CPU for the Pod.
 	// +optional
 	MaxCPU *resource.Quantity `json:"maxCpu,omitempty"`
 
-	// Memory is the amount of memory requested for the Pod.
+	// memory is the amount of memory requested for the Pod.
+	// Nullable is retained for compatibility: explicit null disables the default memory request.
 	// +kubebuilder:default="4Gi"
 	// +nullable
 	// +optional
 	Memory *resource.Quantity `json:"memory,omitempty"`
 
-	// MaxMemory is the amount of maximum memory for the Pod.
-	// +nullable
+	// maxMemory is the amount of maximum memory for the Pod.
 	// +optional
 	MaxMemory *resource.Quantity `json:"maxMemory,omitempty"`
 
-	// List of sources to populate environment variables in the container.
+	// envFrom is a list of sources to populate environment variables in the container.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
 	// sources, the value associated with the last source will take precedence.
@@ -64,7 +69,7 @@ type JobConfig struct {
 	// +optional
 	EnvFrom []EnvFromSourceApplyConfiguration `json:"envFrom,omitempty"`
 
-	// List of environment variables to set in the container.
+	// env is a list of environment variables to set in the container.
 	//
 	// You can configure S3 bucket access parameters through environment variables.
 	// See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig
@@ -72,22 +77,22 @@ type JobConfig struct {
 	// +optional
 	Env []EnvVarApplyConfiguration `json:"env,omitempty"`
 
-	// If specified, the pod's scheduling constraints.
+	// affinity is the pod's scheduling constraints.
 	//
 	// +optional
 	Affinity *AffinityApplyConfiguration `json:"affinity,omitempty"`
 
-	// Volumes defines the list of volumes that can be mounted by containers in the Pod.
+	// volumes defines the list of volumes that can be mounted by containers in the Pod.
 	//
 	// +optional
 	Volumes []VolumeApplyConfiguration `json:"volumes,omitempty"`
 
-	// VolumeMounts describes a list of volume mounts that are to be mounted in a container.
+	// volumeMounts describes a list of volume mounts that are to be mounted in a container.
 	//
 	// +optional
 	VolumeMounts []VolumeMountApplyConfiguration `json:"volumeMounts,omitempty"`
 
-	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling
+	// imagePullSecrets is a list of references to secrets in the same namespace to use for pulling
 	// backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods.
 	// To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead.
 	//
@@ -115,7 +120,7 @@ func (in *VolumeSourceApplyConfiguration) DeepCopy() *VolumeSourceApplyConfigura
 // VolumeApplyConfiguration is the type defined to implement the DeepCopy method.
 type VolumeApplyConfiguration corev1ac.VolumeApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+// DeepCopy is copying the receiver, creating a new VolumeApplyConfiguration.
 func (in *VolumeApplyConfiguration) DeepCopy() *VolumeApplyConfiguration {
 	out := new(VolumeApplyConfiguration)
 	bytes, err := json.Marshal(in)
@@ -132,7 +137,7 @@ func (in *VolumeApplyConfiguration) DeepCopy() *VolumeApplyConfiguration {
 // VolumeMountApplyConfiguration is the type defined to implement the DeepCopy method.
 type VolumeMountApplyConfiguration corev1ac.VolumeMountApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+// DeepCopy is copying the receiver, creating a new VolumeMountApplyConfiguration.
 func (in *VolumeMountApplyConfiguration) DeepCopy() *VolumeMountApplyConfiguration {
 	out := new(VolumeMountApplyConfiguration)
 	bytes, err := json.Marshal(in)
@@ -182,34 +187,34 @@ func (in *EnvVarApplyConfiguration) DeepCopy() *EnvVarApplyConfiguration {
 
 // BucketConfig is a set of parameter to access an object storage bucket.
 type BucketConfig struct {
-	// The name of the bucket
+	// bucketName is the name of the bucket.
 	// +kubebuilder:validation:MinLength=1
 	BucketName string `json:"bucketName"`
 
-	// The region of the bucket.
+	// region is the region of the bucket.
 	// This can also be set through `AWS_REGION` environment variable.
 	// +optional
 	Region string `json:"region,omitempty"`
 
-	// The API endpoint URL.  Set this for non-S3 object storages.
+	// endpointURL is the API endpoint URL. Set this for non-S3 object storages.
 	// +kubebuilder:validation:Pattern="^https?://.*"
 	// +optional
 	EndpointURL string `json:"endpointURL,omitempty"`
 
-	// Allows you to enable the client to use path-style addressing, i.e.,
+	// usePathStyle allows you to enable the client to use path-style addressing, i.e.,
 	// https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing
 	// is used (https?://BUCKET.ENDPOINT/KEY).
 	// +optional
 	UsePathStyle bool `json:"usePathStyle,omitempty"`
 
-	// BackendType is an identifier for the object storage to be used.
+	// backendType is an identifier for the object storage to be used.
 	//
 	// +kubebuilder:validation:Enum=s3;gcs;azure
 	// +kubebuilder:default=s3
 	// +optional
 	BackendType string `json:"backendType,omitempty"`
 
-	// Path to SSL CA certificate file used in addition to system default.
+	// caCert is the path to SSL CA certificate file used in addition to system default.
 	// +optional
 	CaCert string `json:"caCert,omitempty"`
 }
