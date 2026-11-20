@@ -150,6 +150,7 @@ type MySQLClusterSpec struct {
 	// agentUseLocalhost configures the mysqld interface to bind and be accessed over localhost instead of pod name.
 	// During container init moco-agent will set mysql admin interface is bound to localhost. The moco-agent will also
 	// communicate with mysqld over localhost when acting as a sidecar.
+	// +optional
 	AgentUseLocalhost bool `json:"agentUseLocalhost,omitempty"`
 
 	// initializeTimezoneData controls whether the init container should populate the timezone data.
