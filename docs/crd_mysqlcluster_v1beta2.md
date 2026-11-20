@@ -130,7 +130,7 @@ OverwriteContainer defines the container spec used for overwriting. For more inf
 | ----- | ----------- | ------ | -------- |
 | name | Name of the container to overwrite. | [OverwriteableContainerName](https://pkg.go.dev/github.com/cybozu-go/moco/api/v1beta2#OverwriteableContainerName) | true |
 | resources | Resources is the container resource to be overwritten. | *[ResourceRequirementsApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#ResourceRequirementsApplyConfiguration) | false |
-| securityContext | SecurityContext is the container SecurityContext to be overwritten. | *SecurityContextApplyConfiguration | false |
+| securityContext | SecurityContext is the container SecurityContext to be overwritten. | *[SecurityContextApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#SecurityContextApplyConfiguration) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -229,5 +229,7 @@ JobConfig is a set of parameters for backup and restore job Pods.
 | volumes | Volumes defines the list of volumes that can be mounted by containers in the Pod. | []VolumeApplyConfiguration | false |
 | volumeMounts | VolumeMounts describes a list of volume mounts that are to be mounted in a container. | []VolumeMountApplyConfiguration | false |
 | imagePullSecrets | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods. To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead. | []LocalObjectReferenceApplyConfiguration | false |
+| podSecurityContext | PodSecurityContext holds pod-level security attributes for the backup and restore job Pods. Fields that are not set are filled with MOCO's defaults (`fsGroup` and `fsGroupChangePolicy`). | *[PodSecurityContextApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#PodSecurityContextApplyConfiguration) | false |
+| containerSecurityContext | ContainerSecurityContext holds the security configuration for the backup and restore containers. Fields that are not set are filled with MOCO's defaults (`readOnlyRootFilesystem`, and for the backup container `runAsUser` and `runAsGroup`). | *[SecurityContextApplyConfiguration](https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#SecurityContextApplyConfiguration) | false |
 
 [Back to Custom Resources](#custom-resources)
