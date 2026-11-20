@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -204,5 +207,78 @@ var _ = Describe("S3Bucket", func() {
 
 		partSize = decidePartSize(PartSizeUnit*2*UploadParts + 1)
 		Expect(partSize).Should(BeNumerically("==", PartSizeUnit*3))
+	})
+})
+
+// zeroReader is an unseekable reader that yields zero bytes.
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
+}
+
+var _ = Describe("S3Bucket multipart checksum", func() {
+	// putMultipart uploads PartSizeUnit+1 bytes to a fake S3 server, which forces
+	// a two-part upload, and returns the request headers of each UploadPart.
+	putMultipart := func(optFns ...func(*s3.Options)) []http.Header {
+		var mu sync.Mutex
+		var parts []http.Header
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			io.Copy(io.Discard, r.Body)
+			q := r.URL.Query()
+			switch {
+			case r.Method == http.MethodPost && q.Has("uploads"):
+				fmt.Fprint(w, `<InitiateMultipartUploadResult><Bucket>test</Bucket><Key>key</Key><UploadId>uid</UploadId></InitiateMultipartUploadResult>`)
+			case r.Method == http.MethodPut && q.Has("partNumber"):
+				mu.Lock()
+				parts = append(parts, r.Header.Clone())
+				mu.Unlock()
+				w.Header().Set("ETag", `"etag"`)
+			case r.Method == http.MethodPost && q.Has("uploadId"):
+				fmt.Fprint(w, `<CompleteMultipartUploadResult><Bucket>test</Bucket><Key>key</Key><ETag>"etag"</ETag></CompleteMultipartUploadResult>`)
+			default:
+				w.WriteHeader(http.StatusNotImplemented)
+			}
+		}))
+		defer srv.Close()
+
+		opts := append([]func(*s3.Options){
+			WithEndpointURL(srv.URL),
+			WithPathStyle(),
+			WithRegion("us-east-1"),
+			WithCredentials(credentials.NewStaticCredentialsProvider("ak", "sk", "")),
+		}, optFns...)
+		b, err := NewS3Bucket("test", opts...)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = b.Put(context.Background(), "key", io.LimitReader(zeroReader{}, PartSizeUnit+1), PartSizeUnit+1)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(parts).To(HaveLen(2))
+		return parts
+	}
+
+	hasChecksum := func(h http.Header) bool {
+		for k := range h {
+			if strings.HasPrefix(strings.ToLower(k), "x-amz-checksum-") || strings.EqualFold(k, "X-Amz-Trailer") {
+				return true
+			}
+		}
+		return false
+	}
+
+	It("should send optional checksums on parts by default", func() {
+		for _, h := range putMultipart() {
+			Expect(hasChecksum(h)).To(BeTrue(), "headers: %v", h)
+		}
+	})
+
+	It("should omit optional checksums on parts when RequestChecksumCalculation is WhenRequired", func() {
+		parts := putMultipart(func(o *s3.Options) {
+			o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		})
+		for _, h := range parts {
+			Expect(hasChecksum(h)).To(BeFalse(), "headers: %v", h)
+		}
 	})
 })
