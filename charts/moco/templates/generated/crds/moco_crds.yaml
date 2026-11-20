@@ -39,13 +39,11 @@ spec:
                 activeDeadlineSeconds:
                   description: activeDeadlineSeconds specifies the duration in...
                   format: int64
-                  nullable: true
                   type: integer
                 backoffLimit:
                   description: backoffLimit specifies the number of retries...
                   format: int32
                   minimum: 0
-                  nullable: true
                   type: integer
                 concurrencyPolicy:
                   default: Allow
@@ -59,7 +57,6 @@ spec:
                   description: failedJobsHistoryLimit is the number of failed...
                   format: int32
                   minimum: 0
-                  nullable: true
                   type: integer
                 jobConfig:
                   description: jobConfig specifies parameters for backup Pod.
@@ -681,7 +678,6 @@ spec:
                         - type: integer
                         - type: string
                       description: maxCpu is the amount of maximum CPU for the Pod.
-                      nullable: true
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
                     maxMemory:
@@ -689,7 +685,6 @@ spec:
                         - type: integer
                         - type: string
                       description: maxMemory is the amount of maximum memory for the...
-                      nullable: true
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
                     memory:
@@ -703,6 +698,7 @@ spec:
                       x-kubernetes-int-or-string: true
                     serviceAccountName:
                       description: serviceAccountName specifies the ServiceAccount...
+                      maxLength: 253
                       minLength: 1
                       type: string
                     threads:
@@ -2744,17 +2740,14 @@ spec:
                 startingDeadlineSeconds:
                   description: startingDeadlineSeconds is an optional deadline...
                   format: int64
-                  nullable: true
                   type: integer
                 successfulJobsHistoryLimit:
                   description: successfulJobsHistoryLimit is the number of...
                   format: int32
                   minimum: 0
-                  nullable: true
                   type: integer
                 timeZone:
                   description: timeZone is the time zone name for the given...
-                  nullable: true
                   type: string
               required:
                 - jobConfig
@@ -2834,7 +2827,8 @@ spec:
                   type: boolean
                 backupPolicyName:
                   description: backupPolicyName is the name of BackupPolicy...
-                  nullable: true
+                  maxLength: 253
+                  minLength: 1
                   type: string
                 collectors:
                   description: collectors is the list of collector flag names of...
@@ -2867,7 +2861,8 @@ spec:
                   type: integer
                 mysqlConfigMapName:
                   description: mysqlConfigMapName is a `ConfigMap` name of MySQL...
-                  nullable: true
+                  maxLength: 253
+                  minLength: 1
                   type: string
                 offline:
                   description: offline sets the cluster offline, releasing...
@@ -7614,7 +7609,8 @@ spec:
                   type: integer
                 replicationSourceSecretName:
                   description: replicationSourceSecretName is a `Secret` name...
-                  nullable: true
+                  maxLength: 253
+                  minLength: 1
                   type: string
                 restore:
                   description: restore is the specification to perform...
@@ -8239,7 +8235,6 @@ spec:
                             - type: integer
                             - type: string
                           description: maxCpu is the amount of maximum CPU for the Pod.
-                          nullable: true
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         maxMemory:
@@ -8247,7 +8242,6 @@ spec:
                             - type: integer
                             - type: string
                           description: maxMemory is the amount of maximum memory for the...
-                          nullable: true
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         memory:
@@ -8261,6 +8255,7 @@ spec:
                           x-kubernetes-int-or-string: true
                         serviceAccountName:
                           description: serviceAccountName specifies the ServiceAccount...
+                          maxLength: 253
                           minLength: 1
                           type: string
                         threads:
@@ -10305,6 +10300,7 @@ spec:
                       type: string
                     sourceName:
                       description: sourceName is the name of the source...
+                      maxLength: 253
                       minLength: 1
                       type: string
                     sourceNamespace:
@@ -10331,7 +10327,7 @@ spec:
                   default: 3600
                   description: startupWaitSeconds is the maximum duration to...
                   format: int32
-                  minimum: 0
+                  minimum: 1
                   type: integer
                 volumeClaimTemplates:
                   description: volumeClaimTemplates is a list of...
@@ -10574,8 +10570,12 @@ spec:
                       - type
                     type: object
                   type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
                 currentPrimaryIndex:
                   description: currentPrimaryIndex is the index of the current...
+                  minimum: 0
                   type: integer
                 errantReplicaList:
                   description: errantReplicaList is the list of indices of...
@@ -10603,8 +10603,6 @@ spec:
                 syncedReplicas:
                   description: syncedReplicas is the number of synced instances...
                   type: integer
-              required:
-                - currentPrimaryIndex
               type: object
           type: object
       served: true

@@ -33,13 +33,11 @@ spec:
               activeDeadlineSeconds:
                 description: activeDeadlineSeconds specifies the duration in...
                 format: int64
-                nullable: true
                 type: integer
               backoffLimit:
                 description: backoffLimit specifies the number of retries...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               concurrencyPolicy:
                 default: Allow
@@ -53,7 +51,6 @@ spec:
                 description: failedJobsHistoryLimit is the number of failed...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               jobConfig:
                 description: jobConfig specifies parameters for backup Pod.
@@ -777,7 +774,6 @@ spec:
                     - type: integer
                     - type: string
                     description: maxCpu is the amount of maximum CPU for the Pod.
-                    nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   maxMemory:
@@ -785,7 +781,6 @@ spec:
                     - type: integer
                     - type: string
                     description: maxMemory is the amount of maximum memory for the...
-                    nullable: true
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   memory:
@@ -799,6 +794,7 @@ spec:
                     x-kubernetes-int-or-string: true
                   serviceAccountName:
                     description: serviceAccountName specifies the ServiceAccount...
+                    maxLength: 253
                     minLength: 1
                     type: string
                   threads:
@@ -3175,17 +3171,14 @@ spec:
               startingDeadlineSeconds:
                 description: startingDeadlineSeconds is an optional deadline...
                 format: int64
-                nullable: true
                 type: integer
               successfulJobsHistoryLimit:
                 description: successfulJobsHistoryLimit is the number of...
                 format: int32
                 minimum: 0
-                nullable: true
                 type: integer
               timeZone:
                 description: timeZone is the time zone name for the given...
-                nullable: true
                 type: string
             required:
             - jobConfig
