@@ -36,24 +36,24 @@ type JobConfig struct {
 	Threads int `json:"threads,omitempty"`
 
 	// cpu is the amount of CPU requested for the Pod.
+	// Nullable is retained for compatibility: explicit null disables the default CPU request.
 	// +kubebuilder:default=4
 	// +nullable
 	// +optional
 	CPU *resource.Quantity `json:"cpu,omitempty"`
 
 	// maxCpu is the amount of maximum CPU for the Pod.
-	// +nullable
 	// +optional
 	MaxCPU *resource.Quantity `json:"maxCpu,omitempty"`
 
 	// memory is the amount of memory requested for the Pod.
+	// Nullable is retained for compatibility: explicit null disables the default memory request.
 	// +kubebuilder:default="4Gi"
 	// +nullable
 	// +optional
 	Memory *resource.Quantity `json:"memory,omitempty"`
 
 	// maxMemory is the amount of maximum memory for the Pod.
-	// +nullable
 	// +optional
 	MaxMemory *resource.Quantity `json:"maxMemory,omitempty"`
 

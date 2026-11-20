@@ -37,7 +37,6 @@ type BackupPolicySpec struct {
 	// timeZone is the time zone name for the given schedule, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones.
 	// If not specified, this defaults to the time zone of the kube-controller-manager process (native Kubernetes CronJob behavior).
 	// More information can be found in https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones
-	// +nullable
 	// +optional
 	TimeZone *string `json:"timeZone,omitempty"`
 
@@ -46,7 +45,6 @@ type BackupPolicySpec struct {
 
 	// startingDeadlineSeconds is an optional deadline in seconds for starting the job if it misses scheduled
 	// time for any reason.  Missed jobs executions will be counted as failed ones.
-	// +nullable
 	// +optional
 	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
 
@@ -65,14 +63,12 @@ type BackupPolicySpec struct {
 	// must be positive integer. If a Job is suspended (at creation or through an
 	// update), this timer will effectively be stopped and reset when the Job is
 	// resumed again.
-	// +nullable
 	// +optional
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 
 	// backoffLimit specifies the number of retries before marking this job failed.
 	// If not specified, MOCO does not set the value and the Job default (6) is used.
 	// +kubebuilder:validation:Minimum=0
-	// +nullable
 	// +optional
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 
@@ -80,7 +76,6 @@ type BackupPolicySpec struct {
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// If not specified, MOCO does not set the value and the CronJob default (3) is used.
 	// +kubebuilder:validation:Minimum=0
-	// +nullable
 	// +optional
 	SuccessfulJobsHistoryLimit *int32 `json:"successfulJobsHistoryLimit,omitempty"`
 
@@ -88,7 +83,6 @@ type BackupPolicySpec struct {
 	// This is a pointer to distinguish between explicit zero and not specified.
 	// If not specified, MOCO does not set the value and the CronJob default (1) is used.
 	// +kubebuilder:validation:Minimum=0
-	// +nullable
 	// +optional
 	FailedJobsHistoryLimit *int32 `json:"failedJobsHistoryLimit,omitempty"`
 }

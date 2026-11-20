@@ -9,6 +9,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -52,6 +53,26 @@ var _ = Describe("BackupPolicy Webhook", func() {
 		Expect(r.Spec.JobConfig.Memory.Value()).To(Equal(int64(4) << 30))
 		Expect(r.Spec.JobConfig.MaxMemory).To(BeNil())
 		Expect(r.Spec.ConcurrencyPolicy).To(Equal(batchv1.AllowConcurrent))
+	})
+
+	It("should preserve explicit null CPU and memory requests without applying defaults", func() {
+		r := makeBackupPolicy()
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(r)
+		Expect(err).NotTo(HaveOccurred())
+		raw := &unstructured.Unstructured{Object: obj}
+		raw.SetGroupVersionKind(mocov1beta2.GroupVersion.WithKind("BackupPolicy"))
+		Expect(unstructured.SetNestedField(raw.Object, nil, "spec", "jobConfig", "cpu")).To(Succeed())
+		Expect(unstructured.SetNestedField(raw.Object, nil, "spec", "jobConfig", "memory")).To(Succeed())
+
+		Expect(k8sClient.Create(ctx, raw)).To(Succeed())
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(raw), raw)).To(Succeed())
+
+		for _, name := range []string{"cpu", "memory"} {
+			value, found, err := unstructured.NestedFieldNoCopy(raw.Object, "spec", "jobConfig", name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(found).To(BeTrue())
+			Expect(value).To(BeNil())
+		}
 	})
 
 	It("should allow an omitted workVolume", func() {
