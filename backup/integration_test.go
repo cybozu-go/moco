@@ -113,6 +113,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid1",
 
 				writable: true,
@@ -132,7 +133,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(events.Items).To(HaveLen(1))
 
-		Expect(bc.contents).To(HaveLen(1))
+		Expect(bc.contents).To(HaveLen(2))
 
 		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
@@ -151,6 +152,11 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(bs.WorkDirUsage).To(BeNumerically(">", 0))
 		Expect(bs.Warnings).To(BeEmpty())
 
+		metadataKey := calcKey("test", "single", constants.DumpMetadataFilename, bs.Time.Time)
+		metadata, ok := bc.contents[metadataKey]
+		Expect(ok).To(BeTrue())
+		Expect(string(metadata)).To(MatchJSON(`{"mysqlVersion":"8.0.36"}`))
+
 		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bs.Time.Time, "", "")
 		Expect(err).NotTo(HaveOccurred())
 
@@ -163,6 +169,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid1",
 			}
 			ops = append(ops, op)
@@ -187,6 +194,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid1",
 			}
 			ops = append(ops, op)
@@ -198,7 +206,7 @@ var _ = Describe("Backup/Restore", func() {
 
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(1))
+		Expect(bc.contents).To(HaveLen(2))
 
 		time.Sleep(1100 * time.Millisecond)
 		restorePoint := time.Now()
@@ -208,6 +216,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs:    []string{"binlog.000001", "binlog.000002"},
 				uuid:       "123",
+				version:    "8.0.36",
 				gtid:       "gtid2",
 				expectPiTR: true,
 			}
@@ -222,7 +231,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(3))
+		Expect(bc.contents).To(HaveLen(5))
 
 		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
@@ -252,6 +261,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid1",
 			}
 			ops = append(ops, op)
@@ -263,7 +273,7 @@ var _ = Describe("Backup/Restore", func() {
 
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(1))
+		Expect(bc.contents).To(HaveLen(2))
 
 		cluster := &mocov1beta2.MySQLCluster{}
 		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
@@ -276,6 +286,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs:    []string{"binlog.000001", "binlog.000002"},
 				uuid:       "123",
+				version:    "8.0.36",
 				gtid:       "gtid2",
 				expectPiTR: false,
 			}
@@ -290,7 +301,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(3))
+		Expect(bc.contents).To(HaveLen(5))
 
 		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, bt, "", "")
 		Expect(err).NotTo(HaveOccurred())
@@ -304,6 +315,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000001"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid1",
 			}
 			ops = append(ops, op)
@@ -315,7 +327,7 @@ var _ = Describe("Backup/Restore", func() {
 
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(1))
+		Expect(bc.contents).To(HaveLen(2))
 
 		time.Sleep(1100 * time.Millisecond)
 
@@ -323,6 +335,7 @@ var _ = Describe("Backup/Restore", func() {
 			op := &mockOperator{
 				binlogs: []string{"binlog.000002"},
 				uuid:    "123",
+				version: "8.0.36",
 				gtid:    "gtid2",
 			}
 			ops = append(ops, op)
@@ -336,7 +349,7 @@ var _ = Describe("Backup/Restore", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = bm.Backup(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bc.contents).To(HaveLen(2))
+		Expect(bc.contents).To(HaveLen(4))
 
 		events := &corev1.EventList{}
 		err = k8sClient.List(ctx, events, client.InNamespace("test"))

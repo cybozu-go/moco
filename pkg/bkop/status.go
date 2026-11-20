@@ -23,7 +23,7 @@ func (o operator) GetServerStatus(ctx context.Context, st *ServerStatus) error {
 	default:
 		return fmt.Errorf("unsupported version: %s", version)
 	}
-	if err := o.db.GetContext(ctx, st, `SELECT @@super_read_only, @@server_uuid`); err != nil {
+	if err := o.db.GetContext(ctx, st, `SELECT @@super_read_only, @@server_uuid, @@version`); err != nil {
 		return fmt.Errorf("failed to get global variables: %w", err)
 	}
 

@@ -19,6 +19,7 @@ import (
 type mockOperator struct {
 	binlogs    []string
 	uuid       string
+	version    string
 	gtid       string
 	expectPiTR bool
 
@@ -48,6 +49,7 @@ func (o *mockOperator) Close() {
 func (o *mockOperator) GetServerStatus(_ context.Context, st *bkop.ServerStatus) error {
 	st.CurrentBinlog = o.binlogs[len(o.binlogs)-1]
 	st.UUID = o.uuid
+	st.Version = o.version
 	st.SuperReadOnly = !o.writable
 	return nil
 }

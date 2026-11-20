@@ -5,9 +5,10 @@ const (
 	BackupSubcommand  = "backup"
 	RestoreSubcommand = "restore"
 
-	BackupTimeFormat = "20060102-150405"
-	DumpFilename     = "dump.tar"
-	BinlogFilename   = "binlog.tar.zst"
+	BackupTimeFormat     = "20060102-150405"
+	DumpFilename         = "dump.tar"
+	DumpMetadataFilename = "dump-metadata.json"
+	BinlogFilename       = "binlog.tar.zst"
 )
 
 const (
