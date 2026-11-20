@@ -61,6 +61,27 @@ type Operator interface {
 	// KillConnections kills all connections except for ones from `localhost`
 	// and ones for MOCO.
 	KillConnections(context.Context) error
+
+	// GetUserAuthPlugins returns the authentication plugin of each MOCO user
+	// in `mysql.user`, keyed by user name.
+	GetUserAuthPlugins(ctx context.Context) (map[string]string, error)
+
+	// IsAuthPluginActive returns true when the authentication plugin is
+	// ACTIVE on the instance. A plugin that does not exist or is disabled
+	// (e.g. mysql_native_password on MySQL 8.4 without
+	// --mysql-native-password=ON) returns false.
+	IsAuthPluginActive(ctx context.Context, plugin string) (bool, error)
+
+	// AlterUserAuthPlugin changes the authentication plugin of a MOCO user
+	// while keeping its password value unchanged. The statement runs with
+	// sql_log_bin=0 so that it is not replicated.
+	AlterUserAuthPlugin(ctx context.Context, user, plugin string) error
+
+	// SetSuperReadOnly sets or unsets the super_read_only system variable.
+	// Unlike SetReadOnly(false), it never touches replication, and clearing
+	// it leaves read_only on. (Setting it also enables read_only; that is
+	// the server's own behavior.)
+	SetSuperReadOnly(ctx context.Context, on bool) error
 }
 
 // OperatorFactory represents the factory for Operators.

@@ -10335,6 +10335,12 @@ spec:
                   format: int32
                   minimum: 0
                   type: integer
+                systemUserAuthPlugin:
+                  description: SystemUserAuthPlugin, when set, makes MOCO...
+                  enum:
+                    - caching_sha2_password
+                    - mysql_native_password
+                  type: string
                 volumeClaimTemplates:
                   description: VolumeClaimTemplates is a list of...
                   items:

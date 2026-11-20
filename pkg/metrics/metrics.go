@@ -25,6 +25,8 @@ var (
 	ErrantReplicasVec  *prometheus.GaugeVec
 	ProcessingTimeVec  *prometheus.HistogramVec
 
+	SystemUserAuthPluginSyncedVec *prometheus.GaugeVec
+
 	VolumeResizedTotal            *prometheus.CounterVec
 	VolumeResizedErrorTotal       *prometheus.CounterVec
 	StatefulSetRecreateTotal      *prometheus.CounterVec
@@ -131,6 +133,14 @@ func Register(registry prometheus.Registerer) {
 		Buckets:   []float64{0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10, 20, 30},
 	}, metricLabels)
 	registry.MustRegister(ProcessingTimeVec)
+
+	SystemUserAuthPluginSyncedVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: clusteringSubsystem,
+		Name:      "system_user_auth_plugin_synced",
+		Help:      "Whether the authentication plugin of every MOCO system user matches spec.systemUserAuthPlugin",
+	}, metricLabels)
+	registry.MustRegister(SystemUserAuthPluginSyncedVec)
 
 	BackupTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,

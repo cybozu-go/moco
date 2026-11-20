@@ -91,6 +91,22 @@ func testGetCondition(cluster *mocov1beta2.MySQLCluster, condType string) (metav
 	return metav1.Condition{}, fmt.Errorf("no %s condition", condType)
 }
 
+// waitForClusterHealthy waits until the Healthy condition of the cluster
+// becomes True and returns the cluster at that point.
+func waitForClusterHealthy(ctx context.Context) *mocov1beta2.MySQLCluster {
+	GinkgoHelper()
+	var cluster *mocov1beta2.MySQLCluster
+	Eventually(func(g Gomega) {
+		var err error
+		cluster, err = testGetCluster(ctx)
+		g.Expect(err).NotTo(HaveOccurred())
+		condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+	}).Should(Succeed())
+	return cluster
+}
+
 var _ = Describe("manager", func() {
 	ctx := context.Background()
 	var (
@@ -99,6 +115,7 @@ var _ = Describe("manager", func() {
 		af       *mockAgentFactory
 		of       *mockOpFactory
 		ms       metricsSet
+		cm       ClusterManager
 	)
 	BeforeEach(func() {
 		resetGTIDMap()
@@ -123,6 +140,7 @@ var _ = Describe("manager", func() {
 		ms.backupBinlogSize = metrics.BackupBinlogSize.WithLabelValues("test", "test")
 		ms.backupWorkDirUsage = metrics.BackupWorkDirUsage.WithLabelValues("test", "test")
 		ms.backupWarnings = metrics.BackupWarnings.WithLabelValues("test", "test")
+		ms.systemUserAuthPluginSynced = metrics.SystemUserAuthPluginSyncedVec.WithLabelValues("test", "test")
 
 		var err error
 		mgr, err = ctrl.NewManager(cfg, ctrl.Options{
@@ -142,8 +160,14 @@ var _ = Describe("manager", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		time.Sleep(10 * time.Millisecond)
+
+		cm = NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
 	})
 	JustAfterEach(func() {
+		if cm != nil {
+			cm.StopAll()
+		}
+
 		if CurrentSpecReport().Failed() {
 			cluster, err := testGetCluster(ctx)
 			if err == nil {
@@ -170,22 +194,11 @@ var _ = Describe("manager", func() {
 	It("should setup one-instance cluster and clean up metrics when the cluster is deleted", func() {
 		testSetupResources(ctx, 1, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
-
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
 
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		// wait for pods' metadata changes
 		Eventually(func(g Gomega) {
@@ -269,11 +282,177 @@ var _ = Describe("manager", func() {
 		Expect(condHealthy.Status).To(Equal(metav1.ConditionFalse))
 	})
 
+	Describe("system user auth plugin", func() {
+		targetPlugin := mocov1beta2.AuthPluginCachingSHA2Password
+
+		var cluster *mocov1beta2.MySQLCluster
+
+		// setupHealthyCluster creates a fresh cluster, waits until the manager
+		// reports it Healthy, and returns the cluster and the index of one
+		// instance that is not the primary.
+		setupHealthyCluster := func(replicas int32, sourceSecret string) (*mocov1beta2.MySQLCluster, int) {
+			GinkgoHelper()
+			testSetupResources(ctx, replicas, sourceSecret)
+			c, err := testGetCluster(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			cm.Update(client.ObjectKeyFromObject(c), "test")
+			c = waitForClusterHealthy(ctx)
+			return c, (c.Status.CurrentPrimaryIndex + 1) % int(replicas)
+		}
+
+		// setAuthPluginToSpec updates spec.systemUserAuthPlugin; nil clears it.
+		setAuthPluginToSpec := func(p *mocov1beta2.SystemUserAuthPlugin) {
+			GinkgoHelper()
+			c, err := testGetCluster(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			c.Spec.SystemUserAuthPlugin = p
+			Expect(k8sClient.Update(ctx, c)).To(Succeed())
+			cm.Update(client.ObjectKeyFromObject(c), "test")
+		}
+
+		// waitForAuthPluginCondition waits until the SystemUserAuthPluginSynced
+		// condition reaches the given status and reason.
+		waitForAuthPluginCondition := func(ctx context.Context, status metav1.ConditionStatus, reason string) {
+			GinkgoHelper()
+			Eventually(func(g Gomega) {
+				c, err := testGetCluster(ctx)
+				g.Expect(err).NotTo(HaveOccurred())
+				cond, err := testGetCondition(c, mocov1beta2.ConditionSystemUserAuthPluginSynced)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(cond.Status).To(Equal(status))
+				g.Expect(cond.Reason).To(Equal(reason))
+			}).Should(Succeed())
+		}
+
+		When("the field is set on a healthy cluster", func() {
+			BeforeEach(func() {
+				cluster, _ = setupHealthyCluster(3, "")
+				// one transient ALTER USER failure, to be retried on a later tick
+				of.setFailAlterOnce(cluster.PodHostname(0))
+				setAuthPluginToSpec(&targetPlugin)
+			})
+
+			It("converges every MOCO user, retrying past a transient failure", func() {
+				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
+				Expect(ms.systemUserAuthPluginSynced).To(MetricsIs("==", 1))
+				expectAllPluginsConverged(of, cluster, targetPlugin.String())
+
+				// both the change and the injected failure surface as events
+				events := &corev1.EventList{}
+				Expect(k8sClient.List(ctx, events, client.InNamespace("test"))).To(Succeed())
+				changedEvents := 0
+				failedEvents := 0
+				for _, e := range events.Items {
+					switch e.Reason {
+					case event.AuthPluginChanged.Reason:
+						changedEvents++
+					case event.AuthPluginChangeFailed.Reason:
+						failedEvents++
+					}
+				}
+				Expect(changedEvents).To(BeNumerically(">", 0))
+				Expect(failedEvents).To(BeNumerically(">", 0))
+			})
+		})
+
+		When("the target plugin is not active on the instances", func() {
+			BeforeEach(func() {
+				cluster, _ = setupHealthyCluster(3, "")
+				for i := range 3 {
+					of.disablePlugin(cluster.PodHostname(i), targetPlugin.String())
+				}
+				setAuthPluginToSpec(&targetPlugin)
+			})
+
+			It("reports PluginUnavailable and converges after the plugin becomes active again", func() {
+				waitForAuthPluginCondition(ctx, metav1.ConditionFalse, "PluginUnavailable")
+				Expect(ms.systemUserAuthPluginSynced).To(MetricsIs("==", 0))
+
+				for i := range 3 {
+					of.enablePlugin(cluster.PodHostname(i), targetPlugin.String())
+				}
+				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
+				expectAllPluginsConverged(of, cluster, targetPlugin.String())
+			})
+		})
+
+		When("the plugins are converged", func() {
+			var replica int
+
+			BeforeEach(func() {
+				cluster, replica = setupHealthyCluster(3, "")
+				setAuthPluginToSpec(&targetPlugin)
+				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
+			})
+
+			It("reports Unknown while an instance is unreachable and recovers", func() {
+				of.setFailing(cluster.PodHostname(replica), true)
+				waitForAuthPluginCondition(ctx, metav1.ConditionUnknown, "InstanceUnreachable")
+				of.setFailing(cluster.PodHostname(replica), false)
+				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
+			})
+
+			It("restores super_read_only left lowered by a crashed convergence", func() {
+				of.setSuperReadOnly(cluster.PodHostname(replica), false)
+				Eventually(func(g Gomega) {
+					st := of.getInstanceStatus(cluster.PodHostname(replica))
+					g.Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
+					c, err := testGetCluster(ctx)
+					g.Expect(err).NotTo(HaveOccurred())
+					condHealthy, err := testGetCondition(c, mocov1beta2.ConditionHealthy)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
+				}).Should(Succeed())
+			})
+
+			It("removes the condition and resets the metric when the field is cleared", func() {
+				setAuthPluginToSpec(nil)
+				Eventually(func(g Gomega) {
+					c, err := testGetCluster(ctx)
+					g.Expect(err).NotTo(HaveOccurred())
+					_, err = testGetCondition(c, mocov1beta2.ConditionSystemUserAuthPluginSynced)
+					g.Expect(err).To(HaveOccurred())
+				}).Should(Succeed())
+				Expect(ms.systemUserAuthPluginSynced).To(MetricsIsNaN())
+			})
+		})
+
+		When("the cluster replicates from an external source", func() {
+			BeforeEach(func() {
+				testSetupResources(ctx, 1, "source")
+
+				sourceSecret := &corev1.Secret{}
+				sourceSecret.Namespace = "test"
+				sourceSecret.Name = "source"
+				sourceSecret.Data = map[string][]byte{
+					constants.CloneSourceHostKey:         []byte("external"),
+					constants.CloneSourcePortKey:         []byte("3306"),
+					constants.CloneSourceUserKey:         []byte("external-donor"),
+					constants.CloneSourcePasswordKey:     []byte("p1"),
+					constants.CloneSourceInitUserKey:     []byte("external-init"),
+					constants.CloneSourceInitPasswordKey: []byte("init"),
+				}
+				Expect(k8sClient.Create(ctx, sourceSecret)).To(Succeed())
+
+				c, err := testGetCluster(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				cm.Update(client.ObjectKeyFromObject(c), "test")
+				cluster = waitForClusterHealthy(ctx)
+				setAuthPluginToSpec(&targetPlugin)
+			})
+
+			It("lowers and restores super_read_only on the intermediate primary", func() {
+				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
+				expectAllPluginsConverged(of, cluster, targetPlugin.String())
+				st := of.getInstanceStatus(cluster.PodHostname(0))
+				Expect(st).NotTo(BeNil())
+				Expect(st.GlobalVariables.SuperReadOnly).To(BeTrue())
+			})
+		})
+	})
+
 	It("should manage an intermediate primary, switchover, and scaling out the cluster", func() {
 		testSetupResources(ctx, 1, "source")
-
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
 
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
@@ -349,14 +528,7 @@ var _ = Describe("manager", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("checking the cluster to become healthy")
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		Expect(cluster.Status.Cloned).To(BeTrue())
 
@@ -493,15 +665,7 @@ var _ = Describe("manager", func() {
 		Expect(cloneEvents).To(Equal(2))
 		Expect(switchOverEvents).To(Equal(1))
 
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
@@ -604,9 +768,6 @@ var _ = Describe("manager", func() {
 	It("should handle failover", func() {
 		testSetupResources(ctx, 3, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
-
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
@@ -620,15 +781,7 @@ var _ = Describe("manager", func() {
 			}).Should(Succeed())
 		}()
 
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
@@ -767,9 +920,6 @@ var _ = Describe("manager", func() {
 	It("should handle errant replicas and lost", func() {
 		testSetupResources(ctx, 5, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
-
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
@@ -783,15 +933,7 @@ var _ = Describe("manager", func() {
 			}).Should(Succeed())
 		}()
 
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		// wait for the pods' metadata are updated
 		Eventually(func(g Gomega) {
@@ -992,9 +1134,6 @@ var _ = Describe("manager", func() {
 	It("should export backup related metrics", func() {
 		testSetupResources(ctx, 1, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
-
 		var cluster *mocov1beta2.MySQLCluster
 		Eventually(func(g Gomega) {
 			var err error
@@ -1026,9 +1165,6 @@ var _ = Describe("manager", func() {
 	It("should detect replication delay and prevent deletion of primary", func() {
 		testSetupResources(ctx, 3, "")
 
-		cm := NewClusterManager(1*time.Second, mgr, of, af, stdr.New(nil))
-		defer cm.StopAll()
-
 		cluster, err := testGetCluster(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		cm.Update(client.ObjectKeyFromObject(cluster), "test")
@@ -1047,15 +1183,7 @@ var _ = Describe("manager", func() {
 		err = k8sClient.Update(ctx, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		// wait for cluster's condition changes
-		Eventually(func(g Gomega) {
-			cluster, err = testGetCluster(ctx)
-			g.Expect(err).NotTo(HaveOccurred())
-
-			condHealthy, err := testGetCondition(cluster, mocov1beta2.ConditionHealthy)
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(condHealthy.Status).To(Equal(metav1.ConditionTrue))
-		}).Should(Succeed())
+		cluster = waitForClusterHealthy(ctx)
 
 		// set replication delay to 100sec
 		primary := cluster.Status.CurrentPrimaryIndex

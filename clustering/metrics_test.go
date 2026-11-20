@@ -3,6 +3,7 @@ package clustering
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/onsi/gomega/types"
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,6 +17,11 @@ type opMetrics struct {
 
 func MetricsIs(op string, val float64) *opMetrics {
 	return &opMetrics{op: op, val: val}
+}
+
+// MetricsIsNaN matches a gauge whose value is NaN.
+func MetricsIsNaN() *opMetrics {
+	return &opMetrics{op: "nan"}
 }
 
 var _ types.GomegaMatcher = &opMetrics{}
@@ -37,6 +43,8 @@ func (m *opMetrics) Match(actual any) (success bool, err error) {
 		return val < m.val, nil
 	case "<=":
 		return val <= m.val, nil
+	case "nan":
+		return math.IsNaN(val), nil
 	}
 	return false, fmt.Errorf("unsupported operator %s", m.op)
 }
