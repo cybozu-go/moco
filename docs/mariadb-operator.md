@@ -37,7 +37,6 @@ The following resources are used:
 ## Step 1: Install mariadb-operator
 
 Install the CRDs and the operator with Helm.
-The example uses cert-manager for the webhook certificates, so install cert-manager first.
 
 ```console
 $ helm repo add mariadb-operator https://mariadb-operator.github.io/mariadb-operator
