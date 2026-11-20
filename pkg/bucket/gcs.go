@@ -3,6 +3,7 @@ package bucket
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"cloud.google.com/go/storage"
@@ -13,9 +14,13 @@ import (
 type gcsBucket struct {
 	name   string
 	client *storage.Client
+	key    *CustomerKey
 }
 
-func NewGCSBucket(ctx context.Context, name string, opts ...option.ClientOption) (Bucket, error) {
+// NewGCSBucket creates a Bucket that manages objects in Google Cloud Storage.
+// If key is not nil, objects are stored and read with customer-supplied
+// encryption keys (CSEK) using that key.
+func NewGCSBucket(ctx context.Context, name string, key *CustomerKey, opts ...option.ClientOption) (Bucket, error) {
 	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -24,6 +29,7 @@ func NewGCSBucket(ctx context.Context, name string, opts ...option.ClientOption)
 	b := &gcsBucket{
 		name:   name,
 		client: client,
+		key:    key,
 	}
 
 	return b, nil
@@ -32,7 +38,11 @@ func NewGCSBucket(ctx context.Context, name string, opts ...option.ClientOption)
 func (b *gcsBucket) Put(ctx context.Context, key string, data io.Reader, objectSize int64) error {
 	bucket := b.client.Bucket(b.name)
 
-	w := bucket.Object(key).NewWriter(ctx)
+	obj := bucket.Object(key)
+	if b.key != nil {
+		obj = obj.Key(b.key.raw)
+	}
+	w := obj.NewWriter(ctx)
 
 	// Chunk size is set to 16 MiB by default.
 	// There is a trade-off between upload speed and memory space for the chunk size.
@@ -50,7 +60,25 @@ func (b *gcsBucket) Put(ctx context.Context, key string, data io.Reader, objectS
 }
 
 func (b *gcsBucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
-	rc, err := b.client.Bucket(b.name).Object(key).NewReader(ctx)
+	obj := b.client.Bucket(b.name).Object(key)
+	if b.key != nil {
+		// The metadata can be read without the key.  It tells whether the
+		// object is encrypted with a customer-supplied key, and with which one.
+		// Objects uploaded before the key was configured are not encrypted.
+		attrs, err := obj.Attrs(ctx)
+		if err != nil {
+			return nil, err
+		}
+		switch attrs.CustomerKeySHA256 {
+		case "":
+		case b.key.sha256Base64():
+			obj = obj.Key(b.key.raw)
+		default:
+			return nil, fmt.Errorf("object %s is encrypted with a different customer-supplied key", key)
+		}
+	}
+
+	rc, err := obj.NewReader(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,10 @@ spec:
       bucketConfig:
         bucketName: moco
         backendType: azure
+        age:
+          identitySecret:
+            name: backup-identity
+            key: identity
       workVolume:
         emptyDir: {}
   podTemplate:

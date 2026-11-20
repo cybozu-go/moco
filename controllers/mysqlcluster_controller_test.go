@@ -1530,6 +1530,7 @@ dummyKey: dummyValue
 		jc.BucketConfig.EndpointURL = ""
 		jc.BucketConfig.Region = ""
 		jc.BucketConfig.UsePathStyle = false
+		jc.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "backup-key", Key: "customer-key"}
 		err = k8sClient.Update(ctx, bp)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -1567,13 +1568,47 @@ dummyKey: dummyValue
 			"test",
 		}))
 		Expect(c.EnvFrom).To(BeEmpty())
-		Expect(c.Env).To(HaveLen(1))
+		Expect(c.Env).To(HaveLen(2))
+		Expect(c.Env[1]).To(Equal(corev1.EnvVar{
+			Name: constants.CustomerKeyEnv,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "backup-key"},
+					Key:                  "customer-key",
+				},
+			},
+		}))
 		cpuReq = c.Resources.Requests[corev1.ResourceCPU]
 		Expect(cpuReq.Value()).To(BeNumerically("==", 4))
 		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceCPU))
 		memReq = c.Resources.Requests[corev1.ResourceMemory]
 		Expect(memReq.Value()).To(BeNumerically("==", 4<<30))
 		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceMemory))
+
+		By("switching to age encryption")
+		Eventually(func() error {
+			bp := &mocov1beta2.BackupPolicy{}
+			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-policy"}, bp); err != nil {
+				return err
+			}
+			bp.Spec.JobConfig.BucketConfig.CustomerKeySecret = nil
+			bp.Spec.JobConfig.BucketConfig.Age = &mocov1beta2.AgeConfig{
+				Recipients: []string{"age1one", "age1two"},
+				// The identity is only for restoration and must not be passed to backup Jobs.
+				IdentitySecret: &mocov1beta2.SecretKeyRef{Name: "backup-key", Key: "identity"},
+			}
+			return k8sClient.Update(ctx, bp)
+		}).Should(Succeed())
+		Eventually(func(g Gomega) {
+			cj = &batchv1.CronJob{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupCronJobName()}, cj)).To(Succeed())
+			c := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
+			g.Expect(c.Env).To(HaveLen(2))
+			g.Expect(c.Env[1]).To(Equal(corev1.EnvVar{
+				Name:  constants.AgeRecipientsEnv,
+				Value: "age1one\nage1two",
+			}))
+		}).Should(Succeed())
 
 		Eventually(func() error {
 			roleBinding = &rbacv1.RoleBinding{}
@@ -1784,6 +1819,67 @@ dummyKey: dummyValue
 			}
 			return true
 		}, 5).Should(BeTrue())
+	})
+
+	It("should pass the encryption keys to the restore job", func() {
+		cluster := testNewMySQLCluster("test")
+		// Use a dedicated name: envtest has no garbage collector, so a restore Job left by
+		// another spec would make the controller skip creating a new one.
+		cluster.Name = "restore-cpk"
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "single",
+			SourceNamespace: "ns",
+			RestorePoint:    metav1.Now(),
+		}
+		jc := &cluster.Spec.Restore.JobConfig
+		jc.ServiceAccountName = "foo"
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+		}
+		jc.BucketConfig.BucketName = "mybucket"
+		jc.BucketConfig.CustomerKeySecret = &mocov1beta2.SecretKeyRef{Name: "restore-key", Key: "customer-key"}
+		jc.BucketConfig.Age = &mocov1beta2.AgeConfig{
+			// The recipients are only for backups and must not be passed to restore Jobs.
+			Recipients:     []string{"age1one"},
+			IdentitySecret: &mocov1beta2.SecretKeyRef{Name: "restore-key", Key: "identity"},
+		}
+		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+		DeferCleanup(func(ctx context.Context) error {
+			job := &batchv1.Job{}
+			job.Namespace = cluster.Namespace
+			job.Name = cluster.RestoreJobName()
+			return client.IgnoreNotFound(k8sClient.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)))
+		})
+
+		Eventually(func(g Gomega) {
+			job := &batchv1.Job{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+			g.Expect(job.Spec.Template.Spec.Containers).To(HaveLen(1))
+			c := job.Spec.Template.Spec.Containers[0]
+			g.Expect(c.Args).NotTo(ContainElement(ContainSubstring("--sse")))
+			g.Expect(c.Args).NotTo(ContainElement(ContainSubstring("age")))
+			g.Expect(c.Env).To(ContainElements(
+				corev1.EnvVar{
+					Name: constants.CustomerKeyEnv,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "restore-key"},
+							Key:                  "customer-key",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: constants.AgeIdentityEnv,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "restore-key"},
+							Key:                  "identity",
+						},
+					},
+				},
+			))
+			g.Expect(c.Env).NotTo(ContainElement(HaveField("Name", constants.AgeRecipientsEnv)))
+		}).Should(Succeed())
 	})
 
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {

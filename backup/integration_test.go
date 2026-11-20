@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"filippo.io/age"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/constants"
@@ -243,6 +246,111 @@ var _ = Describe("Backup/Restore", func() {
 		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, restorePoint, "", "")
 		Expect(err).NotTo(HaveOccurred())
 
+		err = rm.Restore(ctx)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should encrypt backups with age and restore across the switch to encryption", func() {
+		identity, err := age.GenerateX25519Identity()
+		Expect(err).NotTo(HaveOccurred())
+
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			op := &mockOperator{
+				binlogs: []string{"binlog.000001"},
+				uuid:    "123",
+				gtid:    "gtid1",
+			}
+			ops = append(ops, op)
+			return op, nil
+		}
+
+		// a backup taken before encryption was enabled
+		bm, err := NewBackupManager(cfg, bc, workDir, "test", "single", "", 3)
+		Expect(err).NotTo(HaveOccurred())
+		err = bm.Backup(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(bc.contents).To(HaveLen(1))
+
+		time.Sleep(1100 * time.Millisecond)
+		restorePoint := time.Now()
+		time.Sleep(1100 * time.Millisecond)
+
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			op := &mockOperator{
+				binlogs:    []string{"binlog.000001", "binlog.000002"},
+				uuid:       "123",
+				gtid:       "gtid2",
+				expectPiTR: true,
+			}
+			ops = append(ops, op)
+			return op, nil
+		}
+
+		err = os.RemoveAll(filepath.Join(workDir, "dump"))
+		Expect(err).NotTo(HaveOccurred())
+		bm, err = NewBackupManager(cfg, bc, workDir, "test", "single", "", 3, WithAgeRecipients(identity.Recipient()))
+		Expect(err).NotTo(HaveOccurred())
+		err = bm.Backup(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(bc.contents).To(HaveLen(3))
+
+		var plain, encrypted []string
+		for key, data := range bc.contents {
+			if strings.HasSuffix(key, ".age") {
+				encrypted = append(encrypted, path.Base(key))
+				Expect(string(data)).To(HavePrefix("age-encryption.org/v1\n"))
+			} else {
+				plain = append(plain, path.Base(key))
+			}
+		}
+		Expect(plain).To(ConsistOf("dump.tar"))
+		Expect(encrypted).To(ConsistOf("dump.tar.age", "binlog.tar.zst.age"))
+
+		cluster := &mocov1beta2.MySQLCluster{}
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "single"}, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cluster.Status.Backup.DumpSize).To(BeNumerically(">", 0))
+		Expect(cluster.Status.Backup.BinlogSize).To(BeNumerically(">", 0))
+
+		// Restoring without an identity fails before the instance is prepared.
+		var failedOp *mockOperator
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			failedOp = &mockOperator{binlogs: []string{"binlog.000001"}, uuid: "123", gtid: "gtid1"}
+			ops = append(ops, failedOp)
+			return failedOp, nil
+		}
+		rm, err := NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, restorePoint, "", "")
+		Expect(err).NotTo(HaveOccurred())
+		err = rm.Restore(ctx)
+		Expect(err).To(MatchError(ContainSubstring("binlog.tar.zst.age is encrypted with age, but no age identity is configured")))
+		Expect(failedOp.prepared).To(BeFalse())
+
+		// The plain dump and the encrypted binlog are restored with the identity.
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			op := &mockOperator{
+				binlogs:    []string{"binlog.000001"},
+				uuid:       "123",
+				gtid:       "gtid1",
+				expectPiTR: true,
+			}
+			ops = append(ops, op)
+			return op, nil
+		}
+		rm, err = NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, restorePoint, "", "",
+			WithAgeIdentities(identity))
+		Expect(err).NotTo(HaveOccurred())
+		err = rm.Restore(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
+		// The encrypted dump is restored with the identity.
+		newOperator = func(host string, port int, user, password string, threads int) (bkop.Operator, error) {
+			op := &mockOperator{binlogs: []string{"binlog.000002"}, uuid: "123", gtid: "gtid2"}
+			ops = append(ops, op)
+			return op, nil
+		}
+		rm, err = NewRestoreManager(cfg, bc, workDir2, "test", "single", "restore", "target", "", 3, time.Now(), "", "",
+			WithAgeIdentities(identity))
+		Expect(err).NotTo(HaveOccurred())
 		err = rm.Restore(ctx)
 		Expect(err).NotTo(HaveOccurred())
 	})

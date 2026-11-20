@@ -17,6 +17,15 @@ metadata:
   namespace: backup-tls
   name: backup-owner
 ---
+# SSE-C key for backup files. The test enables it after the first backup.
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: backup-tls
+  name: backup-key
+stringData:
+  customer-key: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+---
 apiVersion: moco.cybozu.com/v1beta2
 kind: BackupPolicy
 metadata:

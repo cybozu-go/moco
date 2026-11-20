@@ -71,7 +71,7 @@ var _ = Describe("S3Bucket", func() {
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 		os.Setenv("AWS_REGION", "us-east-1")
 
-		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
+		b, err := NewS3Bucket("test", nil, WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Put(ctx, "foo/bar", strings.NewReader("01234567890123456789"), 128<<20)
@@ -105,7 +105,7 @@ var _ = Describe("S3Bucket", func() {
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 		os.Setenv("AWS_REGION", "us-east-1")
 
-		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
+		b, err := NewS3Bucket("test", nil, WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
 
 		dateCmd := exec.Command("date")
@@ -145,7 +145,7 @@ var _ = Describe("S3Bucket", func() {
 		os.Setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 		os.Setenv("AWS_REGION", "us-east-1")
 
-		b, err := NewS3Bucket("test", WithEndpointURL("http://localhost:9000"), WithPathStyle())
+		b, err := NewS3Bucket("test", nil, WithEndpointURL("http://localhost:9000"), WithPathStyle())
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Put(ctx, "foo1/bar", strings.NewReader("01234567890123456789"), 128<<20)

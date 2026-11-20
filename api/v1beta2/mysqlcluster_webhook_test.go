@@ -423,6 +423,46 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
+	It("should allow a restore spec with an age identity", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: mocov1beta2.JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: mocov1beta2.BucketConfig{
+					BucketName: "mybucket",
+					// A customer key is allowed, to restore backups taken before switching to age.
+					CustomerKeySecret: &mocov1beta2.SecretKeyRef{Name: "key", Key: "customer-key"},
+					Age: &mocov1beta2.AgeConfig{
+						IdentitySecret: &mocov1beta2.SecretKeyRef{Name: "key", Key: "identity"},
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, r)).To(Succeed())
+	})
+
+	It("should deny a restore spec with age but without an identity", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: mocov1beta2.JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: mocov1beta2.BucketConfig{
+					BucketName: "mybucket",
+					Age:        &mocov1beta2.AgeConfig{Recipients: []string{testAgeRecipient}},
+				},
+			},
+		}
+		err := k8sClient.Create(ctx, r)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("spec.restore.jobConfig.bucketConfig.age.identitySecret: Required value"))
+	})
+
 	It("should allow valid restore spec", func() {
 		r := makeMySQLCluster()
 		r.Spec.Restore = &mocov1beta2.RestoreSpec{

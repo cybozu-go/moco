@@ -1,0 +1,48 @@
+# Checks that the backup files of backup-tls/source written after SSE-C was
+# enabled cannot be read without the key, and that the first dump can.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: check-ssec-tls
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: check-ssec-tls
+          image: moco-backup:dev
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              s3() {
+                s3cmd --host=minio-tls.default.svc:9000 --host-bucket=minio-tls.default.svc:9000 \
+                  --access_key=minioadmin --secret_key=minioadmin --ssl --ca-certs=/minio-cert/ca.crt "$@"
+              }
+              keys=$(s3 ls -r s3://moco/moco/backup-tls/source/ | awk '{print $4}')
+              echo "$keys"
+              dumps=$(echo "$keys" | grep '/dump.tar$' | sort)
+              first=$(echo "$dumps" | head -n 1)
+              last=$(echo "$dumps" | tail -n 1)
+              binlogs=$(echo "$keys" | grep '/binlog.tar.zst$')
+              test -n "$first" && test "$first" != "$last" && test -n "$binlogs"
+              s3 get --force "$first" /tmp/plain
+              for k in $last $binlogs; do
+                if s3 get --force "$k" /tmp/encrypted; then
+                  echo "$k is readable without the SSE-C key"
+                  exit 1
+                fi
+              done
+          volumeMounts:
+            - name: minio-cert
+              mountPath: /minio-cert
+      volumes:
+        - name: minio-cert
+          secret:
+            secretName: minio-cert
+            items:
+              - key: ca.crt
+                path: ca.crt
