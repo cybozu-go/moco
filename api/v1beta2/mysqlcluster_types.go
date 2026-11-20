@@ -672,7 +672,9 @@ type MySQLClusterStatus struct {
 
 	// currentPrimaryIndex is the index of the current primary Pod in StatefulSet.
 	// Initially, this is zero.
-	CurrentPrimaryIndex int `json:"currentPrimaryIndex"`
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	CurrentPrimaryIndex int `json:"currentPrimaryIndex"` // FIXME: Do not use omitempty. This should have been a pointer (*int) because zero is a valid value.
 
 	// syncedReplicas is the number of synced instances including the primary.
 	// +optional
