@@ -720,7 +720,7 @@ type BackupStatus struct {
 	Time metav1.Time `json:"time"`
 
 	// elapsed is the time spent on the backup.
-	Elapsed metav1.Duration `json:"elapsed"`
+	Elapsed metav1.Duration `json:"elapsed"` // FIXME: Do not use omitempty nor omitzero. This should have been a pointer (*metav1.Duration) because zero is a valid value.
 
 	// sourceIndex is the ordinal of the backup source instance.
 	SourceIndex int `json:"sourceIndex"`

@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -129,6 +130,39 @@ var _ = Describe("MySQLCluster Webhook", func() {
 
 		Expect(apierrors.IsInvalid(err)).To(BeTrue())
 		Expect(err).To(MatchError(ContainSubstring("startupWaitSeconds")))
+	})
+
+	It("should allow a partial status without currentPrimaryIndex", func() {
+		r := makeMySQLCluster()
+		Expect(k8sClient.Create(ctx, r)).To(Succeed())
+		raw := &unstructured.Unstructured{}
+		raw.SetGroupVersionKind(mocov1beta2.GroupVersion.WithKind("MySQLCluster"))
+		raw.SetName(r.Name)
+		raw.SetNamespace(r.Namespace)
+
+		err := k8sClient.Status().Patch(ctx, raw, client.RawPatch(types.MergePatchType, []byte(`{"status":{"cloned":true}}`)))
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(raw), raw)).To(Succeed())
+		cloned, found, err := unstructured.NestedBool(raw.Object, "status", "cloned")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(found).To(BeTrue())
+		Expect(cloned).To(BeTrue())
+		_, found, err = unstructured.NestedFieldNoCopy(raw.Object, "status", "currentPrimaryIndex")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(found).To(BeFalse())
+	})
+
+	It("should persist backup status with zero elapsed time", func() {
+		r := makeMySQLCluster()
+		Expect(k8sClient.Create(ctx, r)).To(Succeed())
+		r.Status.Backup.Time = metav1.Now()
+
+		Expect(k8sClient.Status().Update(ctx, r)).To(Succeed())
+
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(r), r)).To(Succeed())
+		Expect(r.Status.Backup.Time.IsZero()).To(BeFalse())
+		Expect(r.Status.Backup.Elapsed.Duration).To(BeZero())
 	})
 
 	DescribeTable("should deny empty object name references",
