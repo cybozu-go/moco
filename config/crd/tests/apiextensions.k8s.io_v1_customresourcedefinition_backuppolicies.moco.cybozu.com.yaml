@@ -3167,7 +3167,6 @@ spec:
                 required:
                 - bucketConfig
                 - serviceAccountName
-                - workVolume
                 type: object
               schedule:
                 description: schedule is the schedule in Cron format for...

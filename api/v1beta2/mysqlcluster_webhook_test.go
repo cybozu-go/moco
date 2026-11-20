@@ -12,6 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -441,6 +442,29 @@ var _ = Describe("MySQLCluster Webhook", func() {
 		}
 		err := k8sClient.Create(ctx, r)
 		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should allow an omitted restore workVolume", func() {
+		r := makeMySQLCluster()
+		r.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "test",
+			SourceNamespace: "test",
+			RestorePoint:    metav1.Now(),
+			JobConfig: mocov1beta2.JobConfig{
+				ServiceAccountName: "foo",
+				BucketConfig: mocov1beta2.BucketConfig{
+					BucketName: "mybucket",
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, r)).To(Succeed())
+
+		raw := &unstructured.Unstructured{}
+		raw.SetGroupVersionKind(mocov1beta2.GroupVersion.WithKind("MySQLCluster"))
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(r), raw)).To(Succeed())
+		_, found, err := unstructured.NestedFieldNoCopy(raw.Object, "spec", "restore", "jobConfig", "workVolume")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(found).To(BeFalse())
 	})
 
 	It("should deny editing restore spec", func() {

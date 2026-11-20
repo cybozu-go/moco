@@ -8958,7 +8958,6 @@ spec:
                     required:
                     - bucketConfig
                     - serviceAccountName
-                    - workVolume
                     type: object
                   restorePoint:
                     description: restorePoint is the target date and time to...

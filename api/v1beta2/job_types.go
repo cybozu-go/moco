@@ -22,7 +22,11 @@ type JobConfig struct {
 	//
 	// The recommended volume source is a generic ephemeral volume.
 	// https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
-	WorkVolume VolumeSourceApplyConfiguration `json:"workVolume"`
+	//
+	// If omitted or empty, Kubernetes implicitly uses an emptyDir volume.
+	// This implicit default is deprecated and will be removed in a future Kubernetes version.
+	// +optional
+	WorkVolume VolumeSourceApplyConfiguration `json:"workVolume,omitempty,omitzero"`
 
 	// threads is the number of threads used for backup or restoration.
 	// +kubebuilder:validation:Minimum=1
