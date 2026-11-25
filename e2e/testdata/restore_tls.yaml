@@ -31,6 +31,9 @@ spec:
         endpointURL: https://minio-tls.default.svc:9000
         usePathStyle: true
         caCert: /minio-cert/ca.crt
+        customerKeySecret:
+          name: backup-key
+          key: customer-key
       workVolume:
         emptyDir: {}
   podTemplate:

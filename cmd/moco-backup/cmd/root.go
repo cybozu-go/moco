@@ -32,19 +32,28 @@ var commonArgs struct {
 }
 
 func makeBucket(bucketName string) (bucket.Bucket, error) {
+	var key *bucket.CustomerKey
+	if v := os.Getenv(constants.CustomerKeyEnv); v != "" {
+		k, err := bucket.ParseCustomerKey(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", constants.CustomerKeyEnv, err)
+		}
+		key = k
+	}
+
 	switch commonArgs.backendType {
 	case constants.BackendTypeS3:
-		return makeS3Bucket(bucketName)
+		return makeS3Bucket(bucketName, key)
 	case constants.BackendTypeGCS:
-		return makeGCSBucket(bucketName)
+		return makeGCSBucket(bucketName, key)
 	case constants.BackendTypeAzure:
-		return makeAzureBucket(bucketName)
+		return makeAzureBucket(bucketName, key)
 	default:
-		return makeS3Bucket(bucketName)
+		return makeS3Bucket(bucketName, key)
 	}
 }
 
-func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
+func makeS3Bucket(bucketName string, key *bucket.CustomerKey) (bucket.Bucket, error) {
 	var opts []func(*s3.Options)
 	if len(commonArgs.region) > 0 {
 		opts = append(opts, bucket.WithRegion(commonArgs.region))
@@ -76,17 +85,17 @@ func makeS3Bucket(bucketName string) (bucket.Bucket, error) {
 			Transport: transport,
 		}))
 	}
-	return bucket.NewS3Bucket(bucketName, opts...)
+	return bucket.NewS3Bucket(bucketName, key, opts...)
 }
 
-func makeGCSBucket(bucketName string) (bucket.Bucket, error) {
-	return bucket.NewGCSBucket(context.Background(), bucketName)
+func makeGCSBucket(bucketName string, key *bucket.CustomerKey) (bucket.Bucket, error) {
+	return bucket.NewGCSBucket(context.Background(), bucketName, key)
 }
 
-func makeAzureBucket(containerName string) (bucket.Bucket, error) {
+func makeAzureBucket(containerName string, key *bucket.CustomerKey) (bucket.Bucket, error) {
 	// Priority 1: Check for connection string (for Azurite and testing)
 	if connStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING"); connStr != "" {
-		return bucket.NewAzureBucketFromConnectionString(context.Background(), connStr, containerName)
+		return bucket.NewAzureBucketFromConnectionString(context.Background(), connStr, containerName, key)
 	}
 
 	// Priority 2: Use endpoint URL or construct from account name
@@ -107,7 +116,7 @@ func makeAzureBucket(containerName string) (bucket.Bucket, error) {
 		return nil, fmt.Errorf("failed to create Azure credential: %w", err)
 	}
 
-	return bucket.NewAzureBucket(context.Background(), serviceURL, containerName, credential)
+	return bucket.NewAzureBucket(context.Background(), serviceURL, containerName, credential, key)
 }
 
 var mysqlPassword = os.Getenv("MYSQL_PASSWORD")

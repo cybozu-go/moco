@@ -19,6 +19,18 @@ metadata:
 stringData:
   AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite.default.svc:10000/devstoreaccount1;"
 ---
+# The age identity for restoration.  The matching recipient is set by the test.
+# This key is for tests only.
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: backup-azure
+  name: backup-identity
+stringData:
+  identity: |
+    # public key: age1gf7j7dym5taxxud8js8q3j3ez8c67zyyvmzxcns6ua082h3flu7qvzcf95
+    AGE-SECRET-KEY-16WN63TMFRPQWXSED882F6EMLHE6PJQEFNPY4ST02G7MQE7RKL34Q75X5W7
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:

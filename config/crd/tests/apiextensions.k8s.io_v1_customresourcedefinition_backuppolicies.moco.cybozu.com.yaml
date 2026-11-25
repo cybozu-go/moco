@@ -597,6 +597,31 @@ spec:
                   bucketConfig:
                     description: Specifies how to access an object storage bucket.
                     properties:
+                      age:
+                        description: Age configures client-side encryption of backup...
+                        properties:
+                          identitySecret:
+                            description: IdentitySecret references a key in a Secret
+                              that...
+                            properties:
+                              key:
+                                description: Key is the key in the Secret.
+                                minLength: 1
+                                type: string
+                              name:
+                                description: Name is the name of the Secret.
+                                minLength: 1
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                          recipients:
+                            description: Recipients are the age public keys (`age1...
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       backendType:
                         default: s3
                         description: BackendType is an identifier for the object...
@@ -612,6 +637,21 @@ spec:
                       caCert:
                         description: Path to SSL CA certificate file used in addition...
                         type: string
+                      customerKeySecret:
+                        description: CustomerKeySecret references a key in a Secret...
+                        properties:
+                          key:
+                            description: Key is the key in the Secret.
+                            minLength: 1
+                            type: string
+                          name:
+                            description: Name is the name of the Secret.
+                            minLength: 1
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
                       endpointURL:
                         description: The API endpoint URL.
                         pattern: ^https?://.*

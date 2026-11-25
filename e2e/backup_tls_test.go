@@ -26,6 +26,9 @@ var backupTLSYAML string
 //go:embed testdata/restore_tls.yaml
 var restoreTLSYAML string
 
+//go:embed testdata/check_ssec_tls.yaml
+var checkSSECTLSYAML string
+
 var _ = Context("backup-tls", Ordered, func() {
 	if doUpgrade {
 		return
@@ -92,6 +95,20 @@ var _ = Context("backup-tls", Ordered, func() {
 		}).Should(Succeed())
 	})
 
+	It("should enable SSE-C for later backups", func() {
+		kubectlSafe(nil, "-n", "backup-tls", "patch", "backuppolicy", "daily", "--type=merge", "-p",
+			`{"spec":{"jobConfig":{"bucketConfig":{"customerKeySecret":{"name":"backup-key","key":"customer-key"}}}}}`)
+		Eventually(func(g Gomega) {
+			out, err := kubectl(nil, "-n", "backup-tls", "get", "cronjob", "moco-backup-source", "-o", "json")
+			g.Expect(err).NotTo(HaveOccurred())
+			cj := &batchv1.CronJob{}
+			g.Expect(json.Unmarshal(out, cj)).To(Succeed())
+			containers := cj.Spec.JobTemplate.Spec.Template.Spec.Containers
+			g.Expect(containers).To(HaveLen(1))
+			g.Expect(containers[0].Env).To(ContainElement(HaveField("Name", "MOCO_CUSTOMER_KEY")))
+		}).Should(Succeed())
+	})
+
 	It("should take an incremental backup", func() {
 		kubectlSafe(nil, "moco", "-n", "backup-tls", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('bbb')")
@@ -119,6 +136,25 @@ var _ = Context("backup-tls", Ordered, func() {
 		cluster, err := getCluster("backup-tls", "source")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cluster.Status.Backup.BinlogSize).NotTo(Equal(int64(0)))
+	})
+
+	It("should store the backup files written after enabling SSE-C encrypted", func() {
+		kubectlSafe([]byte(checkSSECTLSYAML), "apply", "-f", "-")
+		DeferCleanup(func() {
+			kubectlSafe(nil, "delete", "-n", "default", "job", "check-ssec-tls", "--ignore-not-found", "--cascade=background")
+		})
+		Eventually(func(g Gomega) {
+			out, err := kubectl(nil, "get", "jobs", "check-ssec-tls", "-o", "json")
+			g.Expect(err).NotTo(HaveOccurred())
+			job := &batchv1.Job{}
+			g.Expect(json.Unmarshal(out, job)).To(Succeed())
+			if condFailed, err := getJobCondition(job, batchv1.JobFailed); err == nil && condFailed.Status == corev1.ConditionTrue {
+				StopTrying("check-ssec-tls failed: " + condFailed.Message).Now()
+			}
+			condComplete, err := getJobCondition(job, batchv1.JobComplete)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(condComplete.Status).To(Equal(corev1.ConditionTrue), "check-ssec-tls has not been finished")
+		}).Should(Succeed())
 	})
 
 	It("should destroy the source then restore the backup data", func() {

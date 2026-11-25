@@ -1114,6 +1114,47 @@ func bucketArgs(bc mocov1beta2.BucketConfig) []string {
 	return append(args, bc.BucketName)
 }
 
+// backupBucketEnv returns the environment variables for the backup container
+// that are derived from BucketConfig.
+func backupBucketEnv(bc mocov1beta2.BucketConfig) []*corev1ac.EnvVarApplyConfiguration {
+	env := customerKeyEnv(bc)
+	if bc.Age != nil && len(bc.Age.Recipients) > 0 {
+		env = append(env, corev1ac.EnvVar().
+			WithName(constants.AgeRecipientsEnv).
+			WithValue(strings.Join(bc.Age.Recipients, "\n")),
+		)
+	}
+	return env
+}
+
+// restoreBucketEnv returns the environment variables for the restore container
+// that are derived from BucketConfig.
+func restoreBucketEnv(bc mocov1beta2.BucketConfig) []*corev1ac.EnvVarApplyConfiguration {
+	env := customerKeyEnv(bc)
+	if bc.Age != nil && bc.Age.IdentitySecret != nil {
+		env = append(env, secretKeyEnv(constants.AgeIdentityEnv, bc.Age.IdentitySecret))
+	}
+	return env
+}
+
+func customerKeyEnv(bc mocov1beta2.BucketConfig) []*corev1ac.EnvVarApplyConfiguration {
+	if bc.CustomerKeySecret == nil {
+		return nil
+	}
+	return []*corev1ac.EnvVarApplyConfiguration{secretKeyEnv(constants.CustomerKeyEnv, bc.CustomerKeySecret)}
+}
+
+func secretKeyEnv(name string, ref *mocov1beta2.SecretKeyRef) *corev1ac.EnvVarApplyConfiguration {
+	return corev1ac.EnvVar().
+		WithName(name).
+		WithValueFrom(corev1ac.EnvVarSource().
+			WithSecretKeyRef(corev1ac.SecretKeySelector().
+				WithName(ref.Name).
+				WithKey(ref.Key),
+			),
+		)
+}
+
 //nolint:gocyclo
 func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
@@ -1203,6 +1244,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 				),
 			),
 		).
+		WithEnv(backupBucketEnv(jc.BucketConfig)...).
 		WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 			envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 			for _, e := range jc.Env {
@@ -1520,6 +1562,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 					),
 				),
 			).
+			WithEnv(restoreBucketEnv(jc.BucketConfig)...).
 			WithEnv(func() []*corev1ac.EnvVarApplyConfiguration {
 				envFrom := make([]*corev1ac.EnvVarApplyConfiguration, 0, len(jc.Env))
 				for _, e := range jc.Env {

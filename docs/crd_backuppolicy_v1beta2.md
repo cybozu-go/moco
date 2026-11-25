@@ -7,8 +7,10 @@
 
 * [BackupPolicyList](#backuppolicylist)
 * [BackupPolicySpec](#backuppolicyspec)
+* [AgeConfig](#ageconfig)
 * [BucketConfig](#bucketconfig)
 * [JobConfig](#jobconfig)
+* [SecretKeyRef](#secretkeyref)
 
 #### BackupPolicy
 
@@ -50,6 +52,17 @@ BackupPolicySpec defines the configuration items for MySQLCluster backup.\n\nThe
 
 [Back to Custom Resources](#custom-resources)
 
+#### AgeConfig
+
+AgeConfig is a set of parameters for encrypting backup files with age.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| recipients | Recipients are the age public keys (`age1...`) to encrypt backup files to. Any of the matching private keys can decrypt the files. This is used by backup Jobs only. | []string | false |
+| identitySecret | IdentitySecret references a key in a Secret that holds age identities (private keys, `AGE-SECRET-KEY-1...`), one per line, to decrypt backup files. This is used by restore Jobs only. The Secret must exist in the namespace of the restore Job. | *[SecretKeyRef](#secretkeyref) | false |
+
+[Back to Custom Resources](#custom-resources)
+
 #### BucketConfig
 
 BucketConfig is a set of parameter to access an object storage bucket.
@@ -62,6 +75,8 @@ BucketConfig is a set of parameter to access an object storage bucket.
 | usePathStyle | Allows you to enable the client to use path-style addressing, i.e., https?://ENDPOINT/BUCKET/KEY. By default, a virtual-host addressing is used (https?://BUCKET.ENDPOINT/KEY). | bool | false |
 | backendType | BackendType is an identifier for the object storage to be used. | string | false |
 | caCert | Path to SSL CA certificate file used in addition to system default. | string | false |
+| customerKeySecret | CustomerKeySecret references a key in a Secret that holds a base64-encoded 256-bit key for server-side encryption with a customer-provided key: SSE-C for `s3`, customer-supplied encryption keys (CSEK) for `gcs`, and customer-provided keys (CPK) for `azure`. When set, backup files are uploaded with this key, and the same key is used to download them for restoration. The Secret must exist in the namespace of the backup or restore Job. | *[SecretKeyRef](#secretkeyref) | false |
+| age | Age configures client-side encryption of backup files with age (https://age-encryption.org). moco-backup encrypts the files before uploading them, so this works with every backend type. Encrypted files get the suffix `.age`. In a BackupPolicy, `recipients` is required and cannot be combined with `customerKeySecret`. In a MySQLCluster restore spec, `identitySecret` is required. | *[AgeConfig](#ageconfig) | false |
 
 [Back to Custom Resources](#custom-resources)
 
@@ -85,5 +100,16 @@ JobConfig is a set of parameters for backup and restore job Pods.
 | volumes | Volumes defines the list of volumes that can be mounted by containers in the Pod. | []VolumeApplyConfiguration | false |
 | volumeMounts | VolumeMounts describes a list of volume mounts that are to be mounted in a container. | []VolumeMountApplyConfiguration | false |
 | imagePullSecrets | ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods. To configure imagePullSecrets for the MySQLCluster's StatefulSet Pods, use `podTemplate.spec.imagePullSecrets` instead. | []LocalObjectReferenceApplyConfiguration | false |
+
+[Back to Custom Resources](#custom-resources)
+
+#### SecretKeyRef
+
+SecretKeyRef references a key in a Secret in the same namespace.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name is the name of the Secret. | string | true |
+| key | Key is the key in the Secret. | string | true |
 
 [Back to Custom Resources](#custom-resources)

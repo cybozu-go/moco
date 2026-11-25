@@ -32,7 +32,12 @@ NAME:      The name of the MySQLCluster.`,
 			return fmt.Errorf("failed to get config for Kubernetes: %w", err)
 		}
 
-		bm, err := backup.NewBackupManager(cfg, b, commonArgs.workDir, namespace, name, mysqlPassword, commonArgs.threads)
+		opts, err := backupOptions()
+		if err != nil {
+			return err
+		}
+
+		bm, err := backup.NewBackupManager(cfg, b, commonArgs.workDir, namespace, name, mysqlPassword, commonArgs.threads, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create a backup manager: %w", err)
 		}

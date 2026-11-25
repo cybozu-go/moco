@@ -65,6 +65,11 @@ func runRestore(cmd *cobra.Command, args []string) (e error) {
 		return fmt.Errorf("invalid restore point %s: %w", args[5], err)
 	}
 
+	opts, err := restoreOptions()
+	if err != nil {
+		return err
+	}
+
 	b, err := makeBucket(bucketName)
 	if err != nil {
 		return fmt.Errorf("failed to create a bucket interface: %w", err)
@@ -82,7 +87,8 @@ func runRestore(cmd *cobra.Command, args []string) (e error) {
 		commonArgs.threads,
 		restorePoint,
 		schema,
-		users)
+		users,
+		opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create a restore manager: %w", err)
 	}

@@ -2,11 +2,14 @@ package bucket
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -58,10 +61,12 @@ func WithHTTPClient(c *http.Client) func(*s3.Options) {
 type s3Bucket struct {
 	name   string
 	client *s3.Client
+	key    *CustomerKey
 }
 
 // NewS3Bucket creates a Bucket that manage object in S3.
-func NewS3Bucket(name string, optFns ...func(*s3.Options)) (Bucket, error) {
+// If key is not nil, objects are stored and read with SSE-C using that key.
+func NewS3Bucket(name string, key *CustomerKey, optFns ...func(*s3.Options)) (Bucket, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
@@ -70,6 +75,7 @@ func NewS3Bucket(name string, optFns ...func(*s3.Options)) (Bucket, error) {
 	return s3Bucket{
 		name:   name,
 		client: s3.NewFromConfig(cfg, optFns...),
+		key:    key,
 	}, nil
 }
 
@@ -93,6 +99,12 @@ func (b s3Bucket) Put(ctx context.Context, key string, data io.Reader, objectSiz
 		Body:        data,
 		ContentType: &mt,
 	}
+	if b.key != nil {
+		// The uploader copies these fields to CreateMultipartUpload and UploadPart.
+		pi.SSECustomerAlgorithm = aws.String(customerKeyAlgorithm)
+		pi.SSECustomerKey = aws.String(b.key.base64())
+		pi.SSECustomerKeyMD5 = aws.String(b.key.md5Base64())
+	}
 	_, err := uploader.Upload(ctx, pi) //nolint:staticcheck
 	return err
 }
@@ -102,6 +114,37 @@ func (b s3Bucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 		Bucket: &b.name,
 		Key:    &key,
 	}
+	if b.key == nil {
+		return b.getObject(ctx, gi)
+	}
+
+	gi.SSECustomerAlgorithm = aws.String(customerKeyAlgorithm)
+	gi.SSECustomerKey = aws.String(b.key.base64())
+	gi.SSECustomerKeyMD5 = aws.String(b.key.md5Base64())
+	body, err := b.getObject(ctx, gi)
+	if err == nil {
+		return body, nil
+	}
+
+	// S3 rejects SSE-C parameters for an object that is not encrypted with SSE-C
+	// with 400 Bad Request.  Such objects exist when SSE-C is enabled for a
+	// cluster that already has backups, so retry without the key.
+	var re *awshttp.ResponseError
+	if !errors.As(err, &re) || re.HTTPStatusCode() != http.StatusBadRequest {
+		return nil, err
+	}
+	plain := &s3.GetObjectInput{
+		Bucket: &b.name,
+		Key:    &key,
+	}
+	body, err2 := b.getObject(ctx, plain)
+	if err2 != nil {
+		return nil, fmt.Errorf("failed to get object with SSE-C key (%w), and without it (%w)", err, err2)
+	}
+	return body, nil
+}
+
+func (b s3Bucket) getObject(ctx context.Context, gi *s3.GetObjectInput) (io.ReadCloser, error) {
 	resp, err := b.client.GetObject(ctx, gi)
 	if err != nil {
 		return nil, err

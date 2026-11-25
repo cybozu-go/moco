@@ -10,6 +10,18 @@ For details, read documentation of [`EnvConfig` in github.com/aws/aws-sdk-go-v2/
 
 It also requires `MYSQL_PASSWORD` environment variable to be set.
 
+If `MOCO_CUSTOMER_KEY` is set, `moco-backup` uploads and downloads backup files with server-side encryption with that customer-provided key:
+SSE-C for `s3`, CSEK for `gcs`, and CPK for `azure`.
+The value must be a base64-encoded 256-bit key.
+`moco-controller` sets this variable from `bucketConfig.customerKeySecret`.
+
+If `MOCO_AGE_RECIPIENTS` is set, `moco-backup backup` encrypts backup files with [age][] before it uploads them, and adds the suffix `.age` to their names.
+The value is a list of age recipients (public keys), one per line.
+`moco-controller` sets this variable from `bucketConfig.age.recipients` of the BackupPolicy.
+
+`moco-backup restore` decrypts files with the suffix `.age` with the identities (private keys) in `MOCO_AGE_IDENTITY`, one per line.
+`moco-controller` sets this variable from `bucketConfig.age.identitySecret` of the restore spec.
+
 ## Global command-line flags
 
 ```
@@ -44,3 +56,4 @@ Usage: `moco-backup restore BUCKET SOURCE_NAMESPACE SOURCE_NAME NAMESPACE NAME Y
 - `YYYYMMDD-hhmmss`: The point-in-time to restore data.  e.g. `20210523-150423`
 
 [EnvConfig]: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig
+[age]: https://age-encryption.org

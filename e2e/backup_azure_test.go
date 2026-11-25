@@ -106,6 +106,20 @@ var _ = Context("backup-azure", Ordered, func() {
 		}).Should(Succeed())
 	})
 
+	It("should enable age encryption for later backups", func() {
+		kubectlSafe(nil, "-n", "backup-azure", "patch", "backuppolicy", "daily", "--type=merge", "-p",
+			`{"spec":{"jobConfig":{"bucketConfig":{"age":{"recipients":["age1gf7j7dym5taxxud8js8q3j3ez8c67zyyvmzxcns6ua082h3flu7qvzcf95"]}}}}}`)
+		Eventually(func(g Gomega) {
+			out, err := kubectl(nil, "-n", "backup-azure", "get", "cronjob", "moco-backup-source", "-o", "json")
+			g.Expect(err).NotTo(HaveOccurred())
+			cj := &batchv1.CronJob{}
+			g.Expect(json.Unmarshal(out, cj)).To(Succeed())
+			containers := cj.Spec.JobTemplate.Spec.Template.Spec.Containers
+			g.Expect(containers).To(HaveLen(1))
+			g.Expect(containers[0].Env).To(ContainElement(HaveField("Name", "MOCO_AGE_RECIPIENTS")))
+		}).Should(Succeed())
+	})
+
 	It("should take an incremental backup", func() {
 		kubectlSafe(nil, "moco", "-n", "backup-azure", "mysql", "-u", "moco-writable", "source", "--",
 			"-D", "test", "--init_command=SET autocommit=1", "-e", "INSERT INTO t (data) VALUES ('bbb')")
@@ -142,6 +156,11 @@ var _ = Context("backup-azure", Ordered, func() {
 		cluster, err := getCluster("backup-azure", "source")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cluster.Status.Backup.BinlogSize).NotTo(Equal(int64(0)))
+
+		// The binlog goes to the directory of the first, unencrypted backup.
+		logs := string(kubectlSafe(nil, "-n", "backup-azure", "logs", "job/backup-2"))
+		Expect(logs).To(ContainSubstring("/binlog.tar.zst.age"))
+		Expect(logs).To(ContainSubstring("/dump.tar.age"))
 	})
 
 	It("should destroy the source then restore the backup data", func() {
@@ -181,6 +200,11 @@ var _ = Context("backup-azure", Ordered, func() {
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(2))
+
+		// The unencrypted dump and the encrypted binlog were restored.
+		logs := string(kubectlSafe(nil, "-n", "backup-azure", "logs", "job/moco-restore-target"))
+		Expect(logs).To(MatchRegexp(`/dump\.tar"`))
+		Expect(logs).To(ContainSubstring("/binlog.tar.zst.age"))
 	})
 
 	It("should delete namespace", func() {

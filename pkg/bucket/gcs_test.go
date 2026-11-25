@@ -51,7 +51,7 @@ var _ = Describe("GCSBucket", func() {
 	})
 
 	It("should put and get objects", func() {
-		b, err := NewGCSBucket(ctx, "test", option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
+		b, err := NewGCSBucket(ctx, "test", nil, option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Put(ctx, "foo/bar", strings.NewReader("01234567890123456789"), 128<<20)
@@ -81,7 +81,7 @@ var _ = Describe("GCSBucket", func() {
 	})
 
 	It("should put unseekable objects", func() {
-		b, err := NewGCSBucket(ctx, "test", option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
+		b, err := NewGCSBucket(ctx, "test", nil, option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
 		Expect(err).NotTo(HaveOccurred())
 
 		dateCmd := exec.Command("date")
@@ -117,7 +117,7 @@ var _ = Describe("GCSBucket", func() {
 	})
 
 	It("should put objects and get list of objects up to delimiter", func() {
-		b, err := NewGCSBucket(ctx, "test", option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
+		b, err := NewGCSBucket(ctx, "test", nil, option.WithEndpoint("http://localhost:4443/storage/v1/"), option.WithoutAuthentication())
 		Expect(err).NotTo(HaveOccurred())
 
 		err = b.Put(ctx, "foo1/bar", strings.NewReader("01234567890123456789"), 128<<20)

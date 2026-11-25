@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"filippo.io/age"
 	mocov1beta2 "github.com/cybozu-go/moco/api/v1beta2"
 	"github.com/cybozu-go/moco/pkg/bkop"
 	"github.com/cybozu-go/moco/pkg/bucket"
@@ -41,6 +43,7 @@ type BackupManager struct {
 	workDir       string
 	bucket        bucket.Bucket
 	threads       int
+	ageRecipients []age.Recipient
 
 	// status fields
 	startTime    time.Time
@@ -54,7 +57,7 @@ type BackupManager struct {
 	warnings     []string
 }
 
-func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, password string, threads int) (*BackupManager, error) {
+func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, password string, threads int, opts ...BackupOption) (*BackupManager, error) {
 	log := crlog.Log.WithName("backup")
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -79,7 +82,7 @@ func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, passwor
 		return nil, fmt.Errorf("failed to get reference for MySQLCluster: %w", err)
 	}
 
-	return &BackupManager{
+	bm := &BackupManager{
 		log:           log,
 		client:        k8sClient,
 		cluster:       cluster,
@@ -88,7 +91,11 @@ func NewBackupManager(cfg *rest.Config, bc bucket.Bucket, dir, ns, name, passwor
 		workDir:       dir,
 		bucket:        bc,
 		threads:       threads,
-	}, nil
+	}
+	for _, opt := range opts {
+		opt(bm)
+	}
+	return bm, nil
 }
 
 func (bm *BackupManager) Backup(ctx context.Context) error {
@@ -344,9 +351,13 @@ func (bm *BackupManager) backupFull(ctx context.Context, op bkop.Operator) error
 	pw = nil
 
 	bw := &ByteCountWriter{}
-	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.DumpFilename, bm.startTime)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr, bw), usage); err != nil {
-		return fmt.Errorf("failed to put dump.tar: %w", err)
+	data, err := bm.encrypt(pr)
+	if err != nil {
+		return err
+	}
+	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, bm.filename(constants.DumpFilename), bm.startTime)
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(data, bw), usage); err != nil {
+		return fmt.Errorf("failed to put %s: %w", path.Base(key), err)
 	}
 	if err := tarCmd.Wait(); err != nil {
 		return fmt.Errorf("tar command failed: %w", err)
@@ -437,9 +448,13 @@ func (bm *BackupManager) backupBinlog(ctx context.Context, op bkop.Operator) err
 	pw2 = nil
 
 	bw := &ByteCountWriter{}
-	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, constants.BinlogFilename, lastBackup.Time.Time)
-	if err := bm.bucket.Put(ctx, key, io.TeeReader(pr2, bw), usage); err != nil {
-		return fmt.Errorf("failed to put binlog.tar.zst: %w", err)
+	data, err := bm.encrypt(pr2)
+	if err != nil {
+		return err
+	}
+	key := calcKey(bm.cluster.Namespace, bm.cluster.Name, bm.filename(constants.BinlogFilename), lastBackup.Time.Time)
+	if err := bm.bucket.Put(ctx, key, io.TeeReader(data, bw), usage); err != nil {
+		return fmt.Errorf("failed to put %s: %w", path.Base(key), err)
 	}
 	if err := tarCmd.Wait(); err != nil {
 		return fmt.Errorf("tar command failed: %w", err)

@@ -64,3 +64,47 @@ func TestFindNearestDump(t *testing.T) {
 		})
 	}
 }
+
+func TestFindNearestDumpAge(t *testing.T) {
+	// Backups taken before and after age encryption was enabled.
+	// The binlog of 20210525-112233 was uploaded by the first encrypted backup.
+	keys := []string{
+		"moco/test/test/20210525-112233/dump.tar",
+		"moco/test/test/20210525-112233/binlog.tar.zst.age",
+		"moco/test/test/20210525-120001/dump.tar.age",
+		"moco/test/test/20210525-120001/binlog.tar.zst.age",
+		"moco/test/test/20210525-130000/dump.tar.age",
+		"moco/test/test/20210525-130000/garbage.age",
+	}
+
+	testCases := []struct {
+		name         string
+		restorePoint time.Time
+
+		expectDump   string
+		expectBinlog string
+	}{
+		{"plain dump with encrypted binlog", time.Date(2021, time.May, 25, 11, 50, 0, 0, time.UTC),
+			"moco/test/test/20210525-112233/dump.tar", "moco/test/test/20210525-112233/binlog.tar.zst.age"},
+		{"encrypted dump with encrypted binlog", time.Date(2021, time.May, 25, 12, 30, 0, 0, time.UTC),
+			"moco/test/test/20210525-120001/dump.tar.age", "moco/test/test/20210525-120001/binlog.tar.zst.age"},
+		{"encrypted dump", time.Date(2021, time.May, 25, 14, 0, 0, 0, time.UTC),
+			"moco/test/test/20210525-130000/dump.tar.age", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rm := &RestoreManager{
+				log:          logr.Discard(),
+				restorePoint: tc.restorePoint,
+			}
+			dump, binlog, _ := rm.FindNearestDump(keys)
+			if dump != tc.expectDump {
+				t.Errorf("unexpected dump: %s, expected %s", dump, tc.expectDump)
+			}
+			if binlog != tc.expectBinlog {
+				t.Errorf("unexpected binlog %s, expected %s", binlog, tc.expectBinlog)
+			}
+		})
+	}
+}
