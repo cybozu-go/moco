@@ -53,78 +53,80 @@ spec:
           metadata:
             type: object
           spec:
-            description: MySQLClusterSpec defines the desired state of...
+            description: spec defines the desired state of MySQLCluster.
             properties:
               agentUseLocalhost:
-                description: AgentUseLocalhost configures the mysqld interface...
+                description: agentUseLocalhost configures the mysqld interface...
                 type: boolean
               backupPolicyName:
-                description: The name of BackupPolicy custom resource in the...
-                nullable: true
+                description: backupPolicyName is the name of BackupPolicy...
+                maxLength: 253
+                minLength: 1
                 type: string
               collectors:
-                description: Collectors is the list of collector flag names of...
+                description: collectors is the list of collector flag names of...
                 items:
                   type: string
                 type: array
               disableSlowQueryLogContainer:
-                description: DisableSlowQueryLogContainer controls whether to...
+                description: disableSlowQueryLogContainer controls whether to...
                 type: boolean
               initializeTimezoneData:
                 default: false
-                description: InitializeTimezoneData controls whether the init...
+                description: initializeTimezoneData controls whether the init...
                 type: boolean
               logRotationSchedule:
-                description: LogRotationSchedule specifies the schedule to...
+                description: logRotationSchedule specifies the schedule to...
                 type: string
               logRotationSize:
-                description: LogRotationSize specifies the size to rotate...
+                description: logRotationSize specifies the size in bytes to...
                 type: integer
               maxDelaySeconds:
                 default: 60
-                description: MaxDelaySeconds configures the readiness probe of...
+                description: maxDelaySeconds configures the readiness probe of...
                 minimum: 0
                 type: integer
               maxDelaySecondsForPodDeletion:
                 default: 0
-                description: MaxDelaySecondsForPodDeletion configures the...
+                description: maxDelaySecondsForPodDeletion configures the...
                 format: int64
                 minimum: 0
                 type: integer
               mysqlConfigMapName:
-                description: MySQLConfigMapName is a `ConfigMap` name of MySQL...
-                nullable: true
+                description: mysqlConfigMapName is a `ConfigMap` name of MySQL...
+                maxLength: 253
+                minLength: 1
                 type: string
               offline:
-                description: Offline sets the cluster offline, releasing...
+                description: offline sets the cluster offline, releasing...
                 type: boolean
               podTemplate:
-                description: PodTemplate is a `Pod` template for MySQL server...
+                description: podTemplate is a `Pod` template for MySQL server...
                 properties:
                   metadata:
-                    description: Standard object's metadata.
+                    description: metadata is the standard object's metadata.
                     properties:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is a map of string keys and values.
+                        description: annotations is a map of string keys and values.
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: Labels is a map of string keys and values.
+                        description: labels is a map of string keys and values.
                         type: object
                       name:
-                        description: Name is the name of the object.
+                        description: name is the name of the object.
                         type: string
                     type: object
                   overwriteContainers:
-                    description: OverwriteContainers overwrites the container...
+                    description: overwriteContainers overwrites the container...
                     items:
                       description: OverwriteContainer defines the container spec...
                       properties:
                         name:
-                          description: Name of the container to overwrite.
+                          description: name is the name of the container to overwrite.
                           enum:
                           - agent
                           - copy-moco-init
@@ -133,7 +135,7 @@ spec:
                           - mysqld-exporter
                           type: string
                         resources:
-                          description: Resources is the container resource to be...
+                          description: resources is the container resource to be...
                           properties:
                             claims:
                               description: Claims lists the names of resources, defined
@@ -174,7 +176,7 @@ spec:
                               type: object
                           type: object
                         securityContext:
-                          description: SecurityContext is the container SecurityContext...
+                          description: securityContext is the container SecurityContext...
                           properties:
                             allowPrivilegeEscalation:
                               description: AllowPrivilegeEscalation controls whether
@@ -293,7 +295,7 @@ spec:
                       type: object
                     type: array
                   spec:
-                    description: Specification of the desired behavior of the pod.
+                    description: spec is the specification of the desired behavior...
                     properties:
                       activeDeadlineSeconds:
                         description: Optional duration in seconds the pod may be...
@@ -5459,27 +5461,27 @@ spec:
                 - spec
                 type: object
               primaryServiceTemplate:
-                description: PrimaryServiceTemplate is a `Service` template...
+                description: primaryServiceTemplate is a `Service` template...
                 properties:
                   metadata:
-                    description: Standard object's metadata.
+                    description: metadata is the standard object's metadata.
                     properties:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is a map of string keys and values.
+                        description: annotations is a map of string keys and values.
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: Labels is a map of string keys and values.
+                        description: labels is a map of string keys and values.
                         type: object
                       name:
-                        description: Name is the name of the object.
+                        description: name is the name of the object.
                         type: string
                     type: object
                   spec:
-                    description: Spec is the ServiceSpec
+                    description: spec is the ServiceSpec
                     properties:
                       allocateLoadBalancerNodePorts:
                         description: allocateLoadBalancerNodePorts defines if...
@@ -5600,27 +5602,27 @@ spec:
                     type: object
                 type: object
               replicaServiceTemplate:
-                description: ReplicaServiceTemplate is a `Service` template...
+                description: replicaServiceTemplate is a `Service` template...
                 properties:
                   metadata:
-                    description: Standard object's metadata.
+                    description: metadata is the standard object's metadata.
                     properties:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is a map of string keys and values.
+                        description: annotations is a map of string keys and values.
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: Labels is a map of string keys and values.
+                        description: labels is a map of string keys and values.
                         type: object
                       name:
-                        description: Name is the name of the object.
+                        description: name is the name of the object.
                         type: string
                     type: object
                   spec:
-                    description: Spec is the ServiceSpec
+                    description: spec is the ServiceSpec
                     properties:
                       allocateLoadBalancerNodePorts:
                         description: allocateLoadBalancerNodePorts defines if...
@@ -5742,21 +5744,22 @@ spec:
                 type: object
               replicas:
                 default: 1
-                description: Replicas is the number of instances.
+                description: replicas is the number of instances.
                 format: int32
                 type: integer
               replicationSourceSecretName:
-                description: ReplicationSourceSecretName is a `Secret` name...
-                nullable: true
+                description: replicationSourceSecretName is a `Secret` name...
+                maxLength: 253
+                minLength: 1
                 type: string
               restore:
-                description: Restore is the specification to perform...
+                description: restore is the specification to perform...
                 properties:
                   jobConfig:
-                    description: Specifies parameters for restore Pod.
+                    description: jobConfig specifies parameters for restore Pod.
                     properties:
                       affinity:
-                        description: If specified, the pod's scheduling constraints.
+                        description: affinity is the pod's scheduling constraints.
                         properties:
                           nodeAffinity:
                             description: Describes node affinity scheduling rules
@@ -6298,32 +6301,34 @@ spec:
                             type: object
                         type: object
                       bucketConfig:
-                        description: Specifies how to access an object storage bucket.
+                        description: bucketConfig specifies how to access an object...
                         properties:
                           backendType:
                             default: s3
-                            description: BackendType is an identifier for the object...
+                            description: backendType is an identifier for the object...
                             enum:
                             - s3
                             - gcs
                             - azure
                             type: string
                           bucketName:
-                            description: The name of the bucket
+                            description: bucketName is the name of the bucket.
                             minLength: 1
                             type: string
                           caCert:
-                            description: Path to SSL CA certificate file used in addition...
+                            description: caCert is the path to SSL CA certificate
+                              file...
                             type: string
                           endpointURL:
-                            description: The API endpoint URL.
+                            description: endpointURL is the API endpoint URL.
                             pattern: ^https?://.*
                             type: string
                           region:
-                            description: The region of the bucket.
+                            description: region is the region of the bucket.
                             type: string
                           usePathStyle:
-                            description: Allows you to enable the client to use path-style...
+                            description: usePathStyle allows you to enable the client
+                              to...
                             type: boolean
                         required:
                         - bucketName
@@ -6333,12 +6338,13 @@ spec:
                         - type: integer
                         - type: string
                         default: 4
-                        description: CPU is the amount of CPU requested for the Pod.
+                        description: cpu is the amount of CPU requested for the Pod.
                         nullable: true
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       env:
-                        description: List of environment variables to set in the...
+                        description: env is a list of environment variables to set
+                          in...
                         items:
                           description: EnvVarApplyConfiguration is the type defined
                             to...
@@ -6439,7 +6445,7 @@ spec:
                           type: object
                         type: array
                       envFrom:
-                        description: List of sources to populate environment variables...
+                        description: envFrom is a list of sources to populate...
                         items:
                           description: EnvFromSourceApplyConfiguration is the type...
                           properties:
@@ -6472,7 +6478,7 @@ spec:
                           type: object
                         type: array
                       imagePullSecrets:
-                        description: ImagePullSecrets is a list of references to...
+                        description: imagePullSecrets is a list of references to...
                         items:
                           description: LocalObjectReferenceApplyConfiguration is the...
                           properties:
@@ -6485,17 +6491,15 @@ spec:
                         anyOf:
                         - type: integer
                         - type: string
-                        description: MaxCPU is the amount of maximum CPU for the Pod.
-                        nullable: true
+                        description: maxCpu is the amount of maximum CPU for the Pod.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       maxMemory:
                         anyOf:
                         - type: integer
                         - type: string
-                        description: MaxMemory is the amount of maximum memory for
+                        description: maxMemory is the amount of maximum memory for
                           the...
-                        nullable: true
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -6503,22 +6507,23 @@ spec:
                         - type: integer
                         - type: string
                         default: 4Gi
-                        description: Memory is the amount of memory requested for
+                        description: memory is the amount of memory requested for
                           the...
                         nullable: true
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       serviceAccountName:
-                        description: ServiceAccountName specifies the ServiceAccount...
+                        description: serviceAccountName specifies the ServiceAccount...
+                        maxLength: 253
                         minLength: 1
                         type: string
                       threads:
                         default: 4
-                        description: Threads is the number of threads used for backup...
+                        description: threads is the number of threads used for backup...
                         minimum: 1
                         type: integer
                       volumeMounts:
-                        description: VolumeMounts describes a list of volume mounts...
+                        description: volumeMounts describes a list of volume mounts...
                         items:
                           description: VolumeMountApplyConfiguration is the type defined...
                           properties:
@@ -6549,7 +6554,7 @@ spec:
                           type: object
                         type: array
                       volumes:
-                        description: Volumes defines the list of volumes that can
+                        description: volumes defines the list of volumes that can
                           be...
                         items:
                           description: VolumeApplyConfiguration is the type defined
@@ -7768,7 +7773,7 @@ spec:
                           type: object
                         type: array
                       workVolume:
-                        description: WorkVolume is the volume source for the working...
+                        description: workVolume is the volume source for the working...
                         properties:
                           awsElasticBlockStore:
                             description: awsElasticBlockStore represents an AWS Disk...
@@ -8955,25 +8960,25 @@ spec:
                     required:
                     - bucketConfig
                     - serviceAccountName
-                    - workVolume
                     type: object
                   restorePoint:
-                    description: RestorePoint is the target date and time to...
+                    description: restorePoint is the target date and time to...
                     format: date-time
                     type: string
                   schema:
-                    description: Schema is the name of the schema to restore.
+                    description: schema is the name of the schema to restore.
                     type: string
                   sourceName:
-                    description: SourceName is the name of the source...
+                    description: sourceName is the name of the source...
+                    maxLength: 253
                     minLength: 1
                     type: string
                   sourceNamespace:
-                    description: SourceNamespace is the namespace of the source...
+                    description: sourceNamespace is the namespace of the source...
                     minLength: 1
                     type: string
                   users:
-                    description: Users is the name of the comma separated users to...
+                    description: users is the name of the comma separated users to...
                     type: string
                 required:
                 - jobConfig
@@ -8982,42 +8987,42 @@ spec:
                 - sourceNamespace
                 type: object
               serverIDBase:
-                description: ServerIDBase, if set, will become the base number...
+                description: serverIDBase, if set, will become the base number...
                 format: int32
                 type: integer
               slowQueryLogConfigTmpl:
-                description: SlowQueryLogConfigTmpl is the template for slow...
+                description: slowQueryLogConfigTmpl is the template for slow...
                 type: string
               startupWaitSeconds:
                 default: 3600
-                description: StartupWaitSeconds is the maximum duration to...
+                description: startupWaitSeconds is the maximum duration to...
                 format: int32
-                minimum: 0
+                minimum: 1
                 type: integer
               volumeClaimTemplates:
-                description: VolumeClaimTemplates is a list of...
+                description: volumeClaimTemplates is a list of...
                 items:
                   description: PersistentVolumeClaim is a user's request for and...
                   properties:
                     metadata:
-                      description: Standard object's metadata.
+                      description: metadata is the standard object's metadata.
                       properties:
                         annotations:
                           additionalProperties:
                             type: string
-                          description: Annotations is a map of string keys and values.
+                          description: annotations is a map of string keys and values.
                           type: object
                         labels:
                           additionalProperties:
                             type: string
-                          description: Labels is a map of string keys and values.
+                          description: labels is a map of string keys and values.
                           type: object
                         name:
-                          description: Name is the name of the object.
+                          description: name is the name of the object.
                           type: string
                       type: object
                     spec:
-                      description: Spec defines the desired characteristics of a...
+                      description: spec defines the desired characteristics of a...
                       properties:
                         accessModes:
                           description: accessModes contains the desired access modes
@@ -9139,52 +9144,52 @@ spec:
             - volumeClaimTemplates
             type: object
           status:
-            description: MySQLClusterStatus defines the observed state of...
+            description: status defines the observed state of MySQLCluster.
             properties:
               backup:
-                description: Backup is the status of the last successful...
+                description: backup is the status of the last successful...
                 properties:
                   binlogFilename:
-                    description: BinlogFilename is the binlog filename that the...
+                    description: binlogFilename is the binlog filename that the...
                     type: string
                   binlogSize:
-                    description: BinlogSize is the size in bytes of a tarball of...
+                    description: binlogSize is the size in bytes of a tarball of...
                     format: int64
                     type: integer
                   dumpSize:
-                    description: DumpSize is the size in bytes of a full dump of...
+                    description: dumpSize is the size in bytes of a full dump of...
                     format: int64
                     type: integer
                   elapsed:
-                    description: Elapsed is the time spent on the backup.
+                    description: elapsed is the time spent on the backup.
                     type: string
                   gtidSet:
-                    description: GTIDSet is the GTID set of the full dump of...
+                    description: gtidSet is the GTID set of the full dump of...
                     type: string
                   sourceIndex:
-                    description: SourceIndex is the ordinal of the backup source...
+                    description: sourceIndex is the ordinal of the backup source...
                     type: integer
                   sourceUUID:
-                    description: SourceUUID is the `server_uuid` of the backup...
+                    description: sourceUUID is the `server_uuid` of the backup...
                     type: string
                   time:
-                    description: The time of the backup.
+                    description: time is the time of the backup.
                     format: date-time
                     nullable: true
                     type: string
                   uuidSet:
                     additionalProperties:
                       type: string
-                    description: UUIDSet is the `server_uuid` set of all candidate...
+                    description: uuidSet is the `server_uuid` set of all candidate...
                     type: object
                   warnings:
-                    description: Warnings are list of warnings from the last...
+                    description: warnings are list of warnings from the last...
                     items:
                       type: string
                     nullable: true
                     type: array
                   workDirUsage:
-                    description: WorkDirUsage is the max usage in bytes of the...
+                    description: workDirUsage is the max usage in bytes of the...
                     format: int64
                     type: integer
                 required:
@@ -9200,10 +9205,10 @@ spec:
                 - workDirUsage
                 type: object
               cloned:
-                description: Cloned indicates if the initial cloning from an...
+                description: cloned indicates if the initial cloning from an...
                 type: boolean
               conditions:
-                description: Conditions is an array of conditions.
+                description: conditions is an array of conditions.
                 items:
                   description: Condition contains details for one aspect of the...
                   properties:
@@ -9246,37 +9251,39 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
               currentPrimaryIndex:
-                description: CurrentPrimaryIndex is the index of the current...
+                description: currentPrimaryIndex is the index of the current...
+                minimum: 0
                 type: integer
               errantReplicaList:
-                description: ErrantReplicaList is the list of indices of...
+                description: errantReplicaList is the list of indices of...
                 items:
                   type: integer
                 type: array
               errantReplicas:
-                description: ErrantReplicas is the number of instances that...
+                description: errantReplicas is the number of instances that...
                 type: integer
               reconcileInfo:
-                description: ReconcileInfo represents version information for...
+                description: reconcileInfo represents version information for...
                 properties:
                   generation:
-                    description: Generation is the `metadata.
+                    description: generation is the `metadata.
                     format: int64
                     type: integer
                   reconcileVersion:
-                    description: ReconcileVersion is the version of the operator...
+                    description: reconcileVersion is the version of the operator...
                     type: integer
                 type: object
               restoredTime:
-                description: RestoredTime is the time when the cluster data is...
+                description: restoredTime is the time when the cluster data is...
                 format: date-time
                 type: string
               syncedReplicas:
-                description: SyncedReplicas is the number of synced instances...
+                description: syncedReplicas is the number of synced instances...
                 type: integer
-            required:
-            - currentPrimaryIndex
             type: object
         type: object
     served: true
