@@ -14,6 +14,7 @@
     - [Customize system container](customize-system-container.md)
     - [Change volumeClaimTemplates](change-pvc-template.md)
     - [Rollout strategy](rolling-update-strategy.md)
+    - [Managing users and databases with mariadb-operator](mariadb-operator.md)
 - [Known issues](known_issues.md)
 
 # References
