@@ -11,14 +11,18 @@ func TestFindNearestDump(t *testing.T) {
 	keys := []string{
 		"moco/test/test/20210525-112233/dump.tar",
 		"moco/test/test/20210525-112233/binlog.tar.zst",
+		"moco/test/test/20210525-112233/dump-metadata.json",
 		"moco/test/test/20210525-120001/dump.tar",
+		"moco/test/test/20210525-120001/dump-metadata.json",
 		"moco/test/test/garbage",
 		"moco/test/test/20210526000000/dump.tar", // invalid
 		"moco/test/test/20210526-000000/dump.tar",
+		"moco/test/test/20210526-000000/dump-metadata.json",
 		"moco/test/test/20210527-000000/dump.tar",
 		"moco/test/test/20210527-000000/binlog.tar.zst",
 		"moco/test/test/20210528-000000/dump.tar",
 		"moco/test/test/20210528-000000/binlog.tar.zst",
+		"moco/test/test/20210528-000000/dump-metadata.json",
 	}
 
 	testCases := []struct {

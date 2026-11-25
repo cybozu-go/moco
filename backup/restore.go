@@ -206,6 +206,10 @@ func (rm *RestoreManager) FindNearestDump(keys []string) (string, string, time.T
 	var nearestDump, nearestBinlog string
 
 	for _, key := range keys {
+		if strings.HasSuffix(key, constants.DumpMetadataFilename) {
+			continue
+		}
+
 		isBinlog := strings.HasSuffix(key, constants.BinlogFilename)
 		isDump := strings.HasSuffix(key, constants.DumpFilename)
 		if !isBinlog && !isDump {
