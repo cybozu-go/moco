@@ -242,6 +242,9 @@ func (r *MySQLClusterReconciler) syncPVCLabelAndAnnotationValues(ctx context.Con
 		for _, key := range r.PVCSyncLabelKeys {
 			if value, ok := template.Labels[key]; ok {
 				if pvc.Labels[key] != value {
+					if pvc.Labels == nil {
+						pvc.Labels = map[string]string{}
+					}
 					pvc.Labels[key] = value
 					isUpdate = true
 				}
@@ -251,6 +254,9 @@ func (r *MySQLClusterReconciler) syncPVCLabelAndAnnotationValues(ctx context.Con
 		for _, key := range r.PVCSyncAnnotationKeys {
 			if value, ok := template.Annotations[key]; ok {
 				if pvc.Annotations[key] != value {
+					if pvc.Annotations == nil {
+						pvc.Annotations = map[string]string{}
+					}
 					pvc.Annotations[key] = value
 					isUpdate = true
 				}
