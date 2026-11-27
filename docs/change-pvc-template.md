@@ -93,7 +93,7 @@ For example, the user modifies the `.spec.volumeClaimTemplates` of the MySQLClus
       spec:
         containers:
         - name: mysqld
-          image: ghcr.io/cybozu-go/moco/mysql:8.4.10
+          image: ghcr.io/cybozu-go/moco/mysql:8.4.13
     volumeClaimTemplates:
     - metadata:
         name: mysql-data

@@ -67,7 +67,7 @@ Edit the following lines in `Dockerfile`:
 
 ```
 # The tag should be the latest one
-FROM ghcr.io/cybozu-go/moco/mysql:8.4.10.1 as mysql
+FROM ghcr.io/cybozu-go/moco/mysql:8.4.13.1 as mysql
 
 # See the below description for how to get the version string.
 ARG MYSQLSH_VERSION=8.4.8-1
@@ -87,7 +87,7 @@ Tool versions are defined at the top of them.
 
 ## Adding or dropping supported software versions
 
-Edit matrix strategies in [`.github/workflows/ci.yaml`](.github/workflows/ci.yaml).
+Edit matrix strategies in [`.github/workflows/ci-e2e.yaml`](.github/workflows/ci-e2e.yaml).
 Also, don't forget to update [`README.md`](README.md).
 
 MySQL versions appear twice:
@@ -97,14 +97,14 @@ MySQL versions appear twice:
     name: Integration tests with MySQL
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.46", "8.4.4", "8.4.9", "8.4.10"]
+        mysql-version: ["8.0.28", "8.0.46", "8.4.10", "8.4.11", "8.4.13"]
 ...
   # Matrix tests for the latest MySQL version on different Kubernetes versions.
   e2e:
     name: Supported Kubernetes versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.4.10"]
+        mysql-version: ["8.4.13"]
         k8s-version: ["1.34.11", "1.35.8", "1.36.4"]
 ...
   # Matrix tests for different MySQL versions on the latest supported Kubernetes version.
@@ -112,7 +112,7 @@ MySQL versions appear twice:
     name: Supported MySQL versions End-to-End Tests
     strategy:
       matrix:
-        mysql-version: ["8.0.28", "8.0.46", "8.4.4", "8.4.9", "8.4.10"]
+        mysql-version: ["8.0.28", "8.0.46", "8.4.10", "8.4.11", "8.4.13"]
         k8s-version: ["1.36.4"]
 ```
 

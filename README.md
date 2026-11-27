@@ -26,7 +26,7 @@ Blog article: [Introducing MOCO, a modern MySQL operator on Kubernetes](https://
 
 ## Supported software
 
-- MySQL: 8.0.28, 8.0.46, 8.4.4, 8.4.9, 8.4.10
+- MySQL: 8.0.28, 8.0.46, 8.4.10, 8.4.11, 8.4.13
 - Kubernetes: 1.34, 1.35, 1.36
 
 If you use Kubernetes 1.35, using v1.35.4+ or disabling the `MaxUnavailableStatefulSet` feature gate is required ([kubernetes/kubernetes#137409](https://github.com/kubernetes/kubernetes/issues/137409)).
@@ -78,7 +78,7 @@ spec:
     spec:
       containers:
       - name: mysqld
-        image: ghcr.io/cybozu-go/moco/mysql:8.4.10
+        image: ghcr.io/cybozu-go/moco/mysql:8.4.13
   volumeClaimTemplates:
   - metadata:
       name: mysql-data
