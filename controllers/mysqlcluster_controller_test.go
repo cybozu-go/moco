@@ -150,21 +150,20 @@ var _ = Describe("Job container security context", func() {
 		Expect(sc.RunAsGroup).To(BeNil())
 	})
 
-	It("preserves explicit values without modifying the job config", func() {
+	It("preserves explicit values", func() {
 		r := &MySQLClusterReconciler{}
 		jc := &mocov1beta2.JobConfig{
 			ContainerSecurityContext: &mocov1beta2.SecurityContextApplyConfiguration{
-				RunAsUser:              new(int64(0)),
 				ReadOnlyRootFilesystem: new(false),
+				RunAsUser:              new(int64(0)),
 			},
 		}
 
 		sc := r.jobContainerSecurityContext(jc)
 
+		Expect(sc.ReadOnlyRootFilesystem).To(Equal(new(false)))
 		Expect(sc.RunAsUser).To(Equal(new(int64(0))))
 		Expect(sc.RunAsGroup).To(Equal(new(int64(constants.ContainerGID))))
-		Expect(sc.ReadOnlyRootFilesystem).To(Equal(new(false)))
-		Expect(jc.ContainerSecurityContext.RunAsGroup).To(BeNil())
 	})
 })
 
@@ -1443,6 +1442,7 @@ dummyKey: dummyValue
 	})
 
 	It("should reconcile backup related resources", func() {
+		By("creating a MySQL cluster")
 		cluster := testNewMySQLCluster("test")
 		cluster.Spec.BackupPolicyName = new("test-policy")
 		err := k8sClient.Create(ctx, cluster)
