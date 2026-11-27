@@ -103,6 +103,39 @@ type JobConfig struct {
 	//
 	// +optional
 	ImagePullSecrets []LocalObjectReferenceApplyConfiguration `json:"imagePullSecrets,omitempty"`
+
+	// PodSecurityContext holds pod-level security attributes for the backup and restore job Pods.
+	// Fields that are not set are filled with MOCO's defaults (`fsGroup` and `fsGroupChangePolicy`).
+	//
+	// +optional
+	PodSecurityContext *PodSecurityContextApplyConfiguration `json:"podSecurityContext,omitempty"`
+
+	// ContainerSecurityContext holds the security configuration for the backup and restore containers.
+	// Fields that are not set are filled with MOCO's defaults (`readOnlyRootFilesystem`,
+	// `runAsUser`, and `runAsGroup`).
+	//
+	// +optional
+	ContainerSecurityContext *SecurityContextApplyConfiguration `json:"containerSecurityContext,omitempty"`
+}
+
+// PodSecurityContextApplyConfiguration is the type defined to implement the DeepCopy method.
+type PodSecurityContextApplyConfiguration corev1ac.PodSecurityContextApplyConfiguration
+
+// DeepCopy returns a deep copy of in, or nil if in is nil.
+func (in *PodSecurityContextApplyConfiguration) DeepCopy() *PodSecurityContextApplyConfiguration {
+	if in == nil {
+		return nil
+	}
+	out := new(PodSecurityContextApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
 }
 
 // VolumeSourceApplyConfiguration is the type defined to implement the DeepCopy method.

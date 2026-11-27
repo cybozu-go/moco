@@ -20,6 +20,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
 - [Backup and restore](#backup-and-restore)
   - [Object storage bucket](#object-storage-bucket)
   - [BackupPolicy](#backuppolicy)
+  - [Security context of backup and restore jobs](#security-context-of-backup-and-restore-jobs)
   - [Credentials to access S3 bucket](#credentials-to-access-s3-bucket)
   - [Taking an emergency backup](#taking-an-emergency-backup)
   - [Restore](#restore)
@@ -527,6 +528,40 @@ spec:
 ...
 ```
 
+### Security context of backup and restore jobs
+
+By default, MOCO sets the following security context on backup and restore job Pods:
+
+- Pod: `fsGroup: 10000` and `fsGroupChangePolicy: OnRootMismatch`
+- Container: `readOnlyRootFilesystem: true`, `runAsUser: 10000`, and `runAsGroup: 10000`
+
+The controller's `--disable-default-security-context` flag disables the default `fsGroup`, `runAsUser`, and `runAsGroup` values.
+
+This is not enough for a namespace that enforces the [`restricted` Pod Security Standard][PSS].
+You can add more fields with `jobConfig.podSecurityContext` and `jobConfig.containerSecurityContext`.
+MOCO uses your values as the base and only fills in the default fields that you did not set.
+For example, if you set `readOnlyRootFilesystem: false`, MOCO keeps it.
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta2
+kind: BackupPolicy
+metadata:
+  name: daily
+spec:
+  jobConfig:
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+    ...
+```
+
+The same fields are available in `MySQLCluster.spec.restore.jobConfig` for the restore job.
+
 ### Credentials to access S3 bucket
 
 Depending on your Kubernetes service provider and object storage, there are various ways to give credentials to access the object storage bucket.
@@ -755,6 +790,7 @@ Delete such pending Pods until PVC is actually removed.
 [MinIO]: https://min.io/
 [EKS]: https://aws.amazon.com/eks/
 [CronJob]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+[PSS]: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
 
 ### Stop Clustering and Reconciliation
 

@@ -902,15 +902,7 @@ func (r *MySQLClusterReconciler) reconcileV1StatefulSet(ctx context.Context, clu
 	podSpec.WithContainers(containers...)
 	podSpec.WithInitContainers(initContainers...)
 
-	if podSpec.SecurityContext == nil {
-		podSpec.WithSecurityContext(corev1ac.PodSecurityContext())
-	}
-	if !r.DisableDefaultSecurityContext && podSpec.SecurityContext.FSGroup == nil {
-		podSpec.SecurityContext.WithFSGroup(constants.ContainerGID)
-	}
-	if podSpec.SecurityContext.FSGroupChangePolicy == nil {
-		podSpec.SecurityContext.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
-	}
+	podSpec.WithSecurityContext(r.applyDefaultPodSecurityContext(podSpec.SecurityContext))
 	if podSpec.Affinity == nil {
 		podSpec.WithAffinity(corev1ac.Affinity().
 			WithPodAntiAffinity(corev1ac.PodAntiAffinity().
@@ -1228,10 +1220,8 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 			}
 			return volumeMounts
 		}()...).
-		WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
+		WithSecurityContext(r.jobContainerSecurityContext(jc)).
 		WithResources(resources)
-
-	r.updateContainerWithSecurityContext(container)
 
 	cronJobName := cluster.BackupCronJobName()
 	cronJob := batchv1ac.CronJob(cronJobName, cluster.Namespace).
@@ -1269,7 +1259,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 								return imagePullSecrets
 							}()...).
 							WithContainers(container).
-							WithSecurityContext(r.defaultPodSecurityContext()),
+							WithSecurityContext(r.jobPodSecurityContext(jc)),
 						),
 					),
 				),
@@ -1546,7 +1536,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 				}
 				return volumeMounts
 			}()...).
-			WithSecurityContext(corev1ac.SecurityContext().WithReadOnlyRootFilesystem(true)).
+			WithSecurityContext(r.jobContainerSecurityContext(jc)).
 			WithResources(resources)
 
 		jobName := cluster.RestoreJobName()
@@ -1581,7 +1571,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 							return imagePullSecrets
 						}()...).
 						WithContainers(container).
-						WithSecurityContext(r.defaultPodSecurityContext()),
+						WithSecurityContext(r.jobPodSecurityContext(jc)),
 					),
 				),
 			)
@@ -1633,19 +1623,6 @@ func jobTolerations(tolerations []mocov1beta2.TolerationApplyConfiguration) []*c
 		converted = append(converted, (*corev1ac.TolerationApplyConfiguration)(&tolerations[i]))
 	}
 	return converted
-}
-
-// defaultPodSecurityContext returns the PodSecurityContext applied to MOCO-managed
-// pods. FSGroupChangePolicy is always set to OnRootMismatch. FSGroup is defaulted to
-// constants.ContainerGID unless DisableDefaultSecurityContext is enabled, in which case
-// the platform (e.g. OpenShift SCC) assigns the fsGroup.
-func (r *MySQLClusterReconciler) defaultPodSecurityContext() *corev1ac.PodSecurityContextApplyConfiguration {
-	psc := corev1ac.PodSecurityContext().
-		WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
-	if !r.DisableDefaultSecurityContext {
-		psc.WithFSGroup(constants.ContainerGID)
-	}
-	return psc
 }
 
 func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {

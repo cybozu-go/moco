@@ -626,6 +626,114 @@ spec:
                     required:
                     - bucketName
                     type: object
+                  containerSecurityContext:
+                    description: ContainerSecurityContext holds the security...
+                    properties:
+                      allowPrivilegeEscalation:
+                        description: AllowPrivilegeEscalation controls whether a...
+                        type: boolean
+                      appArmorProfile:
+                        description: appArmorProfile is the AppArmor options to use
+                          by...
+                        properties:
+                          localhostProfile:
+                            description: localhostProfile indicates a profile loaded
+                              on...
+                            type: string
+                          type:
+                            description: type indicates which kind of AppArmor profile...
+                            type: string
+                        type: object
+                      capabilities:
+                        description: The capabilities to add/drop when running...
+                        properties:
+                          add:
+                            description: Added capabilities
+                            items:
+                              description: Capability represent POSIX capabilities
+                                type
+                              type: string
+                            type: array
+                          drop:
+                            description: Removed capabilities
+                            items:
+                              description: Capability represent POSIX capabilities
+                                type
+                              type: string
+                            type: array
+                        type: object
+                      privileged:
+                        description: Run container in privileged mode.
+                        type: boolean
+                      procMount:
+                        description: procMount denotes the type of proc mount to use...
+                        type: string
+                      readOnlyRootFilesystem:
+                        description: Whether this container has a read-only root...
+                        type: boolean
+                      runAsGroup:
+                        description: The GID to run the entrypoint of the container...
+                        format: int64
+                        type: integer
+                      runAsNonRoot:
+                        description: Indicates that the container must run as a...
+                        type: boolean
+                      runAsUser:
+                        description: The UID to run the entrypoint of the container...
+                        format: int64
+                        type: integer
+                      seLinuxOptions:
+                        description: The SELinux context to be applied to the...
+                        properties:
+                          level:
+                            description: Level is SELinux level label that applies
+                              to the...
+                            type: string
+                          role:
+                            description: Role is a SELinux role label that applies
+                              to the...
+                            type: string
+                          type:
+                            description: Type is a SELinux type label that applies
+                              to the...
+                            type: string
+                          user:
+                            description: User is a SELinux user label that applies
+                              to the...
+                            type: string
+                        type: object
+                      seccompProfile:
+                        description: The seccomp options to use by this container.
+                        properties:
+                          localhostProfile:
+                            description: localhostProfile indicates a profile defined
+                              in a...
+                            type: string
+                          type:
+                            description: type indicates which kind of seccomp profile
+                              will...
+                            type: string
+                        type: object
+                      windowsOptions:
+                        description: The Windows specific settings applied to all...
+                        properties:
+                          gmsaCredentialSpec:
+                            description: GMSACredentialSpec is where the GMSA admission...
+                            type: string
+                          gmsaCredentialSpecName:
+                            description: GMSACredentialSpecName is the name of the
+                              GMSA...
+                            type: string
+                          hostProcess:
+                            description: HostProcess determines if a container should
+                              be...
+                            type: boolean
+                          runAsUserName:
+                            description: The UserName in Windows to run the entrypoint
+                              of...
+                            type: string
+                        type: object
+                    type: object
                   cpu:
                     anyOf:
                     - type: integer
@@ -800,6 +908,119 @@ spec:
                     additionalProperties:
                       type: string
                     description: NodeSelector is a selector which must be true for...
+                    type: object
+                  podSecurityContext:
+                    description: PodSecurityContext holds pod-level security...
+                    properties:
+                      appArmorProfile:
+                        description: appArmorProfile is the AppArmor options to use
+                          by...
+                        properties:
+                          localhostProfile:
+                            description: localhostProfile indicates a profile loaded
+                              on...
+                            type: string
+                          type:
+                            description: type indicates which kind of AppArmor profile...
+                            type: string
+                        type: object
+                      fsGroup:
+                        description: A special supplemental group that applies to
+                          all...
+                        format: int64
+                        type: integer
+                      fsGroupChangePolicy:
+                        description: fsGroupChangePolicy defines behavior of changing...
+                        type: string
+                      runAsGroup:
+                        description: The GID to run the entrypoint of the container...
+                        format: int64
+                        type: integer
+                      runAsNonRoot:
+                        description: Indicates that the container must run as a...
+                        type: boolean
+                      runAsUser:
+                        description: The UID to run the entrypoint of the container...
+                        format: int64
+                        type: integer
+                      seLinuxChangePolicy:
+                        description: seLinuxChangePolicy defines how the container's...
+                        type: string
+                      seLinuxOptions:
+                        description: The SELinux context to be applied to all...
+                        properties:
+                          level:
+                            description: Level is SELinux level label that applies
+                              to the...
+                            type: string
+                          role:
+                            description: Role is a SELinux role label that applies
+                              to the...
+                            type: string
+                          type:
+                            description: Type is a SELinux type label that applies
+                              to the...
+                            type: string
+                          user:
+                            description: User is a SELinux user label that applies
+                              to the...
+                            type: string
+                        type: object
+                      seccompProfile:
+                        description: The seccomp options to use by the containers
+                          in...
+                        properties:
+                          localhostProfile:
+                            description: localhostProfile indicates a profile defined
+                              in a...
+                            type: string
+                          type:
+                            description: type indicates which kind of seccomp profile
+                              will...
+                            type: string
+                        type: object
+                      supplementalGroups:
+                        description: A list of groups applied to the first process
+                          run...
+                        items:
+                          format: int64
+                          type: integer
+                        type: array
+                      supplementalGroupsPolicy:
+                        description: Defines how supplemental groups of the first...
+                        type: string
+                      sysctls:
+                        description: Sysctls hold a list of namespaced sysctls used...
+                        items:
+                          description: SysctlApplyConfiguration represents a declarative...
+                          properties:
+                            name:
+                              description: Name of a property to set
+                              type: string
+                            value:
+                              description: Value of a property to set
+                              type: string
+                          type: object
+                        type: array
+                      windowsOptions:
+                        description: The Windows specific settings applied to all...
+                        properties:
+                          gmsaCredentialSpec:
+                            description: GMSACredentialSpec is where the GMSA admission...
+                            type: string
+                          gmsaCredentialSpecName:
+                            description: GMSACredentialSpecName is the name of the
+                              GMSA...
+                            type: string
+                          hostProcess:
+                            description: HostProcess determines if a container should
+                              be...
+                            type: boolean
+                          runAsUserName:
+                            description: The UserName in Windows to run the entrypoint
+                              of...
+                            type: string
+                        type: object
                     type: object
                   serviceAccountName:
                     description: ServiceAccountName specifies the ServiceAccount...
