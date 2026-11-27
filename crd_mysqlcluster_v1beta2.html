@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e50b0a9b.js";
+            window.path_to_searchindex_js = "searchindex-0ba65f53.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-4528d509.js"></script>
@@ -448,6 +448,8 @@
 <tr><td>envFrom</td><td>List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvFromSourceApplyConfiguration">EnvFromSourceApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>env</td><td>List of environment variables to set in the container.\n\nYou can configure S3 bucket access parameters through environment variables. See https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#EnvConfig</td><td>[]<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#EnvVarApplyConfiguration">EnvVarApplyConfiguration</a></td><td>false</td></tr>
 <tr><td>affinity</td><td>If specified, the pod’s scheduling constraints.</td><td>*<a href="https://pkg.go.dev/k8s.io/client-go/applyconfigurations/core/v1#AffinityApplyConfiguration">AffinityApplyConfiguration</a></td><td>false</td></tr>
+<tr><td>tolerations</td><td>If specified, the pod’s tolerations.</td><td>[]TolerationApplyConfiguration</td><td>false</td></tr>
+<tr><td>nodeSelector</td><td>NodeSelector is a selector which must be true for the pod to fit on a node.</td><td>map[string]string</td><td>false</td></tr>
 <tr><td>volumes</td><td>Volumes defines the list of volumes that can be mounted by containers in the Pod.</td><td>[]VolumeApplyConfiguration</td><td>false</td></tr>
 <tr><td>volumeMounts</td><td>VolumeMounts describes a list of volume mounts that are to be mounted in a container.</td><td>[]VolumeMountApplyConfiguration</td><td>false</td></tr>
 <tr><td>imagePullSecrets</td><td>ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling backup and restore job images. This applies specifically to the backup CronJob and restore Job Pods. To configure imagePullSecrets for the MySQLCluster’s StatefulSet Pods, use <code>podTemplate.spec.imagePullSecrets</code> instead.</td><td>[]LocalObjectReferenceApplyConfiguration</td><td>false</td></tr>
