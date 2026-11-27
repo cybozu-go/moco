@@ -1610,49 +1610,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 	return nil
 }
 
-// applyDefaultPodSecurityContext fills unset fields of psc with the defaults applied to
-// MOCO-managed pods and returns it. A nil psc is replaced with a new PodSecurityContext.
-// FSGroupChangePolicy defaults to OnRootMismatch. FSGroup defaults to constants.ContainerGID
-// unless DisableDefaultSecurityContext is enabled, in which case the platform
-// (e.g. OpenShift SCC) assigns the fsGroup.
-func (r *MySQLClusterReconciler) applyDefaultPodSecurityContext(psc *corev1ac.PodSecurityContextApplyConfiguration) *corev1ac.PodSecurityContextApplyConfiguration {
-	if psc == nil {
-		psc = corev1ac.PodSecurityContext()
-	}
-	if !r.DisableDefaultSecurityContext && psc.FSGroup == nil {
-		psc.WithFSGroup(constants.ContainerGID)
-	}
-	if psc.FSGroupChangePolicy == nil {
-		psc.WithFSGroupChangePolicy(corev1.FSGroupChangeOnRootMismatch)
-	}
-	return psc
-}
-
-// jobPodSecurityContext returns the PodSecurityContext for backup and restore job Pods.
-// The user-specified jc.PodSecurityContext is the base; unset fields are filled with defaults.
-func (r *MySQLClusterReconciler) jobPodSecurityContext(jc *mocov1beta2.JobConfig) *corev1ac.PodSecurityContextApplyConfiguration {
-	var psc *corev1ac.PodSecurityContextApplyConfiguration
-	if jc.PodSecurityContext != nil {
-		psc = (*corev1ac.PodSecurityContextApplyConfiguration)(jc.PodSecurityContext.DeepCopy())
-	}
-	return r.applyDefaultPodSecurityContext(psc)
-}
-
-// jobContainerSecurityContext returns the SecurityContext for backup and restore containers.
-// The user-specified jc.ContainerSecurityContext is the base; unset fields are filled with defaults.
-func (r *MySQLClusterReconciler) jobContainerSecurityContext(jc *mocov1beta2.JobConfig) *corev1ac.SecurityContextApplyConfiguration {
-	sc := corev1ac.SecurityContext()
-	if jc.ContainerSecurityContext != nil {
-		sc = (*corev1ac.SecurityContextApplyConfiguration)(jc.ContainerSecurityContext.DeepCopy())
-	}
-	// ReadOnlyRootFilesystem is defaulted here rather than in applyDefaultContainerSecurityContext
-	// because the latter is also used for MySQL-related containers.
-	if sc.ReadOnlyRootFilesystem == nil {
-		sc.WithReadOnlyRootFilesystem(true)
-	}
-	return r.applyDefaultContainerSecurityContext(sc)
-}
-
 func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {
 	log := crlog.FromContext(ctx)
 
