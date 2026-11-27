@@ -1786,6 +1786,82 @@ dummyKey: dummyValue
 		}, 5).Should(BeTrue())
 	})
 
+	Context("with custom job scheduling settings", func() {
+		configureScheduling := func(jc *mocov1beta2.JobConfig) {
+			jc.Affinity = (*mocov1beta2.AffinityApplyConfiguration)(corev1ac.Affinity().
+				WithPodAntiAffinity(corev1ac.PodAntiAffinity().
+					WithRequiredDuringSchedulingIgnoredDuringExecution(corev1ac.PodAffinityTerm().
+						WithTopologyKey(corev1.LabelHostname))))
+			jc.Tolerations = []mocov1beta2.TolerationApplyConfiguration{
+				mocov1beta2.TolerationApplyConfiguration(*corev1ac.Toleration().
+					WithKey("dedicated").
+					WithOperator(corev1.TolerationOpEqual).
+					WithValue("moco").
+					WithEffect(corev1.TaintEffectNoSchedule)),
+			}
+			jc.NodeSelector = map[string]string{"disk": "ssd"}
+		}
+
+		expectScheduling := func(g Gomega, spec corev1.PodSpec) {
+			GinkgoHelper()
+			g.Expect(spec.Affinity).To(Equal(&corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+						{TopologyKey: corev1.LabelHostname},
+					},
+				},
+			}))
+			g.Expect(spec.Tolerations).To(Equal([]corev1.Toleration{
+				{Key: "dedicated", Operator: corev1.TolerationOpEqual, Value: "moco", Effect: corev1.TaintEffectNoSchedule},
+			}))
+			g.Expect(spec.NodeSelector).To(Equal(map[string]string{"disk": "ssd"}))
+		}
+
+		It("applies the scheduling settings to the backup CronJob", func() {
+			bp := testNewBackUpPolicy()
+			configureScheduling(&bp.Spec.JobConfig)
+			Expect(k8sClient.Create(ctx, bp)).To(Succeed())
+
+			cluster := testNewMySQLCluster("test")
+			cluster.Name = "backup-scheduling"
+			cluster.Spec.BackupPolicyName = &bp.Name
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			key := client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}
+			Eventually(func(g Gomega) {
+				cj := &batchv1.CronJob{}
+				g.Expect(k8sClient.Get(ctx, key, cj)).To(Succeed(), "reading CronJob %s", key)
+				expectScheduling(g, cj.Spec.JobTemplate.Spec.Template.Spec)
+			}).Should(Succeed())
+		})
+
+		It("applies the scheduling settings to the restore Job", func() {
+			cluster := testNewMySQLCluster("test")
+			cluster.Name = "restore-scheduling"
+			cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+				SourceName:      "single",
+				SourceNamespace: "ns",
+				RestorePoint:    metav1.Now(),
+				JobConfig: mocov1beta2.JobConfig{
+					ServiceAccountName: "foo",
+					WorkVolume: mocov1beta2.VolumeSourceApplyConfiguration{
+						EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+					},
+					BucketConfig: mocov1beta2.BucketConfig{BucketName: "mybucket"},
+				},
+			}
+			configureScheduling(&cluster.Spec.Restore.JobConfig)
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			key := client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}
+			Eventually(func(g Gomega) {
+				job := &batchv1.Job{}
+				g.Expect(k8sClient.Get(ctx, key, job)).To(Succeed(), "reading Job %s", key)
+				expectScheduling(g, job.Spec.Template.Spec)
+			}).Should(Succeed())
+		})
+	})
+
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {
 		cluster := testNewMySQLCluster("test")
 		// use existing backup policy
