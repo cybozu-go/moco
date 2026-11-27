@@ -93,8 +93,8 @@ type StatusSet struct {
 	Candidates   []int
 
 	// AuthPluginStatus[i] is the authentication plugin state observed on
-	// instance i. This is collected only when `spec.systemUserAuthPlugin`
-	// is set. A nil entry means the state of the instance could not be
+	// the i-th Pod. This is collected only when `spec.systemUserAuthPlugin`
+	// is set. A nil entry means the state of the Pod could not be
 	// collected.
 	AuthPluginStatus []*InstanceAuthPluginStatus
 
@@ -321,28 +321,25 @@ func (p *managerProcess) GatherStatus(ctx context.Context) (*StatusSet, error) {
 			if ist == nil {
 				continue
 			}
-			wg.Add(1)
-			go func(index int) {
-				defer wg.Done()
-
-				plugins, err := ss.DBOps[index].GetUserAuthPlugins(ctx)
+			wg.Go(func() {
+				plugins, err := ss.DBOps[i].GetUserAuthPlugins(ctx)
 				if err != nil {
-					log.Error(err, "failed to get the authentication plugins of MOCO users", "instance", index)
+					log.Error(err, "failed to get the authentication plugins of MOCO users", "instance", i)
 					return
 				}
 				st := &InstanceAuthPluginStatus{UserPlugins: plugins, TargetPluginActive: true}
 				if len(usersWithPluginMismatch(plugins, target)) > 0 {
-					active, err := ss.DBOps[index].IsAuthPluginActive(ctx, target)
+					active, err := ss.DBOps[i].IsAuthPluginActive(ctx, target)
 					if err != nil {
 						// Leave the entry nil; the instance counts as not
 						// collected and is handled on a later tick.
-						log.Error(err, "failed to check the authentication plugin availability", "instance", index, "plugin", target)
+						log.Error(err, "failed to check the authentication plugin availability", "instance", i, "plugin", target)
 						return
 					}
 					st.TargetPluginActive = active
 				}
-				ss.AuthPluginStatus[index] = st
-			}(i)
+				ss.AuthPluginStatus[i] = st
+			})
 		}
 		wg.Wait()
 	}

@@ -441,7 +441,7 @@ var _ = Describe("manager", func() {
 				setAuthPluginToSpec(&targetPlugin)
 			})
 
-			It("lowers and restores super_read_only on the intermediate primary", func() {
+			It("temporarily disables super_read_only on the intermediate primary and re-enables it after updating the auth plugin", func() {
 				waitForAuthPluginCondition(ctx, metav1.ConditionTrue, "Synced")
 				expectAllPluginsConverged(of, cluster, targetPlugin.String())
 				st := of.getInstanceStatus(cluster.PodHostname(0))

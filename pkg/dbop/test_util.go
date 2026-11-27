@@ -51,6 +51,12 @@ func RunMySQLOnDocker(name string, port, xport int) error {
 	for k, v := range startupMycnf {
 		args = append(args, fmt.Sprintf("--%s=%s", k, v))
 	}
+	if strings.HasPrefix(testMySQLImage, "mysql:8.4") {
+		// mysql_native_password is disabled by default on MySQL 8.4.
+		// Enable it so that the authentication plugin switch can be
+		// exercised on every version.
+		args = append(args, "--mysql-native-password=ON")
+	}
 	out, err := exec.Command("docker", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to run MySQL container: %w: %s", err, out)
@@ -83,6 +89,8 @@ func ConfigureMySQLOnDocker(pwd *password.MySQLPassword, port int) error {
 	db.MustExec(`GRANT REPLICATION CLIENT, REPLICATION SLAVE ON *.* TO ?@'%'`, constants.ReplicationUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.CloneDonorUser, pwd.Donor())
 	db.MustExec(`GRANT BACKUP_ADMIN, SERVICE_CONNECTION_ADMIN ON *.* TO ?@'%'`, constants.CloneDonorUser)
+	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ExporterUser, pwd.Exporter())
+	db.MustExec(`GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO ?@'%'`, constants.ExporterUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.BackupUser, pwd.Backup())
 	db.MustExec(`GRANT BACKUP_ADMIN, EVENT, RELOAD, SELECT, SHOW VIEW, TRIGGER, REPLICATION CLIENT, REPLICATION SLAVE, SERVICE_CONNECTION_ADMIN ON *.* TO ?@'%'`, constants.BackupUser)
 	db.MustExec(`CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?`, constants.ReadOnlyUser, pwd.ReadOnly())

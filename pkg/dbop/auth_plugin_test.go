@@ -1,7 +1,6 @@
 package dbop
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -29,9 +28,7 @@ func connectTestUser(port int, user, pwd string) error {
 }
 
 var _ = Describe("auth plugin", func() {
-	ctx := context.Background()
-
-	It("should read and change the authentication plugin of MOCO users", func() {
+	It("should read and change the authentication plugin of MOCO users", func(ctx SpecContext) {
 		cluster := &mocov1beta2.MySQLCluster{}
 		cluster.Namespace = "test"
 		cluster.Name = "authplugin"
@@ -49,8 +46,7 @@ var _ = Describe("auth plugin", func() {
 		By("getting the current plugins")
 		plugins, err := op.GetUserAuthPlugins(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		// the test harness does not create moco-exporter
-		Expect(plugins).To(HaveLen(len(constants.MocoUsers) - 1))
+		Expect(plugins).To(HaveLen(len(constants.MocoUsers)))
 		current := plugins[constants.ReadOnlyUser]
 		Expect(current).NotTo(BeEmpty())
 
@@ -73,8 +69,8 @@ var _ = Describe("auth plugin", func() {
 
 		By("failing while super_read_only is on")
 		err = op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, current)
-		var roErr *mysql.MySQLError
-		Expect(errors.As(err, &roErr)).To(BeTrue())
+		roErr, ok := errors.AsType[*mysql.MySQLError](err)
+		Expect(ok).To(BeTrue())
 		// ER_OPTION_PREVENTS_STATEMENT: rejected by the server, not by the
 		// allowlists.
 		Expect(roErr.Number).To(BeEquivalentTo(1290))
@@ -104,7 +100,7 @@ var _ = Describe("auth plugin", func() {
 		Expect(err).NotTo(HaveOccurred())
 		// an application account must not be included
 		Expect(plugins).NotTo(HaveKey("app-user"))
-		Expect(plugins).To(HaveLen(len(constants.MocoUsers) - 1))
+		Expect(plugins).To(HaveLen(len(constants.MocoUsers)))
 		// a same-named account at another host must not shadow the '%' row
 		Expect(plugins[constants.ReadOnlyUser]).To(Equal(current))
 		adminDB.MustExec(`DROP USER 'app-user'@'%'`)
@@ -116,26 +112,16 @@ var _ = Describe("auth plugin", func() {
 		if current == other {
 			other = "caching_sha2_password"
 		}
-		// The precheck must predict whether the ALTER below succeeds.
-		// On MySQL 8.4, mysql_native_password exists in
-		// information_schema.plugins but is DISABLED, which exercises the
-		// "present but not ACTIVE" branch of IsAuthPluginActive.
+		// the test containers enable mysql_native_password even on MySQL 8.4
 		otherActive, err := op.IsAuthPluginActive(ctx, other)
 		Expect(err).NotTo(HaveOccurred())
-		err = op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, other)
-		var merr *mysql.MySQLError
-		if errors.As(err, &merr) && merr.Number == 1524 {
-			// mysql_native_password is not enabled on MySQL 8.4 and later
-			Expect(otherActive).To(BeFalse())
-		} else {
-			Expect(otherActive).To(BeTrue())
-			Expect(err).NotTo(HaveOccurred())
-			plugins, err = op.GetUserAuthPlugins(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(plugins[constants.ReadOnlyUser]).To(Equal(other))
-			Expect(connectTestUser(port, constants.ReadOnlyUser, passwd.ReadOnly())).To(Succeed())
-			Expect(op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, current)).To(Succeed())
-		}
+		Expect(otherActive).To(BeTrue())
+		Expect(op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, other)).To(Succeed())
+		plugins, err = op.GetUserAuthPlugins(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(plugins[constants.ReadOnlyUser]).To(Equal(other))
+		Expect(connectTestUser(port, constants.ReadOnlyUser, passwd.ReadOnly())).To(Succeed())
+		Expect(op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, current)).To(Succeed())
 
 		By("applying the same plugin idempotently")
 		Expect(op.AlterUserAuthPlugin(ctx, constants.ReadOnlyUser, current)).To(Succeed())

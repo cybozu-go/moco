@@ -78,9 +78,9 @@ type Operator interface {
 	AlterUserAuthPlugin(ctx context.Context, user, plugin string) error
 
 	// SetSuperReadOnly sets or unsets the super_read_only system variable.
-	// Unlike SetReadOnly(false), it never touches replication, and clearing
-	// it leaves read_only on. (Setting it also enables read_only; that is
-	// the server's own behavior.)
+	// Unlike SetReadOnly(false), SetSuperReadOnly never touches replication,
+	// and super_read_only=OFF leaves read_only=ON. (super_read_only=ON also
+	// sets read_only=ON; that is the server's own behavior.)
 	SetSuperReadOnly(ctx context.Context, on bool) error
 }
 
