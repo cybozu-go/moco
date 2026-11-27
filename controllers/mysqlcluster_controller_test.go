@@ -171,8 +171,11 @@ var _ = Describe("MySQLCluster reconciler", func() {
 	ctx := context.Background()
 	var stopFunc func()
 	var mockMgr *mockManager
+	var disableDefaultSecurityContext bool
 
 	BeforeEach(func() {
+		disableDefaultSecurityContext = false
+
 		cs := &mocov1beta2.MySQLClusterList{}
 		err := k8sClient.List(ctx, cs, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
@@ -204,13 +207,15 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &batchv1.CronJob{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &batchv1.Job{}, client.InNamespace("test"))
+		err = k8sClient.DeleteAllOf(ctx, &batchv1.Job{}, client.InNamespace("test"), client.PropagationPolicy(metav1.DeletePropagationBackground))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &rbacv1.Role{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &rbacv1.RoleBinding{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
+	})
 
+	JustBeforeEach(func() {
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:         scheme,
 			LeaderElection: false,
@@ -227,16 +232,17 @@ var _ = Describe("MySQLCluster reconciler", func() {
 			clusters: make(map[string]struct{}),
 		}
 		mysqlr := &MySQLClusterReconciler{
-			Client:                     mgr.GetClient(),
-			Scheme:                     scheme,
-			Recorder:                   mgr.GetEventRecorderFor("moco-controller"),
-			SystemNamespace:            testMocoSystemNamespace,
-			ClusterManager:             mockMgr,
-			AgentImage:                 testAgentImage,
-			BackupImage:                testBackupImage,
-			FluentBitImage:             testFluentBitImage,
-			ExporterImage:              testExporterImage,
-			MySQLConfigMapHistoryLimit: 2,
+			Client:                        mgr.GetClient(),
+			Scheme:                        scheme,
+			Recorder:                      mgr.GetEventRecorderFor("moco-controller"),
+			SystemNamespace:               testMocoSystemNamespace,
+			ClusterManager:                mockMgr,
+			AgentImage:                    testAgentImage,
+			BackupImage:                   testBackupImage,
+			FluentBitImage:                testFluentBitImage,
+			ExporterImage:                 testExporterImage,
+			MySQLConfigMapHistoryLimit:    2,
+			DisableDefaultSecurityContext: disableDefaultSecurityContext,
 		}
 		err = mysqlr.SetupWithManager(ctx, mgr)
 		Expect(err).ToNot(HaveOccurred())
@@ -1718,6 +1724,71 @@ dummyKey: dummyValue
 				}))
 			}).Should(Succeed())
 		})
+
+		When("default security contexts are disabled", func() {
+			BeforeEach(func() {
+				disableDefaultSecurityContext = true
+			})
+
+			It("should omit default IDs when none are specified", func() {
+				cluster := testNewMySQLCluster("test")
+				cluster.Spec.BackupPolicyName = new("test-policy")
+				Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+				bp := testNewBackUpPolicy()
+				Expect(k8sClient.Create(ctx, bp)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					cj := &batchv1.CronJob{}
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj)).To(Succeed())
+					podSpec := cj.Spec.JobTemplate.Spec.Template.Spec
+					g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+						FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+					}))
+					g.Expect(podSpec.Containers).To(HaveLen(1))
+					g.Expect(podSpec.Containers[0].Name).To(Equal("backup"))
+					g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+						ReadOnlyRootFilesystem: new(true),
+					}))
+				}).Should(Succeed())
+			})
+
+			It("should apply security contexts for OpenShift restricted-v2 SCC without injecting default IDs", func() {
+				cluster := testNewMySQLCluster("test")
+				cluster.Spec.BackupPolicyName = new("test-policy")
+				Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+				bp := testNewBackUpPolicy()
+				bp.Spec.JobConfig.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+					RunAsNonRoot: new(true),
+					SeccompProfile: corev1ac.SeccompProfile().
+						WithType(corev1.SeccompProfileTypeRuntimeDefault),
+				}
+				bp.Spec.JobConfig.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+					AllowPrivilegeEscalation: new(false),
+					Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+				}
+				Expect(k8sClient.Create(ctx, bp)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					cj := &batchv1.CronJob{}
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj)).To(Succeed())
+					podSpec := cj.Spec.JobTemplate.Spec.Template.Spec
+					g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+						FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+						RunAsNonRoot:        new(true),
+						SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+					}))
+					g.Expect(podSpec.Containers).To(HaveLen(1))
+					g.Expect(podSpec.Containers[0].Name).To(Equal("backup"))
+					g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+						ReadOnlyRootFilesystem:   new(true),
+						AllowPrivilegeEscalation: new(false),
+						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					}))
+				}).Should(Succeed())
+			})
+		})
 	})
 
 	It("should reconcile restore related resources", func() {
@@ -1890,82 +1961,164 @@ dummyKey: dummyValue
 		}, 5).Should(BeTrue())
 	})
 
-	It("should apply the default security contexts to the restore job when none are specified", func() {
-		cluster := testNewMySQLCluster("test")
-		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
-			SourceName:      "single",
-			SourceNamespace: "ns",
-			RestorePoint:    metav1.Now(),
-		}
-		jc := &cluster.Spec.Restore.JobConfig
-		jc.ServiceAccountName = "foo"
-		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
-			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
-		}
-		jc.BucketConfig.BucketName = "mybucket"
-		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+	Context("restore job security contexts", func() {
+		It("should apply the default security contexts when none are specified", func() {
+			cluster := testNewMySQLCluster("test")
+			cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+				SourceName:      "single",
+				SourceNamespace: "ns",
+				RestorePoint:    metav1.Now(),
+			}
+			jc := &cluster.Spec.Restore.JobConfig
+			jc.ServiceAccountName = "foo"
+			jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+				EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+			}
+			jc.BucketConfig.BucketName = "mybucket"
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
 
-		Eventually(func(g Gomega) {
-			job := &batchv1.Job{}
-			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
-			podSpec := job.Spec.Template.Spec
-			g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
-				FSGroup:             new(int64(constants.ContainerGID)),
-				FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
-			}))
-			g.Expect(podSpec.Containers).To(HaveLen(1))
-			g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
-				ReadOnlyRootFilesystem: new(true),
-				RunAsUser:              new(int64(constants.ContainerUID)),
-				RunAsGroup:             new(int64(constants.ContainerGID)),
-			}))
-		}).Should(Succeed())
-	})
+			Eventually(func(g Gomega) {
+				job := &batchv1.Job{}
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+				podSpec := job.Spec.Template.Spec
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					FSGroup:             new(int64(constants.ContainerGID)),
+					FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+				}))
+				g.Expect(podSpec.Containers).To(HaveLen(1))
+				g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
+				g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+					ReadOnlyRootFilesystem: new(true),
+					RunAsUser:              new(int64(constants.ContainerUID)),
+					RunAsGroup:             new(int64(constants.ContainerGID)),
+				}))
+			}).Should(Succeed())
+		})
 
-	It("should apply security contexts for the restricted Pod Security Standard to the restore job while preserving defaults", func() {
-		cluster := testNewMySQLCluster("test")
-		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
-			SourceName:      "single",
-			SourceNamespace: "ns",
-			RestorePoint:    metav1.Now(),
-		}
-		jc := &cluster.Spec.Restore.JobConfig
-		jc.ServiceAccountName = "foo"
-		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
-			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
-		}
-		jc.BucketConfig.BucketName = "mybucket"
-		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
-			RunAsNonRoot: new(true),
-			SeccompProfile: corev1ac.SeccompProfile().
-				WithType(corev1.SeccompProfileTypeRuntimeDefault),
-		}
-		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
-			AllowPrivilegeEscalation: new(false),
-			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
-		}
-		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
-
-		Eventually(func(g Gomega) {
-			job := &batchv1.Job{}
-			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
-			podSpec := job.Spec.Template.Spec
-			g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
-				FSGroup:             new(int64(constants.ContainerGID)),
-				FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
-				RunAsNonRoot:        new(true),
-				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-			}))
-			g.Expect(podSpec.Containers).To(HaveLen(1))
-			g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
-			g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
-				ReadOnlyRootFilesystem:   new(true),
+		It("should apply security contexts for the restricted Pod Security Standard while preserving defaults", func() {
+			cluster := testNewMySQLCluster("test")
+			cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+				SourceName:      "single",
+				SourceNamespace: "ns",
+				RestorePoint:    metav1.Now(),
+			}
+			jc := &cluster.Spec.Restore.JobConfig
+			jc.ServiceAccountName = "foo"
+			jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+				EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+			}
+			jc.BucketConfig.BucketName = "mybucket"
+			jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+				RunAsNonRoot: new(true),
+				SeccompProfile: corev1ac.SeccompProfile().
+					WithType(corev1.SeccompProfileTypeRuntimeDefault),
+			}
+			jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
 				AllowPrivilegeEscalation: new(false),
-				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-				RunAsUser:                new(int64(constants.ContainerUID)),
-				RunAsGroup:               new(int64(constants.ContainerGID)),
-			}))
-		}).Should(Succeed())
+				Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+			}
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				job := &batchv1.Job{}
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+				podSpec := job.Spec.Template.Spec
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					FSGroup:             new(int64(constants.ContainerGID)),
+					FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+					RunAsNonRoot:        new(true),
+					SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+				}))
+				g.Expect(podSpec.Containers).To(HaveLen(1))
+				g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
+				g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+					ReadOnlyRootFilesystem:   new(true),
+					AllowPrivilegeEscalation: new(false),
+					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					RunAsUser:                new(int64(constants.ContainerUID)),
+					RunAsGroup:               new(int64(constants.ContainerGID)),
+				}))
+			}).Should(Succeed())
+		})
+
+		When("default security contexts are disabled", func() {
+			BeforeEach(func() {
+				disableDefaultSecurityContext = true
+			})
+
+			It("should omit default IDs when none are specified", func() {
+				cluster := testNewMySQLCluster("test")
+				cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+					SourceName:      "single",
+					SourceNamespace: "ns",
+					RestorePoint:    metav1.Now(),
+				}
+				jc := &cluster.Spec.Restore.JobConfig
+				jc.ServiceAccountName = "foo"
+				jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+				}
+				jc.BucketConfig.BucketName = "mybucket"
+				Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					job := &batchv1.Job{}
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+					podSpec := job.Spec.Template.Spec
+					g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+						FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+					}))
+					g.Expect(podSpec.Containers).To(HaveLen(1))
+					g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
+					g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+						ReadOnlyRootFilesystem: new(true),
+					}))
+				}).Should(Succeed())
+			})
+
+			It("should apply security contexts for OpenShift restricted-v2 SCC without injecting default IDs", func() {
+				cluster := testNewMySQLCluster("test")
+				cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+					SourceName:      "single",
+					SourceNamespace: "ns",
+					RestorePoint:    metav1.Now(),
+				}
+				jc := &cluster.Spec.Restore.JobConfig
+				jc.ServiceAccountName = "foo"
+				jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+					EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+				}
+				jc.BucketConfig.BucketName = "mybucket"
+				jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+					RunAsNonRoot: new(true),
+					SeccompProfile: corev1ac.SeccompProfile().
+						WithType(corev1.SeccompProfileTypeRuntimeDefault),
+				}
+				jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+					AllowPrivilegeEscalation: new(false),
+					Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+				}
+				Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+				Eventually(func(g Gomega) {
+					job := &batchv1.Job{}
+					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+					podSpec := job.Spec.Template.Spec
+					g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+						FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+						RunAsNonRoot:        new(true),
+						SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+					}))
+					g.Expect(podSpec.Containers).To(HaveLen(1))
+					g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
+					g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+						ReadOnlyRootFilesystem:   new(true),
+						AllowPrivilegeEscalation: new(false),
+						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					}))
+				}).Should(Succeed())
+			})
+		})
 	})
 
 	It("should reconcile a pod disruption budget when backup cron job is running", func() {
