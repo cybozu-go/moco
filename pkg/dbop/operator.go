@@ -55,7 +55,8 @@ type Operator interface {
 	WaitForGTID(ctx context.Context, gtidSet string, timeoutSeconds int) error
 
 	// SetReadOnly makes the instance super_read_only if `true` is passed.
-	// Otherwise, this stops the replication and makes the instance writable.
+	// Otherwise, this stops the replication, resets all replication metadata,
+	// and makes the instance writable.
 	SetReadOnly(context.Context, bool) error
 
 	// KillConnections kills all connections except for ones from `localhost`
