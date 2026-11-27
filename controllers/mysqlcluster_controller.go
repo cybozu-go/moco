@@ -1236,6 +1236,8 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 						WithLabels(labelSetForJob(cluster)).
 						WithSpec(corev1ac.PodSpec().
 							WithAffinity((*corev1ac.AffinityApplyConfiguration)(jc.Affinity.DeepCopy())).
+							WithTolerations(jobTolerations(jc.Tolerations)...).
+							WithNodeSelector(jc.NodeSelector).
 							WithRestartPolicy(corev1.RestartPolicyNever).
 							WithServiceAccountName(bp.Spec.JobConfig.ServiceAccountName).
 							WithVolumes(&corev1ac.VolumeApplyConfiguration{
@@ -1545,6 +1547,9 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 				WithTemplate(corev1ac.PodTemplateSpec().
 					WithLabels(labelSetForJob(cluster)).
 					WithSpec(corev1ac.PodSpec().
+						WithAffinity((*corev1ac.AffinityApplyConfiguration)(jc.Affinity.DeepCopy())).
+						WithTolerations(jobTolerations(jc.Tolerations)...).
+						WithNodeSelector(jc.NodeSelector).
 						WithRestartPolicy(corev1.RestartPolicyNever).
 						WithServiceAccountName(cluster.Spec.Restore.JobConfig.ServiceAccountName).
 						WithVolumes(&corev1ac.VolumeApplyConfiguration{
@@ -1608,6 +1613,16 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 	}
 
 	return nil
+}
+
+// jobTolerations converts the tolerations configured for a backup or restore job
+// into the apply configurations used by the pod spec.
+func jobTolerations(tolerations []mocov1beta2.TolerationApplyConfiguration) []*corev1ac.TolerationApplyConfiguration {
+	converted := make([]*corev1ac.TolerationApplyConfiguration, 0, len(tolerations))
+	for i := range tolerations {
+		converted = append(converted, (*corev1ac.TolerationApplyConfiguration)(&tolerations[i]))
+	}
+	return converted
 }
 
 func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {

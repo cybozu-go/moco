@@ -77,6 +77,16 @@ type JobConfig struct {
 	// +optional
 	Affinity *AffinityApplyConfiguration `json:"affinity,omitempty"`
 
+	// If specified, the pod's tolerations.
+	//
+	// +optional
+	Tolerations []TolerationApplyConfiguration `json:"tolerations,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	//
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
 	// Volumes defines the list of volumes that can be mounted by containers in the Pod.
 	//
 	// +optional
@@ -128,8 +138,11 @@ func (in *PodSecurityContextApplyConfiguration) DeepCopy() *PodSecurityContextAp
 // VolumeSourceApplyConfiguration is the type defined to implement the DeepCopy method.
 type VolumeSourceApplyConfiguration corev1ac.VolumeSourceApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *VolumeSourceApplyConfiguration) DeepCopy() *VolumeSourceApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(VolumeSourceApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -145,8 +158,11 @@ func (in *VolumeSourceApplyConfiguration) DeepCopy() *VolumeSourceApplyConfigura
 // VolumeApplyConfiguration is the type defined to implement the DeepCopy method.
 type VolumeApplyConfiguration corev1ac.VolumeApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *VolumeApplyConfiguration) DeepCopy() *VolumeApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(VolumeApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -162,8 +178,11 @@ func (in *VolumeApplyConfiguration) DeepCopy() *VolumeApplyConfiguration {
 // VolumeMountApplyConfiguration is the type defined to implement the DeepCopy method.
 type VolumeMountApplyConfiguration corev1ac.VolumeMountApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new VolumeSourceApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *VolumeMountApplyConfiguration) DeepCopy() *VolumeMountApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(VolumeMountApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -179,8 +198,11 @@ func (in *VolumeMountApplyConfiguration) DeepCopy() *VolumeMountApplyConfigurati
 // EnvFromSourceApplyConfiguration is the type defined to implement the DeepCopy method.
 type EnvFromSourceApplyConfiguration corev1ac.EnvFromSourceApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new EnvFromSourceApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *EnvFromSourceApplyConfiguration) DeepCopy() *EnvFromSourceApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(EnvFromSourceApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -196,8 +218,11 @@ func (in *EnvFromSourceApplyConfiguration) DeepCopy() *EnvFromSourceApplyConfigu
 // EnvVarApplyConfiguration is the type defined to implement the DeepCopy method.
 type EnvVarApplyConfiguration corev1ac.EnvVarApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new EnvVarApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *EnvVarApplyConfiguration) DeepCopy() *EnvVarApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(EnvVarApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -247,9 +272,32 @@ type BucketConfig struct {
 // AffinityApplyConfiguration is the type defined to implement the DeepCopy method.
 type AffinityApplyConfiguration corev1ac.AffinityApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new AffinityApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *AffinityApplyConfiguration) DeepCopy() *AffinityApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(AffinityApplyConfiguration)
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		panic("Failed to marshal")
+	}
+	err = json.Unmarshal(bytes, out)
+	if err != nil {
+		panic("Failed to unmarshal")
+	}
+	return out
+}
+
+// TolerationApplyConfiguration is the type defined to implement the DeepCopy method.
+type TolerationApplyConfiguration corev1ac.TolerationApplyConfiguration
+
+// DeepCopy returns a deep copy of in, or nil if in is nil.
+func (in *TolerationApplyConfiguration) DeepCopy() *TolerationApplyConfiguration {
+	if in == nil {
+		return nil
+	}
+	out := new(TolerationApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		panic("Failed to marshal")
@@ -264,8 +312,11 @@ func (in *AffinityApplyConfiguration) DeepCopy() *AffinityApplyConfiguration {
 // LocalObjectReferenceApplyConfiguration is the type defined to implement the DeepCopy method.
 type LocalObjectReferenceApplyConfiguration corev1ac.LocalObjectReferenceApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new LocalObjectReferenceApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *LocalObjectReferenceApplyConfiguration) DeepCopy() *LocalObjectReferenceApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(LocalObjectReferenceApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
