@@ -2,6 +2,11 @@ processor:
   # Keep local wrappers so their fields remain in the property tables.
   ignoreTypes:
     - "^k8s\\.io/client-go/applyconfigurations/"
+  # Without this workaround, apiVersion and kind show up twice.
+  # At least we're in good company: Cluster API does the same thing.
+  # https://github.com/kubernetes-sigs/cluster-api/blob/41bf49a3fd8542e091c51af64e9627a411608bbc/hack/crd-ref-docs-config-v1beta2.yaml#L11-L12
+  ignoreFields:
+    - "TypeMeta$"
 
 render:
   # Kubernetes version used to link Kubernetes API types to the official API reference.
