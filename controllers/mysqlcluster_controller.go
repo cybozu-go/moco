@@ -1245,7 +1245,7 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 					WithTemplate(corev1ac.PodTemplateSpec().
 						WithLabels(labelSetForJob(cluster)).
 						WithSpec(corev1ac.PodSpec().
-							WithAffinity(jobAffinity(jc.Affinity)).
+							WithAffinity((*corev1ac.AffinityApplyConfiguration)(jc.Affinity.DeepCopy())).
 							WithTolerations(jobTolerations(jc.Tolerations)...).
 							WithNodeSelector(jc.NodeSelector).
 							WithRestartPolicy(corev1.RestartPolicyNever).
@@ -1557,7 +1557,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 				WithTemplate(corev1ac.PodTemplateSpec().
 					WithLabels(labelSetForJob(cluster)).
 					WithSpec(corev1ac.PodSpec().
-						WithAffinity(jobAffinity(jc.Affinity)).
+						WithAffinity((*corev1ac.AffinityApplyConfiguration)(jc.Affinity.DeepCopy())).
 						WithTolerations(jobTolerations(jc.Tolerations)...).
 						WithNodeSelector(jc.NodeSelector).
 						WithRestartPolicy(corev1.RestartPolicyNever).
@@ -1623,15 +1623,6 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 	}
 
 	return nil
-}
-
-// jobAffinity converts the affinity configured for a backup or restore job into
-// the apply configuration used by the pod spec. It returns nil when unset.
-func jobAffinity(affinity *mocov1beta2.AffinityApplyConfiguration) *corev1ac.AffinityApplyConfiguration {
-	if affinity == nil {
-		return nil
-	}
-	return (*corev1ac.AffinityApplyConfiguration)(affinity.DeepCopy())
 }
 
 // jobTolerations converts the tolerations configured for a backup or restore job

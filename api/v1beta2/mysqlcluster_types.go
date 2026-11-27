@@ -423,8 +423,11 @@ type ObjectMeta struct {
 // PodSpecApplyConfiguration is the type defined to implement the DeepCopy method.
 type PodSpecApplyConfiguration corev1ac.PodSpecApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new PodSpecApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *PodSpecApplyConfiguration) DeepCopy() *PodSpecApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(PodSpecApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -490,8 +493,11 @@ type OverwriteContainer struct {
 // ResourceRequirementsApplyConfiguration is the type defined to implement the DeepCopy method.
 type ResourceRequirementsApplyConfiguration corev1ac.ResourceRequirementsApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new OverwriteContainer.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *ResourceRequirementsApplyConfiguration) DeepCopy() *ResourceRequirementsApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(ResourceRequirementsApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -507,8 +513,11 @@ func (in *ResourceRequirementsApplyConfiguration) DeepCopy() *ResourceRequiremen
 // SecurityContextApplyConfiguration is the type defined to implement the DeepCopy method.
 type SecurityContextApplyConfiguration corev1ac.SecurityContextApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new OverwriteContainer.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *SecurityContextApplyConfiguration) DeepCopy() *SecurityContextApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(SecurityContextApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -524,8 +533,11 @@ func (in *SecurityContextApplyConfiguration) DeepCopy() *SecurityContextApplyCon
 // PersistentVolumeClaimSpecApplyConfiguration is the type defined to implement the DeepCopy method.
 type PersistentVolumeClaimSpecApplyConfiguration corev1ac.PersistentVolumeClaimSpecApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new PersistentVolumeClaimSpecApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *PersistentVolumeClaimSpecApplyConfiguration) DeepCopy() *PersistentVolumeClaimSpecApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(PersistentVolumeClaimSpecApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
@@ -587,8 +599,11 @@ func (in PersistentVolumeClaim) ToCoreV1() *corev1ac.PersistentVolumeClaimApplyC
 // ServiceSpecApplyConfiguration is the type defined to implement the DeepCopy method.
 type ServiceSpecApplyConfiguration corev1ac.ServiceSpecApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new ServiceSpecApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *ServiceSpecApplyConfiguration) DeepCopy() *ServiceSpecApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(ServiceSpecApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
