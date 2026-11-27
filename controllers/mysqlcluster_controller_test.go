@@ -202,6 +202,14 @@ var _ = Describe("MySQLCluster reconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &policyv1.PodDisruptionBudget{}, client.InNamespace("test"))
 		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &batchv1.CronJob{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &batchv1.Job{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &rbacv1.Role{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
+		err = k8sClient.DeleteAllOf(ctx, &rbacv1.RoleBinding{}, client.InNamespace("test"))
+		Expect(err).NotTo(HaveOccurred())
 
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:         scheme,
@@ -1520,17 +1528,6 @@ dummyKey: dummyValue
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
 
-		By("checking the default security contexts")
-		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
-			FSGroup:             new(int64(constants.ContainerGID)),
-			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
-		}))
-		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
-			ReadOnlyRootFilesystem: new(true),
-			RunAsUser:              new(int64(constants.ContainerUID)),
-			RunAsGroup:             new(int64(constants.ContainerGID)),
-		}))
-
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
 		Expect(role.Rules).NotTo(BeEmpty())
@@ -1565,17 +1562,6 @@ dummyKey: dummyValue
 			HostPath: &corev1ac.HostPathVolumeSourceApplyConfiguration{
 				Path: new("/host"),
 			},
-		}
-		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
-			FSGroup:      new(int64(2000)),
-			RunAsNonRoot: new(true),
-			SeccompProfile: corev1ac.SeccompProfile().
-				WithType(corev1.SeccompProfileTypeRuntimeDefault),
-		}
-		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
-			ReadOnlyRootFilesystem:   new(false),
-			AllowPrivilegeEscalation: new(false),
-			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
 		}
 		jc.BucketConfig.BucketName = "mybucket2"
 		jc.BucketConfig.EndpointURL = ""
@@ -1626,21 +1612,6 @@ dummyKey: dummyValue
 		Expect(memReq.Value()).To(BeNumerically("==", 4<<30))
 		Expect(c.Resources.Limits).NotTo(HaveKey(corev1.ResourceMemory))
 
-		By("checking user-specified security contexts are merged with the defaults")
-		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
-			FSGroup:             new(int64(2000)),
-			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
-			RunAsNonRoot:        new(true),
-			SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-		}))
-		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
-			ReadOnlyRootFilesystem:   new(false),
-			AllowPrivilegeEscalation: new(false),
-			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-			RunAsUser:                new(int64(constants.ContainerUID)),
-			RunAsGroup:               new(int64(constants.ContainerGID)),
-		}))
-
 		Eventually(func() error {
 			roleBinding = &rbacv1.RoleBinding{}
 			if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, roleBinding); err != nil {
@@ -1680,6 +1651,73 @@ dummyKey: dummyValue
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: cluster.BackupRoleName()}, roleBinding)
 			return apierrors.IsNotFound(err)
 		}).Should(BeTrue())
+	})
+
+	Context("backup job security contexts", func() {
+		It("should apply the default security contexts when none are specified", func() {
+			cluster := testNewMySQLCluster("test")
+			cluster.Spec.BackupPolicyName = new("test-policy")
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			bp := testNewBackUpPolicy()
+			Expect(k8sClient.Create(ctx, bp)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				cj := &batchv1.CronJob{}
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj)).To(Succeed())
+				podSpec := cj.Spec.JobTemplate.Spec.Template.Spec
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					FSGroup:             new(int64(constants.ContainerGID)),
+					FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+				}))
+				g.Expect(podSpec.Containers).To(HaveLen(1))
+				g.Expect(podSpec.Containers[0].Name).To(Equal("backup"))
+				g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+					ReadOnlyRootFilesystem: new(true),
+					RunAsUser:              new(int64(constants.ContainerUID)),
+					RunAsGroup:             new(int64(constants.ContainerGID)),
+				}))
+			}).Should(Succeed())
+		})
+
+		It("should apply security contexts for the restricted Pod Security Standard while preserving defaults", func() {
+			cluster := testNewMySQLCluster("test")
+			cluster.Spec.BackupPolicyName = new("test-policy")
+			Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+			bp := testNewBackUpPolicy()
+			bp.Spec.JobConfig.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+				RunAsNonRoot: new(true),
+				SeccompProfile: corev1ac.SeccompProfile().
+					WithType(corev1.SeccompProfileTypeRuntimeDefault),
+			}
+			bp.Spec.JobConfig.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+				AllowPrivilegeEscalation: new(false),
+				Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+			}
+			Expect(k8sClient.Create(ctx, bp)).To(Succeed())
+
+			Eventually(func(g Gomega) {
+				cj := &batchv1.CronJob{}
+				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.BackupCronJobName()}, cj)).To(Succeed())
+				podSpec := cj.Spec.JobTemplate.Spec.Template.Spec
+				g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+					FSGroup:             new(int64(constants.ContainerGID)),
+					FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+					RunAsNonRoot:        new(true),
+					SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+				}))
+				g.Expect(podSpec.Containers).To(HaveLen(1))
+				g.Expect(podSpec.Containers[0].Name).To(Equal("backup"))
+				g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+					ReadOnlyRootFilesystem:   new(true),
+					RunAsUser:                new(int64(constants.ContainerUID)),
+					RunAsGroup:               new(int64(constants.ContainerGID)),
+					AllowPrivilegeEscalation: new(false),
+					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+				}))
+			}).Should(Succeed())
+		})
 	})
 
 	It("should reconcile restore related resources", func() {
@@ -1729,16 +1767,6 @@ dummyKey: dummyValue
 		}
 		jc.ImagePullSecrets = []mocov1beta2.LocalObjectReferenceApplyConfiguration{
 			{Name: new("my-registry-secret")},
-		}
-		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
-			RunAsNonRoot: new(true),
-			SeccompProfile: corev1ac.SeccompProfile().
-				WithType(corev1.SeccompProfileTypeRuntimeDefault),
-		}
-		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
-			AllowPrivilegeEscalation: new(false),
-			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
-			RunAsUser:                new(int64(2000)),
 		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
@@ -1809,21 +1837,6 @@ dummyKey: dummyValue
 		Expect(memReq.Value()).To(BeNumerically("==", 1<<30))
 		memLim := c.Resources.Limits[corev1.ResourceMemory]
 		Expect(memLim.Value()).To(BeNumerically("==", 10<<30))
-
-		By("checking user-specified security contexts are merged with the defaults")
-		Expect(js.Template.Spec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
-			FSGroup:             new(int64(constants.ContainerGID)),
-			FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
-			RunAsNonRoot:        new(true),
-			SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-		}))
-		Expect(c.SecurityContext).To(Equal(&corev1.SecurityContext{
-			ReadOnlyRootFilesystem:   new(true),
-			AllowPrivilegeEscalation: new(false),
-			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-			RunAsUser:                new(int64(2000)),
-			RunAsGroup:               new(int64(constants.ContainerGID)),
-		}))
 
 		Expect(role.Labels).NotTo(BeEmpty())
 		Expect(role.OwnerReferences).NotTo(BeEmpty())
@@ -1914,6 +1927,53 @@ dummyKey: dummyValue
 				ReadOnlyRootFilesystem: new(true),
 				RunAsUser:              new(int64(constants.ContainerUID)),
 				RunAsGroup:             new(int64(constants.ContainerGID)),
+			}))
+		}).Should(Succeed())
+	})
+
+	It("should apply security contexts for the restricted Pod Security Standard to the restore job while preserving defaults", func() {
+		cluster := testNewMySQLCluster("test")
+		cluster.Name = "restore-restricted"
+		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
+			SourceName:      "single",
+			SourceNamespace: "ns",
+			RestorePoint:    metav1.Now(),
+		}
+		jc := &cluster.Spec.Restore.JobConfig
+		jc.ServiceAccountName = "foo"
+		jc.WorkVolume = mocov1beta2.VolumeSourceApplyConfiguration{
+			EmptyDir: &corev1ac.EmptyDirVolumeSourceApplyConfiguration{},
+		}
+		jc.BucketConfig.BucketName = "mybucket"
+		jc.PodSecurityContext = &mocov1beta2.PodSecurityContextApplyConfiguration{
+			RunAsNonRoot: new(true),
+			SeccompProfile: corev1ac.SeccompProfile().
+				WithType(corev1.SeccompProfileTypeRuntimeDefault),
+		}
+		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
+			AllowPrivilegeEscalation: new(false),
+			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+		}
+		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			job := &batchv1.Job{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: cluster.Namespace, Name: cluster.RestoreJobName()}, job)).To(Succeed())
+			podSpec := job.Spec.Template.Spec
+			g.Expect(podSpec.SecurityContext).To(Equal(&corev1.PodSecurityContext{
+				FSGroup:             new(int64(constants.ContainerGID)),
+				FSGroupChangePolicy: new(corev1.FSGroupChangeOnRootMismatch),
+				RunAsNonRoot:        new(true),
+				SeccompProfile:      &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+			}))
+			g.Expect(podSpec.Containers).To(HaveLen(1))
+			g.Expect(podSpec.Containers[0].Name).To(Equal("restore"))
+			g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
+				ReadOnlyRootFilesystem:   new(true),
+				AllowPrivilegeEscalation: new(false),
+				Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+				RunAsUser:                new(int64(constants.ContainerUID)),
+				RunAsGroup:               new(int64(constants.ContainerGID)),
 			}))
 		}).Should(Succeed())
 	})
