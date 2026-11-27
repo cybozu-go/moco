@@ -132,22 +132,24 @@ var _ = Context("pvc_test", Ordered, func() {
 			kubectlSafe(nil, "delete", "pvc", "-n", "pvc", "--wait=false", fmt.Sprintf("mysql-data-%s", pod.Name))
 			kubectlSafe(nil, "delete", "pod", "-n", "pvc", "--grace-period=1", pod.Name)
 
-			Eventually(func() error {
-				cluster, err := getCluster("pvc", "cluster")
-				if err != nil {
-					return err
-				}
+			Eventually(func(g Gomega) {
+				out, err := kubectl(nil, "get", "pod", "-n", "pvc", pod.Name, "-o", "json")
+				g.Expect(err).NotTo(HaveOccurred())
 
-				for _, cond := range cluster.Status.Conditions {
-					if cond.Type != mocov1beta2.ConditionHealthy {
-						continue
-					}
-					if cond.Status == metav1.ConditionTrue {
-						return nil
-					}
-					return fmt.Errorf("cluster is not healthy: %s", cond.Status)
-				}
-				return errors.New("no health condition")
+				var replacement corev1.Pod
+				g.Expect(json.Unmarshal(out, &replacement)).To(Succeed())
+				g.Expect(replacement.UID).NotTo(Equal(pod.UID), "pod %s has not been replaced", pod.Name)
+				g.Expect(replacement.DeletionTimestamp).To(BeNil(), "replacement pod %s is being deleted", pod.Name)
+				g.Expect(replacement.Status.Conditions).To(ContainElement(And(
+					HaveField("Type", corev1.PodReady),
+					HaveField("Status", corev1.ConditionTrue),
+				)), "replacement pod %s is not ready", pod.Name)
+
+				cluster, err := getCluster("pvc", "cluster")
+				g.Expect(err).NotTo(HaveOccurred())
+				cond, err := getClusterCondition(cluster, mocov1beta2.ConditionHealthy)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(cond.Status).To(Equal(metav1.ConditionTrue))
 			}).Should(Succeed())
 		}
 	})
