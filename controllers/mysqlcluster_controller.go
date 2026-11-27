@@ -1220,10 +1220,8 @@ func (r *MySQLClusterReconciler) reconcileV1BackupJob(ctx context.Context, clust
 			}
 			return volumeMounts
 		}()...).
-		WithSecurityContext(jobContainerSecurityContext(jc)).
+		WithSecurityContext(r.jobContainerSecurityContext(jc)).
 		WithResources(resources)
-
-	r.updateContainerWithSecurityContext(container)
 
 	cronJobName := cluster.BackupCronJobName()
 	cronJob := batchv1ac.CronJob(cronJobName, cluster.Namespace).
@@ -1536,7 +1534,7 @@ func (r *MySQLClusterReconciler) reconcileV1RestoreJob(ctx context.Context, clus
 				}
 				return volumeMounts
 			}()...).
-			WithSecurityContext(jobContainerSecurityContext(jc)).
+			WithSecurityContext(r.jobContainerSecurityContext(jc)).
 			WithResources(resources)
 
 		jobName := cluster.RestoreJobName()
@@ -1641,17 +1639,18 @@ func (r *MySQLClusterReconciler) jobPodSecurityContext(jc *mocov1beta2.JobConfig
 }
 
 // jobContainerSecurityContext returns the SecurityContext for backup and restore containers.
-// The user-specified jc.ContainerSecurityContext is the base; ReadOnlyRootFilesystem
-// defaults to true if not set.
-func jobContainerSecurityContext(jc *mocov1beta2.JobConfig) *corev1ac.SecurityContextApplyConfiguration {
+// The user-specified jc.ContainerSecurityContext is the base; unset fields are filled with defaults.
+func (r *MySQLClusterReconciler) jobContainerSecurityContext(jc *mocov1beta2.JobConfig) *corev1ac.SecurityContextApplyConfiguration {
 	sc := corev1ac.SecurityContext()
 	if jc.ContainerSecurityContext != nil {
 		sc = (*corev1ac.SecurityContextApplyConfiguration)(jc.ContainerSecurityContext.DeepCopy())
 	}
+	// ReadOnlyRootFilesystem is defaulted here rather than in applyDefaultContainerSecurityContext
+	// because the latter is also used for MySQL-related containers.
 	if sc.ReadOnlyRootFilesystem == nil {
 		sc.WithReadOnlyRootFilesystem(true)
 	}
-	return sc
+	return r.applyDefaultContainerSecurityContext(sc)
 }
 
 func (r *MySQLClusterReconciler) reconcileV1RestoreJobRole(ctx context.Context, cluster *mocov1beta2.MySQLCluster) error {

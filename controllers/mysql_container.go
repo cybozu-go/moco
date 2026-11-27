@@ -421,20 +421,25 @@ func (r *MySQLClusterReconciler) getEnableLowerCaseTableNamesFromConf(ctx contex
 }
 
 func (r *MySQLClusterReconciler) updateContainerWithSecurityContext(container *corev1ac.ContainerApplyConfiguration) {
-	if container.SecurityContext == nil {
-		container.WithSecurityContext(corev1ac.SecurityContext())
+	container.WithSecurityContext(r.applyDefaultContainerSecurityContext(container.SecurityContext))
+}
+
+func (r *MySQLClusterReconciler) applyDefaultContainerSecurityContext(sc *corev1ac.SecurityContextApplyConfiguration) *corev1ac.SecurityContextApplyConfiguration {
+	if sc == nil {
+		sc = corev1ac.SecurityContext()
 	}
 
 	if r.DisableDefaultSecurityContext {
-		return
+		return sc
 	}
 
-	if container.SecurityContext.RunAsUser == nil {
-		container.SecurityContext.WithRunAsUser(constants.ContainerUID)
+	if sc.RunAsUser == nil {
+		sc.WithRunAsUser(constants.ContainerUID)
 	}
-	if container.SecurityContext.RunAsGroup == nil {
-		container.SecurityContext.WithRunAsGroup(constants.ContainerGID)
+	if sc.RunAsGroup == nil {
+		sc.WithRunAsGroup(constants.ContainerGID)
 	}
+	return sc
 }
 
 func updateContainerWithOverwriteContainers(cluster *mocov1beta2.MySQLCluster, container *corev1ac.ContainerApplyConfiguration) {

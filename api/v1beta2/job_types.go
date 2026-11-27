@@ -102,7 +102,7 @@ type JobConfig struct {
 
 	// ContainerSecurityContext holds the security configuration for the backup and restore containers.
 	// Fields that are not set are filled with MOCO's defaults (`readOnlyRootFilesystem`,
-	// and for the backup container `runAsUser` and `runAsGroup`).
+	// `runAsUser`, and `runAsGroup`).
 	//
 	// +optional
 	ContainerSecurityContext *SecurityContextApplyConfiguration `json:"containerSecurityContext,omitempty"`

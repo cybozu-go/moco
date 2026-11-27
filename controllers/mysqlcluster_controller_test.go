@@ -139,6 +139,35 @@ func testDeleteMySQLCluster(ctx context.Context, ns, name string) {
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
+var _ = Describe("Job container security context", func() {
+	It("does not inject default IDs when default security contexts are disabled", func() {
+		r := &MySQLClusterReconciler{DisableDefaultSecurityContext: true}
+
+		sc := r.jobContainerSecurityContext(&mocov1beta2.JobConfig{})
+
+		Expect(sc.ReadOnlyRootFilesystem).To(Equal(new(true)))
+		Expect(sc.RunAsUser).To(BeNil())
+		Expect(sc.RunAsGroup).To(BeNil())
+	})
+
+	It("preserves explicit values without modifying the job config", func() {
+		r := &MySQLClusterReconciler{}
+		jc := &mocov1beta2.JobConfig{
+			ContainerSecurityContext: &mocov1beta2.SecurityContextApplyConfiguration{
+				RunAsUser:              new(int64(0)),
+				ReadOnlyRootFilesystem: new(false),
+			},
+		}
+
+		sc := r.jobContainerSecurityContext(jc)
+
+		Expect(sc.RunAsUser).To(Equal(new(int64(0))))
+		Expect(sc.RunAsGroup).To(Equal(new(int64(constants.ContainerGID))))
+		Expect(sc.ReadOnlyRootFilesystem).To(Equal(new(false)))
+		Expect(jc.ContainerSecurityContext.RunAsGroup).To(BeNil())
+	})
+})
+
 var _ = Describe("MySQLCluster reconciler", func() {
 	ctx := context.Background()
 	var stopFunc func()
@@ -1709,6 +1738,7 @@ dummyKey: dummyValue
 		jc.ContainerSecurityContext = &mocov1beta2.SecurityContextApplyConfiguration{
 			AllowPrivilegeEscalation: new(false),
 			Capabilities:             corev1ac.Capabilities().WithDrop("ALL"),
+			RunAsUser:                new(int64(2000)),
 		}
 		jc.BucketConfig.BucketName = "mybucket"
 		jc.BucketConfig.EndpointURL = "https://foo.bar.baz"
@@ -1791,6 +1821,8 @@ dummyKey: dummyValue
 			ReadOnlyRootFilesystem:   new(true),
 			AllowPrivilegeEscalation: new(false),
 			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+			RunAsUser:                new(int64(2000)),
+			RunAsGroup:               new(int64(constants.ContainerGID)),
 		}))
 
 		Expect(role.Labels).NotTo(BeEmpty())
@@ -1880,6 +1912,8 @@ dummyKey: dummyValue
 			g.Expect(podSpec.Containers).To(HaveLen(1))
 			g.Expect(podSpec.Containers[0].SecurityContext).To(Equal(&corev1.SecurityContext{
 				ReadOnlyRootFilesystem: new(true),
+				RunAsUser:              new(int64(constants.ContainerUID)),
+				RunAsGroup:             new(int64(constants.ContainerGID)),
 			}))
 		}).Should(Succeed())
 	})

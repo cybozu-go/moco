@@ -20,6 +20,7 @@ After [setting up MOCO](setup.md), you can create MySQL clusters with a custom r
 - [Backup and restore](#backup-and-restore)
   - [Object storage bucket](#object-storage-bucket)
   - [BackupPolicy](#backuppolicy)
+  - [Security context of backup and restore jobs](#security-context-of-backup-and-restore-jobs)
   - [Credentials to access S3 bucket](#credentials-to-access-s3-bucket)
   - [Taking an emergency backup](#taking-an-emergency-backup)
   - [Restore](#restore)
@@ -532,7 +533,9 @@ spec:
 By default, MOCO sets the following security context on backup and restore job Pods:
 
 - Pod: `fsGroup: 10000` and `fsGroupChangePolicy: OnRootMismatch`
-- Container: `readOnlyRootFilesystem: true`, and `runAsUser: 10000` and `runAsGroup: 10000` for the backup container
+- Container: `readOnlyRootFilesystem: true`, `runAsUser: 10000`, and `runAsGroup: 10000`
+
+The controller's `--disable-default-security-context` flag disables the default `fsGroup`, `runAsUser`, and `runAsGroup` values.
 
 This is not enough for a namespace that enforces the [`restricted` Pod Security Standard][PSS].
 You can add more fields with `jobConfig.podSecurityContext` and `jobConfig.containerSecurityContext`.
