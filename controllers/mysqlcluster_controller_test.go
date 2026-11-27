@@ -1892,9 +1892,6 @@ dummyKey: dummyValue
 
 	It("should apply the default security contexts to the restore job when none are specified", func() {
 		cluster := testNewMySQLCluster("test")
-		// Use a dedicated name: envtest has no garbage collector, so a restore Job left by
-		// another spec would make the controller skip creating a new one.
-		cluster.Name = "restore-defaults"
 		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "single",
 			SourceNamespace: "ns",
@@ -1907,12 +1904,6 @@ dummyKey: dummyValue
 		}
 		jc.BucketConfig.BucketName = "mybucket"
 		Expect(k8sClient.Create(ctx, cluster)).To(Succeed())
-		DeferCleanup(func(ctx context.Context) error {
-			job := &batchv1.Job{}
-			job.Namespace = cluster.Namespace
-			job.Name = cluster.RestoreJobName()
-			return client.IgnoreNotFound(k8sClient.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)))
-		})
 
 		Eventually(func(g Gomega) {
 			job := &batchv1.Job{}
@@ -1933,7 +1924,6 @@ dummyKey: dummyValue
 
 	It("should apply security contexts for the restricted Pod Security Standard to the restore job while preserving defaults", func() {
 		cluster := testNewMySQLCluster("test")
-		cluster.Name = "restore-restricted"
 		cluster.Spec.Restore = &mocov1beta2.RestoreSpec{
 			SourceName:      "single",
 			SourceNamespace: "ns",
