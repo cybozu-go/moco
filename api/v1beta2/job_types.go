@@ -121,8 +121,11 @@ type JobConfig struct {
 // PodSecurityContextApplyConfiguration is the type defined to implement the DeepCopy method.
 type PodSecurityContextApplyConfiguration corev1ac.PodSecurityContextApplyConfiguration
 
-// DeepCopy is copying the receiver, creating a new PodSecurityContextApplyConfiguration.
+// DeepCopy returns a deep copy of in, or nil if in is nil.
 func (in *PodSecurityContextApplyConfiguration) DeepCopy() *PodSecurityContextApplyConfiguration {
+	if in == nil {
+		return nil
+	}
 	out := new(PodSecurityContextApplyConfiguration)
 	bytes, err := json.Marshal(in)
 	if err != nil {
