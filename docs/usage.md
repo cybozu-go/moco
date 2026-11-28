@@ -734,6 +734,47 @@ spec:
 You are advised to make backups and/or create a replica cluster before starting the upgrade process.
 Read [`upgrading.md`](upgrading.md) for further details.
 
+### Changing the authentication plugin of MOCO system users
+
+MOCO creates its system users (`moco-admin`, `moco-agent`, `moco-repl`, `moco-clone-donor`, `moco-exporter`, `moco-backup`, `moco-readonly`, and `moco-writable`) when a `mysqld` instance starts for the first time.
+Each user gets the authentication plugin that was the server default at that moment, and the plugin stays the same after that.
+
+For example, clusters created with `default_authentication_plugin=mysql_native_password` keep that plugin for the system users.
+`mysql_native_password` is disabled by default in MySQL 8.4 and removed in MySQL 9.0, so such users must be migrated to `caching_sha2_password` before upgrading to these versions.
+
+To migrate the plugin, set `spec.systemUserAuthPlugin`:
+
+```yaml
+apiVersion: moco.cybozu.com/v1beta2
+kind: MySQLCluster
+metadata:
+  namespace: default
+  name: test
+spec:
+  systemUserAuthPlugin: caching_sha2_password
+```
+
+While this field is set, MOCO changes the authentication plugin of the system users to the specified value on every instance.
+The password values do not change, so no Secret is updated and no Pod is restarted.
+While the field is unset, MOCO does not manage the plugin (the default behavior).
+
+The progress is reported by the `SystemUserAuthPluginSynced` condition of the MySQLCluster and by the `moco_cluster_system_user_auth_plugin_synced` metric.
+
+The condition uses the following reasons:
+
+- `Synced`: every system user on every instance uses the specified plugin.
+- `Applying`: some users still use another plugin. MOCO is changing them.
+- `PluginUnavailable`: the specified plugin is not active on some instances, so MOCO is waiting without changing anything.
+  For example, `mysql_native_password` on MySQL 8.4 requires `mysqld` to run with `--mysql-native-password=ON`.
+- `InstanceUnreachable`: the plugins of some instances could not be collected.
+
+Note the following points:
+
+- `moco-readonly` and `moco-writable` are provided for applications.
+  After the plugin changes, a client library that does not support the new plugin fails at its next reconnection.
+  Make sure that all clients support the specified plugin before setting this field.
+- The plugins are changed only while the cluster is Healthy.
+
 ### Re-initializing an errant replica
 
 Delete the PVC and Pod of the errant replica, like this:

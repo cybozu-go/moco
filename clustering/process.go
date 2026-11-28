@@ -34,6 +34,8 @@ type metricsSet struct {
 	errantReplicas  prometheus.Gauge
 	processingTime  prometheus.Observer
 
+	systemUserAuthPluginSynced prometheus.Gauge
+
 	backupTimestamp    prometheus.Gauge
 	backupElapsed      prometheus.Gauge
 	backupDumpSize     prometheus.Gauge
@@ -85,6 +87,8 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			backupBinlogSize:   metrics.BackupBinlogSize.WithLabelValues(name.Name, name.Namespace),
 			backupWorkDirUsage: metrics.BackupWorkDirUsage.WithLabelValues(name.Name, name.Namespace),
 			backupWarnings:     metrics.BackupWarnings.WithLabelValues(name.Name, name.Namespace),
+
+			systemUserAuthPluginSynced: newNaNGauge(metrics.SystemUserAuthPluginSyncedVec, name),
 		},
 		deleteMetrics: func() {
 			metrics.CheckCountVec.DeleteLabelValues(name.Name, name.Namespace)
@@ -103,14 +107,25 @@ func newManagerProcess(c client.Client, r client.Reader, recorder record.EventRe
 			metrics.BackupBinlogSize.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupWorkDirUsage.DeleteLabelValues(name.Name, name.Namespace)
 			metrics.BackupWarnings.DeleteLabelValues(name.Name, name.Namespace)
+			metrics.SystemUserAuthPluginSyncedVec.DeleteLabelValues(name.Name, name.Namespace)
 		},
 		pauseMetrics: func() {
 			metrics.AvailableVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
 			metrics.HealthyVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
 			metrics.ReadyReplicasVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
 			metrics.ErrantReplicasVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
+			metrics.SystemUserAuthPluginSyncedVec.WithLabelValues(name.Name, name.Namespace).Set(math.NaN())
 		},
 	}
+}
+
+// newNaNGauge curries the gauge for the cluster and initializes it to NaN.
+// Unlike the other per-cluster gauges, 0 means "not synced", so the value
+// must not be exported before the first status update computes it.
+func newNaNGauge(vec *prometheus.GaugeVec, name types.NamespacedName) prometheus.Gauge {
+	g := vec.WithLabelValues(name.Name, name.Namespace)
+	g.Set(math.NaN())
+	return g
 }
 
 func (p *managerProcess) Update(origin string) {
@@ -230,6 +245,11 @@ func (p *managerProcess) do(ctx context.Context) (bool, error) {
 		if ss.State == StateDegraded {
 			return p.configure(ctx, ss)
 		}
+		if err := p.convergeAuthPlugin(ctx, ss); err != nil {
+			// Non-fatal: converging the authentication plugin must not block
+			// clustering operations. It is retried on the next tick.
+			logFromContext(ctx).Error(err, "failed to converge the authentication plugin of MOCO users")
+		}
 		return false, nil
 
 	case StateFailed:
@@ -310,6 +330,8 @@ func (p *managerProcess) updateStatus(ctx context.Context, ss *StatusSet) error 
 				Message: "clustering is active",
 			},
 		)
+
+		p.updateAuthPluginStatus(ss, cluster)
 
 		if available == metav1.ConditionTrue {
 			p.metrics.available.Set(1)

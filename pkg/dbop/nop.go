@@ -58,3 +58,19 @@ func (o NopOperator) SetReadOnly(context.Context, bool) error {
 func (o NopOperator) KillConnections(context.Context) error {
 	return ErrNop
 }
+
+func (o NopOperator) GetUserAuthPlugins(ctx context.Context) (map[string]string, error) {
+	return nil, ErrNop
+}
+
+func (o NopOperator) IsAuthPluginActive(ctx context.Context, plugin string) (bool, error) {
+	return false, ErrNop
+}
+
+func (o NopOperator) AlterUserAuthPlugin(ctx context.Context, user, plugin string) error {
+	return ErrNop
+}
+
+func (o NopOperator) SetSuperReadOnly(ctx context.Context, on bool) error {
+	return ErrNop
+}
